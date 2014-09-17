@@ -11,6 +11,7 @@
 #include "global.h"
 #include <assert.h>
 #include <memory>
+#include <exception>
 
 //#define EarthAtm_DEBUG
 
