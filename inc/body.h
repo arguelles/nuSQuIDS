@@ -10,6 +10,7 @@
 #include "const.h"
 #include "global.h"
 #include <assert.h>
+#include <memory>
 
 //#define EarthAtm_DEBUG
 
