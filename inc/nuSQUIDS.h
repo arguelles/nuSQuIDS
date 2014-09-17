@@ -7,7 +7,7 @@
 #include <SQUIDS.h>
 #include <memory>
 #include <map>
-#include <exception>
+#include <stdexcept>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
