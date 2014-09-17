@@ -59,8 +59,9 @@ LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 # FLAGS
 LDFLAGS+= $(LIBDIR) -L$(LIBSQUIDS)
 LDFLAGS+= -lgsl -lgslcblas
-LDFLAGS+= -lSQUIDS
 LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
+LDFLAGS+= -lSQUIDS
+
 INCCFLAGS = $(INCDIR) -I$(INCSQUIDS) -I$(INCnuSQUIDS)
 CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
 
@@ -87,7 +88,7 @@ endif
 all: $(STAT_PRODUCT) $(DYN_PRODUCT) $(EXAMPLES)
 
 %.exe : %.cpp
-	$(CXX) $(CXXFLAGS) $(LIBDIR) $(LDFLAGS) -L$(LIBSQUIDS) -L$(LIBnuSQUIDS) $< -o $@ -lSQUIDS -lnuSQUIDS
+	$(CXX) $(CXXFLAGS) $(LIBDIR) -L$(LIBSQUIDS) -L$(LIBnuSQUIDS) $< -o $@ -lnuSQUIDS $(LDFLAGS)
 	mv $@ bin/
 
 $(DYN_PRODUCT) : $(OBJECTS)
