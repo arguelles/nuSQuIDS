@@ -5,6 +5,7 @@
 #include <xsections.h>
 #include <taudecay.h>
 #include <SQUIDS.h>
+#include <memory>
 #include <map>
 
 #include "hdf5.h"
