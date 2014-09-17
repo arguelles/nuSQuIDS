@@ -108,13 +108,17 @@ clean:
 	rm -f src/*.o examples/*.exe lib/* bin/*
 ' >> ./Makefile
 
+nusqpath=`pwd`
+
 echo '
 #ifndef __GLOBAL_H
 #define __GLOBAL_H
-
-#define XSECTION_LOCATION "/Users/carlos/Programs/nuSQuIDS/data/xsections/"
-#define SUN_MODEL_LOCATION "/Users/carlos/Programs/nuSQuIDS/data/astro/bs05_agsop.dat"
-#define SUN_MODEL_NELECTRON_LOCATION "/Users/carlos/Programs/nuSQuIDS/data/astro/nele_bs05op.dat"
-
-#endif
 ' > inc/global.h
+echo "
+#define XSECTION_LOCATION '$nusqpath/data/xsections/'
+#define SUN_MODEL_LOCATION  '$nusqpath/data/astro/bs05_agsop.dat'
+#define SUN_MODEL_NELECTRON_LOCATION '$nusqpath/data/astro/nele_bs05op.dat'
+" >> inc/global.h
+echo '
+#endif
+' >> inc/global.h
