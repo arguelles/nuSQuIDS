@@ -1,0 +1,299 @@
+#include <boost/python.hpp>
+#include <boost/python/scope.hpp>
+#include <boost/python/to_python_converter.hpp>
+#include <boost/numpy.hpp>
+#include "container_conversions.h"
+#include "nuSQUIDS.h"
+#include "SQUIDS.h"
+
+using namespace boost::python;
+namespace bp = boost::python;
+namespace np = boost::numpy;
+
+template<class T>
+struct VecToList
+{
+  static PyObject* convert(const std::vector<T>& vec){
+    boost::python::list* l = new boost::python::list();
+    for(size_t i =0; i < vec.size(); i++)
+      (*l).append(vec[i]);
+
+    return l->ptr();
+  }
+};
+
+// nuSQUIDS wrap functions
+
+static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, std::string neutype){
+  bool isint = false;
+  //if ( array.get_dtype() == np::dtype::get_builtin<int>() | )
+  // int64
+  //  isint = true;
+  if ( array.get_dtype() != np::dtype::get_builtin<double>() )
+    isint = true;
+    //throw std::runtime_error("nuSQUIDS::Input array cannot be converted to double.");
+
+  Py_intptr_t const * strides = array.get_strides();
+  if ( array.get_nd() == 1 ) {
+    std::vector<double> state(array.shape(0));
+    for (int i = 0; i < array.shape(0); i++){
+      if (isint)
+        state[i] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0]);
+      else
+        state[i] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0]);
+    }
+    nusq->Set_initial_state(state,neutype);
+  } else if ( array.get_nd() == 2 ) {
+    std::vector< std::vector<double> > state(array.shape(0));
+    for (int i = 0; i < array.shape(0); i++){
+      state[i].resize(array.shape(1));
+      for (int j = 0; j < array.shape(1); j++){
+        if (isint)
+          state[i][j] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1]);
+        else
+          state[i][j] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1]);
+      }
+    }
+    nusq->Set_initial_state(state,neutype);
+  } else if ( array.get_nd() == 3 ) {
+    std::vector< std::vector < std::vector<double> > > state(array.shape(0));
+    for (int i = 0; i < array.shape(0); i++){
+      state[i].resize(array.shape(1));
+      for (int j = 0; j < array.shape(1); j++){
+        state[i][j].resize(array.shape(2));
+        for (int k = 0; k < array.shape(2); k++){
+          if (isint) {
+            state[i][j][k] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
+          } else {
+            state[i][j][k] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
+            //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
+          }
+        }
+      }
+    }
+    nusq->Set_initial_state(state,neutype);
+  } else
+    throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
+}
+
+// nuSQUIDSpy module definitions
+
+BOOST_PYTHON_MODULE(nuSQUIDSpy)
+{
+  //Py_Initialize();
+  np::initialize();
+
+  class_<SU_vector, std::shared_ptr<SU_vector> >("SU_vector")
+    .def(init< std::vector<double> >())
+    .def(init<int>())
+    .def(init<string,int,int>())
+    .def("Rescale",&SU_vector::Rescale)
+    .def("Rotate",&SU_vector::Rotate)
+    .def("Dim",&SU_vector::Dim)
+    .def("GetComponents",&SU_vector::GetComponents)
+  ;
+
+  //class_<SQUIDS>("SQUIDS")
+  //  .def("Set",&SQUIDS::Set)
+  //;
+
+  class_<nuSQUIDS, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,int,int,std::string,bool,bool>())
+    .def(init<std::string>())
+    .def(init<int,std::string>())
+    .def("Set_initial_state",
+        (void(nuSQUIDS::*)(std::vector<double>,std::string))&nuSQUIDS::Set_initial_state,
+        ( bp::arg("InitialState"), bp::arg("NeutrinoType") )
+        )
+    /*
+    .def("Set_initial_state",
+        (void(nuSQUIDS::*)(std::vector< std::vector<double> >,std::string))&nuSQUIDS::Set_initial_state,
+        ( bp::arg("InitialState"), bp::arg("NeutrinoType") )
+        )
+    */
+    .def("Set_initial_state",wrap_Set_initial_state)
+    .def("Set_Body",&nuSQUIDS::Set_Body, bp::arg("Body"))
+    .def("Set_Track",&nuSQUIDS::Set_Track, bp::arg("Track"))
+    .def("Set_E",&nuSQUIDS::Set_E, bp::arg("NeutrinoEnergy"))
+    .def("EvolveState",&nuSQUIDS::EvolveState)
+    .def("GetERange",&nuSQUIDS::GetERange)
+    .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5)
+    .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5)
+    .def("H0",&nuSQUIDS::H0)
+    .def("HI",(SU_vector(nuSQUIDS::*)(int,double))&nuSQUIDS::HI)
+    .def("HI",(SU_vector(nuSQUIDS::*)(int))&nuSQUIDS::HI)
+    .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
+    .def("EvalMass",(double(nuSQUIDS::*)(int))&nuSQUIDS::EvalMass)
+    .def("EvalFlavor",(double(nuSQUIDS::*)(int))&nuSQUIDS::EvalFlavor)
+    .def("EvalMass",(double(nuSQUIDS::*)(int,double,int))&nuSQUIDS::EvalMass)
+    .def("EvalFlavor",(double(nuSQUIDS::*)(int,double,int))&nuSQUIDS::EvalFlavor)
+    .def("EvalMassAtNode",(double(nuSQUIDS::*)(int,int,int))&nuSQUIDS::EvalMassAtNode)
+    .def("EvalFlavorAtNode",(double(nuSQUIDS::*)(int,int,int))&nuSQUIDS::EvalFlavorAtNode)
+    .def("GetERange",&nuSQUIDS::GetERange)
+    .def("Set",(void(nuSQUIDS::*)(string,double))&nuSQUIDS::Set)
+    .def("Set",(void(nuSQUIDS::*)(string,bool))&nuSQUIDS::Set)
+    .def("Set",(void(nuSQUIDS::*)(string,int))&nuSQUIDS::Set)
+    .def("Set_nuSQUIDS",&nuSQUIDS::Set_nuSQUIDS)
+    .def("GetTrack",&nuSQUIDS::GetTrack)
+    .def("GetBody",&nuSQUIDS::GetBody)
+    .def("GetNumE",&nuSQUIDS::GetNumE)
+    .def_readonly("units", &nuSQUIDS::units)
+  ;
+
+  class_<Const>("Const")
+    .def_readonly("TeV",&Const::TeV)
+    .def_readonly("GeV",&Const::GeV)
+    .def_readonly("MeV",&Const::MeV)
+    .def_readonly("keV",&Const::keV)
+    .def_readonly("eV",&Const::eV)
+    .def_readonly("kg",&Const::kg)
+    .def_readonly("gr",&Const::gr)
+    .def_readonly("meter",&Const::meter)
+    .def_readonly("cm",&Const::cm)
+    .def_readonly("km",&Const::km)
+    .def_readonly("fermi",&Const::fermi)
+    .def_readonly("angstrom",&Const::angstrom)
+    .def_readonly("AU",&Const::AU)
+    .def_readonly("parsec",&Const::parsec)
+    .def_readonly("pb",&Const::picobarn)
+    .def_readonly("fb",&Const::femtobarn)
+    .def_readonly("sec",&Const::sec)
+    .def_readonly("hour",&Const::hour)
+    .def_readonly("day",&Const::day)
+    .def_readonly("year",&Const::year)
+  ;
+
+  {
+    scope outer
+    = class_<Body, std::shared_ptr<Body> >("Body")
+    .def("density",&Body::density)
+    .def("ye",&Body::ye)
+    ;
+
+    class_<Body::Track, std::shared_ptr<Body::Track> >("Track")
+    .def("GetInitialX",&Body::Track::GetInitialX)
+    .def("GetFinalX",&Body::Track::GetFinalX)
+    .def("GetX",&Body::Track::GetX)
+    ;
+  }
+
+  {
+    scope outer
+    = class_<Vacuum, bases<Body>, std::shared_ptr<Vacuum> >("Vacuum")
+    ;
+
+    class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >("Track")
+    .def(init<double,double>())
+    .def("GetInitialX",&Vacuum::Track::GetInitialX)
+    .def("GetFinalX",&Vacuum::Track::GetFinalX)
+    .def("GetX",&Vacuum::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<Vacuum>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<Vacuum::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<ConstantDensity, bases<Body>, std::shared_ptr<ConstantDensity> >("ConstantDensity")
+    .def(init<double,double>())
+    ;
+
+    class_<ConstantDensity::Track, std::shared_ptr<ConstantDensity::Track> >("Track")
+    .def(init<double,double>())
+    .def("GetInitialX",&ConstantDensity::Track::GetInitialX)
+    .def("GetFinalX",&ConstantDensity::Track::GetFinalX)
+    .def("GetX",&ConstantDensity::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<ConstantDensity>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<ConstantDensity::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<VariableDensity, bases<Body>, std::shared_ptr<VariableDensity> >("VariableDensity")
+    .def(init< std::vector<double>,std::vector<double>,std::vector<double> >())
+    ;
+
+    class_<VariableDensity::Track, std::shared_ptr<VariableDensity::Track> >("Track")
+    .def(init<double,double>())
+    .def("GetInitialX",&VariableDensity::Track::GetInitialX)
+    .def("GetFinalX",&VariableDensity::Track::GetFinalX)
+    .def("GetX",&VariableDensity::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<VariableDensity>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<VariableDensity::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<Earth, bases<Body>, std::shared_ptr<Earth> >("Earth")
+    ;
+
+    class_<Earth::Track, std::shared_ptr<Earth::Track> >("Track")
+    .def(init<double,double,double>())
+    .def("GetInitialX",&Earth::Track::GetInitialX)
+    .def("GetFinalX",&Earth::Track::GetFinalX)
+    .def("GetX",&Earth::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<Earth>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<Earth::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<Sun, bases<Body>, std::shared_ptr<Sun> >("Sun")
+    ;
+
+    class_<Sun::Track, std::shared_ptr<Sun::Track> >("Track")
+    .def(init<double,double>())
+    .def("GetInitialX",&Sun::Track::GetInitialX)
+    .def("GetFinalX",&Sun::Track::GetFinalX)
+    .def("GetX",&Sun::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<Sun>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<Sun::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<SunASnu, bases<Body>, std::shared_ptr<SunASnu> >("SunASnu")
+    ;
+
+    class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track")
+    .def(init<double,double>())
+    .def("GetInitialX",&SunASnu::Track::GetInitialX)
+    .def("GetFinalX",&SunASnu::Track::GetFinalX)
+    .def("GetX",&SunASnu::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<SunASnu>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<SunASnu::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  {
+    scope outer
+    = class_<EarthAtm, bases<Body>, std::shared_ptr<EarthAtm> >("EarthAtm")
+    ;
+
+    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track")
+    .def(init<double>())
+    .def("GetInitialX",&EarthAtm::Track::GetInitialX)
+    .def("GetFinalX",&EarthAtm::Track::GetFinalX)
+    .def("GetX",&EarthAtm::Track::GetX)
+    ;
+
+    implicitly_convertible< std::shared_ptr<EarthAtm>, std::shared_ptr<Body> >();
+    implicitly_convertible< std::shared_ptr<EarthAtm::Track>, std::shared_ptr<Body::Track> >();
+  }
+
+  // python cotainer to vector<double> convertion
+  using namespace scitbx::boost_python::container_conversions;
+  from_python_sequence< std::vector<double>, variable_capacity_policy >();
+  //from_python_sequence< std::vector< std::vector<double> >, variable_capacity_policy >();
+  to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
+
+}

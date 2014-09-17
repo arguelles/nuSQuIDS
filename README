@@ -1,0 +1,63 @@
+nuSQuIDS
+========
+
+A user manual can be found in docs/source/;
+
+Prerequisites
+*************
+
+The following packages are required to build and use the client library, and
+can probably be had from your favorite package manager:
+
+* gsl (>= 1.14): http://www.gnu.org/software/gsl/
+* hdf5 with c++ bindings
+* C++ compiler with C++11 support: http://www.hdfgroup.org/HDF5/
+* SQUIDS (>= 1.00): https://github.com/jsalvado/SQuIDS/
+
+PythonToolBox
+*************
+
+Additionally for compiling and using the python bindings:
+
+-Required:
+* boost python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc
+* boost numpy: https://github.com/ndarray/Boost.NumPy
+* numpy: http://www.numpy.org/
+
+-Recommended:
+* ipython: http://ipython.org/
+* matplotlib: http://matplotlib.org/
+
+Modified the make file and compaile the directory
+found in
+
+nuSQUIDS/resources/python/src/
+
+after successful compilation the bindings will be stored in
+
+nuSQUIDS/resources/python/bindings/
+
+Finally, modify your system PYTHONPATH:
+
+export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
+
+Documentation
+*************
+
+The latex and pdf files are included in SQUIDS/doc/ folder.
+
+Configuration
+*************
+
+The path for the GSL libraries can be specified by running:
+
+./config.sh -GSL_INC=GSL_include_path -GSL_LIB=GSL_library_path
+
+The path for the HDF5 libraries can be specified by running:
+
+./config.sh -GSL_INC=GSL_include_path -GSL_LIB=GSL_library_path
+
+Finally, the path for SQuIDS can be specified by:
+
+./config.sh -GSL_INC=GSL_include_path -GSL_LIB=GSL_library_path
+
