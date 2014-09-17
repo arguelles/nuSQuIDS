@@ -87,7 +87,7 @@ endif
 all: $(STAT_PRODUCT) $(DYN_PRODUCT) $(EXAMPLES)
 
 %.exe : %.cpp
-	$(CXX) $(CXXFLAGS) $(LIBDIR) -L$(LIBSQUIDS) -L$(LIBnuSQUIDS) $< -o $@ -lSQUIDS -lnuSQUIDS
+$(CXX) $(CXXFLAGS) $(LIBDIR) $(LDFLAGS) -L$(LIBSQUIDS) -L$(LIBnuSQUIDS) $< -o $@ -lSQUIDS -lnuSQUIDS
 	mv $@ bin/
 
 $(DYN_PRODUCT) : $(OBJECTS)
