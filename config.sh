@@ -115,9 +115,9 @@ echo '
 #define __GLOBAL_H
 ' > inc/global.h
 echo "
-#define XSECTION_LOCATION '$nusqpath/data/xsections/'
-#define SUN_MODEL_LOCATION  '$nusqpath/data/astro/bs05_agsop.dat'
-#define SUN_MODEL_NELECTRON_LOCATION '$nusqpath/data/astro/nele_bs05op.dat'
+#define XSECTION_LOCATION \"$nusqpath/data/xsections/\"
+#define SUN_MODEL_LOCATION  \"$nusqpath/data/astro/bs05_agsop.dat\"
+#define SUN_MODEL_NELECTRON_LOCATION \"$nusqpath/data/astro/nele_bs05op.dat\"
 " >> inc/global.h
 echo '
 #endif
