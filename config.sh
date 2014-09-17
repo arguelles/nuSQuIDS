@@ -57,7 +57,7 @@ INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
-LDFLAGS+= $(LIBDIR) -L$(LIBSQUIDS)
+LDFLAGS+= -Wl,-rpath -Wl,$(LIBSQUIDS) -Wl,-rpath -Wl,$(LIBnuSQUIDS) $(LIBDIR) -L$(LIBSQUIDS)
 LDFLAGS+= -lgsl -lgslcblas
 LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
 LDFLAGS+= -lSQUIDS
