@@ -49,7 +49,7 @@ int main()
   // atmospheric neutrinos. so we such the earth in the atmospheric
   // configuration. and we such the totally through going trayectory.
 
-  double phi = acos(-1.);
+  double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
   std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
 
@@ -67,8 +67,7 @@ int main()
   nus.Set("delta1",0.0);
 
   // setup integration settings
-  nus.Set("h_max", 500.0*nus.units.km );
-  //nus.Set("h_min", 1.0*nus.units.meter );
+  nus.Set("h_max", 300.0*nus.units.km );
   nus.Set("rel_error", 1.0e-12);
   nus.Set("abs_error", 1.0e-12);
 
@@ -84,7 +83,8 @@ int main()
       inistate[i][j].resize(3);
       for ( int k = 0; k < 3; k ++){
         // initialze muon state
-        inistate[i][j][k] = (k == 1 or k == 2) ? N0*pow(E_range[i],-1.0) : 0.0;
+        //inistate[i][j][k] = (k == 1 or k == 2) ? N0*pow(E_range[i],-1.0) : 0.0;
+        inistate[i][j][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
       }
     }
   }
@@ -92,7 +92,7 @@ int main()
   nus.Set_initial_state(inistate,"flavor");
   // since we want to include the tau regeneratino effects
   // we have to active the following option.
-  nus.Set_nuSQUIDS("taureg", true);
+  //nus.Set_nuSQUIDS("taureg", true);
 
   std::cout << "Propagating nu_tau flux." << std::endl;
   nus.EvolveState();

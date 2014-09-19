@@ -33,7 +33,7 @@ int main()
 {
   nuSQUIDS nus("/Users/carguelles/Workspace/SQuIDS/nuSQuIDS/out_example1_muon.hdf5");
 //  nus.WriteStateHDF5("/Users/carguelles/Workspace/SQuIDS/nuSQuIDS/test.hdf5");
-  
+
   return 0;
 }
 

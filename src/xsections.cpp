@@ -88,8 +88,8 @@ void NeutrinoCrossSections::Init(double Emin_in, double Emax_in, int div_in){
 
             double sig_cc_data[data_e_size], sig_nc_data[data_e_size];
             for( int ie = 0; ie < data_e_size; ie ++){
-              sig_cc_data[ie] = log(sigma_CC_data[ie][1+flavor]);
-              sig_nc_data[ie] = log(sigma_NC_data[ie][1+flavor]);
+              sig_cc_data[ie] = sigma_CC_data[ie][1+flavor];
+              sig_nc_data[ie] = sigma_NC_data[ie][1+flavor];
             }
             gsl_spline_init(xs_cc_inter[flavor],logE_data_range.data(),sig_cc_data,data_e_size);
             gsl_spline_init(xs_nc_inter[flavor],logE_data_range.data(),sig_nc_data,data_e_size);

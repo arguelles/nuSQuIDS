@@ -905,6 +905,8 @@ void nuSQUIDS::WriteStateHDF5(string str){
 
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
+  if ( NT == "both" )
+    pdim[1] *= pdim[1];
   vector<double> flavor,mass;
 
   for(int ie = 0; ie < ne; ie++){
