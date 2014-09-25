@@ -76,12 +76,46 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, st
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
+namespace GSL_STEP_FUNCTIONS
+{
+/*
+class GSL_STEP{
+
+
+}
+*/
+  class GSL_STEP_RK45{
+    private:
+      const gsl_odeiv2_step_type * stepfunc;
+    public:
+      GSL_STEP_RK45():stepfunc(gsl_odeiv2_step_rkf45){};
+      const gsl_odeiv2_step_type * GetStepFunction(void){ return stepfunc; };
+      ~GSL_STEP_RK45(){};
+  };
+}
+
+class GSF{};
+
+static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS::GSL_STEP_RK45 step_class){
+  nusq->Set("GSL_Step", step_class.GetStepFunction());
+}
+
 // nuSQUIDSpy module definitions
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
 {
   //Py_Initialize();
   np::initialize();
+
+  {
+    scope outer
+    = class_<GSF, std::shared_ptr<GSF> >("GSL_STEP_FUNCTIONS")
+    ;
+
+    class_<GSL_STEP_FUNCTIONS::GSL_STEP_RK45, std::shared_ptr<GSL_STEP_FUNCTIONS::GSL_STEP_RK45> >("GSL_STEP_RK45");
+
+  }
+
 
   class_<SU_vector, std::shared_ptr<SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
@@ -92,9 +126,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Dim",&SU_vector::Dim)
     .def("GetComponents",&SU_vector::GetComponents)
   ;
-
-  //class_<gsl_odeiv2_step_rkf45, std::shared_ptr<gsl_odeiv2_step_rkf45>("gsl_odeiv_step_rkf45");
-  //implicitly_convertible< std::shared_ptr<gsl_odeiv2_step_rkf45>, std::shared_ptr<gsl_odeiv2_step_type> >();
 
   //class_<SQUIDS>("SQUIDS")
   //  .def("Set",&SQUIDS::Set)
@@ -137,7 +168,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set",(void(nuSQUIDS::*)(string,double))&nuSQUIDS::Set)
     .def("Set",(void(nuSQUIDS::*)(string,bool))&nuSQUIDS::Set)
     .def("Set",(void(nuSQUIDS::*)(string,int))&nuSQUIDS::Set)
-   // .def("Set",(void(nuSQUIDS::*)(string,const gsl_odeiv2_step_type *))&nuSQUIDS::Set)
+    .def("Set",wrap_Set_GSL_STEP)
     .def("Set_nuSQUIDS",&nuSQUIDS::Set_nuSQUIDS)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
@@ -183,6 +214,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&Body::Track::GetInitialX)
     .def("GetFinalX",&Body::Track::GetFinalX)
     .def("GetX",&Body::Track::GetX)
+    .def("SetX",&Body::Track::SetX)
     ;
   }
 
@@ -193,9 +225,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
     class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >("Track")
     .def(init<double,double>())
+    .def("density",&Body::density)
+    .def("ye",&Body::ye)
     .def("GetInitialX",&Vacuum::Track::GetInitialX)
     .def("GetFinalX",&Vacuum::Track::GetFinalX)
     .def("GetX",&Vacuum::Track::GetX)
+    .def("SetX",&Vacuum::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<Vacuum>, std::shared_ptr<Body> >();
@@ -213,6 +248,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&ConstantDensity::Track::GetInitialX)
     .def("GetFinalX",&ConstantDensity::Track::GetFinalX)
     .def("GetX",&ConstantDensity::Track::GetX)
+    .def("SetX",&ConstantDensity::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<ConstantDensity>, std::shared_ptr<Body> >();
@@ -230,6 +266,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&VariableDensity::Track::GetInitialX)
     .def("GetFinalX",&VariableDensity::Track::GetFinalX)
     .def("GetX",&VariableDensity::Track::GetX)
+    .def("SetX",&VariableDensity::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<VariableDensity>, std::shared_ptr<Body> >();
@@ -247,6 +284,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&Earth::Track::GetInitialX)
     .def("GetFinalX",&Earth::Track::GetFinalX)
     .def("GetX",&Earth::Track::GetX)
+    .def("SetX",&Earth::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<Earth>, std::shared_ptr<Body> >();
@@ -263,6 +301,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&Sun::Track::GetInitialX)
     .def("GetFinalX",&Sun::Track::GetFinalX)
     .def("GetX",&Sun::Track::GetX)
+    .def("SetX",&Sun::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<Sun>, std::shared_ptr<Body> >();
@@ -279,6 +318,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&SunASnu::Track::GetInitialX)
     .def("GetFinalX",&SunASnu::Track::GetFinalX)
     .def("GetX",&SunASnu::Track::GetX)
+    .def("SetX",&SunASnu::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<SunASnu>, std::shared_ptr<Body> >();
@@ -296,6 +336,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetInitialX",&EarthAtm::Track::GetInitialX)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)
+    .def("SetX",&EarthAtm::Track::SetX)
     ;
 
     implicitly_convertible< std::shared_ptr<EarthAtm>, std::shared_ptr<Body> >();

@@ -304,6 +304,8 @@ double Earth::ye(std::shared_ptr<Body::Track> track_input)
 
 Earth::Earth(string filepath)
         {
+          // The Input file should have the radius specified from 0 to 1.
+          // where 0 is the center of the Earth and 1 is the surface.
             use_file = true;
 
             name = "Earth";
