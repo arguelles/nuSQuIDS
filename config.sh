@@ -46,7 +46,7 @@ fi
 
 # Directories
 if [ -n "$SQUIDS_PATH" ]; then
-echo "PATH_SQUIDS=$(SQUIDS_PATH)" >> ./Makefile
+echo "PATH_SQUIDS=${SQUIDS_PATH}" >> ./Makefile
 fi
 
 echo '
