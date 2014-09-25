@@ -103,7 +103,8 @@ class nuSQUIDS: public SQUIDS {
      void Set_Initial_Time(void);
      void SetScalarsToZero(void);
   public:
-     void PreDerive(double);
+     virtual void PreDerive(double);
+     virtual void AddToPreDerive(double){};
      const Const units;
      // initializers
      nuSQUIDS(){};
@@ -176,6 +177,7 @@ class nuSQUIDS: public SQUIDS {
      size_t GetNumE(void);
      int GetNumNeu(void);
      SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, int rho = 0);
+     SU_vector GetState(int,int rho = 0);
 
      void WriteState(string);
      void ReadState(string);

@@ -96,7 +96,7 @@ int main()
 
   std::cout << "Propagating nu_tau flux." << std::endl;
   nus.EvolveState();
-  nus.WriteStateHDF5("./mul_ene_ex2.hdf5");
+  nus.WriteStateHDF5("./mul_ene_ex3.hdf5");
 
   return 0;
 }

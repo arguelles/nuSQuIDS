@@ -31,11 +31,19 @@
 
 
 class nuSQUIDSLV: public nuSQUIDS {
-  //friend class nuSQUIDS;
+  private:
+    SU_vector LVP;
+    std::vector<SU_vector> LVP_evol;
   public:
+    void AddToPreDerive(double x){
+      for(int ei = 0; ei < ne; ei++){
+        SU_vector h0 = H0(E_range[ei]);
+        LVP_evol[ei] = LVP.SUEvolve(h0,tunit*(x-t_ini));
+      }
+    }
+
     SU_vector HI(int ei){
-      //std::cout << 1.0e-21*E_range[ei]*evol_b1_proj[index_rho][1][ei] << std::endl;
-      return 1.0e-21*E_range[ei]*evol_b1_proj[index_rho][1][ei];
+      return (1.0e-27*E_range[ei])*LVP_evol[ei];
     }
 
     nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,string NT_,
@@ -43,6 +51,19 @@ class nuSQUIDSLV: public nuSQUIDS {
     {
        Init(Emin_,Emax_,Esize_,numneu_,NT_,
            elogscale_,iinteraction_);
+       // defining a complex matrix M which will contain our flavor
+       // violating flavor structure.
+       gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
+       gsl_complex c { 1.0 , 0.0 };
+       gsl_matrix_complex_set(M,2,1,c);
+       gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
+
+       LVP.InitSU_vector(M);
+       LVP_evol.resize(ne);
+       for(int ei = 0; ei < ne; ei++){
+         LVP_evol[ei].InitSU_vector(nsun);
+       }
+       gsl_matrix_complex_free(M);
     }
 };
 
@@ -68,9 +89,9 @@ int main()
   nus.Set("delta1",0.0);
 
   // setup integration settings
-  nus.Set("h_max", 500.0*nus.units.km );
-  nus.Set("rel_error", 1.0e-15);
-  nus.Set("abs_error", 1.0e-15);
+  nus.Set("h_max", 100.0*nus.units.km );
+  nus.Set("rel_error", 1.0e-8);
+  nus.Set("abs_error", 1.0e-8);
 
   vector<double> E_range = nus.GetERange();
 
@@ -91,7 +112,6 @@ int main()
   // we can save the current state in HDF5 format
   // for future use.
 
-  //nus.WriteStateHDF5("./mul_ene_ex4_in.hdf5");
   nus.EvolveState();
   nus.WriteStateHDF5("./mul_ene_ex4.hdf5");
 

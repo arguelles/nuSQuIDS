@@ -241,6 +241,7 @@ void nuSQUIDS::PreDerive(double x){
   if(iinteraction){
     UpdateInteractions();
   }
+  AddToPreDerive(x);
 }
 
 void nuSQUIDS::EvolveProjectors(double x){
@@ -829,6 +830,10 @@ void nuSQUIDS::SetIniFlavorProyectors(){
       b1_proj[rho][flv].RotateToB1(&params);
     }
   }
+}
+
+SU_vector nuSQUIDS::GetState(int ie, int rho){
+  return state[ie].rho[rho];
 }
 
 SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int rho){

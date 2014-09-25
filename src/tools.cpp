@@ -24,8 +24,7 @@ Table quickread(std::string filepath){
     std::ifstream infile(filepath.c_str());
 
     if(!infile){
-        std::cerr << "Error: file could not be opened. Filepath " << filepath.c_str()<< std::endl;
-        exit(0);
+        throw std::runtime_error("Error: file could not be opened. Filepath " + filepath);
     }
     #ifdef quickread_DEBUG
     int x,y;
