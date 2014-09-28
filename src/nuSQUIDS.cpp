@@ -277,10 +277,10 @@ SU_vector nuSQUIDS::HI(int ei){
     // construct potential in flavor basis
     SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei] + (NC)*(evol_b1_proj[index_rho][1][ei] + evol_b1_proj[index_rho][2][ei]);
 
-    if (index_rho == 0){
+    if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
         // neutrino potential
         return potential;
-    } else if (index_rho == 1){
+    } else if ((index_rho == 0 and NT=="both") or NT=="antineutrino"){
         // antineutrino potential
         return (-1.0)*potential;
     } else{

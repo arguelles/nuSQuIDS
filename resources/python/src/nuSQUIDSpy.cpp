@@ -76,28 +76,60 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, st
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
-namespace GSL_STEP_FUNCTIONS
-{
-/*
-class GSL_STEP{
+enum GSL_STEP_FUNCTIONS {
+  GSL_STEP_RK2,
+  GSL_STEP_RK4,
+  GSL_STEP_RKF45,
+  GSL_STEP_RKCK,
+  GSL_STEP_RK8PD,
+  /*
+  GSL_STEP_RK1IMP,
+  GSL_STEP_RK2IMP,
+  GSL_STEP_RK4IMP,
+  GSL_STEP_BSIMP,
+  GSL_STEP_MSBDF,
+  */
+  GSL_STEP_MSADAMS
+};
 
-
-}
-*/
-  class GSL_STEP_RK45{
-    private:
-      const gsl_odeiv2_step_type * stepfunc;
-    public:
-      GSL_STEP_RK45():stepfunc(gsl_odeiv2_step_rkf45){};
-      const gsl_odeiv2_step_type * GetStepFunction(void){ return stepfunc; };
-      ~GSL_STEP_RK45(){};
-  };
-}
-
-class GSF{};
-
-static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS::GSL_STEP_RK45 step_class){
-  nusq->Set("GSL_Step", step_class.GetStepFunction());
+static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
+  switch(step_enum){
+    case GSL_STEP_RK2:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk2);
+      break;
+    case GSL_STEP_RK4:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk4);
+      break;
+    case GSL_STEP_RKF45:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rkf45);
+      break;
+    case GSL_STEP_RKCK:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rkck);
+      break;
+    case GSL_STEP_RK8PD:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk8pd);
+      break;
+      /*
+    case GSL_STEP_RK1IMP:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk1imp);
+      break;
+    case GSL_STEP_RK2IMP:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk2imp);
+      break;
+    case GSL_STEP_RK4IMP:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_rk4imp);
+      break;
+    case GSL_STEP_BSIMP:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_bsimp);
+      break;
+    case GSL_STEP_MSBDF:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_msbdf);
+      break;
+      */
+    case GSL_STEP_MSADAMS:
+      nusq->Set("GSL_Step",gsl_odeiv2_step_msadams);
+      break;
+  }
 }
 
 // nuSQUIDSpy module definitions
@@ -107,15 +139,21 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   //Py_Initialize();
   np::initialize();
 
-  {
-    scope outer
-    = class_<GSF, std::shared_ptr<GSF> >("GSL_STEP_FUNCTIONS")
+  enum_<GSL_STEP_FUNCTIONS>("GSL_STEP_FUNCTIONS")
+    .value("GSL_STEP_RK2",GSL_STEP_RK2)
+    .value("GSL_STEP_RK4",GSL_STEP_RK4)
+    .value("GSL_STEP_RKF45",GSL_STEP_RKF45)
+    .value("GSL_STEP_RKCK",GSL_STEP_RKCK)
+    .value("GSL_STEP_RK8PD",GSL_STEP_RK8PD)
+    /*
+    .value("GSL_STEP_RK1IMP",GSL_STEP_RK1IMP)
+    .value("GSL_STEP_RK2IMP",GSL_STEP_RK2IMP)
+    .value("GSL_STEP_RK4IMP",GSL_STEP_RK4IMP)
+    .value("GSL_STEP_BSIMP",GSL_STEP_BSIMP)
+    .value("GSL_STEP_MSBDF",GSL_STEP_MSBDF)
+    */
+    .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
     ;
-
-    class_<GSL_STEP_FUNCTIONS::GSL_STEP_RK45, std::shared_ptr<GSL_STEP_FUNCTIONS::GSL_STEP_RK45> >("GSL_STEP_RK45");
-
-  }
-
 
   class_<SU_vector, std::shared_ptr<SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())

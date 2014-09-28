@@ -205,23 +205,10 @@ double VariableDensity::ye(std::shared_ptr<GenericTrack> track_input)
 */
 
 // constructor
-Earth::Earth()
+Earth::Earth(void):Earth((string) EARTH_MODEL_LOCATION )
         {
-            name = "Earth";
-            id = 4;
-            radius = 6371.0; // [km]
-            ye_mantle = 0.4957;
-            ye_outercore = 0.4656;
-            ye_innercore = 0.4656;
         }
 
-/*
-Earth::Earth(string earth_table_path)
-        {
-
-
-        }
-*/
 // track constructor
 Earth::Track::Track(double xini_input, double xend_input,double baseline_input)
         {
@@ -231,41 +218,10 @@ Earth::Track::Track(double xini_input, double xend_input,double baseline_input)
             baseline = baseline_input;
             TrackParams = {xini,xend,baseline};
         }
+
 Earth::Track::Track()
         {
             //pass
-        }
-
-double Earth::rdensity(double x){
-        // Calcula la densidad de la Tierra segun el PREM
-        // R. Gandhi et al. Astroparticle Phys. 5, 81-110 (1996)
-        // Arxiv : 9512364 pag. 23
-        // x is adimentional radius : x = 0 : center, x = 1 : Earthradius
-        double dne = 0.0;
-        double r = radius*x;
-        if (r <= 1221.50)
-            dne = 13.08850 - 8.83810*SQR(x);
-        else if (r>=1221.50 and r<3480) 
-            dne=12.58150 - 1.26380*x - 3.64260*SQR(x) - 5.5280*SQR(x)*x;
-        else if (r >=3480.0 and r < 5701.0)
-            dne=7.95650 - 6.47610*x + 5.52830*SQR(x) - 3.08070*SQR(x)*x;
-        else if (r >= 5701.0 and r<5771.0)
-            dne=5.31970 - 1.48360*x;
-        else if (r>=5771.0 and r<5971.0)
-            dne=11.24940 - 8.02980*x;
-        else if (r>=5971.0 and r<6151.0)
-            dne=7.10890 - 3.80450*x;
-        else if (r>=6151.0 and r<6346.60)
-            dne=2.6910 + 0.69240*x;
-        else if (r >= 6346.60 and r < 6356.0)
-            dne = 2.9;
-        else if (r >= 6356.0 and r < 6368)
-            dne = 2.6;
-        else if (r<= radius)
-            dne = 1.020;
-        else if (r>= radius)
-            dne=0.0;
-        return dne;
         }
 
 double Earth::density(std::shared_ptr<Body::Track> track_input)
@@ -273,36 +229,32 @@ double Earth::density(std::shared_ptr<Body::Track> track_input)
             std::shared_ptr<Earth::Track> track_earth = std::static_pointer_cast< Earth::Track >(track_input);
             double xkm = track_earth->x/param.km;
             double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth->baseline/param.km)*xkm);
-            if (use_file){
-              //if ( r/radius < x_radius_min or r/radius > x_radius_max)
-              //  return 0.0;
+
+            if ( r/radius < x_radius_min ){
+              return x_rho_min;
+            }
+            else if ( r/radius > x_radius_max ) {
+              return x_rho_max;
+            }
+            else {
               return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
             }
-            else{
-              return rdensity(r/radius);
-            }
         }
+
 double Earth::ye(std::shared_ptr<Body::Track> track_input)
         {
-            std::shared_ptr<EarthAtm::Track> track_earthatm = std::static_pointer_cast< EarthAtm::Track >(track_input);
-            if(track_earthatm->cosphi <= 0.0){
-                double xkm = track_earthatm->x/param.km;
-                double r = sqrt(SQR(radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
+            std::shared_ptr<Earth::Track> track_earth = std::static_pointer_cast< Earth::Track >(track_input);
+            double xkm = track_earth->x/param.km;
+            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth->baseline/param.km)*xkm);
 
-                if (use_file){
-                  //if ( r/radius < x_radius_min or r/radius > x_radius_max)
-                  //  return 0.0;
-                  return gsl_spline_eval(inter_ye,r/radius,inter_ye_accel);
-                }
-
-                if ( r < 1121.5)
-                  return ye_innercore;
-                else if ( r < 3480. )
-                  return ye_outercore;
-                else
-                  return ye_mantle;
-            } else {
-              return 0.494;
+            if ( r/radius < x_radius_min ){
+              return x_ye_min;
+            }
+            else if ( r/radius > x_radius_max ) {
+              return x_ye_max;
+            }
+            else {
+              return gsl_spline_eval(inter_ye,r/radius,inter_ye_accel);
             }
         }
 
@@ -310,8 +262,6 @@ Earth::Earth(string filepath)
         {
           // The Input file should have the radius specified from 0 to 1.
           // where 0 is the center of the Earth and 1 is the surface.
-            use_file = true;
-
             name = "Earth";
             id = 4;
             radius = 6371.0; // [km]
@@ -329,8 +279,12 @@ Earth::Earth(string filepath)
                 earth_ye[i] = earth_model[i][2];
             }
 
-            double x_radius_min = earth_radius[0];
-            double x_radius_max = earth_radius[arraysize];
+            x_radius_min = earth_radius[0];
+            x_radius_max = earth_radius[arraysize-1];
+            x_rho_min = earth_density[0];
+            x_rho_max = earth_density[arraysize-1];
+            x_ye_min = earth_ye[0];
+            x_ye_max = earth_ye[arraysize-1];
 
             inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
@@ -342,12 +296,10 @@ Earth::Earth(string filepath)
         }
 
 Earth::~Earth(){
-  if(use_file){
-    free(inter_density);
-    free(inter_density_accel);
-    free(inter_ye);
-    free(inter_ye_accel);
-  }
+  free(inter_density);
+  free(inter_density_accel);
+  free(inter_ye);
+  free(inter_ye_accel);
 }
 
 /*
@@ -530,16 +482,10 @@ double SunASnu::ye(std::shared_ptr<Body::Track> track_input)
 */
 
 // constructor
-EarthAtm::EarthAtm(void)
+EarthAtm::EarthAtm(void):EarthAtm((string) EARTH_MODEL_LOCATION )
         {
-            name = "EarthAtm";
-            id = 7;
-            radius = 6371.0;
-
-            ye_mantle = 0.4957;
-            ye_outercore = 0.4656;
-            ye_innercore = 0.4656;
         }
+
 // track constructor
 EarthAtm::Track::Track(double phi_input)
         {
@@ -549,13 +495,11 @@ EarthAtm::Track::Track(double phi_input)
             phi = phi_input;
             cosphi = cos(phi);
 
-
             if(cosphi<=0.0){
                 L = 2.0*radius_nu*abs(cosphi);
             } else {
                 L = atmheight/abs(cosphi);
             }
-
 
             double R = radius_nu;
             double r = atmheight;
@@ -587,40 +531,10 @@ EarthAtm::Track::Track(double phi_input)
 
             TrackParams = {xini,xend, phi_input};
         }
+
 EarthAtm::Track::Track()
         {
             //pass
-        }
-double EarthAtm::rdensity(double x){
-        // Calcula la densidad de la Tierra segun el PREM
-        // R. Gandhi et al. Astroparticle Phys. 5, 81-110 (1996)
-        // Arxiv : 9512364 pag. 23
-        // x is adimentional radius : x = 0 : center, x = 1 : Earthradius
-        double dne = 0.0;
-        double r = radius*x;
-        if (r <= 1221.50)
-            dne = 13.08850 - 8.83810*SQR(x);
-        else if (r>=1221.50 and r<3480) 
-            dne=12.58150 - 1.26380*x - 3.64260*SQR(x) - 5.5280*SQR(x)*x;
-        else if (r >=3480.0 and r < 5701.0)
-            dne=7.95650 - 6.47610*x + 5.52830*SQR(x) - 3.08070*SQR(x)*x;
-        else if (r >= 5701.0 and r<5771.0)
-            dne=5.31970 - 1.48360*x;
-        else if (r>=5771.0 and r<5971.0)
-            dne=11.24940 - 8.02980*x;
-        else if (r>=5971.0 and r<6151.0)
-            dne=7.10890 - 3.80450*x;
-        else if (r>=6151.0 and r<6346.60)
-            dne=2.6910 + 0.69240*x;
-        else if (r >= 6346.60 and r < 6356.0)
-            dne = 2.9;
-        else if (r >= 6356.0 and r < 6368.0)
-            dne = 2.6;
-        else if (r<= radius)
-            dne = 1.020;
-        else if (r>= radius)
-            dne=0.0;
-        return dne;
         }
 
 double EarthAtm::density(std::shared_ptr<Body::Track> track_input)
@@ -636,14 +550,15 @@ double EarthAtm::density(std::shared_ptr<Body::Track> track_input)
                      << " x : " << xkm << " R : " << radius << endl;
                 #endif
 
-                if (use_file){
-                  // fix latter
-                  //if ( r/radius < x_radius_min or r/radius > x_radius_max)
-                  //  return 0.0;
+                if ( r/radius < x_radius_min ){
+                  return x_rho_min;
+                }
+                else if ( r/radius > x_radius_max ) {
+                  return x_rho_max;
+                }
+                else {
                   return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
                 }
-
-                return rdensity(r/radius);
             } else {
                 double h = xkm*track_earthatm->cosphi;
                 double h0 = 25.0;
@@ -657,19 +572,15 @@ double EarthAtm::ye(std::shared_ptr<Body::Track> track_input)
                 double xkm = track_earthatm->x/param.km;
                 double r = sqrt(SQR(radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
 
-                if (use_file){
-                  //if ( r/radius < x_radius_min )
-                  //  or r/radius > x_radius_max)
-                  //  return 0.0;
+                if ( r/radius < x_radius_min ){
+                  return x_ye_min;
+                }
+                else if ( r/radius > x_radius_max ) {
+                  return x_ye_max;
+                }
+                else {
                   return gsl_spline_eval(inter_ye,r/radius,inter_ye_accel);
                 }
-
-                if ( r < 1121.5)
-                  return ye_innercore;
-                else if ( r < 3480. )
-                  return ye_outercore;
-                else
-                  return ye_mantle;
             } else {
               return 0.494;
             }
@@ -677,8 +588,6 @@ double EarthAtm::ye(std::shared_ptr<Body::Track> track_input)
 
 EarthAtm::EarthAtm(string filepath)
         {
-            use_file = true;
-
             name = "EarthAtm";
             id = 7;
             radius = 6371.0;
@@ -696,6 +605,13 @@ EarthAtm::EarthAtm(string filepath)
                 earth_ye[i] = earth_model[i][2];
             }
 
+            x_radius_min = earth_radius[0];
+            x_radius_max = earth_radius[arraysize-1];
+            x_rho_min = earth_density[0];
+            x_rho_max = earth_density[arraysize-1];
+            x_ye_min = earth_ye[0];
+            x_ye_max = earth_ye[arraysize-1];
+
             inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
@@ -707,10 +623,8 @@ EarthAtm::EarthAtm(string filepath)
 
 EarthAtm::~EarthAtm(void)
         {
-            if(use_file){
-              free(inter_density);
-              free(inter_density_accel);
-              free(inter_ye);
-              free(inter_ye_accel);
-            }
+            free(inter_density);
+            free(inter_density_accel);
+            free(inter_ye);
+            free(inter_ye_accel);
         }

@@ -116,7 +116,10 @@ class Earth: public Body{
         gsl_interp_accel * inter_density_accel;
         gsl_spline * inter_ye;
         gsl_interp_accel * inter_ye_accel;
-        bool use_file = false;
+
+        double x_radius_min, x_radius_max;
+        double x_rho_min, x_rho_max;
+        double x_ye_min, x_ye_max;
 
         Earth();
         Earth(string);
@@ -217,13 +220,13 @@ class EarthAtm: public Body{
         gsl_interp_accel * inter_density_accel;
         gsl_spline * inter_ye;
         gsl_interp_accel * inter_ye_accel;
-        bool use_file = false;
+
+        double x_radius_min, x_radius_max;
+        double x_rho_min, x_rho_max;
+        double x_ye_min, x_ye_max;
 
         EarthAtm();
         EarthAtm(string);
-
-        double rdensity(double);
-        double rxh(double);
 
         class Track: public Body::Track{
             public :
