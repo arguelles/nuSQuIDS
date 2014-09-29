@@ -1,0 +1,65 @@
+This is BibTeX, Version 0.99d (TeX Live 2012)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: nusquids_v1.aux
+The style file: elsarticle-harv.bst
+Database file #1: nusquids.bib
+Warning--I didn't find a database entry for "fukugita2003physics"
+Warning--I didn't find a database entry for "Gonzalez-Garcia:2002qy"
+Warning--empty journal in Abazajian:2012rf
+Warning--empty journal in Agarwalla:2012mz
+Warning--empty journal in Akhmedov:1999uz
+Warning--empty journal in SQUIDS
+Warning--empty journal in Balantekin:2013kc
+Warning--empty journal in Blennow:2013hi
+Warning--empty journal in Cirelli:mw
+Warning--empty journal in Conrad:2013oq
+Warning--empty journal in Gouvea:2013fj
+Warning--empty journal in Duan:2010tk
+Warning--empty pages in folk1999hdf5
+Warning--empty journal in Halzen:kq
+Warning--empty journal in Hewett:2012et
+Warning--empty journal in Mohapatra:qv
+Warning--empty journal in Strack:qd
+Warning--empty journal in Zhang:2013ay
+You've used 29 entries,
+            2821 wiz_defined-function locations,
+            814 strings with 12579 characters,
+and the built_in function-call counts, 22632 in all, are:
+= -- 1715
+> -- 2436
+< -- 14
++ -- 915
+- -- 882
+* -- 2469
+:= -- 4365
+add.period$ -- 73
+call.type$ -- 29
+change.case$ -- 439
+chr.to.int$ -- 29
+cite$ -- 45
+duplicate$ -- 506
+empty$ -- 847
+format.name$ -- 983
+if$ -- 4072
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 30
+newline$ -- 106
+num.names$ -- 116
+pop$ -- 456
+preamble$ -- 1
+purify$ -- 409
+quote$ -- 0
+skip$ -- 388
+stack$ -- 0
+substring$ -- 548
+swap$ -- 73
+text.length$ -- 1
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 258
+warning$ -- 16
+while$ -- 103
+width$ -- 0
+write$ -- 306
+(There were 18 warnings)
