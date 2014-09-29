@@ -13,6 +13,7 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
+#include <stdexcept>
 
 // file array
 typedef std::vector<double> Row;
