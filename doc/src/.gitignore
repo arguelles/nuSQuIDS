@@ -1,0 +1,9 @@
+*.log
+*.out
+*.fls
+*.aux
+*.blg
+*.spl
+*.toc
+*.fdb*
+*.ps

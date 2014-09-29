@@ -3,63 +3,70 @@ Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: nusquids_v1.aux
 The style file: elsarticle-harv.bst
 Database file #1: nusquids.bib
-Warning--I didn't find a database entry for "fukugita2003physics"
-Warning--I didn't find a database entry for "Gonzalez-Garcia:2002qy"
 Warning--empty journal in Abazajian:2012rf
 Warning--empty journal in Agarwalla:2012mz
+Warning--empty journal in LSND
 Warning--empty journal in Akhmedov:1999uz
+Warning--empty journal in Archidiacono:2014oq
 Warning--empty journal in SQUIDS
 Warning--empty journal in Balantekin:2013kc
 Warning--empty journal in Blennow:2013hi
 Warning--empty journal in Cirelli:mw
+Warning--empty journal in MiniBoone:2012dn
 Warning--empty journal in Conrad:2013oq
+Warning--empty journal in Dasgupta:2013la
 Warning--empty journal in Gouvea:2013fj
 Warning--empty journal in Duan:2010tk
 Warning--empty pages in folk1999hdf5
 Warning--empty journal in Halzen:kq
 Warning--empty journal in Hewett:2012et
+Warning--empty journal in Kopp:2014nosterile
+Warning--empty journal in Mention:2011rr
 Warning--empty journal in Mohapatra:qv
+Warning--empty journal in Pospelov:2011dp
+Warning--empty journal in Saviano:2014bs
 Warning--empty journal in Strack:qd
+Warning--empty journal in Wallraff:2014vl
 Warning--empty journal in Zhang:2013ay
-You've used 29 entries,
+You've used 39 entries,
             2821 wiz_defined-function locations,
-            814 strings with 12579 characters,
-and the built_in function-call counts, 22632 in all, are:
-= -- 1715
-> -- 2436
-< -- 14
-+ -- 915
-- -- 882
-* -- 2469
-:= -- 4365
-add.period$ -- 73
-call.type$ -- 29
-change.case$ -- 439
-chr.to.int$ -- 29
-cite$ -- 45
-duplicate$ -- 506
-empty$ -- 847
-format.name$ -- 983
-if$ -- 4072
+            867 strings with 15542 characters,
+and the built_in function-call counts, 29941 in all, are:
+= -- 2244
+> -- 3241
+< -- 19
++ -- 1224
+- -- 1173
+* -- 3280
+:= -- 5781
+add.period$ -- 95
+call.type$ -- 39
+change.case$ -- 585
+chr.to.int$ -- 39
+cite$ -- 64
+duplicate$ -- 675
+empty$ -- 1104
+format.name$ -- 1310
+if$ -- 5358
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 30
-newline$ -- 106
-num.names$ -- 116
-pop$ -- 456
+missing$ -- 41
+newline$ -- 146
+num.names$ -- 156
+pop$ -- 621
 preamble$ -- 1
-purify$ -- 409
+purify$ -- 546
 quote$ -- 0
-skip$ -- 388
+skip$ -- 515
 stack$ -- 0
-substring$ -- 548
-swap$ -- 73
+substring$ -- 666
+swap$ -- 104
 text.length$ -- 1
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 258
-warning$ -- 16
-while$ -- 103
+type$ -- 345
+warning$ -- 25
+while$ -- 133
 width$ -- 0
-write$ -- 306
-(There were 18 warnings)
+write$ -- 408
+(There were 25 warnings)

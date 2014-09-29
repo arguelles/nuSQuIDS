@@ -65,7 +65,7 @@
 \address[uw]{Department of Physics, University of Wisconsin, Madison, WI 53706, USA} 
 \address[wipac]{Wisconsin IceCube Particle Astrophysics Center, Madison, WI 53703, USA}
 
-\tnotetext[t1]{The code can be found in \url{https://github.com/arguelles/nuSQuIDS}}
+\tnotetext[t1]{The code can be found in \url{http://icecube.wisc.edu/\~carguelles/nusquids}}
 
 \journal{Computer Physics Communications}
 
@@ -86,24 +86,13 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 \section{Introduction}
 \label{sec:intro} 
 
-During the last decades a plethora of evidence that neutrinos change flavor as they propagate macroscopical distances due to the nonalignment of their mass and flavor eigenstates has been accumulated from solar, atmospheric, accelerator, and reactor experiments \citep{Mohapatra:qv,Gouvea:2013fj}. More over the 
+During the last decades a plethora of evidence that neutrinos change flavor as they propagate macroscopical distances due to the nonalignment of their mass and flavor eigenstates has accumulated from solar, atmospheric, accelerator, and reactor experiments \citep{Mohapatra:qv,Gouvea:2013fj}. Thanks to these remarkable experimental results and related theoretical calculations the {\it neutrino-mass induced flavor oscillation paradigm} \citep{fukugita2003physics,Akhmedov:1999uz,Balantekin:2013kc} has been firmly established and the three mixing angles, that parametrize the lepton mixing matrix, together with the two square mass differences have been measured to good precision \citep{gonzalez2012global}. Furthermore, it is the task of on going and future experiments to determine the neutrino mass ordering and the Dirac CP-violating phase \citep{Agarwalla:2012mz}.
 
-neutrino theory \citep{Akhmedov:1999uz,Balantekin:2013kc}
-oscillation with matter effect theory \citep{Blennow:2013hi}
+Even though most of the data can be explained in the standard three neutrino framework some {\it puzzling} anomalies still remain \citep{LSND,Mention:2011rr,MiniBoone:2012dn}. These may be explained by introducing new {\it neutrino} states, often refer to as {\it light sterile neutrinos} \citep{kopp2013sterile,Conrad:2013oq,Abazajian:2012rf}. Moreover, other new physics scenarios such as the possibility of non standard interactions \citep{Kopp:2014nosterile,Pospelov:2011dp} have also been considered. Also the interplay between cosmology and neutrino oscillation has been widely studied in the literature as well as a playground for new physics scenarios \citep{Archidiacono:2014oq,Dasgupta:2013la,Saviano:2014bs}. In general, neutrino physics constitutes an excellent prove for fundamental physics \citep{Hewett:2012et}.
 
-globes \citep{Huber:2007ji}
+It is clear that a tool is needed to correctly solve the neutrino propagation problem, i.e. vacuum oscillation and matter induced interactions \citep{Blennow:2013hi}. In particular, when only neutrino oscillations are important  softwares such as {\ttf GLoBES} \citep{Huber:2007ji} or {\ttf nuCRAFT} \citep{Wallraff:2014vl} have been made public. Unfortunately, when non coherent interactions are important they are no longer applicable. Furthermore, the ability to allow the user to incorporate new physics models and/or change the propagation medium is also limited. {\ttf nuSQuIDS} pretends to address all of these problems by providing a highly customizable package while at the same time remain numerically efficient.
 
-Oscillation parameters are set to 
-global sterile \citep{kopp2013sterile}
-
-lsnd and miniboone searches \citep{Conrad:2013oq}
-fundamental physics white paper \citep{Hewett:2012et}, sterile white paper \citep{Abazajian:2012rf}
-
-fukugita \citep{fukugita2003physics}
-concha \citep{Gonzalez-Garcia:2002qy}
-euro white paper \citep{Agarwalla:2012mz}
-
-The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code and its performance; in section \ref{sec:examples} we exemplify the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
+The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we exemplify the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
 
 \section{Theory}
 \label{sec:theory} 
@@ -599,9 +588,9 @@ In this section we illustrate the usage of the {\it single} energy mode. A full 
 
 \subsubsection{Example 1}
 
-In this first example we will define a {\ttf nuSQUIDS} instance, set the mixing angles, and then calculate $P(\nu_\mu \to \nu_e$) for a 500 km baseline experiment in the Earth.
+In this first example, shown in Listing \ref{ex:sin1}, we will define a {\ttf nuSQUIDS} instance, set the mixing angles, and then calculate $P(\nu_\mu \to \nu_e$) for a 500 km baseline experiment in the Earth.
 
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
 // create a nuSQUIDS object setting number of flavors = 3
 nuSQUIDS nus(3,"neutrino");
 
@@ -648,9 +637,9 @@ nus.EvalFlavor(0);
 
 Even though we recommend to use the {\it multiple} energy mode when considering a range of energies
 this can also be performed in the single energy mode. Lets assume that a set of energies is provided in 
-{\ttf std::vector<double> energy\_range}, then the following could be done (results of this can be seen in Fig. \ref{fig:atmo_osc})
+{\ttf std::vector<double> energy\_range}, then the code snip in Listing \ref{ex:sin2} presents how this could be implemented (results of this can be seen in Fig. \ref{fig:atmo_osc})
 
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin2 ]
 nuSQUIDS nus(3,"neutrino");
 double phi = acos(-1.0);
 std::vector<double> ini_state{0,1,0};
@@ -676,9 +665,9 @@ In the above example we could had rather fix the energy and reset the {\ttf Trac
 
 \subsubsection{Example 3}
 
-We can also use the custom environments provided, such as {\ttf ConstantDensity} and {\ttf VariableDensity}. For example in case we want to consider $\rho = 13 {\rm gr}/{\rm cm}^3$ and $y_e = 0.5$ we can use the following code snipped, which result is shown in Fig. \ref{fig:nu_mu_nue_single_energy},
+We can also use the custom environments provided, such as {\ttf ConstantDensity} and {\ttf VariableDensity}. For example in case we want to consider $\rho = 13 {\rm gr}/{\rm cm}^3$ and $y_e = 0.5$ we can use the code snipped in Listing \ref{ex:sin3}, which result is shown in Fig. \ref{fig:nu_mu_nue_single_energy},
 
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin3]
 nuSQUIDS nus(3,"neutrino");
 double phi = acos(-1.0);
 std::vector<double> ini_state{0,1,0};
@@ -706,21 +695,50 @@ As explained in the text the {\it multiple} energy mode can consider a {\it set}
 
 \subsubsection{Example 1}
 
-In this mode we can actually input a neutrino flux and propagate it in its environment. For example we could propagate $\phi(E) = \phi_0 E^{-1} \Pi_\mu$, i.e. power law pure $\nu_\mu$ flux, through the Earth. The following piece of code demonstrates this
+In this mode we can actually input a neutrino flux and propagate it in its environment. For example we could propagate $\phi(E) = \phi_0 E^{-1} \Pi_\mu$, i.e. power law pure $\nu_\mu$ flux, through the Earth. In Listing \ref{ex:mul1} we shall consider the this case and further demonstrate the how to consider more neutrino flavors. The results of the following code are shown in Figure \ref{fig:sterile_osc}.
 
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:mul1]
+nuSQUIDS nus(1.,1.e2,200,4,"neutrino",true,false);
 
+double phi = acos(-1.);
+std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
+std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
+
+// set sterile parameters while leaving the rest at default
+nus.Set("dm41sq", 3.0);
+nus.Set("th24", 0.7);
+
+nus.Set("rel_error", 1.0e-9);
+nus.Set("abs_error", 1.0e-9);
+
+// construct the initial state
+vector<double> E_range = nus.GetERange();
+array2D inistate(E_range.size());
+double N0 = 1.0e18;
+for ( int i = 0 ; i < inistate.size(); i++){
+      inistate[i].resize(3);
+      for ( int k = 0; k < 3; k ++){
+        // initialze muon state
+        inistate[i][k] = (k == 1) ? N0*pow(E_range[i],-2) : 0.0;
+      }
+}
+// set the initial state
+nus.Set_initial_state(inistate,"flavor");
+
+nus.EvolveState();
+// save the result
+nus.WriteStateHDF5("./mulene_example1.hdf5");
 \end{lstlisting}
+
+\begin{figure}[h]
+\begin{center}
+\label{fig:sterile_osc}
+\includegraphics[width=0.8\textwidth]{../fig/sterile_osc_demo.pdf}
+\caption{Single mode neutrino oscillation probability in a constant density matter environment.}
+\end{center}
+\end{figure}
 
 \subsubsection{Example 2}
-
-In this mode we can actually input a neutrino flux and propagate it in its environment. For example we could propagate $\phi(E) = \phi_0 E^{-1} \Pi_\mu$, i.e. power law pure $\nu_\mu$ flux, through the Earth. The following piece of code demonstrates this
-
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
-
-\end{lstlisting}
-
-\subsubsection{Example 3}
 
 We can further consider the the propagation of $\phi(E) = \phi_0 E^{-1} ( \Pi_\mu + \Pi_\tau )$, again through the Earth, but considering $\tau$ regeneration. 
 

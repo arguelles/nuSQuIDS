@@ -1,19 +1,19 @@
 # Fdb version 3
-["bibtex nusquids_v1"] 1410503034 "nusquids_v1.aux" "nusquids_v1.bbl" "nusquids_v1" 1410961454
-  "./elsarticle-harv.bst" 1410960519 28285 28d1038779995dc19c398d4510db6409 ""
-  "nusquids.bib" 1410960519 27724 6630ac5d75c27e3e1c249582ea2e807e ""
-  "nusquids_v1.aux" 1410961454 10822 fa2fd8454d83d3391e8a008e600d7a31 ""
+["bibtex nusquids_v1"] 1412024344 "nusquids_v1.aux" "nusquids_v1.bbl" "nusquids_v1" 1412024345
+  "./elsarticle-harv.bst" 1412024213 28285 28d1038779995dc19c398d4510db6409 ""
+  "nusquids.bib" 1412024214 42358 edb90e85546621b51f57a46863a6e436 ""
+  "nusquids_v1.aux" 1412024345 12776 4e242c9cd59d6d4f25b6c20f6cee8e2d ""
   "nusquids_v1.bcf" 0 -1 0 ""
   (generated)
   "nusquids_v1.bbl"
-  "nusquids_v1.blg"
-["cusdep eps pdf ../fig/earth_oscillation"] 0 "../fig/earth_oscillation.eps" "../fig/earth_oscillation.pdf" "../fig/earth_oscillation" 1410961454
-  "../fig/earth_oscillation.eps" 1410960519 41130 f5b8e683d193b5ca5139bf7257c4dbbd ""
+["cusdep eps pdf ../fig/earth_oscillation"] 0 "../fig/earth_oscillation.eps" "../fig/earth_oscillation.pdf" "../fig/earth_oscillation" 1412024345
+  "../fig/earth_oscillation.eps" 1412024224 41130 f5b8e683d193b5ca5139bf7257c4dbbd ""
   (generated)
   "../fig/earth_oscillation.pdf"
-["pdflatex"] 1410961453 "nusquids_v1.tex" "nusquids_v1.pdf" "nusquids_v1" 1410961454
-  "../fig/earth_oscillation.pdf" 1410960519 22350 03da5e9318195cf1efee04f25356defc "cusdep eps pdf ../fig/earth_oscillation"
-  "../fig/nu_mu_nue_single_energy.pdf" 1410960519 21657 795bcc3203042c72f158198c1d276517 ""
+["pdflatex"] 1412024344 "nusquids_v1.tex" "nusquids_v1.pdf" "nusquids_v1" 1412024345
+  "../fig/earth_oscillation.pdf" 1412024224 22350 03da5e9318195cf1efee04f25356defc "cusdep eps pdf ../fig/earth_oscillation"
+  "../fig/nu_mu_nue_single_energy.pdf" 1412024224 21657 795bcc3203042c72f158198c1d276517 ""
+  "../fig/sterile_osc_demo.pdf" 1412024224 28002 845a3a21ce49905889c0aa6ecad97246 ""
   "/usr/local/texlive/2012/texmf-dist/fonts/map/fontname/texfonts.map" 1272929888 3287 e6b82fe08f5336d4d5ebc73fb1152e87 ""
   "/usr/local/texlive/2012/texmf-dist/fonts/tfm/adobe/symbol/psyr.tfm" 1136768653 1408 5937f58aa508ea2cea4901c07d10f5fe ""
   "/usr/local/texlive/2012/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
@@ -50,6 +50,7 @@
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb" 1248133631 36299 5f9df58c2139e7edcf37c8fca4bd384d ""
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb" 1248133631 36741 fa121aac0049305630cf160b86157ee4 ""
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb" 1248133631 37166 8ab3487cbe3ab49ebce74c29ea2418db ""
+  "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb" 1248133631 36281 c355509802a035cadc5f15869451dcee ""
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb" 1248133631 35469 70d41d2b9ea31d5d813066df7c99281c ""
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1248133631 35752 024fb6c41858982481f6968b5fc26508 ""
   "/usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb" 1248133631 32722 d7379af29a190c3f453aba36302ff5a9 ""
@@ -122,12 +123,12 @@
   "/usr/local/texlive/2012/texmf-var/web2c/pdftex/pdflatex.fmt" 1341108725 3691572 80746d7cec090b0770bc87079bef471d ""
   "/usr/local/texlive/2012/texmf.cnf" 1341108668 572 7ea7194897937febeb63145e1c3a1f03 ""
   "/usr/local/texlive/2012/texmf/web2c/texmf.cnf" 1336865692 31299 729e216d9b945005c0d4b079c0500bc9 ""
-  "nusquids_v1.aux" 1410961454 10822 fa2fd8454d83d3391e8a008e600d7a31 ""
-  "nusquids_v1.bbl" 1410960519 11605 bcaf774fb08d07afef586cb9d99bdbf9 "bibtex nusquids_v1"
-  "nusquids_v1.out" 1410961454 1995 de47927ca14f22d71412965356db3023 ""
-  "nusquids_v1.spl" 1410961453 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "nusquids_v1.tex" 1410961440 39744 cc05672179c2c3586df7a5e6f0ca5d5c ""
-  "nusquids_v1.toc" 1410961454 2555 968184bab543cb609a27ed23f6d0fd22 ""
+  "nusquids_v1.aux" 1412024345 12776 4e242c9cd59d6d4f25b6c20f6cee8e2d ""
+  "nusquids_v1.bbl" 1412024344 15833 70728d5d5b916148cd8a2fb1cfba826f "bibtex nusquids_v1"
+  "nusquids_v1.out" 1412024345 1926 00c295e3d3d4aee059c610ae52ed09b5 ""
+  "nusquids_v1.spl" 1412024344 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "nusquids_v1.tex" 1412024214 42446 c4be60e4d4d893703b2cad8d1635189c ""
+  "nusquids_v1.toc" 1412024345 2471 56748832fc36c1d7c1ee3e4b9a5eb9ae ""
   (generated)
   "nusquids_v1.out"
   "nusquids_v1.log"
