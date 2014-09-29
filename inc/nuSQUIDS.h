@@ -68,6 +68,7 @@ class nuSQUIDS: public SQUIDS {
     std::shared_ptr<Track> track;
 
     SU_vector DM2;
+    vector<SU_vector> H0_array;
 
     vector<SU_vector> b0_proj;
     vector<vector<SU_vector> > b1_proj;

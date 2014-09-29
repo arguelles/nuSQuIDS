@@ -29,7 +29,7 @@ LDFLAGS+= -lgsl -lgslcblas
 LDFLAGS+= -lSQUIDS
 LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
 INCCFLAGS = $(INCDIR) -I$(INCSQUIDS) -I$(INCnuSQUIDS)
-CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
+CXXFLAGS= -O3 -g -fPIC -std=c++11 $(INCCFLAGS)
 
 # Project files
 NAME=nuSQUIDS

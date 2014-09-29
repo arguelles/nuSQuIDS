@@ -58,6 +58,11 @@ void nuSQUIDS::init(void){
   // init square mass difference //
   //===============================
 
+  H0_array.resize(ne);
+  for(int ie = 0; ie < ne; ie++){
+    H0_array[ie].InitSU_vector(nsun);
+  }
+
   iniH0();
 
   //===============================
@@ -174,6 +179,11 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
   // init square mass difference //
   //===============================
 
+  H0_array.resize(ne);
+  for(int ie = 0; ie < ne; ie++){
+    H0_array[ie].InitSU_vector(nsun);
+  }
+
   iniH0();
 
   if(iinteraction){
@@ -248,9 +258,9 @@ void nuSQUIDS::EvolveProjectors(double x){
   for(int rho = 0; rho < nrhos; rho++){
     for(int flv = 0; flv < numneu; flv++){
       for(int ei = 0; ei < ne; ei++){
-        SU_vector h0 = H0(E_range[ei]);
-        evol_b0_proj[rho][flv][ei] = b0_proj[flv].SUEvolve(h0,tunit*(x-t_ini));
-        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].SUEvolve(h0,tunit*(x-t_ini));
+        // will only evolve the flavor projectors
+        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].SUEvolve(h0,tunit*(x-t_ini));
+        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].SUEvolve(H0_array[ei],tunit*(x-t_ini));
       }
     }
   }
@@ -792,10 +802,16 @@ double nuSQUIDS::EvalFlavor(int flv){
   return GetExpectationValue(b1_proj[0][flv], 0, 0);
 }
 
-void nuSQUIDS::iniH0(){
+void nuSQUIDS::iniH0(void){
   DM2.InitSU_vector(nsun);
   for(int i = 1; i < nsun; i++){
       DM2 += (b0_proj[i])*gsl_matrix_get(params.dmsq,i,0);
+  }
+
+  if(ienergy){
+    for(int ei = 0; ei < ne; ei++){
+      H0_array[ei] = H0(E_range[ei]);
+    }
   }
 }
 
