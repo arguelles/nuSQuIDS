@@ -251,6 +251,10 @@ void nuSQUIDS::PreDerive(double x){
   if(iinteraction){
     UpdateInteractions();
   }
+  if(progressbar and progressbar_count%progressbar_loop ==0 ){
+    ProgressBar();
+  }
+  progressbar_count++;
   AddToPreDerive(x);
 }
 
@@ -290,7 +294,7 @@ SU_vector nuSQUIDS::HI(int ei){
     if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
         // neutrino potential
         return potential;
-    } else if ((index_rho == 0 and NT=="both") or NT=="antineutrino"){
+    } else if ((index_rho == 1 and NT=="both") or NT=="antineutrino"){
         // antineutrino potential
         return (-1.0)*potential;
     } else{
@@ -1161,11 +1165,28 @@ int nuSQUIDS::GetNumNeu(){
   return numneu;
 }
 
+void nuSQUIDS::ProgressBar(){
+  double progress = track->GetX()/track->GetFinalX();
+  int barWidth = 70;
+  int pos = barWidth * progress;
+  std::cout << "[";
+  for (int i = 0; i < barWidth; ++i) {
+    if (i < pos) std::cout << "=";
+    else if (i == pos) std::cout << ">";
+    else std::cout << " ";
+  }
+  std::cout << "] " << int(progress * 100.0) << " %\r";
+  std::cout.flush();
+
+}
+
 void nuSQUIDS::Set_nuSQUIDS(string str, bool opt){
   if ( str == "tauregeneration" | str == "TauRegeneration" | str == "taureg" ) {
     if ( NT != "both" and opt )
       throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
     tauregeneration = opt;
+  } else if ( str == "ProgressBar" | str == "progressbar" | str == "prosbar"){
+    progressbar = opt;
   } else  {
     throw std::runtime_error("nuSQUIDS::Error::Unknown option.");
   }

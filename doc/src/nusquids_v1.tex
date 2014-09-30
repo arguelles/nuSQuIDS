@@ -86,11 +86,11 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 \section{Introduction}
 \label{sec:intro} 
 
-During the last decades a plethora of evidence that neutrinos change flavor as they propagate macroscopical distances due to the nonalignment of their mass and flavor eigenstates has accumulated from solar, atmospheric, accelerator, and reactor experiments \citep{Mohapatra:qv,Gouvea:2013fj}. Thanks to these remarkable experimental results and related theoretical calculations the {\it neutrino-mass induced flavor oscillation paradigm} \citep{fukugita2003physics,Akhmedov:1999uz,Balantekin:2013kc} has been firmly established and the three mixing angles, that parametrize the lepton mixing matrix, together with the two square mass differences have been measured to good precision \citep{gonzalez2012global}. Furthermore, it is the task of on going and future experiments to determine the neutrino mass ordering and the Dirac CP-violating phase \citep{Agarwalla:2012mz}.
+During the last decades a plethora of evidence that neutrinos change flavor as they propagate macroscopical distances due to the nonalignment of their mass and flavor eigenstates has accumulated from solar, atmospheric, accelerator, and reactor experiments \citep{Mohapatra:qv,Gouvea:2013fj}. Thanks to these remarkable experimental results and related theoretical calculations the {\it neutrino-mass induced flavor oscillation paradigm} \citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,Akhmedov:1999uz,Balantekin:2013kc,GonzalezGarcia:2007ib} has been firmly established and the three mixing angles, that parametrize the lepton mixing matrix, together with the two square mass differences have been measured to good precision \citep{Gonzalez-Garcia:2014bfa}. Furthermore, it is the task of on going and future experiments to determine the neutrino mass ordering and the Dirac CP-violating phase \citep{Hewett:2012et}.
 
 Even though most of the data can be explained in the standard three neutrino framework some {\it puzzling} anomalies still remain \citep{LSND,Mention:2011rr,MiniBoone:2012dn}. These may be explained by introducing new {\it neutrino} states, often refer to as {\it light sterile neutrinos} \citep{kopp2013sterile,Conrad:2013oq,Abazajian:2012rf}. Moreover, other new physics scenarios such as the possibility of non standard interactions \citep{Kopp:2014nosterile,Pospelov:2011dp} have also been considered. Also the interplay between cosmology and neutrino oscillation has been widely studied in the literature as well as a playground for new physics scenarios \citep{Archidiacono:2014oq,Dasgupta:2013la,Saviano:2014bs}. In general, neutrino physics constitutes an excellent prove for fundamental physics \citep{Hewett:2012et}.
 
-It is clear that a tool is needed to correctly solve the neutrino propagation problem, i.e. vacuum oscillation and matter induced interactions \citep{Blennow:2013hi}. In particular, when only neutrino oscillations are important  softwares such as {\ttf GLoBES} \citep{Huber:2007ji} or {\ttf nuCRAFT} \citep{Wallraff:2014vl} have been made public. Unfortunately, when non coherent interactions are important they are no longer applicable. Furthermore, the ability to allow the user to incorporate new physics models and/or change the propagation medium is also limited. {\ttf nuSQuIDS} pretends to address all of these problems by providing a highly customizable package while at the same time remain numerically efficient.
+It is clear that a tool is needed to correctly solve the neutrino propagation problem, i.e. vacuum oscillation and matter induced interactions \citep{Blennow:2013hi}. In particular, when only neutrino oscillations are important  softwares such as {\ttf GLoBES} \citep{Huber:2007ji} or {\ttf nuCRAFT} \citep{Wallraff:2014vl} have been made public. Unfortunately, when non coherent interactions are important they are no longer applicable. Furthermore, the ability to allow the user to incorporate new physics models and/or to change the propagation medium is also limited. {\ttf nuSQuIDS} pretends to address all of these problems by providing a highly customizable package while at the same time remain numerically efficient.
 
 The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we exemplify the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
 
@@ -105,14 +105,14 @@ We can represent the neutrino state using the density matrix formalism, e.g. in 
 \label{eq:state}
 \end{equation}
 
-where $\phi_\alpha$ specifies the flavor content. Another important representation are the mass eigenstates $\{ \ket{\nu_i}  \}$, which are related to the former by
+where $\phi_\alpha$ specifies the flavor content. Another important basis are the mass eigenstates $\{ \ket{\nu_i}  \}$, which are related to the former by
 
 \begin{equation}
 \ket{\nu_\alpha} = \sum_i U_{\alpha i} \ket{\nu_i} 
 \label{eq:changebasis}
 \end{equation}
 
-where $U$ is the unitary lepton mixing matrix. It is customary to parametrize the mixing matrix $U$ with mixing angles, $\{\theta_{ij}\}$, and CP phases, $\{ \delta_{ij} \}$; for example when considering the standard 3 flavor paradigm the following parametrization is often used
+where $U$ is the unitary lepton mixing matrix. It is customary to parametrize the mixing matrix $U$ with mixing angles, $\{\theta_{ij}\}$, and CP phases, $\{ \delta_{ij} \}$; for example when considering the standard three flavor paradigm the following parametrization is often used
 
 \begin{equation}
 U
@@ -126,7 +126,7 @@ s_{12}s_{23} -c_{12}c_{23}s_{13}e^{i\delta_{13}} & - c_{12} s_{23} - s_{12} c_{2
 \label{eq:U}
 \end{equation}
 
-where $c_{ij} = \cos \theta_{ij}$, $s_{ij} = \sin \theta_{ij}$. In the 3 flavor scenario we use the aforementioned parametrization (with values from \citep{gonzalez2012global}) and when more flavors are considered we used the prescription given in \citet{SQUIDS}. Furthermore, the neutrino ensemble evolution is described by the following Liouville equation
+where $c_{ij} = \cos \theta_{ij}$, $s_{ij} = \sin \theta_{ij}$. In the three flavor scenario we use the aforementioned parametrization (with values from \citep{Gonzalez-Garcia:2014bfa}) and when more flavors are considered we used the prescription given in \citet{SQUIDS}. Furthermore, the neutrino ensemble evolution is described by the following quantum Liouville equation
 
 \begin{equation}
 \pa{\rho(E)}{x} = -i [ H (E,x), \rho(E) ]~.
@@ -144,7 +144,7 @@ H_1 (E,x) &= \sqrt{2} G_F U^\dagger {\rm diag} ( N_e(x) - N_n(x)/2, -N_n(x)/2, -
 \end{align}
 \end{subequations}
 
-where $n$ is the number of neutrino flavors, $G_F$ is the Fermi constant, $\Delta m^2_{i1}$ are the neutrino mass splittings, and, finally, $N_e(x)$ and $N_n(x)$ are the electron and nucleon number densities along the neutrino path. On writing these equations we have used the convention that the first three flavor eigenstates corresponds to $\nu_e$, $\nu_\mu$, and $\nu_\tau$, while the rest are assume to be sterile neutrinos. Furthermore, $H_0$ arrises from the neutrino kinetic term, where as $H_1$ incorporates the matter potential, i.e. coherent forward scattering interactions \citep{Mikheev:1986gs,Mikheev:1986wj,Wolfenstein:1977ue}. Given this splitting it is convenient to change to the so called {\it interaction picture} , generated by $H_0$, defined by the following transformation for a given operator $O$
+where $n$ is the number of neutrino flavors, $G_F$ is the Fermi constant, $\Delta m^2_{i1}$ are the neutrino mass splittings, and, finally, $N_e(x)$ and $N_n(x)$ are the electron and nucleon number densities along the neutrino path. On writing these equations we have used the convention that the first three flavor eigenstates corresponds to $\nu_e$, $\nu_\mu$, and $\nu_\tau$, while the rest are assumed to be sterile neutrinos. Furthermore, $H_0$ arrises from the neutrino kinetic term, where as $H_1$ incorporates the matter potential, i.e. coherent forward scattering interactions \citep{Mikheev:1986gs,Mikheev:1986wj,Wolfenstein:1977ue}. Given this splitting it is convenient to change to the so called {\it interaction picture} , generated by $H_0$, defined by the following transformation for a given operator $O$
 
 \begin{equation}
 O \to \bar{O}(x)=exp(-iH_0x)Oexp(iH_0x)

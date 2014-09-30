@@ -88,6 +88,9 @@ class nuSQUIDS: public SQUIDS {
     bool iinteraction = false;
     bool elogscale = true;
     bool tauregeneration = false;
+    bool progressbar = false;
+    int progressbar_count = 0;
+    int progressbar_loop = 100;
     // neutrino type
     string NT = "both"; // {"neutrino","antineutrino","both"}
 
@@ -103,6 +106,7 @@ class nuSQUIDS: public SQUIDS {
      void InitializeInteractions(void);
      void Set_Initial_Time(void);
      void SetScalarsToZero(void);
+     void ProgressBar(void);
   public:
      virtual void PreDerive(double);
      virtual void AddToPreDerive(double){};

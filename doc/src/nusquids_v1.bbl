@@ -1,4 +1,4 @@
-\begin{thebibliography}{39}
+\begin{thebibliography}{41}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 \expandafter\ifx\csname url\endcsname\relax
   \def\url#1{\texttt{#1}}\fi
@@ -29,11 +29,6 @@ Abazajian, K.~N., Acero, M.~A., Agarwalla, S.~K., Aguilar-Arevalo, A.~A.,
   A white paper.
 \newline\urlprefix\url{http://arxiv.org/abs/1204.5379}
 
-\bibitem[{Agarwalla et~al.(2012)Agarwalla, Akhmedov, Blennow, Coloma, Donini,
-  et~al.}]{Agarwalla:2012mz}
-Agarwalla, S., Akhmedov, E., Blennow, M., Coloma, P., Donini, A., et~al., 2012.
-  Euronu-wp6 2010 report.
-
 \bibitem[{Aguilar et~al.(2001)Aguilar, Auerbach, Burman, Caldwell, Church,
   Cochran, Donahue, Fazely, Garvey, Gunasingha, Imlay, Louis, Majkic, Malik,
   Metcalf, Mills, Sandberg, Smith, Stancu, Sung, Tayloe, VanDalen, Vernon,
@@ -59,8 +54,8 @@ Archidiacono, M., Fornengo, N., Gariazzo, S., Giunti, C., Hannestad, S.,
 Arg\"uelles~Delgado, C.~A., Kopp, J., 2012. {Sterile neutrinos and indirect
   dark matter searches in IceCube}. JCAP 1207, 016.
 
-\bibitem[{Arg\"uelles~Delgado and Salvado~Serrat(2014)}]{SQUIDS}
-Arg\"uelles~Delgado, C.~A., Salvado~Serrat, J., 2014. A simple quantum integro
+\bibitem[{Arg\"uelles~Delgado and Salvado~Serra(2014)}]{SQUIDS}
+Arg\"uelles~Delgado, C.~A., Salvado~Serra, J., 2014. A simple quantum integro
   differential solver (squids).
 
 \bibitem[{Bahcall et~al.(2005)Bahcall, Serenelli, and Basu}]{bahcall2005new}
@@ -85,25 +80,6 @@ Blennow, M., Smirnov, A.~Y., 06 2013. Neutrino propagation in matter.
 Cirelli, M., Fornengo, N., Montaruli, T., Sokalski, I., Strumia, A., Vissani,
   F., 2005. Spectra of neutrinos from dark matter annihilations.
 \newline\urlprefix\url{http://arxiv.org/abs/hep-ph/0506298}
-
-\bibitem[{Collaboration et~al.(2012)Collaboration, Aguilar-Arevalo, Brown,
-  Bugel, Cheng, Church, Conrad, Dharmapalan, Djurcic, Finley, Ford, Garcia,
-  Garvey, Grange, Huelsnitz, Ignarra, Imlay, Johnson, Karagiorgi, Katori,
-  Kobilarcik, Louis, Mariani, Marsh, Mills, Mirabal, Moore, Mousseau, Nienaber,
-  Osmanov, Pavlovic, Perevalov, Polly, Ray, Roe, Russell, Shaevitz, Spitz,
-  Stancu, Tayloe, de~Water, White, Wickremasinghe, Zeller, and
-  Zimmerman}]{MiniBoone:2012dn}
-Collaboration, M., Aguilar-Arevalo, A.~A., Brown, B.~C., Bugel, L., Cheng, G.,
-  Church, E.~D., Conrad, J.~M., Dharmapalan, R., Djurcic, Z., Finley, D.~A.,
-  Ford, R., Garcia, F.~G., Garvey, G.~T., Grange, J., Huelsnitz, W., Ignarra,
-  C., Imlay, R., Johnson, R.~A., Karagiorgi, G., Katori, T., Kobilarcik, T.,
-  Louis, W.~C., Mariani, C., Marsh, W., Mills, G.~B., Mirabal, J., Moore,
-  C.~D., Mousseau, J., Nienaber, P., Osmanov, B., Pavlovic, Z., Perevalov, D.,
-  Polly, C.~C., Ray, H., Roe, B.~P., Russell, A.~D., Shaevitz, M.~H., Spitz,
-  J., Stancu, I., Tayloe, R., de~Water, R. G.~V., White, D.~H., Wickremasinghe,
-  D.~A., Zeller, G.~P., Zimmerman, E.~D., 07 2012. A combined $ν_μ\to ν_e$
-  and $\barν_μ\to \barν_e$ oscillation analysis of the miniboone excesses.
-\newline\urlprefix\url{http://arxiv.org/abs/1207.4809}
 
 \bibitem[{Conrad et~al.(2013)Conrad, Louis, and Shaevitz}]{Conrad:2013oq}
 Conrad, J.~M., Louis, W.~C., Shaevitz, M.~H., 06 2013. The lsnd and miniboone
@@ -169,14 +145,21 @@ Gonzalez-Garcia, M., Halzen, F., Maltoni, M., 2005. {Physics reach of
   high-energy and high-statistics icecube atmospheric neutrino data}. Phys.Rev.
   D71, 093010.
 
-\bibitem[{Gonzalez-Garcia et~al.(2012)Gonzalez-Garcia, Maltoni, Salvado, and
-  Schwetz}]{gonzalez2012global}
-Gonzalez-Garcia, M., Maltoni, M., Salvado, J., Schwetz, T., 2012. Global fit to
-  three neutrino mixing: critical look at present precision. Journal of High
-  Energy Physics 2012~(12), 1--24.
+\bibitem[{Gonzalez-Garcia and Maltoni(2008)}]{GonzalezGarcia:2007ib}
+Gonzalez-Garcia, M., Maltoni, M., 2008. {Phenomenology with Massive Neutrinos}.
+  Phys.Rept. 460, 1--129.
+
+\bibitem[{Gonzalez-Garcia et~al.(2014)Gonzalez-Garcia, Maltoni, and
+  Schwetz}]{Gonzalez-Garcia:2014bfa}
+Gonzalez-Garcia, M., Maltoni, M., Schwetz, T., 2014. {Updated fit to three
+  neutrino mixing: status of leptonic CP violation}.
 
 \bibitem[{Gough(2009)}]{gough2009gnu}
 Gough, B., 2009. GNU scientific library reference manual. Network Theory Ltd.
+
+\bibitem[{Gribov and Pontecorvo(1969)}]{Gribov:1968kq}
+Gribov, V., Pontecorvo, B., 1969. {Neutrino astronomy and lepton charge}.
+  Phys.Lett. B28, 493.
 
 \bibitem[{Halzen and Saltzberg(1998)}]{Halzen:kq}
 Halzen, F., Saltzberg, D., 1998. Tau neutrino appearance with a 1000 megaparsec
@@ -240,6 +223,26 @@ Mikheev, S., Smirnov, A.~Y., 1986. {Resonant amplification of neutrino
   oscillations in matter and solar neutrino spectroscopy}. Nuovo Cim. C9,
   17--26.
 
+\bibitem[{MiniBooNE-Collaboration et~al.(2012)MiniBooNE-Collaboration,
+  Aguilar-Arevalo, Brown, Bugel, Cheng, Church, Conrad, Dharmapalan, Djurcic,
+  Finley, Ford, Garcia, Garvey, Grange, Huelsnitz, Ignarra, Imlay, Johnson,
+  Karagiorgi, Katori, Kobilarcik, Louis, Mariani, Marsh, Mills, Mirabal, Moore,
+  Mousseau, Nienaber, Osmanov, Pavlovic, Perevalov, Polly, Ray, Roe, Russell,
+  Shaevitz, Spitz, Stancu, Tayloe, de~Water, White, Wickremasinghe, Zeller, and
+  Zimmerman}]{MiniBoone:2012dn}
+MiniBooNE-Collaboration, Aguilar-Arevalo, A.~A., Brown, B.~C., Bugel, L.,
+  Cheng, G., Church, E.~D., Conrad, J.~M., Dharmapalan, R., Djurcic, Z.,
+  Finley, D.~A., Ford, R., Garcia, F.~G., Garvey, G.~T., Grange, J., Huelsnitz,
+  W., Ignarra, C., Imlay, R., Johnson, R.~A., Karagiorgi, G., Katori, T.,
+  Kobilarcik, T., Louis, W.~C., Mariani, C., Marsh, W., Mills, G.~B., Mirabal,
+  J., Moore, C.~D., Mousseau, J., Nienaber, P., Osmanov, B., Pavlovic, Z.,
+  Perevalov, D., Polly, C.~C., Ray, H., Roe, B.~P., Russell, A.~D., Shaevitz,
+  M.~H., Spitz, J., Stancu, I., Tayloe, R., de~Water, R. G.~V., White, D.~H.,
+  Wickremasinghe, D.~A., Zeller, G.~P., Zimmerman, E.~D., 07 2012. A combined
+  $ν_μ\to ν_e$ and $\barν_μ\to \barν_e$ oscillation analysis of the
+  miniboone excesses.
+\newline\urlprefix\url{http://arxiv.org/abs/1207.4809}
+
 \bibitem[{Mohapatra et~al.(2005)Mohapatra, Antusch, Babu, Barenboim, Chen,
   Davidson, de~Gouvea, de~Holanda, Dutta, Grossman, Joshipura, Kayser, Kersten,
   Keum, King, Langacker, Lindner, Loinaz, Masina, Mocioiu, Mohanty, Murayama,
@@ -253,6 +256,10 @@ Mohapatra, R., Antusch, S., Babu, K., Barenboim, G., Chen, M.-C., Davidson, S.,
   Takeuchi, T., Underwood, T., Wolfenstein, L., 2005. Theory of neutrinos: A
   white paper.
 \newline\urlprefix\url{http://arxiv.org/abs/hep-ph/0510213}
+
+\bibitem[{Pontecorvo(1968)}]{Pontecorvo:1967fh}
+Pontecorvo, B., 1968. {Neutrino Experiments and the Problem of Conservation of
+  Leptonic Charge}. Sov.Phys.JETP 26, 984--988.
 
 \bibitem[{Pospelov(2011)}]{Pospelov:2011dp}
 Pospelov, M., 03 2011. Neutrino physics with dark matter experiments and the

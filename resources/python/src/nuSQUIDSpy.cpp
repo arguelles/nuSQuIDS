@@ -169,7 +169,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   //  .def("Set",&SQUIDS::Set)
   //;
 
-  class_<nuSQUIDS, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,int,int,std::string,bool,bool>())
+  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,int,int,std::string,bool,bool>())
     .def(init<std::string>())
     .def(init<int,std::string>())
     .def("Set_initial_state",

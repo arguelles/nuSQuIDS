@@ -59,6 +59,8 @@ class nuSQUIDSLV: public nuSQUIDS {
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
        LVP.InitSU_vector(M);
+       // rotate to mass reprentation
+       LVP.RotateToB1(&params);
        LVP_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
          LVP_evol[ei].InitSU_vector(nsun);
@@ -69,7 +71,7 @@ class nuSQUIDSLV: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSLV nus(1.e2,1.e6,150,3,"neutrino",true,false);
+  nuSQUIDSLV nus(1.e4,1.e6,150,3,"neutrino",true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -90,8 +92,8 @@ int main()
 
   // setup integration settings
   nus.Set("h_max", 100.0*nus.units.km );
-  nus.Set("rel_error", 1.0e-8);
-  nus.Set("abs_error", 1.0e-8);
+  nus.Set("rel_error", 1.0e-19);
+  nus.Set("abs_error", 1.0e-19);
 
   vector<double> E_range = nus.GetERange();
 
@@ -109,10 +111,10 @@ int main()
   // set the initial state
   nus.Set_initial_state(inistate,"flavor");
 
+  nus.Set_nuSQUIDS("ProgressBar",true);
+  nus.EvolveState();
   // we can save the current state in HDF5 format
   // for future use.
-
-  nus.EvolveState();
   nus.WriteStateHDF5("./mul_ene_ex4.hdf5");
 
   return 0;

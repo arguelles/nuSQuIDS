@@ -1,16 +1,17 @@
 # Fdb version 3
-["bibtex nusquids_v1"] 1412024344 "nusquids_v1.aux" "nusquids_v1.bbl" "nusquids_v1" 1412024345
+["bibtex nusquids_v1"] 1412025998 "nusquids_v1.aux" "nusquids_v1.bbl" "nusquids_v1" 1412026242
   "./elsarticle-harv.bst" 1412024213 28285 28d1038779995dc19c398d4510db6409 ""
-  "nusquids.bib" 1412024214 42358 edb90e85546621b51f57a46863a6e436 ""
-  "nusquids_v1.aux" 1412024345 12776 4e242c9cd59d6d4f25b6c20f6cee8e2d ""
+  "nusquids.bib" 1412025991 44219 fdf696bc0eafa5b1c32030419dfe17ce ""
+  "nusquids_v1.aux" 1412026242 12939 1e09cf2bc658467422b9cd44e38d6737 ""
   "nusquids_v1.bcf" 0 -1 0 ""
   (generated)
   "nusquids_v1.bbl"
-["cusdep eps pdf ../fig/earth_oscillation"] 0 "../fig/earth_oscillation.eps" "../fig/earth_oscillation.pdf" "../fig/earth_oscillation" 1412024345
+  "nusquids_v1.blg"
+["cusdep eps pdf ../fig/earth_oscillation"] 0 "../fig/earth_oscillation.eps" "../fig/earth_oscillation.pdf" "../fig/earth_oscillation" 1412026242
   "../fig/earth_oscillation.eps" 1412024224 41130 f5b8e683d193b5ca5139bf7257c4dbbd ""
   (generated)
   "../fig/earth_oscillation.pdf"
-["pdflatex"] 1412024344 "nusquids_v1.tex" "nusquids_v1.pdf" "nusquids_v1" 1412024345
+["pdflatex"] 1412026241 "nusquids_v1.tex" "nusquids_v1.pdf" "nusquids_v1" 1412026242
   "../fig/earth_oscillation.pdf" 1412024224 22350 03da5e9318195cf1efee04f25356defc "cusdep eps pdf ../fig/earth_oscillation"
   "../fig/nu_mu_nue_single_energy.pdf" 1412024224 21657 795bcc3203042c72f158198c1d276517 ""
   "../fig/sterile_osc_demo.pdf" 1412024224 28002 845a3a21ce49905889c0aa6ecad97246 ""
@@ -123,12 +124,12 @@
   "/usr/local/texlive/2012/texmf-var/web2c/pdftex/pdflatex.fmt" 1341108725 3691572 80746d7cec090b0770bc87079bef471d ""
   "/usr/local/texlive/2012/texmf.cnf" 1341108668 572 7ea7194897937febeb63145e1c3a1f03 ""
   "/usr/local/texlive/2012/texmf/web2c/texmf.cnf" 1336865692 31299 729e216d9b945005c0d4b079c0500bc9 ""
-  "nusquids_v1.aux" 1412024345 12776 4e242c9cd59d6d4f25b6c20f6cee8e2d ""
-  "nusquids_v1.bbl" 1412024344 15833 70728d5d5b916148cd8a2fb1cfba826f "bibtex nusquids_v1"
-  "nusquids_v1.out" 1412024345 1926 00c295e3d3d4aee059c610ae52ed09b5 ""
-  "nusquids_v1.spl" 1412024344 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "nusquids_v1.tex" 1412024214 42446 c4be60e4d4d893703b2cad8d1635189c ""
-  "nusquids_v1.toc" 1412024345 2471 56748832fc36c1d7c1ee3e4b9a5eb9ae ""
+  "nusquids_v1.aux" 1412026242 12939 1e09cf2bc658467422b9cd44e38d6737 ""
+  "nusquids_v1.bbl" 1412025998 16082 4a1418b237150536982e2428d9218817 "bibtex nusquids_v1"
+  "nusquids_v1.out" 1412026242 1926 00c295e3d3d4aee059c610ae52ed09b5 ""
+  "nusquids_v1.spl" 1412026242 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "nusquids_v1.tex" 1412026240 42518 c01cae1f7ab10cd658fd6c5eb0b32ff3 ""
+  "nusquids_v1.toc" 1412026242 2471 56748832fc36c1d7c1ee3e4b9a5eb9ae ""
   (generated)
   "nusquids_v1.out"
   "nusquids_v1.log"
