@@ -12,6 +12,8 @@
 
 // neutrino cross sections
 
+namespace nusquids{
+
 class NeutrinoCrossSections{
     private :
       double Emin;
@@ -38,5 +40,7 @@ class NeutrinoCrossSections{
       double sigma_CC(int,int,int);
       double sigma_NC(int,int,int);
 };
+
+} // close namespace
 
 #endif

@@ -29,6 +29,8 @@
  * and evalute its contents.
  */
 
+using namespace nusquids;
+
 int main()
 {
   nuSQUIDS nus("/Users/carguelles/Workspace/SQuIDS/nuSQuIDS/out_example1_muon.hdf5");

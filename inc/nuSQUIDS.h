@@ -17,6 +17,8 @@
 
 //#define UpdateInteractions_DEBUG
 
+namespace nusquids{
+
 typedef vector<double> array1D;
 typedef vector<vector<double> > array2D;
 typedef vector<vector<vector<double> > > array3D;
@@ -196,4 +198,6 @@ class nuSQUIDS: public SQUIDS {
     // virtual ~nuSQUIDS(void);
 };
 
+
+} // close namespace
 #endif

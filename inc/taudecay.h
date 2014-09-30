@@ -17,6 +17,8 @@
 
 // Tau decay spectra
 
+namespace nusquids{
+
 class TauDecaySpectra{
     private:
       double TauPolarization;
@@ -52,5 +54,7 @@ class TauDecaySpectra{
       double dNdEle_All(int,int);
       double dNdEle_Lep(int,int);
 };
+
+}// close namespace
 
 #endif

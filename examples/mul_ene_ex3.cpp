@@ -29,6 +29,8 @@
  * such as CC/NC interactions and tau regeneration.
  */
 
+using namespace nusquids;
+
 int main()
 {
   // We must first create a nuSQUIDS object. In order to do this

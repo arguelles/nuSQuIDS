@@ -1,5 +1,8 @@
 #include "tools.h"
 
+namespace nusquids{
+
+/*
 std::string toString(double value) {
    std::stringstream ss;
    ss << value;
@@ -11,7 +14,7 @@ std::string toString(int value) {
    ss << value;
    return ss.str();
 }
-
+*/
 
 bool fexists(std::string filepath)
 {
@@ -56,44 +59,7 @@ Table quickread(std::string filepath){
     return table;
 };
 
-int quickread(std::string filepath,Table tbl){
-    // create and open file stream
-    std::ifstream infile(filepath.c_str());
-
-    if(!infile){
-        std::cerr << "Error: file could not be opened. Filepath " << filepath.c_str()<< std::endl;
-        exit(1);
-    }
-    #ifdef quickread_DEBUG
-    int x,y;
-    #endif
-
-    std::string line;
-    while(getline(infile,line)){
-        Row row;
-        std::stringstream linestream(line);
-
-        double data;
-        while(linestream >> data){
-            row.push_back(data);
-        }
-        if (!row.empty()){
-            #ifdef quickread_DEBUG
-            y = row.size();
-            #endif
-            tbl.push_back(row);
-        }
-    }
-
-    #ifdef quickread_DEBUG
-    x = tbl.size();
-    cout << "x: " << x << " y: "<< y << endl;
-    cout << tbl[10][0] << endl;
-    #endif
-    return 0;
-};
-
-int quickwrite(std::string filepath, Table tbl){
+int quickwrite(std::string filepath, Table& tbl){
     // create and open file stream
     std::ofstream outfile(filepath.c_str());
 
@@ -150,7 +116,7 @@ std::vector<double> logspace(double Emin,double Emax,int div){
     return logpoints;
 };
 
-Table intertable(Table xy_data, std::vector<double> x_array, int j1 = 0, int j2 = 1){
+Table intertable(Table & xy_data, std::vector<double> x_array, int j1 = 0, int j2 = 1){
     Table result;
     int arraysize = xy_data.size();
 
@@ -254,3 +220,5 @@ void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_comp
     gsl_matrix_complex_free(U2);
     gsl_matrix_complex_free(T1);
 };
+
+} // close namespace

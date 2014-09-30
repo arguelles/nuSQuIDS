@@ -29,6 +29,8 @@
  * and bodies.
  */
 
+using namespace nusquids;
+
 int main()
 {
   // We must first create a nuSQUIDS object. In order to do this

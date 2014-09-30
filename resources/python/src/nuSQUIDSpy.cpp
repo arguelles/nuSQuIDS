@@ -7,6 +7,7 @@
 #include "SQUIDS.h"
 
 using namespace boost::python;
+using namespace nusquids;
 namespace bp = boost::python;
 namespace np = boost::numpy;
 

@@ -1,5 +1,7 @@
 #include "nuSQUIDS.h"
 
+namespace nusquids{
+
 void nuSQUIDS::init(void){
   // single energy implementation
   ne = 1;
@@ -1207,3 +1209,5 @@ nuSQUIDS::~nuSQUIDS(void){
   }
 }
 */
+
+} // close namespace

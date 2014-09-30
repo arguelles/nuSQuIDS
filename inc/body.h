@@ -13,7 +13,7 @@
 #include <memory>
 #include <exception>
 
-//#define EarthAtm_DEBUG
+namespace nusquids{
 
 class Body{
     public:
@@ -247,5 +247,7 @@ class EarthAtm: public Body{
 
 // type defining
 typedef Body::Track Track;
+
+} // close namespace
 
 #endif

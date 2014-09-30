@@ -29,6 +29,7 @@
  * such as CC/NC interactions and tau regeneration.
  */
 
+using namespace nusquids;
 
 class nuSQUIDSLV: public nuSQUIDS {
   private:

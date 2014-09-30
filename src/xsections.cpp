@@ -1,5 +1,7 @@
 #include "xsections.h"
 
+namespace nusquids{
+
 NeutrinoCrossSections::NeutrinoCrossSections(){};
 
 double NeutrinoCrossSections::LinInter(double x,double xM, double xP,double yM,double yP){
@@ -183,3 +185,5 @@ double NeutrinoCrossSections::sigma_CC(int i_enu, int flv, int neutype){
 double NeutrinoCrossSections::sigma_NC(int i_enu, int flv, int neutype){
     return sigma_NC_tbl[i_enu][1+2*flv+neutype];
 };
+
+} // close namespace

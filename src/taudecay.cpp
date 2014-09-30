@@ -3,6 +3,7 @@
 #define SQR(x)      ((x)*(x))                        // x^2
 
 // decay formulaes
+namespace nusquids{
 
 double TauDecaySpectra::TauDecayToLepton(double E_tau,double E_nu){
     double z = E_nu/E_tau;
@@ -169,3 +170,5 @@ double TauDecaySpectra::dNdEle_Lep(int i_enu, int i_ele){
         int ii = i_enu*(div+1) + i_ele;
         return (double) dNdEle_Lep_tbl[ii][2];
 };
+
+}// close namespace

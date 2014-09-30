@@ -29,6 +29,8 @@
  * such as CC/NC interactions and tau regeneration.
  */
 
+using namespace nusquids;
+
 int main()
 {
   nuSQUIDS nus(1.,1.e2,200,4,"neutrino",true,false);

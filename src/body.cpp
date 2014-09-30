@@ -9,6 +9,8 @@
 #define SIGN(a,b)   ( (b) > 0.0 ? (fabs(a)) : (-fabs(a)) )
 #define KRONECKER(i,j)  ( (i)==(j) ? 1 : 0 )
 
+namespace nusquids{
+
 Const param;
 
 /*
@@ -628,3 +630,6 @@ EarthAtm::~EarthAtm(void)
             free(inter_ye);
             free(inter_ye_accel);
         }
+
+
+}
