@@ -44,6 +44,8 @@ std::map<int,vector<int>> param_label_index {
   {18, {1,0}} , {19 , {2,0}}, {20,{3,0}} ,{ 21 , {4,0}} , {22, {5,0}}
                                        };
 
+enum mode { neutrino, antineutrino, both };
+
 class nuSQUIDS: public SQUIDS {
   protected:
     int numneu;

@@ -28,14 +28,14 @@ void nuSQUIDS::init(void){
 
   b0_proj.resize(numneu);
   for(int flv = 0; flv < numneu; flv++){
-    b0_proj[flv].InitSU_vector("Proj",flv,nsun);
+    b0_proj[flv] = SU_vector::Projector(nsun,flv);
   }
 
   b1_proj.resize(nrhos);
   for(int rho = 0; rho < nrhos; rho++){
     b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv].InitSU_vector("Proj",flv,nsun);
+      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
       b1_proj[rho][flv].RotateToB1(&params);
     }
   }
@@ -49,8 +49,8 @@ void nuSQUIDS::init(void){
       evol_b0_proj[rho][flv].resize(ne);
       evol_b1_proj[rho][flv].resize(ne);
       for(int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1].InitSU_vector("Proj",flv,nsun);
-        evol_b1_proj[rho][flv][e1].InitSU_vector("Proj",flv,nsun);
+        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
+        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1].RotateToB1(&params);
       }
     }
@@ -62,7 +62,7 @@ void nuSQUIDS::init(void){
 
   H0_array.resize(ne);
   for(int ie = 0; ie < ne; ie++){
-    H0_array[ie].InitSU_vector(nsun);
+    H0_array[ie] = SU_vector::SU_vector(nsun);
   }
 
   iniH0();
@@ -149,14 +149,14 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
   b0_proj.resize(numneu);
   for(int flv = 0; flv < numneu; flv++){
-    b0_proj[flv].InitSU_vector("Proj",flv,numneu);
+    b0_proj[flv] = SU_vector::Projector(nsun,flv);
   }
 
   b1_proj.resize(nrhos);
   for(int rho = 0; rho < nrhos; rho++){
     b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv].InitSU_vector("Proj",flv,nsun);
+      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
       b1_proj[rho][flv].RotateToB1(&params);
     }
   }
@@ -170,8 +170,8 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
       evol_b0_proj[rho][flv].resize(ne);
       evol_b1_proj[rho][flv].resize(ne);
       for(int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1].InitSU_vector("Proj",flv,nsun);
-        evol_b1_proj[rho][flv][e1].InitSU_vector("Proj",flv,nsun);
+        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
+        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1].RotateToB1(&params);
       }
     }
@@ -183,7 +183,7 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
   H0_array.resize(ne);
   for(int ie = 0; ie < ne; ie++){
-    H0_array[ie].InitSU_vector(nsun);
+    H0_array[ie] = SU_vector(nsun);
   }
 
   iniH0();
@@ -291,7 +291,9 @@ SU_vector nuSQUIDS::HI(int ei){
     }
 
     // construct potential in flavor basis
-    SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei] + (NC)*(evol_b1_proj[index_rho][1][ei] + evol_b1_proj[index_rho][2][ei]);
+    SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
+    potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
+    potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
 
     if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
         // neutrino potential
@@ -300,15 +302,14 @@ SU_vector nuSQUIDS::HI(int ei){
         // antineutrino potential
         return (-1.0)*potential;
     } else{
-        std::cerr << "nuSQUIDS::HI : unknown particle or antiparticle" << std::endl;
-        exit(1);
+        throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
     }
 }
 
 SU_vector nuSQUIDS::GammaRho(int ei){
-    if (not iinteraction){
     SU_vector V(nsun);
-    return V;
+    if (not iinteraction){
+      return V;
     }
 
     //std::cout << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << std::endl;
@@ -317,26 +318,30 @@ SU_vector nuSQUIDS::GammaRho(int ei){
     //       evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]) +
     //       evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]) << std::endl;
 
-    return evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]) +
-           evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]) +
-           evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]);
+    V = evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]);
+    V += evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]);
+    V += evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]);
+
+    return V;
 }
 
 SU_vector nuSQUIDS::InteractionsRho(int e1){
+  SU_vector nc_term(nsun);
+
   if (not iinteraction){
-    SU_vector V(nsun);
-    return V;
+    return nc_term;
   }
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
-  SU_vector nc_term(nsun);
+  SU_vector temp1, temp2;
   for(int e2 = e1 + 1; e2 < ne; e2++){
     // here we assume the cross section to be the same for all flavors
     //std::cout << dNdE_NC[index_rho][0][e2][e1] << " " << invlen_NC[index_rho][0][e2] << std::endl;
-    nc_term += SU.ACommutator(evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1] + evol_b1_proj[index_rho][2][e1],
-                              state[e2].rho[index_rho])*
-               (0.5*dNdE_NC[index_rho][0][e2][e1]*invlen_NC[index_rho][0][e2]);
+    temp1 = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
+    temp1 += evol_b1_proj[index_rho][2][e1];
+    temp2 = ACommutator(temp1,state[e2].rho[index_rho]);
+    nc_term += temp2*(0.5*dNdE_NC[index_rho][0][e2][e1]*invlen_NC[index_rho][0][e2]);
   }
 
   //std::cout << "nc term" << std::endl;
@@ -809,7 +814,7 @@ double nuSQUIDS::EvalFlavor(int flv){
 }
 
 void nuSQUIDS::iniH0(void){
-  DM2.InitSU_vector(nsun);
+  DM2 = SU_vector(nsun);
   for(int i = 1; i < nsun; i++){
       DM2 += (b0_proj[i])*gsl_matrix_get(params.dmsq,i,0);
   }
@@ -825,7 +830,7 @@ void nuSQUIDS::iniProyectors(){
 
   for(int rho = 0; rho < nrhos; rho++){
     for(int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv].InitSU_vector("Proj",flv,nsun);
+      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
       b1_proj[rho][flv].RotateToB1(&params);
     }
   }
@@ -833,7 +838,7 @@ void nuSQUIDS::iniProyectors(){
   for(int rho = 0; rho < nrhos; rho++){
     for(int flv = 0; flv < numneu; flv++){
       for(int e1 = 0; e1 < ne; e1++){
-        evol_b1_proj[rho][flv][e1].InitSU_vector("Proj",flv,nsun);
+        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1].RotateToB1(&params);
       }
     }

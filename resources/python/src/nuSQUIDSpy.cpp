@@ -156,10 +156,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
     ;
 
-  class_<SU_vector, std::shared_ptr<SU_vector> >("SU_vector")
+  class_<SU_vector, boost::noncopyable,std::shared_ptr<SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<int>())
-    .def(init<string,int,int>())
     .def("Rescale",&SU_vector::Rescale)
     .def("Rotate",&SU_vector::Rotate)
     .def("Dim",&SU_vector::Dim)

@@ -128,8 +128,8 @@ int main()
   // of this parameters depend on the problem and hand, we encourage
   // the user to try different values.
   nus.Set("h_max", 200.0*nus.units.km );
-  nus.Set("rel_error", 1.0e-6);
-  nus.Set("abs_error", 1.0e-6);
+  nus.Set("rel_error", 1.0e-12);
+  nus.Set("abs_error", 1.0e-12);
 
   // Now that we have all the pieces in place we can tell the
   // nuSQUIDS object to evolve the given state.

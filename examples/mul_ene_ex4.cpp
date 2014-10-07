@@ -59,12 +59,12 @@ class nuSQUIDSLV: public nuSQUIDS {
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
-       LVP.InitSU_vector(M);
+       LVP = SU_vector(M);
        // rotate to mass reprentation
        LVP.RotateToB1(&params);
        LVP_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
-         LVP_evol[ei].InitSU_vector(nsun);
+         LVP_evol[ei] = SU_vector(nsun);
        }
        gsl_matrix_complex_free(M);
     }
