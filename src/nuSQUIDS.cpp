@@ -1069,7 +1069,7 @@ void nuSQUIDS::ReadStateHDF5(string str){
       if (NT == "neutrino")
         state[ie].rho[0][j] = neudata[ie*dims[1]+j];
       else if ( NT == "antineutrino")
-        state[ie].rho[1][j] = aneudata[ie*dims[1]+j];
+        state[ie].rho[0][j] = aneudata[ie*dims[1]+j];
       else if ( NT == "both" ){
         state[ie].rho[0][j] = neudata[ie*dims[1]+j];
         state[ie].rho[1][j] = aneudata[ie*dims[1]+j];

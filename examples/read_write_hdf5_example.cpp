@@ -33,7 +33,7 @@ using namespace nusquids;
 
 int main()
 {
-  nuSQUIDS nus("/Users/carguelles/Workspace/SQuIDS/nuSQuIDS/out_example1_muon.hdf5");
+  nuSQUIDS nus("/Users/carguelles/Workspace/SQuIDS/git_version/nuSQuIDS/mul_ene_ex5.hdf5");
 //  nus.WriteStateHDF5("/Users/carguelles/Workspace/SQuIDS/nuSQuIDS/test.hdf5");
 
   return 0;
