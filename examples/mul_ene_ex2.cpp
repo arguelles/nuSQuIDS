@@ -43,7 +43,7 @@ int main()
   // 6) Energy log scale : true (log) or false (linear).
   // 7) Interactions : true or false.
   // We do this in the following declaration.
-  nuSQUIDS nus(1.e2,1.e6,150,3,"neutrino",true,true);
+  nuSQUIDS nus(1.e2,1.e6,60,3,"neutrino",true,true);
 
   // now we need to specify a medium where this neutrinos propagate.
   // a classical scenario where this is relevant is high energy
@@ -75,7 +75,7 @@ int main()
   vector<double> E_range = nus.GetERange();
 
   // construct the initial state
-  array2D inistate(150);
+  array2D inistate(60);
   double N0 = 1.0e18;
   for ( int i = 0 ; i < inistate.size(); i++){
       inistate[i].resize(3);
