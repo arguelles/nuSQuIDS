@@ -29,3 +29,6 @@
 
 *.pyc
 *.hdf5
+
+# cosillas
+*.pc

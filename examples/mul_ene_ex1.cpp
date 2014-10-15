@@ -43,24 +43,24 @@ int main()
   nus.Set_Track(track_atm);
 
   // set mixing angles and masses
-  nus.Set("th12",0.563942);
-  nus.Set("th13",0.154085);
-  nus.Set("th23",0.785398);
+  nus.Set(TH12,0.563942);
+  nus.Set(TH13,0.154085);
+  nus.Set(TH23,0.785398);
 
-  nus.Set("dm21sq",7.65e-05);
-  nus.Set("dm31sq",0.00247);
+  nus.Set(DM21SQ,7.65e-05);
+  nus.Set(DM31SQ,0.00247);
 
   // sterile neutrino parameters
-  nus.Set("dm41sq", 3.0);
-  nus.Set("th24", 0.7);
+  nus.Set(DM41SQ, 3.0);
+  nus.Set(TH24, 0.7);
 
-  nus.Set("delta1",0.0);
+  nus.Set(DELTA1,0.0);
 
   // setup integration settings
-  nus.Set("h_max", 500.0*nus.units.km );
-  //nus.Set("h_min", 1.0*nus.units.meter );
-  nus.Set("rel_error", 1.0e-9);
-  nus.Set("abs_error", 1.0e-9);
+  nus.Set_h_max( 500.0*nus.units.km );
+  //nus.Set_h_min( 1.0*nus.units.meter );
+  nus.Set_rel_error(1.0e-9);
+  nus.Set_abs_error(1.0e-9);
 
   // construct the initial state
   vector<double> E_range = nus.GetERange();

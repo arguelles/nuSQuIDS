@@ -48,17 +48,17 @@ int main()
   // documentation.
 
   // mixing angles
-  nus.Set("th12",0.563942);
+  nus.Set(TH12,0.563942);
   //nus.Set("th12",0.);
-  nus.Set("th13",0.154085);
-  //nus.Set("th13",0.);
-  nus.Set("th23",0.785398);
-  //nus.Set("th23",0.);
+  nus.Set(TH13,0.154085);
+  //nus.Set(TH13,0.);
+  nus.Set(TH23,0.785398);
+  //nus.Set(TH23,0.);
   // square mass differences
-  nus.Set("dm21sq",7.65e-05);
-  nus.Set("dm31sq",0.00247);
+  nus.Set(DM21SQ,7.65e-05);
+  nus.Set(DM31SQ,0.00247);
   // CP phase
-  nus.Set("delta1",0.0);
+  nus.Set(DELTA1,0.0);
 
   // Now we set the neutrino energy which we are interested on.
   // Energies are always given in natural units. To handle
@@ -127,9 +127,9 @@ int main()
   // Next we can set the numerical accuracy of our result. The values
   // of this parameters depend on the problem and hand, we encourage
   // the user to try different values.
-  nus.Set("h_max", 200.0*nus.units.km );
-  nus.Set("rel_error", 1.0e-12);
-  nus.Set("abs_error", 1.0e-12);
+  nus.Set_h_max( 200.0*nus.units.km );
+  nus.Set_rel_error(1.0e-12);
+  nus.Set_abs_error(1.0e-12);
 
   // Now that we have all the pieces in place we can tell the
   // nuSQUIDS object to evolve the given state.
@@ -252,9 +252,9 @@ int main()
   // Another thing we can do is change the oscillation parameters
   // lets try the following
 
-  nus.Set("th13",0.5);
-  nus.Set("th23",0.5);
-  nus.Set("dm31sq",0.0247);
+  nus.Set(TH13,0.5);
+  nus.Set(TH23,0.5);
+  nus.Set(DM31SQ,0.0247);
 
   // Lets set the initial state to electron. Note that we have
   // to set the mixing parameters *before* we set the initial state

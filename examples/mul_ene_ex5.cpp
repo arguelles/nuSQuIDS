@@ -91,9 +91,10 @@ class nuSQUIDSNSI: public nuSQUIDS {
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
        NSI = SU_vector(M);
-       Set("th12",0.563942);
-       Set("th13",0.154085);
-       Set("th23",0.684719);
+
+       Set(TH12,0.563942);
+       Set(TH13,0.154085);
+       Set(TH23,0.785398);
 
        // rotate to mass reprentation
        NSI.RotateToB1(&params);
@@ -117,22 +118,19 @@ int main()
   nus.Set_Track(track_atm);
 
   // set mixing angles and masses
-  nus.Set("th12",0.563942);
-  nus.Set("th13",0.154085);
-  //nus.Set("th23",0.785398);
-  nus.Set("th23",0.684719);
+  nus.Set(TH12,0.563942);
+  nus.Set(TH13,0.154085);
+  nus.Set(TH23,0.785398);
 
-  //nus.Set("dm21sq",7.65e-05);
-  nus.Set("dm21sq",7.5e-05);
-  nus.Set("dm31sq",0.0024);
-  //nus.Set("dm31sq",0.00247);
+  nus.Set(DM21SQ,7.65e-05);
+  nus.Set(DM31SQ,0.00247);
 
-  nus.Set("delta1",0.0);
+  nus.Set(DELTA1,0.0);
 
   // setup integration settings
-  nus.Set("h_max", 100.0*nus.units.km );
-  nus.Set("rel_error", 1.0e-15);
-  nus.Set("abs_error", 1.0e-15);
+  nus.Set_h_max( 200.0*nus.units.km );
+  nus.Set_rel_error(1.0e-15);
+  nus.Set_abs_error(1.0e-15);
 
   vector<double> E_range = nus.GetERange();
 
@@ -150,7 +148,7 @@ int main()
   // set the initial state
   nus.Set_initial_state(inistate,"flavor");
 
-  nus.Set_nuSQUIDS("ProgressBar",true);
+  nus.Set_ProgressBar(true);
   nus.EvolveState();
   // we can save the current state in HDF5 format
   // for future use.

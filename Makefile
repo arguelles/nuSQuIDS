@@ -1,13 +1,18 @@
-
 # Compiler
-CC=gcc
-CXX=g++
-FC=gfortran
+CC=clang
+CXX=clang++
 AR=ar
-LD=ld
+LD=clang++
 
-PATH_nuSQUIDS= $(shell pwd)
-PATH_SQUIDS=$(PATH_nuSQUIDS)/../SQuIDS
+DYN_SUFFIX=.dylib
+DYN_OPT=-dynamiclib -install_name $(LIBnuSQUIDS)/$(DYN_PRODUCT) -compatibility_version $(VERSION) -current_version $(VERSION)
+
+VERSION=1.0.0
+PREFIX=/usr/local
+
+
+PATH_nuSQUIDS=$(shell pwd)
+PATH_SQUIDS=$(SQUIDS_DIR)
 
 SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -15,47 +20,38 @@ OBJECTS = $(SOURCES:.cpp=.o)
 EXAMPLES_SRC=$(wildcard examples/*.cpp)
 EXAMPLES=$(EXAMPLES_SRC:.cpp=.exe)
 
+CXXFLAGS= -std=c++11
 
+# Directories
 
-LIBSQUIDS=$(PATH_SQUIDS)/lib
-INCSQUIDS=$(PATH_SQUIDS)/inc
+GSL_CFLAGS=-I/usr/local/Cellar/gsl/1.15/include 
+GSL_LDFLAGS=-L/usr/local/Cellar/gsl/1.15/lib -lgsl -lgslcblas -lm 
+HDF5_CFLAGS=-I/usr/local/Cellar/hdf5/1.8.13/include/
+HDF5_LDFLAGS=-L/usr/local/Cellar/hdf5/1.8.13/lib -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
+SQUIDS_CFLAGS=-I/Users/carguelles/Workspace/SQuIDS/git_version/SQuIDS/inc/
+SQUIDS_LDFLAGS=-L/Users/carguelles/Workspace/SQuIDS/git_version/SQuIDS/lib/ -lSQUIDS
+
 
 INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
-LDFLAGS+= -Wl,-rpath -Wl,$(LIBSQUIDS) -Wl,-rpath -Wl,$(LIBnuSQUIDS) $(LIBDIR) -L$(LIBSQUIDS)
-LDFLAGS+= -lgsl -lgslcblas
-LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
-LDFLAGS+= -lSQUIDS
-
-INCCFLAGS = $(INCDIR) -I$(INCSQUIDS) -I$(INCnuSQUIDS)
-CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
+CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
+LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS) -lnuSQUIDS
+LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
 
 # Project files
 NAME=nuSQUIDS
 STAT_PRODUCT=lib$(NAME).a
 DYN_PRODUCT=lib$(NAME)$(DYN_SUFFIX)
 
-OS_NAME=$(shell uname -s)
-ifeq ($(OS_NAME),Linux)
-	DYN_SUFFIX=.so
-	DYN_OPT=-shared -Wl,-soname,$(DYN_PRODUCT)
-endif
-ifeq ($(OS_NAME),Darwin)
-  CC=clang
-	CXX=clang++
-	LD=clang++
-	DYN_SUFFIX=.dylib
-	DYN_OPT=-dynamiclib -install_name $(LIBnuSQUIDS)/$(DYN_PRODUCT)
-endif
-
-
 # Compilation rules
-all: $(STAT_PRODUCT) $(DYN_PRODUCT) $(EXAMPLES)
+all: $(STAT_PRODUCT) $(DYN_PRODUCT)
+
+examples : $(EXAMPLES)
 
 %.exe : %.cpp
-	$(CXX) $(CXXFLAGS) $(LIBDIR) -L$(LIBSQUIDS) -L$(LIBnuSQUIDS) $< -o $@ -lnuSQUIDS $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -o $@
 	mv $@ bin/
 
 $(DYN_PRODUCT) : $(OBJECTS)
@@ -69,9 +65,24 @@ $(STAT_PRODUCT) : $(OBJECTS)
 	mv $(STAT_PRODUCT) $(PATH_nuSQUIDS)/lib/$(STAT_PRODUCT)
 
 %.o : %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $(CFLAGS) $< -o $@
 
 .PHONY: clean
 clean:
 	rm -f src/*.o examples/*.exe lib/* bin/*
+
+doxygen:
+	doxygen
+
+install: $(DYN_PRODUCT) $(STAT_PRODUCT)
+	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
+	@mkdir -p $(PREFIX)/include/nuSQuIDS
+	@cp $(INCDIR)/*.h $(PREFIX)/include/nuSQuIDS
+	@mkdir -p $(PREFIX)/include/nuSQuIDS/detail
+	@cp $(INCDIR)/detail/*.h $(PREFIX)/include/nuSQuIDS/detail
+	@echo Installing libraries in $(PREFIX)/lib
+	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) $(PREFIX)/lib
+	@echo Installing config information in $(PREFIX)/lib/pkgconfig
+	@mkdir -p $(PREFIX)/lib/pkgconfig
+	@cp nusquids.pc $(PREFIX)/lib/pkgconfig
 

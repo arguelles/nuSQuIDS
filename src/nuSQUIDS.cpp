@@ -19,8 +19,8 @@ void nuSQUIDS::init(void){
 
   //initialize SQUIDS
   ini(ne,numneu,1,0);
-  Set("H1",true);
-  Set("h_max", std::numeric_limits<double>::max() );
+  Set_CoherentInteractions(true);
+  Set_h_max(std::numeric_limits<double>::max() );
 
   //===============================
   // init projectors             //
@@ -123,8 +123,8 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
   t = 0;
 
-  Set("H1",true);
-  Set("h_max", std::numeric_limits<double>::max() );
+  Set_CoherentInteractions(true);
+  Set_h_max(std::numeric_limits<double>::max() );
 
   //===============================
   // initialize energy arrays    //
@@ -235,9 +235,9 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
   //===============================
   if(iinteraction){
     InitializeInteractions();
-    Set("NonCohInt",true);
-    Set("ScalInt",true);
-    Set("OInt",true);
+    Set_NonCoherentInteractions(true);
+    Set_ScalarInteractions(true);
+    Set_OtherInteractions(true);
   }
 
   //===============================
@@ -1016,17 +1016,20 @@ void nuSQUIDS::ReadStateHDF5(string str){
   for ( int i = 0 ; i < 15; i++){
     double value;
     H5LTget_attribute_double(file_id,"/mixingangles", param_label_map[i].c_str(), &value);
-    Set(param_label_map[i], value);
+    //Set(param_label_map[i], value);
+    Set(static_cast<MixingParameter>(i), value);
   }
   for ( int i = 15 ; i < 18; i++){
     double value;
     H5LTget_attribute_double(file_id,"/CPphases", param_label_map[i].c_str(), &value);
-    Set(param_label_map[i], value);
+    //Set(param_label_map[i], value);
+    Set(static_cast<MixingParameter>(i), value);
   }
   for ( int i = 18 ; i < 23; i++){
     double value;
     H5LTget_attribute_double(file_id,"/massdifferences", param_label_map[i].c_str(), &value);
-    Set(param_label_map[i], value);
+    //Set(param_label_map[i], value);
+    Set(static_cast<MixingParameter>(i), value);
   }
 
   // reading energy
@@ -1188,16 +1191,14 @@ void nuSQUIDS::ProgressBar(){
 
 }
 
-void nuSQUIDS::Set_nuSQUIDS(string str, bool opt){
-  if ( str == "tauregeneration" | str == "TauRegeneration" | str == "taureg" ) {
+void nuSQUIDS::Set_TauRegeneration(bool opt){
     if ( NT != "both" and opt )
       throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
     tauregeneration = opt;
-  } else if ( str == "ProgressBar" | str == "progressbar" | str == "prosbar"){
+}
+
+void nuSQUIDS::Set_ProgressBar(bool opt){
     progressbar = opt;
-  } else  {
-    throw std::runtime_error("nuSQUIDS::Error::Unknown option.");
-  }
 }
 
 std::shared_ptr<Track> nuSQUIDS::GetTrack(void){
@@ -1206,6 +1207,80 @@ std::shared_ptr<Track> nuSQUIDS::GetTrack(void){
 
 std::shared_ptr<Body> nuSQUIDS::GetBody(void){
   return body;
+}
+
+void nuSQUIDS::Set(MixingParameter p, double val){
+  switch (p) {
+    case TH12:
+      params.Set_th12(val);
+      break;
+    case TH13:
+      params.Set_th13(val);
+      break;
+    case TH23:
+      params.Set_th23(val);
+      break;
+    case TH14:
+      params.Set_th14(val);
+      break;
+    case TH24:
+      params.Set_th24(val);
+      break;
+    case TH34:
+      params.Set_th34(val);
+      break;
+    case TH15:
+      params.Set_th15(val);
+      break;
+    case TH25:
+      params.Set_th25(val);
+      break;
+    case TH35:
+      params.Set_th35(val);
+      break;
+    case TH45:
+      params.Set_th45(val);
+      break;
+    case TH16:
+      params.Set_th16(val);
+      break;
+    case TH26:
+      params.Set_th26(val);
+      break;
+    case TH36:
+      params.Set_th36(val);
+      break;
+    case TH46:
+      params.Set_th46(val);
+      break;
+    case TH56:
+      params.Set_th56(val);
+      break;
+    case DM21SQ:
+      params.Set_dm21sq(val);
+      break;
+    case DM31SQ:
+      params.Set_dm31sq(val);
+      break;
+    case DM41SQ:
+      params.Set_dm41sq(val);
+      break;
+    case DM51SQ:
+      params.Set_dm51sq(val);
+      break;
+    case DM61SQ:
+      params.Set_dm61sq(val);
+      break;
+    case DELTA1:
+      params.Set_delta1(val);
+      break;
+    case DELTA2:
+      params.Set_delta2(val);
+      break;
+    case DELTA3:
+      params.Set_delta3(val);
+      break;
+  }
 }
 
 /*

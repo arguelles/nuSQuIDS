@@ -24,6 +24,16 @@ typedef vector<vector<double> > array2D;
 typedef vector<vector<vector<double> > > array3D;
 typedef vector<vector<vector<vector<double> > > > array4D;
 
+enum MixingParameter {
+  TH12 = 0,
+  TH13 = 1, TH23 = 2,
+  TH14 = 3, TH24 = 4, TH34 = 5,
+  TH15 = 6, TH25 = 7, TH35 = 8, TH45 = 9,
+  TH16 = 10, TH26 = 11, TH36 = 12, TH46 = 13, TH56 = 14,
+  DELTA1 = 15, DELTA2 = 16, DELTA3 = 17,
+  DM21SQ = 18, DM31SQ = 19, DM41SQ = 20, DM51SQ = 21, DM61SQ = 22
+                    };
+
 std::map<int,string> param_label_map {
   {0 , "th12"},
   {1 , "th13"}, {2 , "th23"},
@@ -180,7 +190,8 @@ class nuSQUIDS: public SQUIDS {
      double EvalMass(int);
      double EvalFlavor(int);
 
-     void Set_nuSQUIDS(string,bool);
+     void Set_TauRegeneration(bool);
+     void Set_ProgressBar(bool);
 
      array1D GetERange(void);
      size_t GetNumE(void);
@@ -196,6 +207,8 @@ class nuSQUIDS: public SQUIDS {
 
      void WriteStateHDF5(string);
      void ReadStateHDF5(string);
+
+     void Set(MixingParameter,double);
 
     // virtual ~nuSQUIDS(void);
 };
