@@ -62,7 +62,7 @@ void nuSQUIDS::init(void){
 
   H0_array.resize(ne);
   for(int ie = 0; ie < ne; ie++){
-    H0_array[ie] = SU_vector::SU_vector(nsun);
+    H0_array[ie] = SU_vector(nsun);
   }
 
   iniH0();
