@@ -3,6 +3,7 @@
 #include <boost/python/to_python_converter.hpp>
 #include <boost/numpy.hpp>
 #include "container_conversions.h"
+#include "mul_ene_ex5.cpp"
 #include "nuSQUIDS.h"
 #include "SQUIDS.h"
 
@@ -214,6 +215,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("units", &nuSQUIDS::units)
   ;
 
+  class_<nuSQUIDSNSI, boost::noncopyable, bases<nuSQUIDS> >("nuSQUIDSNSI", init<double,double,int,int,std::string,bool,bool>())
+  ;
 
   class_<Const>("Const")
     .def_readonly("TeV",&Const::TeV)
