@@ -36,7 +36,13 @@ class nuSQUIDSNSI: public nuSQUIDS {
   private:
     SU_vector NSI;
     std::vector<SU_vector> NSI_evol;
+    double mu_tau;
   public:
+
+//Pretty sure I don't need this, but since I have it from randomness, keeping it for the lulz
+    double Get_MuTau(){
+      return mu_tau;
+    }
 
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
@@ -79,22 +85,22 @@ class nuSQUIDSNSI: public nuSQUIDS {
     }
 
     nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu,string NT,
-         bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction)
+         bool elogscale,bool iinteraction,double mytau) : mu_tau(mytau), nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction)
     {
        assert(numneu == 3);
        // defining a complex matrix M which will contain our flavor
        // violating flavor structure.
        gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
-       double epsilon_mutau = 1.0e-2;
+//       double epsilon_mutau = 1.0e-2;
+       double epsilon_mutau = mu_tau;
        gsl_complex c { epsilon_mutau , 0.0 };
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
        NSI = SU_vector(M);
-
-       Set(TH12,0.563942);
-       Set(TH13,0.154085);
-       Set(TH23,0.785398);
+       Set("th12",0.563942);
+       Set("th13",0.154085);
+       Set("th23",0.684719);
 
        // rotate to mass reprentation
        NSI.RotateToB1(&params);
@@ -108,7 +114,8 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSNSI nus(1.e1,1.e3,200,3,"antineutrino",true,false);
+
+  nuSQUIDSNSI nus(1.e1,1.e6,200,3,"antineutrino",true,false,0.01);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -118,19 +125,22 @@ int main()
   nus.Set_Track(track_atm);
 
   // set mixing angles and masses
-  nus.Set(TH12,0.563942);
-  nus.Set(TH13,0.154085);
-  nus.Set(TH23,0.785398);
+  nus.Set("th12",0.563942);
+  nus.Set("th13",0.154085);
+  //nus.Set("th23",0.785398);
+  nus.Set("th23",0.684719);
 
-  nus.Set(DM21SQ,7.65e-05);
-  nus.Set(DM31SQ,0.00247);
+  //nus.Set("dm21sq",7.65e-05);
+  nus.Set("dm21sq",7.5e-05);
+  nus.Set("dm31sq",0.0024);
+  //nus.Set("dm31sq",0.00247);
 
-  nus.Set(DELTA1,0.0);
+  nus.Set("delta1",0.0);
 
   // setup integration settings
-  nus.Set_h_max( 200.0*nus.units.km );
-  nus.Set_rel_error(1.0e-15);
-  nus.Set_abs_error(1.0e-15);
+  nus.Set("h_max", 100.0*nus.units.km );
+  nus.Set("rel_error", 1.0e-15);
+  nus.Set("abs_error", 1.0e-15);
 
   vector<double> E_range = nus.GetERange();
 
@@ -148,7 +158,7 @@ int main()
   // set the initial state
   nus.Set_initial_state(inistate,"flavor");
 
-  nus.Set_ProgressBar(true);
+  nus.Set_nuSQUIDS("ProgressBar",true);
   nus.EvolveState();
   // we can save the current state in HDF5 format
   // for future use.
