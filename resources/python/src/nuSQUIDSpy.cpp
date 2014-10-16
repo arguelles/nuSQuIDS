@@ -215,7 +215,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("units", &nuSQUIDS::units)
   ;
 
-  class_<nuSQUIDSNSI, boost::noncopyable, bases<nuSQUIDS> >("nuSQUIDSNSI", init<double,double,int,int,std::string,bool,bool>())
+  class_<nuSQUIDSNSI, boost::noncopyable, bases<nuSQUIDS> >("nuSQUIDSNSI", init<double,double,int,int,std::string,bool,bool,double>())
+    .def("Get_MuTau",&nuSQUIDSNSI::Get_MuTau, bp::arg("MuTau"))
   ;
 
   class_<Const>("Const")
