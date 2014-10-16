@@ -1,5 +1,5 @@
 # Compiler
-CXX=g++
+CXX=clang++
 AR=ar
 LD=ld
 
@@ -9,7 +9,7 @@ PATH_nuSQUIDS= $(shell pwd)/../../../
 PATH_nuSQUIDSpy= $(shell pwd)/../
 PATH_SQUIDS= $(shell pwd)/../../../../SQUIDS/
 
-SOURCES = $(wildcard *.cpp)
+SOURCES = $(wildcard *IDSpy.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
 # Directories
@@ -21,15 +21,15 @@ LIBSQUIDS=$(PATH_SQUIDS)/lib
 INCSQUIDS=$(PATH_SQUIDS)/inc
 
 # FLAGS
-LDFLAGS= -lgsl -lgslcblas
+LDFLAGS= -L/cvmfs/icecube.opensciencegrid.org/py2-v1/RHEL_6_x86_64/lib/ -L/data/user/mamday/nuSQuIDS/SQuIDS/lib -L/cvmfs/oasis.opensciencegrid.org/icecube/standard/RHEL_6_x86_64/lib/ -L/data/user/cweaver/tools/RHEL_6_x86_64/lib/ -lgsl -lgslcblas
 LDFLAGS+= -L$(LIBSQUIDS) -lSQUIDS
 LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQUIDS
 LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
 LDFLAGS+= -lpython$(PYTHON_VERSION) -lboost_python -lboost_numpy
-INCCFLAGS+= -I/usr/include/python$(PYTHON_VERSION) -I../inc/
+INCCFLAGS+= -I../inc/
 INCCFLAGS+= -I$(INCnuSQUIDS) -I$(INCSQUIDS)
 #INCCFLAGS+= -I$(INCHDF5)
-CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
+CXXFLAGS= -I/data/user/mamday/nuSQuIDS/SQuIDS/inc/ -I/data/user/cweaver/tools/RHEL_6_x86_64/include/ -I/cvmfs/oasis.opensciencegrid.org/icecube/standard/RHEL_6_x86_64/include/python2.7/ -I/cvmfs/icecube.opensciencegrid.org/py2-v1/RHEL_6_x86_64/include/ -O3 -fPIC -std=c++11 $(INCCFLAGS)
 
 
 # Project files
