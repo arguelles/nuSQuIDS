@@ -1,0 +1,209 @@
+#!/bin/sh
+
+# Copyright (c) 2014, Christopher Weaver
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+# main settings
+# the name of the file in which to store results
+REPORT_FILE="Report.txt"
+# a file listing tests which are expected to fail; not required to exist
+EXPECTED_FAILURES_FILE="Expected_Failures.txt"
+# the suffix on the names of tests
+TEST_SUFFIX=".test.cpp"
+# the suffix on the names of optional extra compilation flags for tests
+TEST_FLAGS_SUFFIX=".flags"
+# the suffix on the names of expected test ouput files
+REF_OUTPUT_SUFFIX=".output.txt"
+# the flag included in a test name to indicate that it is required to fail compilation
+COMPILE_FAIL_FLAG=".compile_fail"
+# the subsitute suffix used for the version of a compile-fail test with the failure inducing code removed
+CLEANED_TEST_SUFFIX=".clean.cpp"
+# the subdirectory in which to stash produced files
+PRODUCT_DIR="products"
+
+CXX=clang++
+COMPILE_COMMAND="$CXX -std=c++11 -g -I./ -L../lib -lnuSQUIDS -lSQUIDS"
+CLEAN_COMMAND_FILE="clean_fail.sed"
+
+NAME_FILTER_REGEX='\('$COMPILE_FAIL_FLAG'\)*'$TEST_SUFFIX'$'
+
+# output format settings
+PASS_LABEL="PASS"
+FAIL_LABEL="FAIL"
+EXPECTED_FAIL_LABEL="FAIL (Expected)"
+MISSING_REFERENCE_LABEL="NOT RUN (Reference output missing)"
+
+# set environment for dynamic linking
+if uname | grep -q 'Darwin' ; then
+    export DYLD_LIBRARY_PATH="../lib"
+else
+    export LD_LIBRARY_PATH="../lib"
+fi
+
+if [ $# -eq 0 ] ; then
+	# locate all tests
+	TESTS=`ls -1 *$TEST_SUFFIX`
+else
+	# collect the specified tests
+	TESTS=`for test in ${1+"$@"}; do ls ${test}*${TEST_SUFFIX} ; done`
+	SHOW_RESULTS=1
+fi
+
+# clear the report file
+cat /dev/null > "$REPORT_FILE"
+
+# set up for pretty printing
+LONGEST_NAME_LEN=`echo "$TESTS" | sed "s|${NAME_FILTER_REGEX}||" | awk '{ if(length($1) > longest){ longest=length($1); } } END{ print longest; }'`
+
+# make the product directory if necessary
+if [ ! -d $PRODUCT_DIR ] ; then
+	mkdir $PRODUCT_DIR
+fi
+
+echo "$TESTS" | awk '{ tests++ } END{ if(tests==1) print "Running 1 test"; else print "Running "tests" tests"}'
+
+# run all of the tests
+for TEST in $TESTS ; do
+	NAME=`echo $TEST | sed "s|${NAME_FILTER_REGEX}||"`
+	PRETTY_NAME=`awk 'BEGIN{ printf("%-'${LONGEST_NAME_LEN}'s\n","'${NAME}'"); }'`
+	REF_OUTPUT="${NAME}${REF_OUTPUT_SUFFIX}"
+	# only run a test if its reference output exists
+	if [ -f "$REF_OUTPUT" ];then
+        # fetch any extra flags needed specifically by this test
+        if [ -f "${NAME}${TEST_FLAGS_SUFFIX}" ]; then
+            EXTRA_FLAGS=`cat ${NAME}${TEST_FLAGS_SUFFIX}`
+        else
+            EXTRA_FLAGS=""
+        fi
+
+		SHOULD_FAIL_COMPILE=`echo "$TEST" | grep "$COMPILE_FAIL_FLAG"`
+		if [ "$SHOULD_FAIL_COMPILE" ] ; then
+			# try to compile
+			RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $TEST -o ${PRODUCT_DIR}/${NAME} 2>&1 | grep -c -f $REF_OUTPUT`
+			# check that the compiler printed the expected error message
+			if [ "$RESULT" -eq 0 ] ; then
+				REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (compilation did not produce required error)"
+				if [ -n "$SHOW_RESULTS" ];then
+					echo "$RESULT"
+				fi
+			else
+				# compilation failed with the expected error,
+				#but does it succeed if we remove the deliberately offending code?
+				CLEANED_TEST=${PRODUCT_DIR}/${NAME}${CLEANED_TEST_SUFFIX}
+				cat $TEST | sed -f ${CLEAN_COMMAND_FILE} > $CLEANED_TEST
+				RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $CLEANED_TEST -o ${PRODUCT_DIR}/${NAME} 2>&1 && ${PRODUCT_DIR}/${NAME}`
+				SUCCESS=$?
+				if [ "$SUCCESS" -ne 0 ] ; then
+					REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (failed to compile or run after cleaning)"
+					if [ -n "$SHOW_RESULTS" ];then
+						echo "$RESULT"
+					fi
+				else
+					REPORT_ENTRY="$PRETTY_NAME : $PASS_LABEL"
+				fi
+			fi
+		else
+			# try to compile
+			RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $TEST -o ${PRODUCT_DIR}/${NAME} 2>&1`
+			COMPILE_SUCCESS=$?
+			# check that compilation succeeded
+			if [ "$COMPILE_SUCCESS" -ne 0 ] ; then
+				REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (failed to compile)"
+				if [ -n "$SHOW_RESULTS" ];then
+					echo "$RESULT"
+				fi
+			else
+				# run the resulting program and see if it worked
+				TMPFILE=`mktemp ${PRODUCT_DIR}/test_XXXXXX`
+				${PRODUCT_DIR}/${NAME} > $TMPFILE
+				RUN_SUCCESS=$?
+				RESULT=`diff -u "$REF_OUTPUT" "$TMPFILE"`
+				rm $TMPFILE
+				#check that it ran to completion and exited cleanly
+				if [ "$RUN_SUCCESS" -ne 0 ] ; then
+					REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (failed to run)"
+					if [ -n "$SHOW_RESULTS" ];then
+						echo "$RESULT"
+					fi
+				else
+					#check that the output matches the reference
+					if [ -n "$RESULT" ];then
+						REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL"
+						if [ -n "$SHOW_RESULTS" ];then
+							echo "$RESULT"
+						fi
+					else
+						REPORT_ENTRY="$PRETTY_NAME : $PASS_LABEL"
+					fi
+				fi
+			fi
+		fi
+	else
+		REPORT_ENTRY="$PRETTY_NAME : $MISSING_REFERENCE_LABEL"
+	fi
+
+	# if the expected failures file exists, search it to see if this test is listed
+	if [ -f "$EXPECTED_FAILURES_FILE" ];then
+		EXPECTED=`grep "$NAME" $EXPECTED_FAILURES_FILE`
+	fi
+	FAILED=`echo $REPORT_ENTRY | grep $FAIL_LABEL`
+	if [ -n "$EXPECTED" -a -n "$FAILED" ] ; then
+		REPORT_ENTRY="$PRETTY_NAME : $EXPECTED_FAIL_LABEL"
+	fi
+
+	# record the test result
+	echo "$REPORT_ENTRY" | tee -a "$REPORT_FILE"
+	if [ -n "$RESULT" -a -z "$EXPECTED" ]; then
+		echo "$RESULT" >> "$REPORT_FILE"
+	fi
+done
+
+# collect some statistics
+NUM_TESTS=`echo "$TESTS" | wc -l`
+NUM_PASS=`grep -c ": $PASS_LABEL" "$REPORT_FILE"`
+NUM_FAIL=`grep -c ": $FAIL_LABEL" "$REPORT_FILE"`
+NUM_EXP_FAIL=`grep -c ": $EXPECTED_FAIL_LABEL" "$REPORT_FILE"`
+NUM_NOT_RUN=`grep -c ": $MISSING_REFERENCE_LABEL" "$REPORT_FILE"`
+# figure out whether to use plural endings or not
+if [[ "$NUM_TESTS" -ne "1" ]];then
+	TEST_PLURAL="s"
+fi
+if [[ "$NUM_PASS" -ne "1" ]];then
+	PASS_PLURAL="es"
+fi
+if [[ "$NUM_FAIL" -ne "1" ]];then
+	FAILURE_PLURAL="s"
+fi
+if [[ "$NUM_EXP_FAIL" -ge "1" ]];then
+	EXPECTED_NOTE=" ($NUM_EXP_FAIL expected)"
+fi
+if [[ "$NUM_NOT_RUN" -ge "1" ]];then
+	if [[ "$NUM_NOT_RUN" -ne "1" ]];then
+		NOT_RUN_PLURAL="s"
+	fi
+	NOT_RUN_NOTE=", $NUM_NOT_RUN test$NOT_RUN_PLURAL could not be run"
+fi
+# record the statistics
+REPORT_ENTRY="$NUM_TESTS Test$TEST_PLURAL: $NUM_PASS pass$PASS_PLURAL, $NUM_FAIL failure$FAILURE_PLURAL$EXPECTED_NOTE$NOT_RUN_NOTE"
+echo "$REPORT_ENTRY" | tee -a "$REPORT_FILE"

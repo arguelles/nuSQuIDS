@@ -96,39 +96,39 @@ enum GSL_STEP_FUNCTIONS {
 static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
   switch(step_enum){
     case GSL_STEP_RK2:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk2);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk2);
       break;
     case GSL_STEP_RK4:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk4);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk4);
       break;
     case GSL_STEP_RKF45:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rkf45);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkf45);
       break;
     case GSL_STEP_RKCK:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rkck);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkck);
       break;
     case GSL_STEP_RK8PD:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk8pd);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk8pd);
       break;
       /*
     case GSL_STEP_RK1IMP:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk1imp);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk1imp);
       break;
     case GSL_STEP_RK2IMP:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk2imp);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk2imp);
       break;
     case GSL_STEP_RK4IMP:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_rk4imp);
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk4imp);
       break;
     case GSL_STEP_BSIMP:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_bsimp);
+      nusq->Set_GSL_step(gsl_odeiv2_step_bsimp);
       break;
     case GSL_STEP_MSBDF:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_msbdf);
+      nusq->Set_GSL_step(gsl_odeiv2_step_msbdf);
       break;
       */
     case GSL_STEP_MSADAMS:
-      nusq->Set("GSL_Step",gsl_odeiv2_step_msadams);
+      nusq->Set_GSL_step(gsl_odeiv2_step_msadams);
       break;
   }
 }
@@ -156,6 +156,32 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
     ;
 
+  enum_<MixingParameter>("MixingParameter")
+    .value("TH12",TH12)
+    .value("TH13",TH13)
+    .value("TH23",TH23)
+    .value("TH14",TH14)
+    .value("TH24",TH24)
+    .value("TH34",TH34)
+    .value("TH15",TH15)
+    .value("TH25",TH25)
+    .value("TH35",TH35)
+    .value("TH45",TH45)
+    .value("TH16",TH16)
+    .value("TH26",TH26)
+    .value("TH36",TH36)
+    .value("TH46",TH46)
+    .value("TH56",TH56)
+    .value("DELTA1",DELTA1)
+    .value("DELTA2",DELTA2)
+    .value("DELTA3",DELTA3)
+    .value("DM21SQ",DM21SQ)
+    .value("DM31SQ",DM31SQ)
+    .value("DM41SQ",DM41SQ)
+    .value("DM51SQ",DM51SQ)
+    .value("DM61SQ",DM61SQ)
+    ;
+
   class_<SU_vector, boost::noncopyable,std::shared_ptr<SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<int>())
@@ -176,12 +202,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
         (void(nuSQUIDS::*)(std::vector<double>,std::string))&nuSQUIDS::Set_initial_state,
         ( bp::arg("InitialState"), bp::arg("NeutrinoType") )
         )
-    /*
-    .def("Set_initial_state",
-        (void(nuSQUIDS::*)(std::vector< std::vector<double> >,std::string))&nuSQUIDS::Set_initial_state,
-        ( bp::arg("InitialState"), bp::arg("NeutrinoType") )
-        )
-    */
     .def("Set_initial_state",wrap_Set_initial_state)
     .def("Set_Body",&nuSQUIDS::Set_Body, bp::arg("Body"))
     .def("Set_Track",&nuSQUIDS::Set_Track, bp::arg("Track"))
@@ -203,11 +223,20 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetERange",&nuSQUIDS::GetERange)
     .def("GetHamiltonian",&nuSQUIDS::GetHamiltonian)
     .def("GetState",&nuSQUIDS::GetState)
-    .def("Set",(void(nuSQUIDS::*)(string,double))&nuSQUIDS::Set)
-    .def("Set",(void(nuSQUIDS::*)(string,bool))&nuSQUIDS::Set)
-    .def("Set",(void(nuSQUIDS::*)(string,int))&nuSQUIDS::Set)
-    .def("Set",wrap_Set_GSL_STEP)
-    .def("Set_nuSQUIDS",&nuSQUIDS::Set_nuSQUIDS)
+//    .def("Set",(void(nuSQUIDS::*)(string,double))&nuSQUIDS::Set)
+//    .def("Set",(void(nuSQUIDS::*)(string,bool))&nuSQUIDS::Set)
+//    .def("Set",(void(nuSQUIDS::*)(string,int))&nuSQUIDS::Set)
+    .def("Set_h_min",&nuSQUIDS::Set_h_min)
+    .def("Set_h_max",&nuSQUIDS::Set_h_max)
+    .def("Set_h",&nuSQUIDS::Set_h)
+    .def("Set_rel_error",&nuSQUIDS::Set_rel_error)
+    .def("Set_abs_error",&nuSQUIDS::Set_abs_error)
+    .def("Set_AdaptiveStep",&nuSQUIDS::Set_AdaptiveStep)
+    .def("Set_GSL_step",wrap_Set_GSL_STEP)
+    .def("Set_TauRegeneration",&nuSQUIDS::Set_TauRegeneration)
+    .def("Set_ProgressBar",&nuSQUIDS::Set_ProgressBar)
+    .def("Set_MixingParametersToDefault",&nuSQUIDS::Set_MixingParametersToDefault)
+    .def("Set",&nuSQUIDS::Set)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)

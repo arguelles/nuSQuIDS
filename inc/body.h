@@ -6,8 +6,8 @@
 #include <cmath>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
+#include <SQuIDS/const.h>
 #include "tools.h"
-#include "const.h"
 #include "global.h"
 #include <assert.h>
 #include <memory>

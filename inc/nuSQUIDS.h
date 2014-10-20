@@ -1,10 +1,11 @@
 #ifndef __nuSQUID_H
 #define __nuSQUID_H
 
-#include <body.h>
-#include <xsections.h>
-#include <taudecay.h>
-#include <SQUIDS.h>
+#include "body.h"
+#include "xsections.h"
+#include "taudecay.h"
+
+#include <SQUIDS/SQUIDS.h>
 #include <memory>
 #include <map>
 #include <stdexcept>
@@ -34,7 +35,9 @@ enum MixingParameter {
   DM21SQ = 18, DM31SQ = 19, DM41SQ = 20, DM51SQ = 21, DM61SQ = 22
                     };
 
-std::map<int,string> param_label_map {
+enum mode { neutrino, antineutrino, both };
+
+static std::map<int,string> param_label_map {
   {0 , "th12"},
   {1 , "th13"}, {2 , "th23"},
   {3 , "th14"}, {4 , "th24"}, {5 , "th34"},
@@ -44,7 +47,7 @@ std::map<int,string> param_label_map {
   {18, "dm21sq"} , {19 , "dm31sq"}, {20,"dm41sq"} ,{ 21 , "dm51sq"} , {22, "dm61sq"}
                                      };
 
-std::map<int,vector<int>> param_label_index {
+static std::map<int,vector<int>> param_label_index {
   {0 , {1,2}},
   {1 , {1,3}}, {2 , {2,3}},
   {3 , {1,4}}, {4 , {2,4}}, {5 , {3,4}},
@@ -52,9 +55,7 @@ std::map<int,vector<int>> param_label_index {
   {10 , {1,6}},{11 , {2,6}}, {12 , {3,6}}, {13 , {4,6}}, {14 , {5,6}},
   {15 , {1,0}} , {16, {2,0}} , {17, {3,0}},
   {18, {1,0}} , {19 , {2,0}}, {20,{3,0}} ,{ 21 , {4,0}} , {22, {5,0}}
-                                       };
-
-enum mode { neutrino, antineutrino, both };
+                                                    };
 
 class nuSQUIDS: public SQUIDS {
   protected:
@@ -108,10 +109,10 @@ class nuSQUIDS: public SQUIDS {
     // neutrino type
     string NT = "both"; // {"neutrino","antineutrino","both"}
 
-    void iniProyectors();
+    void iniProjectors();
     void SetIniFlavorProyectors();
     void iniH0();
-
+    void AntineutrinoCPFix(int);
     void SetBodyTrack(int,int,double*,int,double*);
 
      void init(double,double,int);
@@ -209,6 +210,7 @@ class nuSQUIDS: public SQUIDS {
      void ReadStateHDF5(string);
 
      void Set(MixingParameter,double);
+     void Set_MixingParametersToDefault(void);
 
     // virtual ~nuSQUIDS(void);
 };

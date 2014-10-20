@@ -28,8 +28,8 @@ GSL_CFLAGS=-I/usr/local/Cellar/gsl/1.15/include
 GSL_LDFLAGS=-L/usr/local/Cellar/gsl/1.15/lib -lgsl -lgslcblas -lm 
 HDF5_CFLAGS=-I/usr/local/Cellar/hdf5/1.8.13/include/
 HDF5_LDFLAGS=-L/usr/local/Cellar/hdf5/1.8.13/lib -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
-SQUIDS_CFLAGS=-I/Users/carguelles/Workspace/SQuIDS/git_version/SQuIDS/inc/
-SQUIDS_LDFLAGS=-L/Users/carguelles/Workspace/SQuIDS/git_version/SQuIDS/lib/ -lSQUIDS
+SQUIDS_CFLAGS=-I/usr/local/include -I/usr/local/Cellar/gsl/1.15/include 
+SQUIDS_LDFLAGS=-L/usr/local/lib -L/usr/local/Cellar/gsl/1.15/lib -lSQUIDS -lgsl -lgslcblas -lm 
 
 
 INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
@@ -73,6 +73,9 @@ clean:
 
 doxygen:
 	doxygen
+
+test: $(DYN_PRODUCT) $(STAT_PRODUCT)
+	@cd ./test ; ./run_tests
 
 install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS

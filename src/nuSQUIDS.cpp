@@ -22,39 +22,22 @@ void nuSQUIDS::init(void){
   Set_CoherentInteractions(true);
   Set_h_max(std::numeric_limits<double>::max() );
 
+
+  //===============================
+  // physics CP sign for aneu    //
+  //===============================
+  if ( NT == "antineutrino" ){
+    Set(DELTA1,params.delta1);
+    Set(DELTA2,params.delta1);
+    Set(DELTA3,params.delta1);
+  }
+
+
   //===============================
   // init projectors             //
   //===============================
 
-  b0_proj.resize(numneu);
-  for(int flv = 0; flv < numneu; flv++){
-    b0_proj[flv] = SU_vector::Projector(nsun,flv);
-  }
-
-  b1_proj.resize(nrhos);
-  for(int rho = 0; rho < nrhos; rho++){
-    b1_proj[rho].resize(numneu);
-    for(int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
-      b1_proj[rho][flv].RotateToB1(&params);
-    }
-  }
-
-  evol_b0_proj.resize(nrhos);
-  evol_b1_proj.resize(nrhos);
-  for(int rho = 0; rho < nrhos; rho++){
-    evol_b0_proj[rho].resize(numneu);
-    evol_b1_proj[rho].resize(numneu);
-    for(int flv = 0; flv < numneu; flv++){
-      evol_b0_proj[rho][flv].resize(ne);
-      evol_b1_proj[rho][flv].resize(ne);
-      for(int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1].RotateToB1(&params);
-      }
-    }
-  }
+  iniProjectors();
 
   //===============================
   // init square mass difference //
@@ -124,7 +107,7 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
   t = 0;
 
   Set_CoherentInteractions(true);
-  Set_h_max(std::numeric_limits<double>::max() );
+  Set_h_max(std::numeric_limits<double>::max());
 
   //===============================
   // initialize energy arrays    //
@@ -147,35 +130,7 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
   // init projectors             //
   //===============================
 
-  b0_proj.resize(numneu);
-  for(int flv = 0; flv < numneu; flv++){
-    b0_proj[flv] = SU_vector::Projector(nsun,flv);
-  }
-
-  b1_proj.resize(nrhos);
-  for(int rho = 0; rho < nrhos; rho++){
-    b1_proj[rho].resize(numneu);
-    for(int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
-      b1_proj[rho][flv].RotateToB1(&params);
-    }
-  }
-
-  evol_b0_proj.resize(nrhos);
-  evol_b1_proj.resize(nrhos);
-  for(int rho = 0; rho < nrhos; rho++){
-    evol_b0_proj[rho].resize(numneu);
-    evol_b1_proj[rho].resize(numneu);
-    for(int flv = 0; flv < numneu; flv++){
-      evol_b0_proj[rho][flv].resize(ne);
-      evol_b1_proj[rho][flv].resize(ne);
-      for(int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1].RotateToB1(&params);
-      }
-    }
-  }
+  iniProjectors();
 
   //===============================
   // init square mass difference //
@@ -827,20 +782,48 @@ void nuSQUIDS::iniH0(void){
   }
 }
 
-void nuSQUIDS::iniProyectors(){
+void nuSQUIDS::AntineutrinoCPFix(int rho){
+    if(NT == "antineutrino" or (NT == "both" and rho == 1)){
+      Set(DELTA1,-params.delta1);
+      Set(DELTA2,-params.delta2);
+      Set(DELTA3,-params.delta3);
+    }
+}
 
+void nuSQUIDS::iniProjectors(){
+
+  b0_proj.resize(numneu);
+  for(int flv = 0; flv < numneu; flv++){
+    b0_proj[flv] = SU_vector::Projector(nsun,flv);
+  }
+
+  b1_proj.resize(nrhos);
   for(int rho = 0; rho < nrhos; rho++){
+    b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
       b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
+
+      AntineutrinoCPFix(rho);
       b1_proj[rho][flv].RotateToB1(&params);
+      AntineutrinoCPFix(rho);
     }
   }
 
+  evol_b0_proj.resize(nrhos);
+  evol_b1_proj.resize(nrhos);
   for(int rho = 0; rho < nrhos; rho++){
+    evol_b0_proj[rho].resize(numneu);
+    evol_b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
+      evol_b0_proj[rho][flv].resize(ne);
+      evol_b1_proj[rho][flv].resize(ne);
       for(int e1 = 0; e1 < ne; e1++){
+        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
+
+        AntineutrinoCPFix(rho);
         evol_b1_proj[rho][flv][e1].RotateToB1(&params);
+        AntineutrinoCPFix(rho);
       }
     }
   }
@@ -852,10 +835,16 @@ void nuSQUIDS::SetIniFlavorProyectors(){
     for(int flv = 0; flv < numneu; flv++){
       for(int e1 = 0; e1 < ne; e1++){
         evol_b1_proj[rho][flv][e1] = b0_proj[flv];
+
+        AntineutrinoCPFix(rho);
         evol_b1_proj[rho][flv][e1].RotateToB1(&params);
+        AntineutrinoCPFix(rho);
       }
       b1_proj[rho][flv] = b0_proj[flv];
+
+      AntineutrinoCPFix(rho);
       b1_proj[rho][flv].RotateToB1(&params);
+      AntineutrinoCPFix(rho);
     }
   }
 }
@@ -883,7 +872,6 @@ void nuSQUIDS::WriteStateHDF5(string str){
   dset_id = H5LTmake_dataset(file_id,"/energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.data());
   H5LTset_attribute_string(file_id, "/energies", "elogscale", (elogscale) ? "True":"False");
 
-
   // write mixing parameters
   hsize_t dim[1]{1};
   H5LTmake_dataset(file_id,"/basic",1,dim,H5T_NATIVE_DOUBLE,0);
@@ -910,31 +898,30 @@ void nuSQUIDS::WriteStateHDF5(string str){
     double value = gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
     H5LTset_attribute_double(file_id, "/massdifferences",label.c_str(),&value, 1);
   }
-
   //writing state
   const int numneusq = numneu*numneu;
   hsize_t statedim[2] {E_range.size(),(hsize_t)numneu*numneu};
-  vector<double> neustate, aneustate;
+  vector<double> neustate(numneusq*ne), aneustate(numneusq*ne);
 
   for(int ie = 0; ie < ne; ie++){
     for(int i = 0; i < numneu*numneu; i ++){
         if (NT == "both"){
-          neustate.push_back(state[ie].rho[0][i]);
-          aneustate.push_back(state[ie].rho[1][i]);
+          neustate[ie*numneusq + i] = state[ie].rho[0][i];
+          aneustate[ie*numneusq + i] = state[ie].rho[1][i];
         }
         else if (NT == "neutrino"){
-          neustate.push_back(state[ie].rho[0][i]);
-          aneustate.push_back(0.0);
+          neustate[ie*numneusq + i] = state[ie].rho[0][i];
+          aneustate[ie*numneusq + i] = 0.0;
         }
         else if (NT == "antineutrino"){
-          neustate.push_back(0.0);
-          aneustate.push_back(state[ie].rho[0][i]);
+          neustate[ie*numneusq + i] = 0.0;
+          aneustate[ie*numneusq + i] = state[ie].rho[0][i];
         }
       }
     }
 
-  dset_id = H5LTmake_dataset(file_id,"/neustate",2,statedim,H5T_NATIVE_DOUBLE,neustate.data());
-  dset_id = H5LTmake_dataset(file_id,"/aneustate",2,statedim,H5T_NATIVE_DOUBLE,aneustate.data());
+  dset_id = H5LTmake_dataset(file_id,"/neustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)neustate.data());
+  dset_id = H5LTmake_dataset(file_id,"/aneustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)aneustate.data());
 
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
@@ -966,28 +953,33 @@ void nuSQUIDS::WriteStateHDF5(string str){
         }
     }
   }
-
-  dset_id = H5LTmake_dataset(file_id,"/flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,flavor.data());
-  dset_id = H5LTmake_dataset(file_id,"/masscomp",2,pdim,H5T_NATIVE_DOUBLE,mass.data());
+  dset_id = H5LTmake_dataset(file_id,"/flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)flavor.data());
+  dset_id = H5LTmake_dataset(file_id,"/masscomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)mass.data());
 
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};
-  H5LTmake_dataset(file_id,"/track",1,trackparamdim,H5T_NATIVE_DOUBLE,track->GetTrackParams().data());
+  if ( trackparamdim[0] == 0 ) {
+    H5LTmake_dataset(file_id,"/track",1,dim,H5T_NATIVE_DOUBLE,0);
+  } else {
+    H5LTmake_dataset(file_id,"/track",1,trackparamdim,H5T_NATIVE_DOUBLE,track->GetTrackParams().data());
+  }
 
-  double xx;
-  xx = track->GetInitialX();
-  H5LTset_attribute_double(file_id, "/track","XINI",&xx, 1);
-  xx = track->GetFinalX();
-  H5LTset_attribute_double(file_id, "/track","XEND",&xx, 1);
-  xx = track->GetX();
+  double xi = track->GetInitialX();
+  H5LTset_attribute_double(file_id, "/track","XINI",&xi, 1);
+  double xf = track->GetFinalX();
+  H5LTset_attribute_double(file_id, "/track","XEND",&xf, 1);
+  double xx = track->GetX();
   H5LTset_attribute_double(file_id, "/track","X",&xx, 1);
 
   hsize_t bodyparamdim[1] {body->GetBodyParams().size()};
-  H5LTmake_dataset(file_id,"/body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
+  if ( bodyparamdim[0] == 0 ){
+    H5LTmake_dataset(file_id,"/body",1,dim,H5T_NATIVE_DOUBLE,0);
+  } else {
+    H5LTmake_dataset(file_id,"/body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
+  }
   H5LTset_attribute_string(file_id, "/body", "NAME", body->name.c_str());
   int bid = body->id;
   H5LTset_attribute_int(file_id, "/body", "ID", &bid,1);
-
   // close HDF5 file
   status = H5Fclose (file_id);
 
@@ -1281,6 +1273,19 @@ void nuSQUIDS::Set(MixingParameter p, double val){
       params.Set_delta3(val);
       break;
   }
+}
+
+void nuSQUIDS::Set_MixingParametersToDefault(void){
+  // set parameters as in arXiv:1409.5439 NO
+  // but with delta_CP = 0.0
+  Set(TH12,0.583996);
+  Set(TH13,0.148190);
+  Set(TH23,0.737324);
+
+  Set(DM21SQ,7.5e-05);
+  Set(DM31SQ,0.00257);
+
+  Set(DELTA1,0.0);
 }
 
 /*

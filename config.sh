@@ -268,6 +268,9 @@ clean:
 doxygen:
 	doxygen
 
+test: $(DYN_PRODUCT) $(STAT_PRODUCT)
+	@cd ./test ; ./run_tests
+
 install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
 	@mkdir -p $(PREFIX)/include/nuSQuIDS
