@@ -220,8 +220,8 @@ void nuSQUIDS::EvolveProjectors(double x){
     for(int flv = 0; flv < numneu; flv++){
       for(int ei = 0; ei < ne; ei++){
         // will only evolve the flavor projectors
-        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].SUEvolve(h0,tunit*(x-t_ini));
-        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].SUEvolve(H0_array[ei],tunit*(x-t_ini));
+        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].SUEvolve(h0,(x-t_ini));
+        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].SUEvolve(H0_array[ei],(x-t_ini));
       }
     }
   }
@@ -752,6 +752,8 @@ double nuSQUIDS::EvalMass(int flv){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
+  if( flv >= nsun )
+    throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
 
   return GetExpectationValue(b0_proj[flv], 0, 0);
 }
@@ -765,6 +767,8 @@ double nuSQUIDS::EvalFlavor(int flv){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
+  if( flv >= nsun )
+    throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
 
   return GetExpectationValue(b1_proj[0][flv], 0, 0);
 }
