@@ -156,6 +156,11 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
     ;
 
+  enum_<BASIS>("BASIS")
+    .value("MASS",mass)
+    .value("INTERACTION",interaction)
+    ;
+
   enum_<MixingParameter>("MixingParameter")
     .value("TH12",TH12)
     .value("TH13",TH13)
@@ -236,6 +241,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_TauRegeneration",&nuSQUIDS::Set_TauRegeneration)
     .def("Set_ProgressBar",&nuSQUIDS::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDS::Set_MixingParametersToDefault)
+    .def("Set_Basis",&nuSQUIDS::Set_Basis)
     .def("Set",&nuSQUIDS::Set)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)

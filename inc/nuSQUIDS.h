@@ -10,8 +10,11 @@
 #include <map>
 #include <stdexcept>
 
+#include "H5Tpublic.h"
 #include "hdf5.h"
 #include "hdf5_hl.h"
+#include "H5Gpublic.h"
+#include "H5Fpublic.h"
 
 #define ManualTauReinjection
 #define FixCrossSections
@@ -37,6 +40,8 @@ enum MixingParameter {
 
 enum mode { neutrino, antineutrino, both };
 
+enum BASIS { mass, interaction };
+
 static std::map<int,string> param_label_map {
   {0 , "th12"},
   {1 , "th13"}, {2 , "th23"},
@@ -59,6 +64,7 @@ static std::map<int,vector<int>> param_label_index {
 
 class nuSQUIDS: public SQUIDS {
   protected:
+    BASIS basis = interaction;
     int numneu;
     int ne = nx;
 
@@ -89,6 +95,8 @@ class nuSQUIDS: public SQUIDS {
     vector<vector<SU_vector> > b1_proj;
     vector<vector<vector<SU_vector> > > evol_b0_proj;
     vector<vector<vector<SU_vector> > > evol_b1_proj;
+
+    vector<vector<SU_vector> > potential_array;
 
     void EvolveProjectors(double t);
     void ConvertTauIntoNuTau(void);
@@ -154,8 +162,8 @@ class nuSQUIDS: public SQUIDS {
       init();
      };
 
-     nuSQUIDS(string in_hdf5) { ReadStateHDF5(in_hdf5); };
-     void Init(string in_hdf5) { ReadStateHDF5(in_hdf5); };
+     nuSQUIDS(string in_hdf5, string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
+     void Init(string in_hdf5, string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      // physics functions
      SU_vector H0(double);
 
@@ -206,13 +214,32 @@ class nuSQUIDS: public SQUIDS {
      std::shared_ptr<Track> GetTrack(void);
      std::shared_ptr<Body> GetBody(void);
 
-     void WriteStateHDF5(string);
-     void ReadStateHDF5(string);
+     void WriteStateHDF5(string,string group = "/");
+     void ReadStateHDF5(string,string group = "/");
 
      void Set(MixingParameter,double);
      void Set_MixingParametersToDefault(void);
 
+     void Set_Basis(BASIS);
+
     // virtual ~nuSQUIDS(void);
+};
+
+/**
+ * The following class provides functionalities
+ * for atmospheric neutrino experiments
+ * where a collection of trayectories is explored.
+ */
+
+class nuSQUIDSAtm {
+  protected:
+    std::vector<nuSQUIDS> nusq_array;
+  public:
+    nuSQUIDSAtm(string);
+    ~nuSQUIDSAtm() {};
+
+    double EvalMass(int,double,double,int rho = 0);
+    double EvalFlavor(int,double,double,int rho = 0);
 };
 
 

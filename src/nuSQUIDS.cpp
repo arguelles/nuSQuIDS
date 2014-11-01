@@ -204,7 +204,9 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
 void nuSQUIDS::PreDerive(double x){
   track->SetX(tunit*x);
-  EvolveProjectors(tunit*x);
+  if( basis != mass){
+    EvolveProjectors(tunit*x);
+  }
   if(iinteraction){
     UpdateInteractions();
   }
@@ -249,6 +251,10 @@ SU_vector nuSQUIDS::HI(int ei){
     SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
     potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
     potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
+
+    if (basis == mass){
+      potential += H0_array[ei];
+    }
 
     if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
         // neutrino potential
@@ -716,6 +722,8 @@ double nuSQUIDS::EvalMass(int flv,double EE, int rho){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
+  if ( basis == mass )
+    throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
   return GetExpectationValueD(b0_proj[flv], rho, EE);
 }
 
@@ -724,6 +732,8 @@ double nuSQUIDS::EvalFlavor(int flv,double EE, int rho){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
+  if ( basis == mass )
+    throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
   return GetExpectationValueD(b1_proj[rho][flv], rho, EE);
 }
 
@@ -732,6 +742,8 @@ double nuSQUIDS::EvalMassAtNode(int flv, int ei, int rho){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
+  if(basis == mass)
+    return b0_proj[flv]*state[ei].rho[rho];
   return GetExpectationValue(b0_proj[flv], rho, ei);
 }
 
@@ -740,6 +752,8 @@ double nuSQUIDS::EvalFlavorAtNode(int flv, int ei, int rho){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
+  if(basis == mass)
+    return b1_proj[rho][flv]*state[ei].rho[rho];
   return GetExpectationValue(b1_proj[rho][flv], rho, ei);
 }
 
@@ -755,6 +769,8 @@ double nuSQUIDS::EvalMass(int flv){
   if( flv >= nsun )
     throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
 
+  if(basis == mass)
+    return b0_proj[flv]*state[0].rho[0];
   return GetExpectationValue(b0_proj[flv], 0, 0);
 }
 
@@ -770,6 +786,8 @@ double nuSQUIDS::EvalFlavor(int flv){
   if( flv >= nsun )
     throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
 
+  if(basis == mass)
+    return b1_proj[0][flv]*state[0].rho[0];
   return GetExpectationValue(b1_proj[0][flv], 0, 0);
 }
 
@@ -863,44 +881,50 @@ SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int r
   return H0(E)+HI(track->GetX(),E);
 }
 
-void nuSQUIDS::WriteStateHDF5(string str){
+void nuSQUIDS::WriteStateHDF5(string str,string grp){
 
-  hid_t file_id;
-  hid_t   dset_id;
+  hid_t file_id,group_id,root_id;
+  hid_t dset_id;
   herr_t  status;
   // create HDF5 file
+  //std::cout << "writing to hdf5 file" << std::endl;
   file_id = H5Fcreate (str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+  if ( grp != "/" )
+    group_id = H5Gcreate(root_id, grp.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  else
+    group_id = root_id;
 
   // write the energy range
   hsize_t Edims[1]={E_range.size()};
-  dset_id = H5LTmake_dataset(file_id,"/energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.data());
-  H5LTset_attribute_string(file_id, "/energies", "elogscale", (elogscale) ? "True":"False");
+  dset_id = H5LTmake_dataset(group_id,"energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.data());
+  H5LTset_attribute_string(group_id, "energies", "elogscale", (elogscale) ? "True":"False");
 
   // write mixing parameters
   hsize_t dim[1]{1};
-  H5LTmake_dataset(file_id,"/basic",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(file_id,"/mixingangles",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(file_id,"/CPphases",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(file_id,"/massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
+  H5LTmake_dataset(group_id,"basic",1,dim,H5T_NATIVE_DOUBLE,0);
+  H5LTmake_dataset(group_id,"mixingangles",1,dim,H5T_NATIVE_DOUBLE,0);
+  H5LTmake_dataset(group_id,"CPphases",1,dim,H5T_NATIVE_DOUBLE,0);
+  H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
 
-  H5LTset_attribute_int(file_id, "/basic","numneu",&numneu, 1);
-  H5LTset_attribute_string(file_id, "/basic","NT",NT.c_str());
-  H5LTset_attribute_string(file_id, "/basic", "interactions", (iinteraction) ? "True":"False");
+  H5LTset_attribute_int(group_id, "basic","numneu",&numneu, 1);
+  H5LTset_attribute_string(group_id, "basic","NT",NT.c_str());
+  H5LTset_attribute_string(group_id, "basic", "interactions", (iinteraction) ? "True":"False");
 
   for ( int i = 0; i < 15; i++){
     string label = param_label_map[i];
     double value = gsl_matrix_get(params.th, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(file_id, "/mixingangles",label.c_str(),&value, 1);
+    H5LTset_attribute_double(group_id, "mixingangles",label.c_str(),&value, 1);
   }
   for ( int i = 15; i < 18; i++){
     string label = param_label_map[i];
     double value = gsl_matrix_get(params.dcp, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(file_id, "/CPphases",label.c_str(),&value, 1);
+    H5LTset_attribute_double(group_id, "CPphases",label.c_str(),&value, 1);
   }
   for ( int i = 18; i < 23; i++){
     string label = param_label_map[i];
     double value = gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(file_id, "/massdifferences",label.c_str(),&value, 1);
+    H5LTset_attribute_double(group_id, "massdifferences",label.c_str(),&value, 1);
   }
   //writing state
   const int numneusq = numneu*numneu;
@@ -924,8 +948,8 @@ void nuSQUIDS::WriteStateHDF5(string str){
       }
     }
 
-  dset_id = H5LTmake_dataset(file_id,"/neustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)neustate.data());
-  dset_id = H5LTmake_dataset(file_id,"/aneustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)aneustate.data());
+  dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)neustate.data());
+  dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)aneustate.data());
 
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
@@ -957,51 +981,59 @@ void nuSQUIDS::WriteStateHDF5(string str){
         }
     }
   }
-  dset_id = H5LTmake_dataset(file_id,"/flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)flavor.data());
-  dset_id = H5LTmake_dataset(file_id,"/masscomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)mass.data());
+  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)flavor.data());
+  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)mass.data());
 
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};
   if ( trackparamdim[0] == 0 ) {
-    H5LTmake_dataset(file_id,"/track",1,dim,H5T_NATIVE_DOUBLE,0);
+    H5LTmake_dataset(group_id,"track",1,dim,H5T_NATIVE_DOUBLE,0);
   } else {
-    H5LTmake_dataset(file_id,"/track",1,trackparamdim,H5T_NATIVE_DOUBLE,track->GetTrackParams().data());
+    H5LTmake_dataset(group_id,"track",1,trackparamdim,H5T_NATIVE_DOUBLE,track->GetTrackParams().data());
   }
 
   double xi = track->GetInitialX();
-  H5LTset_attribute_double(file_id, "/track","XINI",&xi, 1);
+  H5LTset_attribute_double(group_id, "track","XINI",&xi, 1);
   double xf = track->GetFinalX();
-  H5LTset_attribute_double(file_id, "/track","XEND",&xf, 1);
+  H5LTset_attribute_double(group_id, "track","XEND",&xf, 1);
   double xx = track->GetX();
-  H5LTset_attribute_double(file_id, "/track","X",&xx, 1);
+  H5LTset_attribute_double(group_id, "track","X",&xx, 1);
 
   hsize_t bodyparamdim[1] {body->GetBodyParams().size()};
   if ( bodyparamdim[0] == 0 ){
-    H5LTmake_dataset(file_id,"/body",1,dim,H5T_NATIVE_DOUBLE,0);
+    H5LTmake_dataset(group_id,"body",1,dim,H5T_NATIVE_DOUBLE,0);
   } else {
-    H5LTmake_dataset(file_id,"/body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
+    H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
   }
-  H5LTset_attribute_string(file_id, "/body", "NAME", body->name.c_str());
+  H5LTset_attribute_string(group_id, "body", "NAME", body->name.c_str());
   int bid = body->id;
-  H5LTset_attribute_int(file_id, "/body", "ID", &bid,1);
+  H5LTset_attribute_int(group_id, "body", "ID", &bid,1);
   // close HDF5 file
-  status = H5Fclose (file_id);
+  H5Gclose ( root_id );
+  if ( root_id != group_id )
+    H5Gclose ( group_id );
+  H5Fclose (file_id);
 
 }
 
-void nuSQUIDS::ReadStateHDF5(string str){
-  hid_t file_id, status;
+void nuSQUIDS::ReadStateHDF5(string str,string grp){
+  hid_t file_id,group_id,root_id,status;
   // open HDF5 file
+  //std::cout << "reading from hdf5 file" << std::endl;
   file_id = H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
+  group_id = H5Gopen(root_id, grp.c_str(), H5P_DEFAULT);
+  if ( group_id < 0 )
+      throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");
 
   // read number of neutrinos
-  H5LTget_attribute_int(file_id, "/basic", "numneu", &numneu);
+  H5LTget_attribute_int(group_id, "basic", "numneu", &numneu);
   // neutrino/antineutrino/both
   char auxchar[20];
-  H5LTget_attribute_string(file_id, "/basic", "NT", auxchar);
+  H5LTget_attribute_string(group_id, "basic", "NT", auxchar);
   NT = (string) auxchar;
   // interactions
-  H5LTget_attribute_string(file_id,"/basic","interactions", auxchar);
+  H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
   string aux = (string) auxchar;
   if ( aux == "True")
     iinteraction = true;
@@ -1011,34 +1043,34 @@ void nuSQUIDS::ReadStateHDF5(string str){
   // read and set mixing parameters
   for ( int i = 0 ; i < 15; i++){
     double value;
-    H5LTget_attribute_double(file_id,"/mixingangles", param_label_map[i].c_str(), &value);
+    H5LTget_attribute_double(group_id,"mixingangles", param_label_map[i].c_str(), &value);
     //Set(param_label_map[i], value);
     Set(static_cast<MixingParameter>(i), value);
   }
   for ( int i = 15 ; i < 18; i++){
     double value;
-    H5LTget_attribute_double(file_id,"/CPphases", param_label_map[i].c_str(), &value);
+    H5LTget_attribute_double(group_id,"CPphases", param_label_map[i].c_str(), &value);
     //Set(param_label_map[i], value);
     Set(static_cast<MixingParameter>(i), value);
   }
   for ( int i = 18 ; i < 23; i++){
     double value;
-    H5LTget_attribute_double(file_id,"/massdifferences", param_label_map[i].c_str(), &value);
+    H5LTget_attribute_double(group_id,"massdifferences", param_label_map[i].c_str(), &value);
     //Set(param_label_map[i], value);
     Set(static_cast<MixingParameter>(i), value);
   }
 
   // reading energy
   hsize_t dims[2];
-  H5LTget_dataset_info(file_id, "/energies", dims, NULL, NULL);
+  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
 
   double data[dims[0]];
   ne = dims[0];
-  H5LTread_dataset_double(file_id, "/energies", data);
+  H5LTread_dataset_double(group_id, "energies", data);
   //for (int i = 0; i < dims[0]; i ++ )
   //  std::cout << data[i] << std::endl;
 
-  H5LTget_attribute_string(file_id,"/energies","elogscale", auxchar);
+  H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
   aux = (string) auxchar;
   if ( aux == "True")
     elogscale = true;
@@ -1056,13 +1088,13 @@ void nuSQUIDS::ReadStateHDF5(string str){
   }
 
   // reading state
-  H5LTget_dataset_info(file_id,"/neustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
   double neudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(file_id,"/neustate", neudata);
+  H5LTread_dataset_double(group_id,"neustate", neudata);
 
-  H5LTget_dataset_info(file_id,"/aneustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
   double aneudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(file_id,"/aneustate", aneudata);
+  H5LTread_dataset_double(group_id,"aneustate", aneudata);
 
   for(int ie = 0; ie < dims[0]; ie++){
     for (int j = 0; j < dims[1]; j ++){
@@ -1080,18 +1112,18 @@ void nuSQUIDS::ReadStateHDF5(string str){
   // reading body and track
   int id;
   hsize_t dimbody[2];
-  H5LTget_attribute_int(file_id,"/body","ID",&id);
+  H5LTget_attribute_int(group_id,"body","ID",&id);
 
-  H5LTget_dataset_info(file_id,"/body", dimbody,NULL,NULL);
+  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
   double body_params[dimbody[0]];
-  H5LTread_dataset_double(file_id,"/body", body_params);
+  H5LTread_dataset_double(group_id,"body", body_params);
 
   hsize_t dimtrack[2];
-  H5LTget_dataset_info(file_id,"/track", dimtrack ,NULL,NULL);
+  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
   double track_params[dimtrack[0]];
-  H5LTread_dataset_double(file_id,"/track", track_params);
+  H5LTread_dataset_double(group_id,"track", track_params);
   double x_current;
-  H5LTget_attribute_double(file_id,"/track","X",&x_current);
+  H5LTget_attribute_double(group_id,"track","X",&x_current);
 
 
   // setting body and track
@@ -1104,6 +1136,8 @@ void nuSQUIDS::ReadStateHDF5(string str){
   t_ini = track->GetInitialX();
 
   // close HDF5 file
+  H5Gclose ( group_id );
+  H5Gclose ( root_id );
   status = H5Fclose (file_id);
 }
 
@@ -1299,5 +1333,13 @@ nuSQUIDS::~nuSQUIDS(void){
   }
 }
 */
+
+void nuSQUIDS::Set_Basis(BASIS b){
+  basis = b;
+}
+
+nuSQUIDSAtm::nuSQUIDSAtm(string fileroot){
+
+}
 
 } // close namespace

@@ -35,7 +35,7 @@ void exercise_se_mode(unsigned int numneu,string NT, std::shared_ptr<Body> body,
   }
 
   // energies
-  std::vector<double> test_energies {1.0e-6,1.0e-5,1.0e-4,1.0e-3,1.0e-2,1.0e-1,1.0e0,1.0e1,1.0e2,1.0e3,1.0e4,1.0e5,1.0e6};
+  std::vector<double> test_energies {1.0e-3,1.0e-2,1.0e-1,1.0e0,1.0e1,1.0e2,1.0e3,1.0e4,1.0e5,1.0e6};
 
   std::cout << std::setprecision(3);
   std::cout << std::scientific;
