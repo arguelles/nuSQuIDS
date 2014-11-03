@@ -207,6 +207,8 @@ class nuSQUIDS: public SQUIDS {
      int GetNumNeu(void);
      SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, int rho = 0);
      SU_vector GetState(int,int rho = 0);
+     SU_vector GetFlavorProj(int,int rho = 0);
+     SU_vector GetMassProj(int,int rho = 0);
 
      void WriteState(string);
      void ReadState(string);
@@ -232,14 +234,37 @@ class nuSQUIDS: public SQUIDS {
  */
 
 class nuSQUIDSAtm {
+  private:
+    double LinInter(double,double,double,double,double) const;
   protected:
+    bool iinistate;
+    bool inusquidsatm;
+    std::vector<double> costh_array;
+    std::vector<double> enu_array;
+    std::vector<double> log_enu_array;
     std::vector<nuSQUIDS> nusq_array;
-  public:
-    nuSQUIDSAtm(string);
-    ~nuSQUIDSAtm() {};
 
-    double EvalMass(int,double,double,int rho = 0);
+    std::shared_ptr<EarthAtm> earth_atm;
+    std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
+  public:
+    nuSQUIDSAtm(double,double,int,double,double,int,
+                int numneu,string NT = "both",
+                bool elogscale = true, bool iinteraction = false);
+    nuSQUIDSAtm(string str) {ReadStateHDF5(str);};
+    ~nuSQUIDSAtm();
+
+    void Set_initial_state(array3D, string basis = "flavor");
+    void Set_initial_state(array4D, string basis = "flavor");
+
+    void EvolveState(void);
+    void Set_TauRegeneration(bool);
+
     double EvalFlavor(int,double,double,int rho = 0);
+
+    void WriteStateHDF5(string);
+    void ReadStateHDF5(string);
+    void Set_MixingParametersToDefault(void);
+    void Set(MixingParameter,double);
 };
 
 

@@ -875,6 +875,14 @@ SU_vector nuSQUIDS::GetState(int ie, int rho){
   return state[ie].rho[rho];
 }
 
+SU_vector nuSQUIDS::GetFlavorProj(int flv,int rho){
+  return b1_proj[rho][flv];
+}
+
+SU_vector nuSQUIDS::GetMassProj(int flv,int rho){
+  return b0_proj[flv];
+}
+
 SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int rho){
   index_rho = rho;
   EvolveProjectors(track->GetX());
@@ -1138,7 +1146,7 @@ void nuSQUIDS::ReadStateHDF5(string str,string grp){
   // close HDF5 file
   H5Gclose ( group_id );
   H5Gclose ( root_id );
-  status = H5Fclose (file_id);
+  H5Fclose (file_id);
 }
 
 
@@ -1338,8 +1346,207 @@ void nuSQUIDS::Set_Basis(BASIS b){
   basis = b;
 }
 
-nuSQUIDSAtm::nuSQUIDSAtm(string fileroot){
 
+//==================================================================
+//==================================================================
+//==================================================================
+
+nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,int costh_div,
+                         double energy_min,double energy_max,int energy_div,
+                         int numneu,string NT,
+                         bool elogscale,bool iinteraction){
+
+  nusq_array = std::vector<nuSQUIDS>(costh_div);
+  costh_array = linspace(costh_min,costh_max,costh_div-1);
+  if(elogscale){
+    enu_array = logspace(energy_min,energy_max,energy_div-1);
+  }
+  else{
+    enu_array = linspace(energy_min,energy_max,energy_div-1);
+  }
+  std::transform(enu_array.begin(),enu_array.end(),std::back_inserter(log_enu_array),[](int enu){ return log(enu);});
+
+  earth_atm = std::make_shared<EarthAtm>();
+  for(double costh : costh_array)
+    track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
+
+  int i = 0;
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Init(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction);
+    nsq.Set_Body(earth_atm);
+    nsq.Set_Track(track_array[i]);
+    i++;
+  }
+
+  inusquidsatm = true;
+}
+
+void nuSQUIDSAtm::EvolveState(void){
+  if(not iinistate)
+    throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+  if(not inusquidsatm)
+    throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.EvolveState();
+  }
+}
+
+void nuSQUIDSAtm::Set_initial_state(array3D ini_flux, string basis){
+  if(ini_flux.size() != costh_array.size())
+    throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+  int i = 0;
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_initial_state(ini_flux[i],basis);
+    i++;
+  }
+  iinistate = true;
+}
+
+void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, string basis){
+  if(ini_flux.size() != costh_array.size())
+    throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+  int i = 0;
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_initial_state(ini_flux[i],basis);
+    i++;
+  }
+  iinistate = true;
+}
+
+void nuSQUIDSAtm::WriteStateHDF5(string filename){
+  if(not iinistate)
+    throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+  if(not inusquidsatm)
+    throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+
+  hid_t file_id,group_id,root_id;
+  hid_t dset_id;
+  // create HDF5 file
+  file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+
+  // write the zenith range
+  hsize_t costhdims[1]={costh_array.size()};
+  dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.data());
+  hsize_t energydims[1]={enu_array.size()};
+  dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.data());
+
+  H5Gclose (root_id);
+  H5Fclose (file_id);
+
+  int i = 0;
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]));
+    i++;
+  }
+}
+
+
+void nuSQUIDSAtm::Set_MixingParametersToDefault(void){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_MixingParametersToDefault();
+  }
+}
+
+void nuSQUIDSAtm::Set(MixingParameter p,double v){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set(p,v);
+  }
+}
+
+void nuSQUIDSAtm::Set_TauRegeneration(bool v){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_TauRegeneration(v);
+  }
+}
+
+void nuSQUIDSAtm::ReadStateHDF5(string filename){
+
+  hid_t file_id,group_id,root_id;
+  hid_t dset_id;
+  // create HDF5 file
+  file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+
+  // read the zenith range dimension
+  hsize_t costhdims[1];
+  H5LTget_dataset_info(group_id, "zenith_angles", costhdims, NULL, NULL);
+
+  double data[costhdims[0]];
+  H5LTread_dataset_double(group_id, "zenith_angles", data);
+  costh_array.clear();
+  costh_array.resize(costhdims[0]);
+  for (int i = 0; i < costhdims[0]; i ++)
+    costh_array[i] = data[i];
+
+  hsize_t energydims[1];
+  H5LTget_dataset_info(group_id, "energy_range", energydims, NULL, NULL);
+
+  double enu_data[energydims[0]];
+  H5LTread_dataset_double(group_id, "energy_range", enu_data);
+  enu_array.clear();
+  enu_array.resize(energydims[0]);
+  for (int i = 0; i < energydims[0]; i ++)
+    enu_array[i] = enu_data[i];
+
+  H5Gclose(root_id);
+  H5Fclose(file_id);
+
+  // resize apropiately the nuSQUIDSAtm container vector
+  nusq_array.clear();
+  nusq_array = std::vector<nuSQUIDS>(costhdims[0]);
+
+  int i = 0;
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.ReadStateHDF5(filename,"costh_"+std::to_string(costh_array[i]));
+    i++;
+  }
+
+  iinistate = true;
+  inusquidsatm = true;
+}
+
+double nuSQUIDSAtm::LinInter(double x,double xM, double xP, double yM, double yP) const {
+  return yM + (yP-yM)*(x-xM)/(xP-xM);
+}
+
+double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
+  if(not iinistate)
+    throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+  if(not inusquidsatm)
+    throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+  std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
+  // get the evolution generator
+  SU_vector H0_at_enu = nusq_array[0].H0(enu);
+  // get the evolved projector for the right distance and energy
+  SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).SUEvolve(H0_at_enu,track->GetFinalX());
+
+  int cth_M = -1;
+  for(int i = 0; i < costh_array.size(); i++){
+    if ( costh > costh_array[i] and costh < costh_array[i+1] ) {
+      cth_M = i;
+      break;
+    }
+  }
+
+  int loge_M = -1;
+  double logE = log(enu);
+  for(int i = 0; i < log_enu_array.size(); i++){
+    if ( enu > log_enu_array[i] and enu < log_enu_array[i+1] ) {
+      cth_M = i;
+      break;
+    }
+  }
+
+  double phiMM,phiMP,phiPM,phiPP;
+  phiMM = nusq_array[cth_M].GetState(loge_M,rho)*evol_proj;
+  phiMP = nusq_array[cth_M].GetState(loge_M+1,rho)*evol_proj;
+  phiPM = nusq_array[cth_M+1].GetState(loge_M,rho)*evol_proj;
+  phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho)*evol_proj;
+
+  return LinInter((double)costh,(double)costh_array[cth_M],(double)costh_array[cth_M+1],
+        (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiMM,(double)phiMP),
+        (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiPM,(double)phiPP));
 }
 
 } // close namespace
