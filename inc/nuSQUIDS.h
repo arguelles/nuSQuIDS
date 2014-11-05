@@ -235,6 +235,7 @@ class nuSQUIDS: public SQUIDS {
 
 class nuSQUIDSAtm {
   private:
+    bool progressbar = false;
     double LinInter(double,double,double,double,double) const;
   protected:
     bool iinistate;
@@ -251,7 +252,7 @@ class nuSQUIDSAtm {
                 int numneu,string NT = "both",
                 bool elogscale = true, bool iinteraction = false);
     nuSQUIDSAtm(string str) {ReadStateHDF5(str);};
-    ~nuSQUIDSAtm();
+    //~nuSQUIDSAtm();
 
     void Set_initial_state(array3D, string basis = "flavor");
     void Set_initial_state(array4D, string basis = "flavor");
@@ -265,6 +266,14 @@ class nuSQUIDSAtm {
     void ReadStateHDF5(string);
     void Set_MixingParametersToDefault(void);
     void Set(MixingParameter,double);
+    void Set_abs_error(double);
+    void Set_rel_error(double);
+    const Const units;
+
+    void Set_ProgressBar(bool);
+
+    size_t GetNumE(void);
+    size_t GetNumCos(void);
 };
 
 

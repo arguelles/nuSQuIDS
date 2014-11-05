@@ -1386,8 +1386,16 @@ void nuSQUIDSAtm::EvolveState(void){
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
   if(not inusquidsatm)
     throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+  int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
+    if(progressbar){
+      std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
+      i++;
+    }
     nsq.EvolveState();
+    if(progressbar){
+      std::cout << std::endl;
+    }
   }
 }
 
@@ -1547,6 +1555,32 @@ double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
   return LinInter((double)costh,(double)costh_array[cth_M],(double)costh_array[cth_M+1],
         (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiMM,(double)phiMP),
         (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiPM,(double)phiPP));
+}
+
+void nuSQUIDSAtm::Set_rel_error(double er){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_rel_error(er);
+  }
+}
+
+void nuSQUIDSAtm::Set_abs_error(double er){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_abs_error(er);
+  }
+}
+
+size_t nuSQUIDSAtm::GetNumE(void){
+  return enu_array.size();
+}
+size_t nuSQUIDSAtm::GetNumCos(void){
+  return costh_array.size();
+}
+
+void nuSQUIDSAtm::Set_ProgressBar(bool v){
+    progressbar = v;
+    for(nuSQUIDS& nsq : nusq_array){
+      nsq.Set_ProgressBar(v);
+    }
 }
 
 } // close namespace
