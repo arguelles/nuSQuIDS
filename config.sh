@@ -274,11 +274,9 @@ test: $(DYN_PRODUCT) $(STAT_PRODUCT)
 install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
 	@mkdir -p $(PREFIX)/include/nuSQuIDS
-	@cp $(INCDIR)/*.h $(PREFIX)/include/nuSQuIDS
-	@mkdir -p $(PREFIX)/include/nuSQuIDS/detail
-	@cp $(INCDIR)/detail/*.h $(PREFIX)/include/nuSQuIDS/detail
+	@cp $(INCnuSQUIDS)/*.h $(PREFIX)/include/nuSQuIDS
 	@echo Installing libraries in $(PREFIX)/lib
-	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) $(PREFIX)/lib
+  @cp $(LIBnuSQUIDS)/$(DYN_PRODUCT) $(LIBnuSQUIDS)/$(STAT_PRODUCT) $(PREFIX)/lib
 	@echo Installing config information in $(PREFIX)/lib/pkgconfig
 	@mkdir -p $(PREFIX)/lib/pkgconfig
 	@cp nusquids.pc $(PREFIX)/lib/pkgconfig
