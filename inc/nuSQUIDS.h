@@ -10,6 +10,8 @@
 #include <map>
 #include <stdexcept>
 
+//#include "H5Exception.h"
+#include "H5Epublic.h"
 #include "H5Tpublic.h"
 #include "hdf5.h"
 #include "hdf5_hl.h"

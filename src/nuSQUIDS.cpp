@@ -891,12 +891,20 @@ SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int r
 
 void nuSQUIDS::WriteStateHDF5(string str,string grp){
 
+  hid_t error_stack;
+  //H5Eset_auto(error_stack, NULL, NULL);
+  H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
   herr_t  status;
   // create HDF5 file
   //std::cout << "writing to hdf5 file" << std::endl;
-  file_id = H5Fcreate (str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  // H5F_ACC_TRUNC : overwrittes file
+  // H5F_ACC_EXCL  : files if file existsi 
+  file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+  if (file_id < 0 ) // file already exists
+    file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
   if ( grp != "/" )
     group_id = H5Gcreate(root_id, grp.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
