@@ -1481,8 +1481,9 @@ void nuSQUIDSAtm::ReadStateHDF5(string filename){
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
   // create HDF5 file
-  file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+  group_id = root_id;
 
   // read the zenith range dimension
   hsize_t costhdims[1];
@@ -1500,10 +1501,12 @@ void nuSQUIDSAtm::ReadStateHDF5(string filename){
 
   double enu_data[energydims[0]];
   H5LTread_dataset_double(group_id, "energy_range", enu_data);
-  enu_array.clear();
-  enu_array.resize(energydims[0]);
-  for (int i = 0; i < energydims[0]; i ++)
+  enu_array.clear();log_enu_array.clear();
+  enu_array.resize(energydims[0]);log_enu_array.resize(energydims[0]);
+  for (int i = 0; i < energydims[0]; i ++){
     enu_array[i] = enu_data[i];
+    log_enu_array[i] = log(enu_data[i]);
+  }
 
   H5Gclose(root_id);
   H5Fclose(file_id);
@@ -1527,13 +1530,20 @@ double nuSQUIDSAtm::LinInter(double x,double xM, double xP, double yM, double yP
 }
 
 double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
+  // here the energy enters in GeV
   if(not iinistate)
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
   if(not inusquidsatm)
     throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+
+  if( costh < costh_array[0] or costh > costh_array.back())
+    throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
+  if( enu < enu_array[0] or enu > enu_array.back() )
+    throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.");
+
   std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
   // get the evolution generator
-  SU_vector H0_at_enu = nusq_array[0].H0(enu);
+  SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV);
   // get the evolved projector for the right distance and energy
   SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).SUEvolve(H0_at_enu,track->GetFinalX());
 
@@ -1548,11 +1558,13 @@ double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
   int loge_M = -1;
   double logE = log(enu);
   for(int i = 0; i < log_enu_array.size(); i++){
-    if ( enu > log_enu_array[i] and enu < log_enu_array[i+1] ) {
-      cth_M = i;
+    if ( logE > log_enu_array[i] and logE < log_enu_array[i+1] ) {
+      loge_M = i;
       break;
     }
   }
+
+  //std::cout << cth_M << " " << loge_M << std::endl;
 
   double phiMM,phiMP,phiPM,phiPP;
   phiMM = nusq_array[cth_M].GetState(loge_M,rho)*evol_proj;

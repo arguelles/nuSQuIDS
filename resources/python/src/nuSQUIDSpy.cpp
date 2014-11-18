@@ -77,6 +77,59 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, st
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
+static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, const np::ndarray & array, std::string neutype){
+  bool isint = false;
+  //if ( array.get_dtype() == np::dtype::get_builtin<int>() | )
+  // int64
+  //  isint = true;
+  if ( array.get_dtype() != np::dtype::get_builtin<double>() )
+    isint = true;
+    //throw std::runtime_error("nuSQUIDS::Input array cannot be converted to double.");
+
+  Py_intptr_t const * strides = array.get_strides();
+
+
+  if ( array.get_nd() == 3 ) {
+    std::vector< std::vector < std::vector<double> > > state(array.shape(0));
+    for (int i = 0; i < array.shape(0); i++){
+      state[i].resize(array.shape(1));
+      for (int j = 0; j < array.shape(1); j++){
+        state[i][j].resize(array.shape(2));
+        for (int k = 0; k < array.shape(2); k++){
+          if (isint) {
+            state[i][j][k] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
+          } else {
+            state[i][j][k] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
+            //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
+          }
+        }
+      }
+    }
+    nusq_atm->Set_initial_state(state,neutype);
+   } else if ( array.get_nd() == 4 ) {
+    std::vector < std::vector< std::vector < std::vector<double> > > >  state(array.shape(0));
+    for (int i = 0; i < array.shape(0); i++){
+      state[i].resize(array.shape(1));
+      for (int j = 0; j < array.shape(1); j++){
+        state[i][j].resize(array.shape(2));
+        for (int k = 0; k < array.shape(2); k++){
+          state[i][j][k].resize(array.shape(3));
+          for (int l = 0; l < array.shape(3); l++){
+            if (isint) {
+              state[i][j][k][l] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2] + l*strides[3]);
+            } else {
+              state[i][j][k][l] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2] + l*strides[3]);
+              //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
+            }
+          }
+        }
+      }
+    }
+    nusq_atm->Set_initial_state(state,neutype);
+  } else
+    throw std::runtime_error("nuSQUIDSAtm::Error:Input array has wrong dimenions.");
+}
+
 enum GSL_STEP_FUNCTIONS {
   GSL_STEP_RK2,
   GSL_STEP_RK4,
@@ -247,6 +300,24 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
     .def_readonly("units", &nuSQUIDS::units)
+  ;
+
+  class_<nuSQUIDSAtm, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm> >("nuSQUIDSAtm", init<double,double,int,double,double,int,int,std::string,bool,bool>())
+    .def(init<std::string>())
+    .def("EvolveState",&nuSQUIDSAtm::EvolveState)
+    .def("Set_TauRegeneration",&nuSQUIDSAtm::Set_TauRegeneration)
+    .def("EvalFlavor",&nuSQUIDSAtm::EvalFlavor)
+    .def("WriteStateHDF5",&nuSQUIDSAtm::WriteStateHDF5)
+    .def("ReadStateHDF5",&nuSQUIDSAtm::ReadStateHDF5)
+    .def("Set",&nuSQUIDSAtm::Set)
+    .def("Set_ProgressBar",&nuSQUIDSAtm::Set_ProgressBar)
+    .def("Set_MixingParametersToDefault",&nuSQUIDSAtm::Set_MixingParametersToDefault)
+    .def_readonly("units", &nuSQUIDSAtm::units)
+    .def("Set_rel_error",&nuSQUIDSAtm::Set_rel_error)
+    .def("Set_abs_error",&nuSQUIDSAtm::Set_abs_error)
+    .def("GetNumE",&nuSQUIDSAtm::GetNumE)
+    .def("GetNumCos",&nuSQUIDSAtm::GetNumCos)
+    .def("Set_initial_state",wrap_Set_initial_state_atm)
   ;
 
 
