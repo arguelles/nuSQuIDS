@@ -4,7 +4,7 @@
 
 using namespace nusquids;
 
-void exercise_se_mode(unsigned int numneu,string NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
+void exercise_se_mode(unsigned int numneu,std::string NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);
   nus.Set_Body(body);
@@ -117,4 +117,6 @@ int main(){
   exercise_se_mode(4,"neutrino",sun,track_sun);
   exercise_se_mode(4,"antineutrino",sun,track_sun);
   */
+
+  return 0;
 }

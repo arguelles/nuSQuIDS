@@ -18,18 +18,23 @@ void nuSQUIDS::init(void){
   nsun = numneu;
 
   //initialize SQUIDS
-  ini(ne,numneu,1,0);
+  ini(ne,numneu,1,0,0);
   Set_CoherentInteractions(true);
   Set_h_max(std::numeric_limits<double>::max() );
 
+  //===============================
+  // set parameters to default   //
+  //===============================
+
+  Set_MixingParametersToDefault();
 
   //===============================
   // physics CP sign for aneu    //
   //===============================
   if ( NT == "antineutrino" ){
-    Set(DELTA1,params.delta1);
-    Set(DELTA2,params.delta1);
-    Set(DELTA3,params.delta1);
+    Set(DELTA1,params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
+    Set(DELTA2,params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
+    Set(DELTA3,params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
   }
 
 
@@ -59,17 +64,11 @@ void nuSQUIDS::init(void){
 void nuSQUIDS::Set_E(double Enu){
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error:Cannot use Set_E in single energy mode.");
-  E_range = vector<double>{Enu};
+  E_range = std::vector<double>{Enu};
   Set_xrange(E_range[0],E_range[ne-1],"lin");
 
   ienergy = true;
 }
-
-/*
-void nuSQUIDS::Set_E(vector<double> Enu){
-
-}
-*/
 
 void nuSQUIDS::init(double Emin,double Emax,int Esize)
 {
@@ -98,9 +97,9 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
   // initialize SQUIDS
   if (iinteraction)
-    ini(ne,numneu,nrhos,nrhos);
+    ini(ne,numneu,nrhos,nrhos,0);
   else
-    ini(ne,numneu,nrhos,0);
+    ini(ne,numneu,nrhos,0,0);
 
   SetScalarsToZero();
 
@@ -125,6 +124,12 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
     delE[ei] = E_range[ei+1] - E_range[ei];
 
   ienergy = true;
+
+  //===============================
+  // set parameters to default   //
+  //===============================
+
+  Set_MixingParametersToDefault();
 
   //===============================
   // init projectors             //
@@ -519,7 +524,7 @@ void nuSQUIDS::EvolveState(){
   iniH0();
 
   if( not tauregeneration ){
-    EvolveSUN(track->GetInitialX(),track->GetFinalX());
+    EvolveSUN(track->GetFinalX()-track->GetInitialX());
   }
   else {
     int tau_steps = (int) ((track->GetFinalX() - track->GetInitialX())/tau_reg_scale);
@@ -527,10 +532,10 @@ void nuSQUIDS::EvolveState(){
     for (int i = 0; i < tau_steps; i++){
       double x_inter = track->GetInitialX() + (double)(i)*tau_reg_scale;
       std::cout << x_inter/units.km << std::endl;
-      EvolveSUN(x_inter,x_inter + tau_reg_scale);
+      EvolveSUN(tau_reg_scale);
       ConvertTauIntoNuTau();
     }
-    EvolveSUN(tau_reg_scale*tau_steps,track->GetFinalX());
+    EvolveSUN(track->GetFinalX()-tau_reg_scale*tau_steps);
     ConvertTauIntoNuTau();
   }
 }
@@ -575,12 +580,11 @@ void nuSQUIDS::ConvertTauIntoNuTau(void){
 }
 
 void nuSQUIDS::Set_Initial_Time(){
-  t_end = 0.0;
   t_ini = 0.0;
   t = 0.0;
 }
 
-void nuSQUIDS::Set_initial_state(vector<double> v, string basis){
+void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != numneu )
@@ -617,7 +621,7 @@ void nuSQUIDS::Set_initial_state(vector<double> v, string basis){
   istate = true;
 };
 
-void nuSQUIDS::Set_initial_state(array2D v, string basis){
+void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != ne )
@@ -651,7 +655,7 @@ void nuSQUIDS::Set_initial_state(array2D v, string basis){
   istate = true;
 }
 
-void nuSQUIDS::Set_initial_state(array3D v, string basis){
+void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != ne )
@@ -684,7 +688,7 @@ void nuSQUIDS::Set_initial_state(array3D v, string basis){
   istate = true;
 }
 
-void nuSQUIDS::WriteState(string filename){
+void nuSQUIDS::WriteState(std::string filename){
   //assert("nuSQUIDS::Error::State not initialized." && state != NULL);
   //assert("nuSQUIDS::Error::nuSQUIDS not initialized." && inusquids);
   if(state == NULL)
@@ -705,7 +709,7 @@ void nuSQUIDS::WriteState(string filename){
   quickwrite(filename,tbl_state);
 }
 
-void nuSQUIDS::ReadState(string filename){
+void nuSQUIDS::ReadState(std::string filename){
 
 }
 
@@ -791,10 +795,10 @@ double nuSQUIDS::EvalFlavor(int flv){
   return GetExpectationValue(b1_proj[0][flv], 0, 0);
 }
 
-void nuSQUIDS::iniH0(void){
+void nuSQUIDS::iniH0(){
   DM2 = SU_vector(nsun);
   for(int i = 1; i < nsun; i++){
-      DM2 += (b0_proj[i])*gsl_matrix_get(params.dmsq,i,0);
+      DM2 += (b0_proj[i])*params.GetSquaredEnergyDifference(i);
   }
 
   if(ienergy){
@@ -806,9 +810,9 @@ void nuSQUIDS::iniH0(void){
 
 void nuSQUIDS::AntineutrinoCPFix(int rho){
     if(NT == "antineutrino" or (NT == "both" and rho == 1)){
-      Set(DELTA1,-params.delta1);
-      Set(DELTA2,-params.delta2);
-      Set(DELTA3,-params.delta3);
+      Set(DELTA1,-params.GetPhase(0,1));
+      Set(DELTA2,-params.GetPhase(0,2));
+      Set(DELTA3,-params.GetPhase(0,3));
     }
 }
 
@@ -826,7 +830,7 @@ void nuSQUIDS::iniProjectors(){
       b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
 
       AntineutrinoCPFix(rho);
-      b1_proj[rho][flv].RotateToB1(&params);
+      b1_proj[rho][flv].RotateToB1(params);
       AntineutrinoCPFix(rho);
     }
   }
@@ -844,7 +848,7 @@ void nuSQUIDS::iniProjectors(){
         evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
 
         AntineutrinoCPFix(rho);
-        evol_b1_proj[rho][flv][e1].RotateToB1(&params);
+        evol_b1_proj[rho][flv][e1].RotateToB1(params);
         AntineutrinoCPFix(rho);
       }
     }
@@ -859,13 +863,13 @@ void nuSQUIDS::SetIniFlavorProyectors(){
         evol_b1_proj[rho][flv][e1] = b0_proj[flv];
 
         AntineutrinoCPFix(rho);
-        evol_b1_proj[rho][flv][e1].RotateToB1(&params);
+        evol_b1_proj[rho][flv][e1].RotateToB1(params);
         AntineutrinoCPFix(rho);
       }
       b1_proj[rho][flv] = b0_proj[flv];
 
       AntineutrinoCPFix(rho);
-      b1_proj[rho][flv].RotateToB1(&params);
+      b1_proj[rho][flv].RotateToB1(params);
       AntineutrinoCPFix(rho);
     }
   }
@@ -889,7 +893,7 @@ SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int r
   return H0(E)+HI(track->GetX(),E);
 }
 
-void nuSQUIDS::WriteStateHDF5(string str,string grp){
+void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp){
 
   hid_t error_stack;
   //H5Eset_auto(error_stack, NULL, NULL);
@@ -928,24 +932,27 @@ void nuSQUIDS::WriteStateHDF5(string str,string grp){
   H5LTset_attribute_string(group_id, "basic", "interactions", (iinteraction) ? "True":"False");
 
   for ( int i = 0; i < 15; i++){
-    string label = param_label_map[i];
-    double value = gsl_matrix_get(params.th, param_label_index[i][0],param_label_index[i][1]);
+    std::string label = param_label_map[i];
+    double value = params.GetMixingAngle(param_label_index[i][0],param_label_index[i][1]);
+    //gsl_matrix_get(params.th, param_label_index[i][0],param_label_index[i][1]);
     H5LTset_attribute_double(group_id, "mixingangles",label.c_str(),&value, 1);
   }
   for ( int i = 15; i < 18; i++){
-    string label = param_label_map[i];
-    double value = gsl_matrix_get(params.dcp, param_label_index[i][0],param_label_index[i][1]);
+    std::string label = param_label_map[i];
+    double value = params.GetPhase(param_label_index[i][0],param_label_index[i][1]);
+    //gsl_matrix_get(params.dcp, param_label_index[i][0],param_label_index[i][1]);
     H5LTset_attribute_double(group_id, "CPphases",label.c_str(),&value, 1);
   }
   for ( int i = 18; i < 23; i++){
-    string label = param_label_map[i];
-    double value = gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
+    std::string label = param_label_map[i];
+    double value = params.GetSquaredEnergyDifference(param_label_index[i][0]);
+    //gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
     H5LTset_attribute_double(group_id, "massdifferences",label.c_str(),&value, 1);
   }
   //writing state
   const int numneusq = numneu*numneu;
   hsize_t statedim[2] {E_range.size(),(hsize_t)numneu*numneu};
-  vector<double> neustate(numneusq*ne), aneustate(numneusq*ne);
+  std::vector<double> neustate(numneusq*ne), aneustate(numneusq*ne);
 
   for(int ie = 0; ie < ne; ie++){
     for(int i = 0; i < numneu*numneu; i ++){
@@ -971,7 +978,7 @@ void nuSQUIDS::WriteStateHDF5(string str,string grp){
   hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
   if ( NT == "both" )
     pdim[1] *= pdim[1];
-  vector<double> flavor,mass;
+  std::vector<double> flavor,mass;
 
   for(int ie = 0; ie < ne; ie++){
     // neutrino
@@ -1024,6 +1031,10 @@ void nuSQUIDS::WriteStateHDF5(string str,string grp){
   H5LTset_attribute_string(group_id, "body", "NAME", body->name.c_str());
   int bid = body->id;
   H5LTset_attribute_int(group_id, "body", "ID", &bid,1);
+
+  // writing cross section information 
+  //
+  //
   // close HDF5 file
   H5Gclose ( root_id );
   if ( root_id != group_id )
@@ -1032,7 +1043,7 @@ void nuSQUIDS::WriteStateHDF5(string str,string grp){
 
 }
 
-void nuSQUIDS::ReadStateHDF5(string str,string grp){
+void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp){
   hid_t file_id,group_id,root_id,status;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
@@ -1047,10 +1058,10 @@ void nuSQUIDS::ReadStateHDF5(string str,string grp){
   // neutrino/antineutrino/both
   char auxchar[20];
   H5LTget_attribute_string(group_id, "basic", "NT", auxchar);
-  NT = (string) auxchar;
+  NT = auxchar;
   // interactions
   H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
-  string aux = (string) auxchar;
+  std::string aux = auxchar;
   if ( aux == "True")
     iinteraction = true;
   else
@@ -1087,7 +1098,7 @@ void nuSQUIDS::ReadStateHDF5(string str,string grp){
   //  std::cout << data[i] << std::endl;
 
   H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
-  aux = (string) auxchar;
+  aux = auxchar;
   if ( aux == "True")
     elogscale = true;
   else
@@ -1175,7 +1186,7 @@ void nuSQUIDS::SetBodyTrack(int body_id, int body_params_len, double body_params
       case 3:
         {
           const int xn = body_params_len/3;
-          vector<double> xx(xn),rho(xn),ye(xn);
+          std::vector<double> xx(xn),rho(xn),ye(xn);
           for(int i = 0; i < xn; i++){
             xx[i] = body_params[i];
             rho[i] = body_params[xn+i];
@@ -1258,73 +1269,73 @@ std::shared_ptr<Body> nuSQUIDS::GetBody(void){
 void nuSQUIDS::Set(MixingParameter p, double val){
   switch (p) {
     case TH12:
-      params.Set_th12(val);
+      params.SetMixingAngle(0,1,val);
       break;
     case TH13:
-      params.Set_th13(val);
+      params.SetMixingAngle(0,2,val);
       break;
     case TH23:
-      params.Set_th23(val);
+      params.SetMixingAngle(1,2,val);
       break;
     case TH14:
-      params.Set_th14(val);
+      params.SetMixingAngle(0,3,val);
       break;
     case TH24:
-      params.Set_th24(val);
+      params.SetMixingAngle(1,3,val);
       break;
     case TH34:
-      params.Set_th34(val);
+      params.SetMixingAngle(2,3,val);
       break;
     case TH15:
-      params.Set_th15(val);
+      params.SetMixingAngle(0,4,val);
       break;
     case TH25:
-      params.Set_th25(val);
+      params.SetMixingAngle(1,4,val);
       break;
     case TH35:
-      params.Set_th35(val);
+      params.SetMixingAngle(2,4,val);
       break;
     case TH45:
-      params.Set_th45(val);
+      params.SetMixingAngle(3,4,val);
       break;
     case TH16:
-      params.Set_th16(val);
+      params.SetMixingAngle(0,5,val);
       break;
     case TH26:
-      params.Set_th26(val);
+      params.SetMixingAngle(1,5,val);
       break;
     case TH36:
-      params.Set_th36(val);
+      params.SetMixingAngle(2,5,val);
       break;
     case TH46:
-      params.Set_th46(val);
+      params.SetMixingAngle(3,5,val);
       break;
     case TH56:
-      params.Set_th56(val);
+      params.SetMixingAngle(4,5,val);
       break;
     case DM21SQ:
-      params.Set_dm21sq(val);
+      params.SetSquaredEnergyDifference(1,val);
       break;
     case DM31SQ:
-      params.Set_dm31sq(val);
+      params.SetSquaredEnergyDifference(2,val);
       break;
     case DM41SQ:
-      params.Set_dm41sq(val);
+      params.SetSquaredEnergyDifference(3,val);
       break;
     case DM51SQ:
-      params.Set_dm51sq(val);
+      params.SetSquaredEnergyDifference(4,val);
       break;
     case DM61SQ:
-      params.Set_dm61sq(val);
+      params.SetSquaredEnergyDifference(5,val);
       break;
     case DELTA1:
-      params.Set_delta1(val);
+      params.SetPhase(0,2,val);
       break;
     case DELTA2:
-      params.Set_delta2(val);
+      params.SetPhase(0,4,val);
       break;
     case DELTA3:
-      params.Set_delta3(val);
+      params.SetPhase(0,5,val);
       break;
   }
 }
@@ -1361,7 +1372,7 @@ void nuSQUIDS::Set_Basis(BASIS b){
 
 nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,int costh_div,
                          double energy_min,double energy_max,int energy_div,
-                         int numneu,string NT,
+                         int numneu,std::string NT,
                          bool elogscale,bool iinteraction){
 
   nusq_array = std::vector<nuSQUIDS>(costh_div);
@@ -1407,7 +1418,7 @@ void nuSQUIDSAtm::EvolveState(void){
   }
 }
 
-void nuSQUIDSAtm::Set_initial_state(array3D ini_flux, string basis){
+void nuSQUIDSAtm::Set_initial_state(array3D ini_flux, std::string basis){
   if(ini_flux.size() != costh_array.size())
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   int i = 0;
@@ -1418,7 +1429,7 @@ void nuSQUIDSAtm::Set_initial_state(array3D ini_flux, string basis){
   iinistate = true;
 }
 
-void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, string basis){
+void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, std::string basis){
   if(ini_flux.size() != costh_array.size())
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   int i = 0;
@@ -1429,7 +1440,7 @@ void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, string basis){
   iinistate = true;
 }
 
-void nuSQUIDSAtm::WriteStateHDF5(string filename){
+void nuSQUIDSAtm::WriteStateHDF5(std::string filename){
   if(not iinistate)
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
   if(not inusquidsatm)
@@ -1458,7 +1469,7 @@ void nuSQUIDSAtm::WriteStateHDF5(string filename){
 }
 
 
-void nuSQUIDSAtm::Set_MixingParametersToDefault(void){
+void nuSQUIDSAtm::Set_MixingParametersToDefault(){
   for(nuSQUIDS& nsq : nusq_array){
     nsq.Set_MixingParametersToDefault();
   }
@@ -1476,7 +1487,7 @@ void nuSQUIDSAtm::Set_TauRegeneration(bool v){
   }
 }
 
-void nuSQUIDSAtm::ReadStateHDF5(string filename){
+void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
 
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
@@ -1549,7 +1560,7 @@ double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
 
   int cth_M = -1;
   for(int i = 0; i < costh_array.size(); i++){
-    if ( costh > costh_array[i] and costh < costh_array[i+1] ) {
+    if ( costh >= costh_array[i] and costh <= costh_array[i+1] ) {
       cth_M = i;
       break;
     }
@@ -1558,7 +1569,7 @@ double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
   int loge_M = -1;
   double logE = log(enu);
   for(int i = 0; i < log_enu_array.size(); i++){
-    if ( logE > log_enu_array[i] and logE < log_enu_array[i+1] ) {
+    if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
       loge_M = i;
       break;
     }
@@ -1601,6 +1612,14 @@ void nuSQUIDSAtm::Set_ProgressBar(bool v){
     for(nuSQUIDS& nsq : nusq_array){
       nsq.Set_ProgressBar(v);
     }
+}
+
+array1D nuSQUIDSAtm::GetERange(void){
+  return enu_array;
+}
+
+array1D nuSQUIDSAtm::GetCosthRange(void){
+  return costh_array;
 }
 
 } // close namespace

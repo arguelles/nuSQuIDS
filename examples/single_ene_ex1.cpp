@@ -304,8 +304,8 @@ int main()
   double size = 1000.0*nus.units.km;
   for(int i = 0; i < 40; i++){
     x_arr[i] = size*(i/40.);
-    density_arr[i] = abs(cos((double)i));
-    ye_arr[i] = abs(sin((double)i));
+    density_arr[i] = fabs(cos((double)i));
+    ye_arr[i] = fabs(sin((double)i));
   }
 
   std::shared_ptr<VariableDensity> vardens = std::make_shared<VariableDensity>(x_arr,density_arr,ye_arr);

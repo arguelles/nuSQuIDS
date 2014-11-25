@@ -34,7 +34,7 @@ using namespace nusquids;
 
 int main()
 {
-  nuSQUIDSAtm nus_atm(-1.,-0.1,10,1.e2,1.e5,100,3,"both",true,true);
+  nuSQUIDSAtm nus_atm(-1.,-0.1,10,1.e2,5.e5,150,3,"both",true,true);
 
   // set mixing angles and masses
   nus_atm.Set(TH12,0.563942);

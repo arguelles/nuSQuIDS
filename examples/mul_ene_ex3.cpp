@@ -75,7 +75,7 @@ int main()
 
   // construct the initial state
 
-  vector<double> E_range = nus.GetERange();
+  std::vector<double> E_range = nus.GetERange();
 
   array3D inistate(300);
   double N0 = 1.0e18;

@@ -25,10 +25,10 @@
 
 namespace nusquids{
 
-typedef vector<double> array1D;
-typedef vector<vector<double> > array2D;
-typedef vector<vector<vector<double> > > array3D;
-typedef vector<vector<vector<vector<double> > > > array4D;
+typedef std::vector<double> array1D;
+typedef std::vector<std::vector<double> > array2D;
+typedef std::vector<std::vector<std::vector<double> > > array3D;
+typedef std::vector<std::vector<std::vector<std::vector<double> > > > array4D;
 
 enum MixingParameter {
   TH12 = 0,
@@ -44,7 +44,7 @@ enum mode { neutrino, antineutrino, both };
 
 enum BASIS { mass, interaction };
 
-static std::map<int,string> param_label_map {
+static std::map<int,std::string> param_label_map {
   {0 , "th12"},
   {1 , "th13"}, {2 , "th23"},
   {3 , "th14"}, {4 , "th24"}, {5 , "th34"},
@@ -54,13 +54,13 @@ static std::map<int,string> param_label_map {
   {18, "dm21sq"} , {19 , "dm31sq"}, {20,"dm41sq"} ,{ 21 , "dm51sq"} , {22, "dm61sq"}
                                      };
 
-static std::map<int,vector<int>> param_label_index {
-  {0 , {1,2}},
-  {1 , {1,3}}, {2 , {2,3}},
-  {3 , {1,4}}, {4 , {2,4}}, {5 , {3,4}},
-  {6 , {1,5}}, {7 , {2,5}}, {8 , {3,5}}, {9 , {4,5}},
-  {10 , {1,6}},{11 , {2,6}}, {12 , {3,6}}, {13 , {4,6}}, {14 , {5,6}},
-  {15 , {1,0}} , {16, {2,0}} , {17, {3,0}},
+static std::map<int,std::vector<int>> param_label_index {
+  {0 , {0,1}},
+  {1 , {0,2}}, {2 , {1,2}},
+  {3 , {0,3}}, {4 , {1,3}}, {5 , {2,3}},
+  {6 , {0,4}}, {7 , {1,4}}, {8 , {2,4}}, {9 , {3,4}},
+  {10 , {0,5}},{11 , {1,5}}, {12 , {2,5}}, {13 , {3,5}}, {14 , {4,5}},
+  {15 , {0,2}} , {16, {0,3}} , {17, {0,4}},
   {18, {1,0}} , {19 , {2,0}}, {20,{3,0}} ,{ 21 , {4,0}} , {22, {5,0}}
                                                     };
 
@@ -91,14 +91,14 @@ class nuSQUIDS: public SQUIDS {
     std::shared_ptr<Track> track;
 
     SU_vector DM2;
-    vector<SU_vector> H0_array;
+    std::vector<SU_vector> H0_array;
 
-    vector<SU_vector> b0_proj;
-    vector<vector<SU_vector> > b1_proj;
-    vector<vector<vector<SU_vector> > > evol_b0_proj;
-    vector<vector<vector<SU_vector> > > evol_b1_proj;
+    std::vector<SU_vector> b0_proj;
+    std::vector<std::vector<SU_vector> > b1_proj;
+    std::vector<std::vector<std::vector<SU_vector> > > evol_b0_proj;
+    std::vector<std::vector<std::vector<SU_vector> > > evol_b1_proj;
 
-    vector<vector<SU_vector> > potential_array;
+    std::vector<std::vector<SU_vector> > potential_array;
 
     void EvolveProjectors(double t);
     void ConvertTauIntoNuTau(void);
@@ -117,7 +117,7 @@ class nuSQUIDS: public SQUIDS {
     int progressbar_count = 0;
     int progressbar_loop = 100;
     // neutrino type
-    string NT = "both"; // {"neutrino","antineutrino","both"}
+    std::string NT = "both"; // {"neutrino","antineutrino","both"}
 
     void iniProjectors();
     void SetIniFlavorProyectors();
@@ -138,12 +138,12 @@ class nuSQUIDS: public SQUIDS {
      const Const units;
      // initializers
      nuSQUIDS(){};
-     nuSQUIDS(double Emin,double Emax,int Esize,int numneu,string NT = "both",
+     nuSQUIDS(double Emin,double Emax,int Esize,int numneu,std::string NT = "both",
          bool elogscale = true,bool iinteraction = false):
      iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
      {init(Emin,Emax,Esize);};
 
-     void Init(double Emin,double Emax,int Esize,int numneu_,string NT_ = "both",
+     void Init(double Emin,double Emax,int Esize,int numneu_,std::string NT_ = "both",
          bool elogscale_ = true,bool iinteraction_ = false){
        iinteraction = iinteraction_;
        elogscale = elogscale_;
@@ -152,11 +152,11 @@ class nuSQUIDS: public SQUIDS {
        init(Emin,Emax,Esize);
      };
 
-     nuSQUIDS(int numneu, string NT = "neutrino"):
+     nuSQUIDS(int numneu, std::string NT = "neutrino"):
      iinteraction(false),elogscale(false),numneu(numneu),NT(NT)
      {init();};
 
-     void Init(int numneu_, string NT_ = "neutrino"){
+     void Init(int numneu_, std::string NT_ = "neutrino"){
       iinteraction = false;
       elogscale = false;
       numneu = numneu_;
@@ -164,8 +164,8 @@ class nuSQUIDS: public SQUIDS {
       init();
      };
 
-     nuSQUIDS(string in_hdf5, string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
-     void Init(string in_hdf5, string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
+     nuSQUIDS(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
+     void Init(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      // physics functions
      SU_vector H0(double);
 
@@ -182,9 +182,9 @@ class nuSQUIDS: public SQUIDS {
      virtual double InteractionsScalar(int);
      virtual double InteractionsScalar(int ei,double x){return tunit*InteractionsScalar(ei);};
      // interface
-     void Set_initial_state(array1D, string basis = "flavor");
-     void Set_initial_state(array2D, string basis = "flavor");
-     void Set_initial_state(array3D, string basis = "flavor");
+     void Set_initial_state(array1D, std::string basis = "flavor");
+     void Set_initial_state(array2D, std::string basis = "flavor");
+     void Set_initial_state(array3D, std::string basis = "flavor");
 
      void Set_Body(std::shared_ptr<Body>);
      void Set_Track(std::shared_ptr<Track>);
@@ -212,14 +212,14 @@ class nuSQUIDS: public SQUIDS {
      SU_vector GetFlavorProj(int,int rho = 0);
      SU_vector GetMassProj(int,int rho = 0);
 
-     void WriteState(string);
-     void ReadState(string);
+     void WriteState(std::string);
+     void ReadState(std::string);
 
      std::shared_ptr<Track> GetTrack(void);
      std::shared_ptr<Body> GetBody(void);
 
-     void WriteStateHDF5(string,string group = "/");
-     void ReadStateHDF5(string,string group = "/");
+     void WriteStateHDF5(std::string,std::string group = "/");
+     void ReadStateHDF5(std::string,std::string group = "/");
 
      void Set(MixingParameter,double);
      void Set_MixingParametersToDefault(void);
@@ -251,21 +251,20 @@ class nuSQUIDSAtm {
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
   public:
     nuSQUIDSAtm(double,double,int,double,double,int,
-                int numneu,string NT = "both",
+                int numneu,std::string NT = "both",
                 bool elogscale = true, bool iinteraction = false);
-    nuSQUIDSAtm(string str) {ReadStateHDF5(str);};
-    //~nuSQUIDSAtm();
+    nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
 
-    void Set_initial_state(array3D, string basis = "flavor");
-    void Set_initial_state(array4D, string basis = "flavor");
+    void Set_initial_state(array3D, std::string basis = "flavor");
+    void Set_initial_state(array4D, std::string basis = "flavor");
 
     void EvolveState(void);
     void Set_TauRegeneration(bool);
 
     double EvalFlavor(int,double,double,int rho = 0);
 
-    void WriteStateHDF5(string);
-    void ReadStateHDF5(string);
+    void WriteStateHDF5(std::string);
+    void ReadStateHDF5(std::string);
     void Set_MixingParametersToDefault(void);
     void Set(MixingParameter,double);
     void Set_abs_error(double);
@@ -276,6 +275,8 @@ class nuSQUIDSAtm {
 
     size_t GetNumE(void);
     size_t GetNumCos(void);
+    array1D GetERange(void);
+    array1D GetCosthRange(void);
 };
 
 

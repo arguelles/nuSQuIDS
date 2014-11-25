@@ -47,7 +47,7 @@ class nuSQUIDSLV: public nuSQUIDS {
       return (1.0e-27*E_range[ei])*LVP_evol[ei];
     }
 
-    nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,string NT_,
+    nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,std::string NT_,
          bool elogscale_,bool iinteraction_)
     {
        Init(Emin_,Emax_,Esize_,numneu_,NT_,
@@ -61,7 +61,7 @@ class nuSQUIDSLV: public nuSQUIDS {
 
        LVP = SU_vector(M);
        // rotate to mass reprentation
-       LVP.RotateToB1(&params);
+       LVP.RotateToB1(params);
        LVP_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
          LVP_evol[ei] = SU_vector(nsun);
@@ -96,7 +96,7 @@ int main()
   nus.Set_rel_error(1.0e-19);
   nus.Set_abs_error(1.0e-19);
 
-  vector<double> E_range = nus.GetERange();
+  std::vector<double> E_range = nus.GetERange();
 
   // construct the initial state
   array2D inistate(150);

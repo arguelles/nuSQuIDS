@@ -318,6 +318,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetNumE",&nuSQUIDSAtm::GetNumE)
     .def("GetNumCos",&nuSQUIDSAtm::GetNumCos)
     .def("Set_initial_state",wrap_Set_initial_state_atm)
+    .def("GetERange",&nuSQUIDSAtm::GetERange)
+    .def("GetCosthRange",&nuSQUIDSAtm::GetCosthRange)
   ;
 
 

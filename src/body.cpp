@@ -207,7 +207,7 @@ double VariableDensity::ye(std::shared_ptr<GenericTrack> track_input)
 */
 
 // constructor
-Earth::Earth(void):Earth((string) EARTH_MODEL_LOCATION )
+Earth::Earth():Earth((std::string) EARTH_MODEL_LOCATION )
         {
         }
 
@@ -260,7 +260,7 @@ double Earth::ye(std::shared_ptr<Body::Track> track_input)
             }
         }
 
-Earth::Earth(string filepath)
+Earth::Earth(std::string filepath)
         {
           // The Input file should have the radius specified from 0 to 1.
           // where 0 is the center of the Earth and 1 is the surface.
@@ -484,7 +484,7 @@ double SunASnu::ye(std::shared_ptr<Body::Track> track_input)
 */
 
 // constructor
-EarthAtm::EarthAtm(void):EarthAtm((string) EARTH_MODEL_LOCATION )
+EarthAtm::EarthAtm():EarthAtm((std::string) EARTH_MODEL_LOCATION )
         {
         }
 
@@ -498,9 +498,9 @@ EarthAtm::Track::Track(double phi_input)
             cosphi = cos(phi);
 
             if(cosphi<=0.0){
-                L = 2.0*radius_nu*abs(cosphi);
+                L = 2.0*radius_nu*std::abs(cosphi);
             } else {
-                L = atmheight/abs(cosphi);
+                L = atmheight/std::abs(cosphi);
             }
 
             double R = radius_nu;
@@ -588,7 +588,7 @@ double EarthAtm::ye(std::shared_ptr<Body::Track> track_input)
             }
         }
 
-EarthAtm::EarthAtm(string filepath)
+EarthAtm::EarthAtm(std::string filepath)
         {
             name = "EarthAtm";
             id = 7;

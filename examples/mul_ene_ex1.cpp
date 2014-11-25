@@ -63,7 +63,7 @@ int main()
   nus.Set_abs_error(1.0e-9);
 
   // construct the initial state
-  vector<double> E_range = nus.GetERange();
+  std::vector<double> E_range = nus.GetERange();
 
   array2D inistate(E_range.size());
   double N0 = 1.0e18;

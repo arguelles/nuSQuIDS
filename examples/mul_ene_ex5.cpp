@@ -78,7 +78,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
       }
     }
 
-    nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu,string NT,
+    nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu,std::string NT,
          bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction)
     {
        assert(numneu == 3);
@@ -97,7 +97,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
        Set(TH23,0.785398);
 
        // rotate to mass reprentation
-       NSI.RotateToB1(&params);
+       NSI.RotateToB1(params);
        NSI_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
          NSI_evol[ei] = SU_vector(nsun);
@@ -132,7 +132,7 @@ int main()
   nus.Set_rel_error(1.0e-15);
   nus.Set_abs_error(1.0e-15);
 
-  vector<double> E_range = nus.GetERange();
+  std::vector<double> E_range = nus.GetERange();
 
   // construct the initial state
   array2D inistate(200);

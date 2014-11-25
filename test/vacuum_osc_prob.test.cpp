@@ -4,7 +4,7 @@
 
 using namespace nusquids;
 
-void exercise_se_mode(unsigned int numneu,string NT){
+void exercise_se_mode(unsigned int numneu,std::string NT){
   nuSQUIDS nus(numneu,NT);
 
   switch (numneu){

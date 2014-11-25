@@ -156,10 +156,10 @@ if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
 	echo "Checking manually specified SQUIDS..."
 	if [ -d "$SQUIDS_INCDIR" \
          -a -d "$SQUIDS_LIBDIR" \
-         -a -f "$SQUIDS_LIBDIR/libSQUIDS.a" ]; then
+         -a -f "$SQUIDS_LIBDIR/libSQuIDS.a" ]; then
 		SQUIDS_FOUND=1
 		SQUIDS_CFLAGS="-I$SQUIDS_INCDIR"
-		SQUIDS_LDFLAGS="-L$SQUIDS_LIBDIR -lSQUIDS"
+		SQUIDS_LDFLAGS="-L$SQUIDS_LIBDIR -lSQuIDS"
 	else
 		echo "Warning: manually specifed SQUIDS not found; will attempt auto detection"
 	fi
@@ -276,7 +276,7 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@mkdir -p $(PREFIX)/include/nuSQuIDS
 	@cp $(INCnuSQUIDS)/*.h $(PREFIX)/include/nuSQuIDS
 	@echo Installing libraries in $(PREFIX)/lib
-  @cp $(LIBnuSQUIDS)/$(DYN_PRODUCT) $(LIBnuSQUIDS)/$(STAT_PRODUCT) $(PREFIX)/lib
+	@cp $(LIBnuSQUIDS)/$(DYN_PRODUCT) $(LIBnuSQUIDS)/$(STAT_PRODUCT) $(PREFIX)/lib
 	@echo Installing config information in $(PREFIX)/lib/pkgconfig
 	@mkdir -p $(PREFIX)/lib/pkgconfig
 	@cp nusquids.pc $(PREFIX)/lib/pkgconfig

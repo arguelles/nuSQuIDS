@@ -33,13 +33,13 @@ class Body{
                 double GetX(){ return x; };
                 double GetInitialX(){ return xini; };
                 double GetFinalX(){ return xend; };
-                vector<double> GetTrackParams(){ return TrackParams; };
-                vector<double> TrackParams;
+                std::vector<double> GetTrackParams(){ return TrackParams; };
+                std::vector<double> TrackParams;
         };
         virtual double density(std::shared_ptr<Track>);
         virtual double ye(std::shared_ptr<Track>);
-        vector<double> GetBodyParams(){ return BodyParams;};
-        vector<double> BodyParams;
+        const std::vector<double>& GetBodyParams(){ return BodyParams;};
+        std::vector<double> BodyParams;
 };
 
 // type defining
@@ -122,7 +122,7 @@ class Earth: public Body{
         double x_ye_min, x_ye_max;
 
         Earth();
-        Earth(string);
+        Earth(std::string);
 
         double rdensity(double);
 
@@ -226,7 +226,7 @@ class EarthAtm: public Body{
         double x_ye_min, x_ye_max;
 
         EarthAtm();
-        EarthAtm(string);
+        EarthAtm(std::string);
 
         class Track: public Body::Track{
             public :
