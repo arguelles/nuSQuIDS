@@ -213,7 +213,7 @@ class SunASnu: public Body{
 
 class EarthAtm: public Body{
     public:
-        double radius;
+        double radius,atm_height,earth_with_atm_radius;
         double ye_mantle,ye_outercore,ye_innercore;
 
         gsl_spline * inter_density;

@@ -497,17 +497,18 @@ EarthAtm::Track::Track(double phi_input)
             phi = phi_input;
             cosphi = cos(phi);
 
+            /*
             if(cosphi<=0.0){
                 L = 2.0*radius_nu*std::abs(cosphi);
             } else {
                 L = atmheight/std::abs(cosphi);
             }
+            */
 
             double R = radius_nu;
             double r = atmheight;
             double mm = tan(phi);
 
-            /*
             if(cosphi<=0.0){
                 L = sqrt(((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*r*R + 2.0*R*
                     (R + sqrt((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*
@@ -517,7 +518,6 @@ EarthAtm::Track::Track(double phi_input)
                     (R - sqrt((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*
                     r*R + R*R)))/(1.0 + mm*mm));
             }
-            */
 
             x = 0.0;
             xini = 0.0;
@@ -544,47 +544,47 @@ double EarthAtm::density(std::shared_ptr<Body::Track> track_input)
             std::shared_ptr<EarthAtm::Track> track_earthatm = std::static_pointer_cast< EarthAtm::Track >(track_input);
             double xkm = track_earthatm->x/param.km;
 
-            if(track_earthatm->cosphi <= 0.0){
-                double r = sqrt(SQR(radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
 
-                #ifdef EarthAtm_DEBUG
-                cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
-                     << " x : " << xkm << " R : " << radius << endl;
-                #endif
+            #ifdef EarthAtm_DEBUG
+            cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
+                 << " x : " << xkm << " R : " << radius << endl;
+            #endif
 
-                if ( r/radius < x_radius_min ){
-                  return x_rho_min;
-                }
-                else if ( r/radius > x_radius_max ) {
-                  return x_rho_max;
-                }
-                else {
-                  return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
-                }
-            } else {
-                double h = xkm*track_earthatm->cosphi;
+            double rel_r = r/earth_with_atm_radius;
+
+            if ( rel_r < x_radius_min ){
+              return x_rho_min;
+            }
+            else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+              return x_rho_max;
+            }
+            else if ( rel_r > radius/earth_with_atm_radius ) {
+                double h = atm_height*(rel_r - radius/earth_with_atm_radius);
                 double h0 = 25.0;
-                return 1.05*exp(h/h0);
+                return 1.05*exp(-h/h0);
+            } else {
+              return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
             }
         }
+
 double EarthAtm::ye(std::shared_ptr<Body::Track> track_input)
         {
             std::shared_ptr<EarthAtm::Track> track_earthatm = std::static_pointer_cast< EarthAtm::Track >(track_input);
-            if(track_earthatm->cosphi <= 0.0){
-                double xkm = track_earthatm->x/param.km;
-                double r = sqrt(SQR(radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
+            double xkm = track_earthatm->x/param.km;
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
 
-                if ( r/radius < x_radius_min ){
-                  return x_ye_min;
-                }
-                else if ( r/radius > x_radius_max ) {
-                  return x_ye_max;
-                }
-                else {
-                  return gsl_spline_eval(inter_ye,r/radius,inter_ye_accel);
-                }
-            } else {
+            double rel_r = r/earth_with_atm_radius;
+            if ( rel_r < x_radius_min ){
+              return x_ye_min;
+            }
+            else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+              return x_ye_max;
+            }
+            else if ( rel_r > radius/earth_with_atm_radius ){
               return 0.494;
+            }else {
+              return gsl_spline_eval(inter_ye,rel_r,inter_ye_accel);
             }
         }
 
@@ -592,7 +592,9 @@ EarthAtm::EarthAtm(std::string filepath)
         {
             name = "EarthAtm";
             id = 7;
-            radius = 6371.0;
+            radius = 6371.0; // km
+            atm_height = 100; // km
+            earth_with_atm_radius = radius + atm_height;
 
             Table earth_model = quickread(filepath);
             size_t arraysize = earth_model.size();
