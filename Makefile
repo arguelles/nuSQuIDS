@@ -20,7 +20,7 @@ OBJECTS = $(SOURCES:.cpp=.o)
 EXAMPLES_SRC=$(wildcard examples/*.cpp)
 EXAMPLES=$(EXAMPLES_SRC:.cpp=.exe)
 
-CXXFLAGS= -g  -std=c++11
+CXXFLAGS= -std=c++11
 
 # Directories
 

@@ -70,7 +70,7 @@ void nuSQUIDS::Set_E(double Enu){
   ienergy = true;
 }
 
-void nuSQUIDS::init(double Emin,double Emax,int Esize)
+void nuSQUIDS::init(double Emin,double Emax,int Esize, bool initialize_intereractions)
 {
 
   if (NT == "neutrino" || NT == "antineutrino")
@@ -148,7 +148,16 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
 
   iniH0();
 
-  if(iinteraction){
+  //===============================
+  // Tau properties              //
+  //===============================
+
+  taubr_lep = 0.14;
+  tau_lifetime = 2.906e-13*params.sec;
+  tau_mass = 1776.82*params.MeV;
+  tau_reg_scale = 100.0*params.km;
+
+  if(iinteraction and initialize_intereractions){
     //===============================
     // init XS and TDecay objects  //
     //===============================
@@ -157,6 +166,29 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
     ncs.Init(E_range[0],E_range[ne-1],ne-1);
     // initialize tau decay spectra object
     tdc.Init(E_range[0],E_range[ne-1],ne-1);
+    // initialize cross section and interaction arrays
+    InitializeInteractionVectors();
+    //===============================
+    // Fill in arrays              //
+    //===============================
+    InitializeInteractions();
+  }
+
+  if(iinteraction){
+    Set_NonCoherentInteractions(true);
+    Set_ScalarInteractions(true);
+    Set_OtherInteractions(true);
+  }
+
+  //===============================
+  // END                         //
+  //===============================
+
+  inusquids = true;
+}
+
+void nuSQUIDS::InitializeInteractionVectors(){
+
     // initialize cross section and interaction arrays
     dNdE_NC.resize(nrhos); dNdE_CC.resize(nrhos);
     invlen_NC.resize(nrhos); invlen_CC.resize(nrhos); invlen_INT.resize(nrhos);
@@ -180,31 +212,6 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize)
     for(int e1 = 0; e1 < ne; e1++){
       dNdE_tau_all[e1].resize(e1); dNdE_tau_lep[e1].resize(e1);
     }
-  }
-  //===============================
-  // Tau properties              //
-  //===============================
-
-  taubr_lep = 0.14;
-  tau_lifetime = 2.906e-13*params.sec;
-  tau_mass = 1776.82*params.MeV;
-  tau_reg_scale = 100.0*params.km;
-
-  //===============================
-  // Fill in arrays              //
-  //===============================
-  if(iinteraction){
-    InitializeInteractions();
-    Set_NonCoherentInteractions(true);
-    Set_ScalarInteractions(true);
-    Set_OtherInteractions(true);
-  }
-
-  //===============================
-  // END                         //
-  //===============================
-
-  inusquids = true;
 }
 
 void nuSQUIDS::PreDerive(double x){
@@ -688,31 +695,6 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
   istate = true;
 }
 
-void nuSQUIDS::WriteState(std::string filename){
-  //assert("nuSQUIDS::Error::State not initialized." && state != NULL);
-  //assert("nuSQUIDS::Error::nuSQUIDS not initialized." && inusquids);
-  if(state == NULL)
-    throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
-  if(not inusquids)
-    throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
-
-  array2D tbl_state;
-  for(int ie = 0; ie < ne; ie++){
-    for(int rho = 0; rho < nrhos; rho++){
-      array1D row;
-      row.push_back(E_range[ie]/units.GeV);
-      for(int i = 0; i < numneu*numneu; i ++)
-        row.push_back(state[ie].rho[rho][i]);
-      tbl_state.push_back(row);
-    }
-  }
-  quickwrite(filename,tbl_state);
-}
-
-void nuSQUIDS::ReadState(std::string filename){
-
-}
-
 array1D nuSQUIDS::GetERange(void){
   return E_range;
 }
@@ -810,9 +792,9 @@ void nuSQUIDS::iniH0(){
 
 void nuSQUIDS::AntineutrinoCPFix(int rho){
     if(NT == "antineutrino" or (NT == "both" and rho == 1)){
-      Set(DELTA1,-params.GetPhase(0,1));
-      Set(DELTA2,-params.GetPhase(0,2));
-      Set(DELTA3,-params.GetPhase(0,3));
+      Set(DELTA1,-params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
+      Set(DELTA2,-params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
+      Set(DELTA3,-params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
     }
 }
 
@@ -893,7 +875,7 @@ SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int r
   return H0(E)+HI(track->GetX(),E);
 }
 
-void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp){
+void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc){
 
   hid_t error_stack;
   //H5Eset_auto(error_stack, NULL, NULL);
@@ -1033,17 +1015,85 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp){
   H5LTset_attribute_int(group_id, "body", "ID", &bid,1);
 
   // writing cross section information 
-  //
-  //
-  // close HDF5 file
+  hid_t xs_group_id;
+  if ( cross_section_grp_loc == ""){
+    xs_group_id = H5Gcreate(group_id, "crosssections", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  } else {
+    xs_group_id = H5Gcreate(root_id, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  }
+
+  if (iinteraction and save_cross_section) {
+    // sigma_CC and sigma_NC
+    hsize_t XSdim[3] {(hsize_t)nrhos,(hsize_t)numneu,(hsize_t)ne};
+    std::vector<double> xsCC(nrhos*numneu*ne),xsNC(nrhos*numneu*ne);
+    for ( int rho = 0; rho < nrhos; rho ++){
+      for ( int flv = 0; flv < numneu; flv ++){
+          for ( int ie = 0; ie < ne; ie ++){
+            xsCC[rho*(numneu*ne) +  flv*ne + ie] = sigma_CC[rho][flv][ie];
+            xsNC[rho*(numneu*ne) +  flv*ne + ie] = sigma_NC[rho][flv][ie];
+          }
+      }
+    }
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,(void*)xsCC.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,(void*)xsNC.data());
+
+    // dNdE_CC and dNdE_NC
+    hsize_t dXSdim[4] {(hsize_t)nrhos,(hsize_t)numneu,(hsize_t)ne,(hsize_t)ne};
+    std::vector<double> dxsCC(nrhos*numneu*ne*ne),dxsNC(nrhos*numneu*ne*ne);
+
+    for(int rho = 0; rho < nrhos; rho++){
+      for(int flv = 0; flv < numneu; flv++){
+          for(int e1 = 0; e1 < ne; e1++){
+              for(int e2 = 0; e2 < ne; e2++){
+                if (e2 < e1) {
+                  dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_CC[rho][flv][e1][e2];
+                  dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_NC[rho][flv][e1][e2];
+                } else {
+                  dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = 0.0;
+                  dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = 0.0;
+                }
+              }
+          }
+      }
+    }
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,(void*)dxsCC.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,(void*)dxsNC.data());
+
+    // invlen_tau
+    hsize_t iltdim[1] {(hsize_t)ne};
+    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,(void*)invlen_tau.data());
+
+    // dNdE_tau_all,dNdE_tau_lep
+    hsize_t dNdEtaudim[2] {(hsize_t)ne,(hsize_t)ne};
+    std::vector<double> dNdEtauall(ne*ne),dNdEtaulep(ne*ne);
+    for(int e1 = 0; e1 < ne; e1++){
+        for(int e2 = 0; e2 < ne; e2++){
+          if ( e2 < e1 ) {
+            dNdEtauall[e1*ne + e2] = dNdE_tau_all[e1][e2];
+            dNdEtaulep[e1*ne + e2] = dNdE_tau_lep[e1][e2];
+          } else  {
+            dNdEtauall[e1*ne + e2] = 0.0;
+            dNdEtaulep[e1*ne + e2] = 0.0;
+          }
+        }
+    }
+
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtauall",2,dNdEtaudim,H5T_NATIVE_DOUBLE,(void*)dNdEtauall.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtaulep",2,dNdEtaudim,H5T_NATIVE_DOUBLE,(void*)dNdEtaulep.data());
+  }
+
+  // close cross section group
+  H5Gclose(xs_group_id);
+  // close root group
   H5Gclose ( root_id );
   if ( root_id != group_id )
     H5Gclose ( group_id );
+  // close HDF5 file
   H5Fclose (file_id);
 
 }
 
-void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp){
+void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_section_grp_loc){
   hid_t file_id,group_id,root_id,status;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
@@ -1111,7 +1161,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp){
     Set_E(data[0]);
   }
   else {
-    init(data[0]/units.GeV,data[ne-1]/units.GeV,ne);
+    init(data[0]/units.GeV,data[ne-1]/units.GeV,ne,false);
   }
 
   // reading state
@@ -1161,6 +1211,80 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp){
   EvolveProjectors(track->GetX());
   t = track->GetX();
   t_ini = track->GetInitialX();
+
+  if(iinteraction){
+    // if intereactions will be used then reading cross section information
+    hid_t xs_grp;
+    if ( cross_section_grp_loc == "") {
+      xs_grp = H5Gopen(group_id, "crosssections", H5P_DEFAULT);
+    } else {
+      xs_grp = H5Gopen(root_id, cross_section_grp_loc.c_str(), H5P_DEFAULT);
+    }
+
+    // initialize vectors
+    InitializeInteractionVectors();
+
+    // sigma_CC and sigma_NC
+
+    hsize_t XSdim[3];
+    H5LTget_dataset_info(xs_grp,"sigmacc", XSdim,NULL,NULL);
+
+    double xsCC[XSdim[0]*XSdim[1]*XSdim[2]];
+    H5LTread_dataset_double(xs_grp,"sigmacc", xsCC);
+    double xsNC[XSdim[0]*XSdim[1]*XSdim[2]];
+    H5LTread_dataset_double(xs_grp,"sigmanc", xsNC);
+
+    for ( int rho = 0; rho < nrhos; rho ++){
+      for ( int flv = 0; flv < numneu; flv ++){
+          for ( int ie = 0; ie < ne; ie ++){
+            sigma_CC[rho][flv][ie] = xsCC[rho*(numneu*ne) +  flv*ne + ie];
+            sigma_NC[rho][flv][ie] = xsNC[rho*(numneu*ne) +  flv*ne + ie];
+          }
+      }
+    }
+
+    // dNdE_CC and dNdE_NC
+    hsize_t dXSdim[4];
+    H5LTget_dataset_info(xs_grp,"dNdEcc", dXSdim,NULL,NULL);
+
+    double dxsCC[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]];
+    H5LTread_dataset_double(xs_grp,"dNdEcc", dxsCC);
+    double dxsNC[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]];
+    H5LTread_dataset_double(xs_grp,"dNdEnc", dxsNC);
+
+    for(int rho = 0; rho < nrhos; rho++){
+      for(int flv = 0; flv < numneu; flv++){
+          for(int e1 = 0; e1 < ne; e1++){
+              for(int e2 = 0; e2 < e1; e2++){
+                dNdE_CC[rho][flv][e1][e2] = dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
+                dNdE_NC[rho][flv][e1][e2] = dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
+              }
+          }
+      }
+    }
+
+    // invlen_tau
+    hsize_t iltdim[1];
+    H5LTget_dataset_info(xs_grp,"invlentau", iltdim,NULL,NULL);
+    double invlentau[iltdim[0]];
+    H5LTread_dataset_double(xs_grp,"invlentau", invlentau);
+    for(int ie = 0; ie < ne; ie ++)
+      invlen_tau[ie] = invlentau[ie];
+
+    // dNdE_tau_all,dNdE_tau_lep
+    hsize_t dNdEtaudim[2];
+    H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,NULL,NULL);
+
+    double dNdEtauall[dNdEtaudim[0]*dNdEtaudim[1]];
+    double dNdEtaulep[dNdEtaudim[0]*dNdEtaudim[1]];
+
+    for(int e1 = 0; e1 < ne; e1++){
+        for(int e2 = 0; e2 < e1; e2++){
+          dNdE_tau_all[e1][e2] = dNdEtauall[e1*ne + e2];
+          dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
+        }
+    }
+  }
 
   // close HDF5 file
   H5Gclose ( group_id );
@@ -1329,13 +1453,13 @@ void nuSQUIDS::Set(MixingParameter p, double val){
       params.SetSquaredEnergyDifference(5,val);
       break;
     case DELTA1:
-      params.SetPhase(0,2,val);
+      params.SetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1],val);
       break;
     case DELTA2:
-      params.SetPhase(0,4,val);
+      params.SetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1],val);
       break;
     case DELTA3:
-      params.SetPhase(0,5,val);
+      params.SetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1],val);
       break;
   }
 }
@@ -1463,7 +1587,8 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename){
 
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]));
+    // use only the first one to write the cross sections on /crosssections
+    nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
     i++;
   }
 }
@@ -1528,7 +1653,8 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
 
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.ReadStateHDF5(filename,"costh_"+std::to_string(costh_array[i]));
+    // read the cross sections stored in /crosssections
+    nsq.ReadStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),"crosssections");
     i++;
   }
 

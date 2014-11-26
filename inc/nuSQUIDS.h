@@ -125,9 +125,9 @@ class nuSQUIDS: public SQUIDS {
     void AntineutrinoCPFix(int);
     void SetBodyTrack(int,int,double*,int,double*);
 
-     void init(double,double,int);
+     void init(double,double,int,bool initialize_intereractions = true);
      void init();
-
+     void InitializeInteractionVectors(void);
      void InitializeInteractions(void);
      void Set_Initial_Time(void);
      void SetScalarsToZero(void);
@@ -212,14 +212,11 @@ class nuSQUIDS: public SQUIDS {
      SU_vector GetFlavorProj(int,int rho = 0);
      SU_vector GetMassProj(int,int rho = 0);
 
-     void WriteState(std::string);
-     void ReadState(std::string);
-
      std::shared_ptr<Track> GetTrack(void);
      std::shared_ptr<Body> GetBody(void);
 
-     void WriteStateHDF5(std::string,std::string group = "/");
-     void ReadStateHDF5(std::string,std::string group = "/");
+     void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "");
+     void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
 
      void Set(MixingParameter,double);
      void Set_MixingParametersToDefault(void);
