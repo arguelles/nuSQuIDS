@@ -5,6 +5,7 @@
 #include "xsections.h"
 #include "taudecay.h"
 
+#include <algorithm>
 #include <SQuIDS/SQUIDS.h>
 #include <memory>
 #include <map>
