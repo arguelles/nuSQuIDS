@@ -344,9 +344,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("hour",&Const::hour)
     .def_readonly("day",&Const::day)
     .def_readonly("year",&Const::year)
-    .def_readonly("_s",&Const::s)
-    .def_readonly("_c",&Const::c)
-    .def_readonly("_dcp",&Const::dcp)
   ;
 
   {
@@ -422,7 +419,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   {
     scope outer
     = class_<Earth, bases<Body>, std::shared_ptr<Earth> >("Earth")
-    .def(init<string>())
+    .def(init<std::string>())
     ;
 
     class_<Earth::Track, std::shared_ptr<Earth::Track> >("Track")
@@ -474,7 +471,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   {
     scope outer
     = class_<EarthAtm, bases<Body>, std::shared_ptr<EarthAtm> >("EarthAtm")
-    .def(init<string>())
+    .def(init<std::string>())
     ;
 
     class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track")
