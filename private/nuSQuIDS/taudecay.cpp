@@ -1,4 +1,4 @@
-#include "taudecay.h"
+#include "nuSQuIDS/taudecay.h"
 
 #define SQR(x)      ((x)*(x))                        // x^2
 

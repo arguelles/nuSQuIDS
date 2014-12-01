@@ -1,4 +1,4 @@
-#include "xsections.h"
+#include "nuSQuIDS/xsections.h"
 
 namespace nusquids{
 

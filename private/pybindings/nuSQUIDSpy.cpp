@@ -3,8 +3,8 @@
 #include <boost/python/to_python_converter.hpp>
 #include <boost/numpy.hpp>
 #include "container_conversions.h"
-#include "nuSQUIDS.h"
-#include "SQUIDS.h"
+#include "nuSQuIDS/nuSQUIDS.h"
+#include "SQuIDS/SQUIDS.h"
 
 using namespace boost::python;
 using namespace nusquids;

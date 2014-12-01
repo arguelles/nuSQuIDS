@@ -1,4 +1,4 @@
-#include "tools.h"
+#include "nuSQuIDS/tools.h"
 
 namespace nusquids{
 

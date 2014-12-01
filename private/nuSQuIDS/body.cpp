@@ -1,4 +1,4 @@
-#include "body.h"
+#include "nuSQuIDS/body.h"
 
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
