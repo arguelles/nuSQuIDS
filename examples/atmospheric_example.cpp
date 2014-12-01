@@ -34,7 +34,8 @@ using namespace nusquids;
 
 int main()
 {
-  nuSQUIDSAtm nus_atm(-1.,-0.1,10,1.e2,5.e5,150,3,"both",true,true);
+  int numneu = 3;
+  nuSQUIDSAtm nus_atm(-1.,0.2,40,5.e2,1.e6,150,numneu,"both",true,true);
 
   // set mixing angles and masses
   nus_atm.Set(TH12,0.563942);
@@ -46,9 +47,14 @@ int main()
 
   nus_atm.Set(DELTA1,0.0);
 
+  if( numneu > 3){
+    nus_atm.Set(DM41SQ,1.0);
+    nus_atm.Set(TH24,0.26237);
+  }
+
   // setup integration settings
-  nus_atm.Set_rel_error(1.0e-15);
-  nus_atm.Set_abs_error(1.0e-15);
+  nus_atm.Set_rel_error(1.0e-11);
+  nus_atm.Set_abs_error(1.0e-11);
 
   // construct the initial state
   double N0 = 1.0;
@@ -59,7 +65,7 @@ int main()
       inistate[ci][ei].resize(2);
       for ( int rho = 0; rho < 2; rho ++ ){
       inistate[ci][ei][rho].resize(3);
-        for (int flv = 0; flv < 3; flv++){
+        for (int flv = 0; flv < numneu; flv++){
           // initialze muon state
           inistate[ci][ei][rho][flv] = (flv == 1) ? N0 : 0.0;
         }
@@ -74,7 +80,7 @@ int main()
   nus_atm.EvolveState();
   // we can save the current state in HDF5 format
   // for future use.
-  nus_atm.WriteStateHDF5("./atmospheric_example.hdf5");
+  nus_atm.WriteStateHDF5("./atmospheric_example_numneu_"+std::to_string(numneu)+".hdf5");
 
   return 0;
 }
