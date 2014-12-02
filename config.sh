@@ -22,6 +22,8 @@ function find_package(){
 	pkg-config --exists $PKG
 	if [ "$?" -ne 0 ]; then
 		echo "Error: $PKG not installed or not registered with pkg-config" 1>&2
+    lowername=`echo $PKG | tr [A-Z] [a-z]`
+    echo "Please specify location using the --with-"$lowername"-incdir and --with-"$lowername"-libdir flags" 1>&2
 		exit 1
 	fi
 	if [ $# -ge 2 ]; then
