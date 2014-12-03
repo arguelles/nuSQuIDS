@@ -32,3 +32,5 @@
 
 # cosillas
 *.pc
+
+Makefile
