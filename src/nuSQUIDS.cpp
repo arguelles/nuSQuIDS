@@ -877,6 +877,9 @@ SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int r
 
 void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc){
 
+  if (!iinteraction)
+    save_cross_section = iinteraction;
+
   hid_t error_stack;
   //H5Eset_auto(error_stack, NULL, NULL);
   H5Eset_auto (H5E_DEFAULT,NULL, NULL);

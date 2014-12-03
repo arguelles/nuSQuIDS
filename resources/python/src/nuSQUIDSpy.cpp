@@ -24,6 +24,13 @@ struct VecToList
 };
 
 // nuSQUIDS wrap functions
+static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){
+  nusq->WriteStateHDF5(path);
+}
+
+static void wrap_ReadStateHDF5(nuSQUIDS* nusq, std::string path){
+  nusq->ReadStateHDF5(path);
+}
 
 static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, std::string neutype){
   bool isint = false;
@@ -267,7 +274,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvolveState",&nuSQUIDS::EvolveState)
     .def("GetERange",&nuSQUIDS::GetERange)
     .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5)
+    .def("WriteStateHDF5",wrap_WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5)
+    .def("ReadStateHDF5",wrap_ReadStateHDF5)
     .def("H0",&nuSQUIDS::H0)
     .def("HI",(SU_vector(nuSQUIDS::*)(int,double))&nuSQUIDS::HI)
     .def("HI",(SU_vector(nuSQUIDS::*)(int))&nuSQUIDS::HI)
