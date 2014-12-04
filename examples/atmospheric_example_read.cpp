@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include "nuSQUIDS.h"
 
 /*
@@ -43,7 +44,22 @@ int main(int argc,  char** argv)
 
   nuSQUIDSAtm nus_atm(filename);
 
-  std::cout << nus_atm.EvalFlavor(0,-0.9,1000.0,0) << std::endl;
+  double costh = -0.9;
+  int nu_e = 0;
+  int nu_mu = 1;
+  int nu_tau = 2;
+  int neutrino = 0;
+
+  std::ofstream output("outputfile.dat");
+
+  for(double log10E = 3.0; log10E < 6.0; log10E +=  0.1 ){
+    double enu = pow(10.0,log10E);
+    output << enu << " ";
+    output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
+    output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
+    output << nus_atm.EvalFlavor(nu_tau,costh,enu,neutrino) << " ";
+    output << std::endl;
+  }
 
   return 0;
 }

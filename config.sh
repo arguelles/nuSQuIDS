@@ -82,7 +82,8 @@ locations of dependencies:
   --with-gsl-libdir=DIR    use the copy of gsl in DIR
   --with-hdf5-incdir=DIR   use the copy of HDF5 in DIR
   --with-hdf5-libdir=DIR   use the copy of HDF5 in DIR
-  --with-squids-dir=DIR        use the copy of HDF5 in DIR
+  --with-squids-incdir=DIR        use the copy of SQuIDS in DIR
+  --with-squids-libdir=DIR        use the copy of SQuIDS in DIR
 
 Some influential environment variables:
 CC          C compiler command
