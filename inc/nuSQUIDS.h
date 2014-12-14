@@ -77,6 +77,8 @@ class nuSQUIDS: public SQUIDS {
     array1D E_range;
     array1D delE;
 
+    //void Set_Initial_Time();
+
     NeutrinoCrossSections ncs;
     array4D dNdE_CC,dNdE_NC;
     array3D invlen_NC,invlen_CC,invlen_INT;
@@ -102,7 +104,7 @@ class nuSQUIDS: public SQUIDS {
     std::vector<std::vector<SU_vector> > potential_array;
 
     void EvolveProjectors(double t);
-    void ConvertTauIntoNuTau(void);
+    void ConvertTauIntoNuTau();
 
     // bool requirements
     bool inusquids = false;
@@ -123,28 +125,27 @@ class nuSQUIDS: public SQUIDS {
     void iniProjectors();
     void SetIniFlavorProyectors();
     void iniH0();
-    void AntineutrinoCPFix(int);
+    void AntineutrinoCPFix(unsigned int irho);
     void SetBodyTrack(int,int,double*,int,double*);
 
-     void init(double,double,int,bool initialize_intereractions = true);
-     void init();
-     void InitializeInteractionVectors(void);
-     void InitializeInteractions(void);
-     void Set_Initial_Time(void);
-     void SetScalarsToZero(void);
-     void ProgressBar(void);
+     void init(double,double,unsigned int,bool initialize_intereractions = true, double xini = 0.0);
+     void init(double xini = 0.0);
+     void InitializeInteractionVectors();
+     void InitializeInteractions();
+     void SetScalarsToZero();
+     void ProgressBar() const;
   public:
      virtual void PreDerive(double);
      virtual void AddToPreDerive(double){};
      const Const units;
      // initializers
      nuSQUIDS(){};
-     nuSQUIDS(double Emin,double Emax,int Esize,int numneu,std::string NT = "both",
+     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,std::string NT = "both",
          bool elogscale = true,bool iinteraction = false):
      iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
      {init(Emin,Emax,Esize);};
 
-     void Init(double Emin,double Emax,int Esize,int numneu_,std::string NT_ = "both",
+     void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,std::string NT_ = "both",
          bool elogscale_ = true,bool iinteraction_ = false){
        iinteraction = iinteraction_;
        elogscale = elogscale_;
@@ -168,20 +169,20 @@ class nuSQUIDS: public SQUIDS {
      nuSQUIDS(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      void Init(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      // physics functions
-     SU_vector H0(double);
+     SU_vector H0(double E, unsigned int irho) const;
 
-     virtual SU_vector HI(int);
-     virtual SU_vector HI(int ei,double x){return tunit*HI(ei);};
+     virtual SU_vector HI(unsigned int ie, unsigned int irho) const;
+     virtual SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);};
 
-     virtual SU_vector GammaRho(int);
-     virtual SU_vector GammaRho(int ei,double x){return tunit*GammaRho(ei);};
-     virtual double GammaScalar(int);
-     virtual double GammaScalar(int ei,double x){return tunit*GammaScalar(ei);};
+     virtual SU_vector GammaRho(unsigned int ei, unsigned int irho) const;
+     virtual SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);};
+     virtual double GammaScalar(unsigned int ei, unsigned int iscalar) const;
+     virtual double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);};
 
-     virtual SU_vector InteractionsRho(int);
-     virtual SU_vector InteractionsRho(int ei,double x){return tunit*InteractionsRho(ei);};
-     virtual double InteractionsScalar(int);
-     virtual double InteractionsScalar(int ei,double x){return tunit*InteractionsScalar(ei);};
+     virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho) const;
+     virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);};
+     virtual double InteractionsScalar(unsigned int ei, unsigned int irho) const;
+     virtual double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
      // interface
      void Set_initial_state(array1D, std::string basis = "flavor");
      void Set_initial_state(array2D, std::string basis = "flavor");
@@ -192,35 +193,35 @@ class nuSQUIDS: public SQUIDS {
 
      void Set_E(double);
 
-     void EvolveState(void);
+     void EvolveState();
 
-     double EvalMassAtNode(int,int,int rho = 0);
-     double EvalFlavorAtNode(int,int,int rho = 0);
+     double EvalMassAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
+     double EvalFlavorAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
 
-     double EvalMass(int,double,int rho = 0);
-     double EvalFlavor(int,double,int rho = 0);
-     double EvalMass(int);
-     double EvalFlavor(int);
+     double EvalMass(unsigned int,double,unsigned int rho = 0) const;
+     double EvalFlavor(unsigned int,double,unsigned int rho = 0) const;
+     double EvalMass(unsigned int) const;
+     double EvalFlavor(unsigned int) const;
 
      void Set_TauRegeneration(bool);
      void Set_ProgressBar(bool);
 
-     array1D GetERange(void);
-     size_t GetNumE(void);
-     int GetNumNeu(void);
-     SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, int rho = 0);
-     SU_vector GetState(int,int rho = 0);
-     SU_vector GetFlavorProj(int,int rho = 0);
-     SU_vector GetMassProj(int,int rho = 0);
+     array1D GetERange() const;
+     size_t GetNumE() const;
+     int GetNumNeu() const;
+     SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho = 0);
+     SU_vector GetState(unsigned int,unsigned int rho = 0) const;
+     SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
+     SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
 
-     std::shared_ptr<Track> GetTrack(void);
-     std::shared_ptr<Body> GetBody(void);
+     std::shared_ptr<Track> GetTrack() const;
+     std::shared_ptr<Body> GetBody() const;
 
-     void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "");
+     void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
      void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
 
      void Set(MixingParameter,double);
-     void Set_MixingParametersToDefault(void);
+     void Set_MixingParametersToDefault();
 
      void Set_Basis(BASIS);
 
@@ -256,12 +257,12 @@ class nuSQUIDSAtm {
     void Set_initial_state(array3D, std::string basis = "flavor");
     void Set_initial_state(array4D, std::string basis = "flavor");
 
-    void EvolveState(void);
+    void EvolveState();
     void Set_TauRegeneration(bool);
 
-    double EvalFlavor(int,double,double,int rho = 0);
+    double EvalFlavor(unsigned int,double,double,unsigned int rho = 0) const;
 
-    void WriteStateHDF5(std::string);
+    void WriteStateHDF5(std::string) const;
     void ReadStateHDF5(std::string);
     void Set_MixingParametersToDefault(void);
     void Set(MixingParameter,double);
@@ -271,10 +272,10 @@ class nuSQUIDSAtm {
 
     void Set_ProgressBar(bool);
 
-    size_t GetNumE(void);
-    size_t GetNumCos(void);
-    array1D GetERange(void);
-    array1D GetCosthRange(void);
+    size_t GetNumE() const;
+    size_t GetNumCos() const;
+    array1D GetERange() const;
+    array1D GetCosthRange() const;
 };
 
 

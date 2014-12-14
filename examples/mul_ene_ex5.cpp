@@ -40,12 +40,13 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
-        SU_vector h0 = H0(E_range[ei]);
-        NSI_evol[ei] = NSI.SUEvolve(h0,tunit*(x-t_ini));
+        // asumming same hamiltonian for neutrinos/antineutrinos
+        SU_vector h0 = H0(E_range[ei],0);
+        NSI_evol[ei] = NSI.Evolve(h0,(x-Get_t_initial()));
       }
     }
 
-    SU_vector HI(int ei){
+    SU_vector HI(unsigned int ei,unsigned int index_rho) const{
       double ye = body->ye(track);
       double density = body->density(track);
 

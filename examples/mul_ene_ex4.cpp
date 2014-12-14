@@ -38,12 +38,13 @@ class nuSQUIDSLV: public nuSQUIDS {
   public:
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
-        SU_vector h0 = H0(E_range[ei]);
-        LVP_evol[ei] = LVP.SUEvolve(h0,tunit*(x-t_ini));
+        // asumming same mass hamiltonian for neutrinos/antineutrinos
+        SU_vector h0 = H0(E_range[ei],0);
+        LVP_evol[ei] = LVP.Evolve(h0,(x-Get_t_initial()));
       }
     }
 
-    SU_vector HI(int ei){
+    SU_vector HI(unsigned int ei,unsigned int index_rho) const {
       return (1.0e-27*E_range[ei])*LVP_evol[ei];
     }
 

@@ -2,7 +2,7 @@
 
 namespace nusquids{
 
-void nuSQUIDS::init(void){
+void nuSQUIDS::init(double xini){
   // single energy implementation
   ne = 1;
 
@@ -18,8 +18,8 @@ void nuSQUIDS::init(void){
   nsun = numneu;
 
   //initialize SQUIDS
-  ini(ne,numneu,1,0,0);
-  Set_CoherentInteractions(true);
+  ini(ne,numneu,1,0,xini);
+  Set_CoherentRhoTerms(true);
   Set_h_max(std::numeric_limits<double>::max() );
 
   //===============================
@@ -70,7 +70,7 @@ void nuSQUIDS::Set_E(double Enu){
   ienergy = true;
 }
 
-void nuSQUIDS::init(double Emin,double Emax,int Esize, bool initialize_intereractions)
+void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini)
 {
 
   if (NT == "neutrino" || NT == "antineutrino")
@@ -97,15 +97,13 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize, bool initialize_intererac
 
   // initialize SQUIDS
   if (iinteraction)
-    ini(ne,numneu,nrhos,nrhos,0);
+    ini(ne,numneu,nrhos,nrhos,xini);
   else
-    ini(ne,numneu,nrhos,0,0);
+    ini(ne,numneu,nrhos,0,xini);
 
   SetScalarsToZero();
 
-  t = 0;
-
-  Set_CoherentInteractions(true);
+  Set_CoherentRhoTerms(true);
   Set_h_max(std::numeric_limits<double>::max());
 
   //===============================
@@ -175,9 +173,10 @@ void nuSQUIDS::init(double Emin,double Emax,int Esize, bool initialize_intererac
   }
 
   if(iinteraction){
-    Set_NonCoherentInteractions(true);
-    Set_ScalarInteractions(true);
-    Set_OtherInteractions(true);
+    Set_NonCoherentRhoTerms(true);
+    Set_OtherRhoTerms(true);
+    Set_GammaScalarTerms(true);
+    Set_OtherScalarTerms(true);
   }
 
   //===============================
@@ -215,9 +214,9 @@ void nuSQUIDS::InitializeInteractionVectors(){
 }
 
 void nuSQUIDS::PreDerive(double x){
-  track->SetX(tunit*x);
+  track->SetX(x);
   if( basis != mass){
-    EvolveProjectors(tunit*x);
+    EvolveProjectors(x);
   }
   if(iinteraction){
     UpdateInteractions();
@@ -234,18 +233,18 @@ void nuSQUIDS::EvolveProjectors(double x){
     for(int flv = 0; flv < numneu; flv++){
       for(int ei = 0; ei < ne; ei++){
         // will only evolve the flavor projectors
-        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].SUEvolve(h0,(x-t_ini));
-        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].SUEvolve(H0_array[ei],(x-t_ini));
+        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
+        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
       }
     }
   }
 }
 
-SU_vector nuSQUIDS::H0(double Enu){
+SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
   return DM2*(0.5/Enu);
 }
 
-SU_vector nuSQUIDS::HI(int ei){
+SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     double ye = body->ye(track);
     double density = body->density(track);
 
@@ -260,18 +259,18 @@ SU_vector nuSQUIDS::HI(int ei){
     }
 
     // construct potential in flavor basis
-    SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
-    potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
-    potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
+    SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
+    potential += (NC)*(evol_b1_proj[irho][1][ie]);
+    potential += (NC)*(evol_b1_proj[irho][2][ie]);
 
     if (basis == mass){
-      potential += H0_array[ei];
+      potential += H0_array[ie];
     }
 
-    if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
+    if ((irho == 0 and NT=="both") or NT=="neutrino"){
         // neutrino potential
         return potential;
-    } else if ((index_rho == 1 and NT=="both") or NT=="antineutrino"){
+    } else if ((irho == 1 and NT=="both") or NT=="antineutrino"){
         // antineutrino potential
         return (-1.0)*potential;
     } else{
@@ -279,7 +278,7 @@ SU_vector nuSQUIDS::HI(int ei){
     }
 }
 
-SU_vector nuSQUIDS::GammaRho(int ei){
+SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
     SU_vector V(nsun);
     if (not iinteraction){
       return V;
@@ -291,7 +290,6 @@ SU_vector nuSQUIDS::GammaRho(int ei){
     //       evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]) +
     //       evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]) << std::endl;
 
-
     V = evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]);
     V += evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]);
     V += evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]);
@@ -299,7 +297,7 @@ SU_vector nuSQUIDS::GammaRho(int ei){
     return V;
 }
 
-SU_vector nuSQUIDS::InteractionsRho(int e1){
+SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
   SU_vector nc_term(nsun);
 
   if (not iinteraction){
@@ -318,26 +316,23 @@ SU_vector nuSQUIDS::InteractionsRho(int e1){
     nc_term += temp2*(0.5*dNdE_NC[index_rho][0][e2][e1]*invlen_NC[index_rho][0][e2]);
   }
 
-  //std::cout << "nc term" << std::endl;
-  //std::cout << nc_term << std::endl;
-
   return nc_term;
 }
 
-double nuSQUIDS::GammaScalar(int ei){
+double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
   // we will just keep all the taus and convert them at the end
   return 0.0;
 }
 
-double nuSQUIDS::InteractionsScalar(int ei){
+double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
   if (not iinteraction){
     return 0.0;
   }
 
   double nutautoleptau = 0.0;
   for(int e2 = ei + 1; e2 < ne; e2++)
-    nutautoleptau += (evol_b1_proj[index_scalar][2][ei]*state[e2].rho[index_scalar])*
-                     (invlen_CC[index_scalar][2][ei])*(dNdE_CC[index_scalar][2][e2][ei])*delE[e2];
+    nutautoleptau += (evol_b1_proj[iscalar][2][ei]*state[e2].rho[iscalar])*
+                     (invlen_CC[iscalar][2][ei])*(dNdE_CC[iscalar][2][e2][ei])*delE[e2];
   return nutautoleptau;
 }
 
@@ -507,7 +502,17 @@ void nuSQUIDS::Set_Body(std::shared_ptr<Body> body_in){
 void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   track = track_in;
   itrack = true;
+  // we need to reinitialize the SQuIDS object to set up the new time
+  ini(ne,numneu,nrhos,nscalars,track->GetInitialX());
+  istate = false;
 }
+
+/*
+void nuSQUIDS::Set_Initial_Time(){
+  t = 0;
+  t_ini = 0;
+}
+*/
 
 void nuSQUIDS::EvolveState(){
   // check for BODY and TRACK status
@@ -524,14 +529,12 @@ void nuSQUIDS::EvolveState(){
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
 
-  // restart the clock
-  Set_Initial_Time();
   // initializing the projectors and hamiltonian
   SetIniFlavorProyectors();
   iniH0();
 
   if( not tauregeneration ){
-    EvolveSUN(track->GetFinalX()-track->GetInitialX());
+    Evolve(track->GetFinalX()-track->GetInitialX());
   }
   else {
     int tau_steps = (int) ((track->GetFinalX() - track->GetInitialX())/tau_reg_scale);
@@ -539,10 +542,10 @@ void nuSQUIDS::EvolveState(){
     for (int i = 0; i < tau_steps; i++){
       double x_inter = track->GetInitialX() + (double)(i)*tau_reg_scale;
       std::cout << x_inter/units.km << std::endl;
-      EvolveSUN(tau_reg_scale);
+      Evolve(tau_reg_scale);
       ConvertTauIntoNuTau();
     }
-    EvolveSUN(track->GetFinalX()-tau_reg_scale*tau_steps);
+    Evolve(track->GetFinalX()-tau_reg_scale*tau_steps);
     ConvertTauIntoNuTau();
   }
 }
@@ -586,11 +589,6 @@ void nuSQUIDS::ConvertTauIntoNuTau(void){
 
 }
 
-void nuSQUIDS::Set_Initial_Time(){
-  t_ini = 0.0;
-  t = 0.0;
-}
-
 void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
@@ -603,7 +601,6 @@ void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy");
 
-  Set_Initial_Time();
   SetIniFlavorProyectors();
 
   for(int i = 0; i < ne; i++){
@@ -638,7 +635,6 @@ void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
   if( NT == "both" )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
 
-  Set_Initial_Time();
   SetIniFlavorProyectors();
 
   for(int i = 0; i < ne; i++){
@@ -672,7 +668,6 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
   if( NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Supplied neutrino and antineutrino initial state, but not set to both.");
 
-  Set_Initial_Time();
   SetIniFlavorProyectors();
 
   for(int i = 0; i < ne; i++){
@@ -695,15 +690,15 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
   istate = true;
 }
 
-array1D nuSQUIDS::GetERange(void){
+array1D nuSQUIDS::GetERange() const{
   return E_range;
 }
 
-size_t nuSQUIDS::GetNumE(void){
+size_t nuSQUIDS::GetNumE() const{
   return ne;
 }
 
-double nuSQUIDS::EvalMass(int flv,double EE, int rho){
+double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
@@ -713,7 +708,7 @@ double nuSQUIDS::EvalMass(int flv,double EE, int rho){
   return GetExpectationValueD(b0_proj[flv], rho, EE);
 }
 
-double nuSQUIDS::EvalFlavor(int flv,double EE, int rho){
+double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
@@ -723,7 +718,7 @@ double nuSQUIDS::EvalFlavor(int flv,double EE, int rho){
   return GetExpectationValueD(b1_proj[rho][flv], rho, EE);
 }
 
-double nuSQUIDS::EvalMassAtNode(int flv, int ei, int rho){
+double nuSQUIDS::EvalMassAtNode(unsigned int flv, unsigned int ei, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
@@ -733,7 +728,7 @@ double nuSQUIDS::EvalMassAtNode(int flv, int ei, int rho){
   return GetExpectationValue(b0_proj[flv], rho, ei);
 }
 
-double nuSQUIDS::EvalFlavorAtNode(int flv, int ei, int rho){
+double nuSQUIDS::EvalFlavorAtNode(unsigned int flv, unsigned int ei, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != "both" )
@@ -743,7 +738,7 @@ double nuSQUIDS::EvalFlavorAtNode(int flv, int ei, int rho){
   return GetExpectationValue(b1_proj[rho][flv], rho, ei);
 }
 
-double nuSQUIDS::EvalMass(int flv){
+double nuSQUIDS::EvalMass(unsigned int flv) const{
   if(state == NULL)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
@@ -760,7 +755,7 @@ double nuSQUIDS::EvalMass(int flv){
   return GetExpectationValue(b0_proj[flv], 0, 0);
 }
 
-double nuSQUIDS::EvalFlavor(int flv){
+double nuSQUIDS::EvalFlavor(unsigned int flv) const{
   if(state == NULL)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
@@ -780,17 +775,19 @@ double nuSQUIDS::EvalFlavor(int flv){
 void nuSQUIDS::iniH0(){
   DM2 = SU_vector(nsun);
   for(int i = 1; i < nsun; i++){
-      DM2 += (b0_proj[i])*params.GetSquaredEnergyDifference(i);
+      DM2 += (b0_proj[i])*params.GetEnergyDifference(i);
   }
 
   if(ienergy){
     for(int ei = 0; ei < ne; ei++){
-      H0_array[ei] = H0(E_range[ei]);
+      // here we assume that H0 is the same for neutrinos and antineutrinos
+      // else we will need two H0_array.
+      H0_array[ei] = H0(E_range[ei],0);
     }
   }
 }
 
-void nuSQUIDS::AntineutrinoCPFix(int rho){
+void nuSQUIDS::AntineutrinoCPFix(unsigned int rho){
     if(NT == "antineutrino" or (NT == "both" and rho == 1)){
       Set(DELTA1,-params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
       Set(DELTA2,-params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
@@ -857,25 +854,24 @@ void nuSQUIDS::SetIniFlavorProyectors(){
   }
 }
 
-SU_vector nuSQUIDS::GetState(int ie, int rho){
+SU_vector nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
   return state[ie].rho[rho];
 }
 
-SU_vector nuSQUIDS::GetFlavorProj(int flv,int rho){
+SU_vector nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
   return b1_proj[rho][flv];
 }
 
-SU_vector nuSQUIDS::GetMassProj(int flv,int rho){
+SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
   return b0_proj[flv];
 }
 
-SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, int rho){
-  index_rho = rho;
+SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho){
   EvolveProjectors(track->GetX());
-  return H0(E)+HI(track->GetX(),E);
+  return H0(E,rho)+HI(track->GetX(),E,rho);
 }
 
-void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc){
+void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc) const{
 
   if (!iinteraction)
     save_cross_section = iinteraction;
@@ -930,7 +926,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   }
   for ( int i = 18; i < 23; i++){
     std::string label = param_label_map[i];
-    double value = params.GetSquaredEnergyDifference(param_label_index[i][0]);
+    double value = params.GetEnergyDifference(param_label_index[i][0]);
     //gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
     H5LTset_attribute_double(group_id, "massdifferences",label.c_str(),&value, 1);
   }
@@ -1157,14 +1153,37 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   else
     elogscale = false;
 
+  // reading body and track
+  int id;
+  hsize_t dimbody[2];
+  H5LTget_attribute_int(group_id,"body","ID",&id);
+
+  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+  double body_params[dimbody[0]];
+  H5LTread_dataset_double(group_id,"body", body_params);
+
+  hsize_t dimtrack[2];
+  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+  double track_params[dimtrack[0]];
+  H5LTread_dataset_double(group_id,"track", track_params);
+  double x_current;
+  H5LTget_attribute_double(group_id,"track","X",&x_current);
+
+  // setting body and track
+  SetBodyTrack(id,dimbody[0],body_params,dimtrack[0],track_params);
+
+  // set projector to current position
+  track->SetX(x_current);
+  EvolveProjectors(track->GetX());
+
   // initializing nuSQUIDS
   if (ne == 1){
     if(not inusquids)
-      init();
+      init(track->GetInitialX());
     Set_E(data[0]);
   }
   else {
-    init(data[0]/units.GeV,data[ne-1]/units.GeV,ne,false);
+    init(data[0]/units.GeV,data[ne-1]/units.GeV,ne,false,track->GetInitialX());
   }
 
   // reading state
@@ -1189,31 +1208,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     }
   }
 
-  // reading body and track
-  int id;
-  hsize_t dimbody[2];
-  H5LTget_attribute_int(group_id,"body","ID",&id);
-
-  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
-  double body_params[dimbody[0]];
-  H5LTread_dataset_double(group_id,"body", body_params);
-
-  hsize_t dimtrack[2];
-  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
-  double track_params[dimtrack[0]];
-  H5LTread_dataset_double(group_id,"track", track_params);
-  double x_current;
-  H5LTget_attribute_double(group_id,"track","X",&x_current);
-
-
-  // setting body and track
-  SetBodyTrack(id,dimbody[0],body_params,dimtrack[0],track_params);
-
-  // set projector to current position
-  track->SetX(x_current);
-  EvolveProjectors(track->GetX());
-  t = track->GetX();
-  t_ini = track->GetInitialX();
 
   if(iinteraction){
     // if intereactions will be used then reading cross section information
@@ -1356,11 +1350,11 @@ void nuSQUIDS::SetBodyTrack(int body_id, int body_params_len, double body_params
     }
 }
 
-int nuSQUIDS::GetNumNeu(){
+int nuSQUIDS::GetNumNeu() const{
   return numneu;
 }
 
-void nuSQUIDS::ProgressBar(){
+void nuSQUIDS::ProgressBar() const{
   double progress = track->GetX()/track->GetFinalX();
   int barWidth = 70;
   int pos = barWidth * progress;
@@ -1385,11 +1379,11 @@ void nuSQUIDS::Set_ProgressBar(bool opt){
     progressbar = opt;
 }
 
-std::shared_ptr<Track> nuSQUIDS::GetTrack(void){
+std::shared_ptr<Track> nuSQUIDS::GetTrack() const{
   return track;
 }
 
-std::shared_ptr<Body> nuSQUIDS::GetBody(void){
+std::shared_ptr<Body> nuSQUIDS::GetBody() const{
   return body;
 }
 
@@ -1441,19 +1435,19 @@ void nuSQUIDS::Set(MixingParameter p, double val){
       params.SetMixingAngle(4,5,val);
       break;
     case DM21SQ:
-      params.SetSquaredEnergyDifference(1,val);
+      params.SetEnergyDifference(1,val);
       break;
     case DM31SQ:
-      params.SetSquaredEnergyDifference(2,val);
+      params.SetEnergyDifference(2,val);
       break;
     case DM41SQ:
-      params.SetSquaredEnergyDifference(3,val);
+      params.SetEnergyDifference(3,val);
       break;
     case DM51SQ:
-      params.SetSquaredEnergyDifference(4,val);
+      params.SetEnergyDifference(4,val);
       break;
     case DM61SQ:
-      params.SetSquaredEnergyDifference(5,val);
+      params.SetEnergyDifference(5,val);
       break;
     case DELTA1:
       params.SetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1],val);
@@ -1567,7 +1561,7 @@ void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, std::string basis){
   iinistate = true;
 }
 
-void nuSQUIDSAtm::WriteStateHDF5(std::string filename){
+void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
   if(not iinistate)
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
   if(not inusquidsatm)
@@ -1589,7 +1583,7 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename){
   H5Fclose (file_id);
 
   int i = 0;
-  for(nuSQUIDS& nsq : nusq_array){
+  for(const nuSQUIDS& nsq : nusq_array){
     // use only the first one to write the cross sections on /crosssections
     nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
     i++;
@@ -1669,7 +1663,7 @@ double nuSQUIDSAtm::LinInter(double x,double xM, double xP, double yM, double yP
   return yM + (yP-yM)*(x-xM)/(xP-xM);
 }
 
-double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
+double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho) const{
   // here the energy enters in GeV
   if(not iinistate)
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
@@ -1683,9 +1677,9 @@ double nuSQUIDSAtm::EvalFlavor(int flv,double costh,double enu,int rho){
 
   std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
   // get the evolution generator
-  SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV);
+  SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
   // get the evolved projector for the right distance and energy
-  SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).SUEvolve(H0_at_enu,track->GetFinalX());
+  SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
 
   int cth_M = -1;
   for(int i = 0; i < costh_array.size(); i++){
@@ -1729,10 +1723,10 @@ void nuSQUIDSAtm::Set_abs_error(double er){
   }
 }
 
-size_t nuSQUIDSAtm::GetNumE(void){
+size_t nuSQUIDSAtm::GetNumE() const{
   return enu_array.size();
 }
-size_t nuSQUIDSAtm::GetNumCos(void){
+size_t nuSQUIDSAtm::GetNumCos() const{
   return costh_array.size();
 }
 
@@ -1743,11 +1737,11 @@ void nuSQUIDSAtm::Set_ProgressBar(bool v){
     }
 }
 
-array1D nuSQUIDSAtm::GetERange(void){
+array1D nuSQUIDSAtm::GetERange() const{
   return enu_array;
 }
 
-array1D nuSQUIDSAtm::GetCosthRange(void){
+array1D nuSQUIDSAtm::GetCosthRange() const{
   return costh_array;
 }
 
