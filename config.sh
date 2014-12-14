@@ -269,7 +269,9 @@ clean:
 	rm -f src/*.o examples/*.exe lib/* bin/*
 
 doxygen:
-	doxygen
+	@doxygen src/doxyfile
+docs:
+	@doxygen src/doxyfile
 
 test: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@cd ./test ; ./run_tests

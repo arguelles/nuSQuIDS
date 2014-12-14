@@ -504,6 +504,10 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   itrack = true;
   // we need to reinitialize the SQuIDS object to set up the new time
   ini(ne,numneu,nrhos,nscalars,track->GetInitialX());
+  // reset energy
+  if (ienergy) {
+    Set_xrange(E_range[0],E_range[E_range.size()-1],(elogscale) ? "log":"lin");
+  }
   istate = false;
 }
 
@@ -593,13 +597,15 @@ void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != numneu )
-    throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors");
+    throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT == "both" )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( ne != 1 )
-    throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy");
+    throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy.");
+  if( !itrack or !ibody )
+    throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
 
   SetIniFlavorProyectors();
 
@@ -634,6 +640,8 @@ void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT == "both" )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
+  if( !itrack or !ibody )
+    throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
 
   SetIniFlavorProyectors();
 
@@ -667,6 +675,8 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT != "both" )
     throw std::runtime_error("nuSQUIDS::Error::Supplied neutrino and antineutrino initial state, but not set to both.");
+  if( !itrack or !ibody )
+    throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
 
   SetIniFlavorProyectors();
 
@@ -1355,7 +1365,7 @@ int nuSQUIDS::GetNumNeu() const{
 }
 
 void nuSQUIDS::ProgressBar() const{
-  double progress = track->GetX()/track->GetFinalX();
+  double progress = (track->GetX()-track->GetInitialX())/(track->GetFinalX() - track->GetInitialX());
   int barWidth = 70;
   int pos = barWidth * progress;
   std::cout << "[";
