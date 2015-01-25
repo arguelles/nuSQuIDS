@@ -36,51 +36,56 @@ class nuSQUIDSNSI: public nuSQUIDS {
   private:
     SU_vector NSI;
     std::vector<SU_vector> NSI_evol;
+    std::unique_ptr<double[]> hiBuffer;
+    double HI_prefactor;
   public:
 
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
         // asumming same hamiltonian for neutrinos/antineutrinos
-        SU_vector h0 = H0(E_range[ei],0);
-        NSI_evol[ei] = NSI.Evolve(h0,(x-Get_t_initial()));
+        //SU_vector h0 = H0(E_range[ei],0);
+        //NSI_evol[ei] = NSI.Evolve(h0,(x-Get_t_initial()));
+        NSI_evol[ei] = NSI.Evolve(H0_array[ei],(x-Get_t_initial()));
       }
     }
 
     SU_vector HI(unsigned int ei,unsigned int index_rho) const{
-      double ye = body->ye(track);
-      double density = body->density(track);
+      double ye = body->ye(*track);
+      double density = body->density(*track);
 
-      double CC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density*ye;
+      double CC = HI_prefactor*density*ye;
       double NC;
 
       if (ye < 1.0e-10){
-        NC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density;
+        NC = HI_prefactor*density;
       }
       else {
         NC = CC*(-0.5*(1.0-ye)/ye);
       }
 
       // construct potential in flavor basis
-      SU_vector potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
+      SU_vector potential(nsun,hiBuffer.get());
+      potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
       potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
       potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
       // plus sign so that the NSI potential has the same sign as the VCC potential
       // and the factor of 3 comes from average n_n/n_e at Earth.
       potential += (3.0*CC)*NSI_evol[ei];
 
-      if ((index_rho == 0 and NT=="both") or NT=="neutrino"){
+      if ((index_rho == 0 and NT==nuSQUIDS::both) or NT==nuSQUIDS::neutrino){
           // neutrino potential
           return potential;
-      } else if ((index_rho == 1 and NT=="both") or NT=="antineutrino"){
+      } else if ((index_rho == 1 and NT==nuSQUIDS::both) or NT==nuSQUIDS::antineutrino){
           // antineutrino potential
-          return (-1.0)*potential;
+          return (-1.0)*std::move(potential);
       } else{
           throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
       }
     }
 
-    nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu,std::string NT,
-         bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction)
+    nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu, nuSQUIDS::NeutrinoType NT,
+         bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
+         hiBuffer(new double[nsun*nsun])
     {
        assert(numneu == 3);
        // defining a complex matrix M which will contain our flavor
@@ -104,12 +109,33 @@ class nuSQUIDSNSI: public nuSQUIDS {
          NSI_evol[ei] = SU_vector(nsun);
        }
        gsl_matrix_complex_free(M);
+
+       HI_prefactor = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+    }
+
+    void dump_state() const {
+      for (int ie = 0; ie < ne; ie++){
+        for (int i = 0; i < numneu*numneu; i++){
+          if (NT == both){
+            std::cout << state[ie].rho[0][i] << '\n';
+            std::cout << state[ie].rho[1][i] << '\n';
+          }
+          else if ( NT == neutrino){
+            std::cout << state[ie].rho[0][i] << '\n';
+            std::cout << 0.0 << '\n';
+          }
+          else if ( NT == neutrino){
+            std::cout << 0.0 << '\n';
+            std::cout << state[ie].rho[1][i] << '\n';
+          }
+        }
+      }
     }
 };
 
 int main()
 {
-  nuSQUIDSNSI nus(1.e1,1.e3,200,3,"antineutrino",true,false);
+  nuSQUIDSNSI nus(1.e1,1.e3,200,3,nuSQUIDS::antineutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -151,9 +177,11 @@ int main()
 
   nus.Set_ProgressBar(true);
   nus.EvolveState();
+  std::cout << std::endl;
   // we can save the current state in HDF5 format
   // for future use.
   nus.WriteStateHDF5("./mul_ene_ex5.hdf5");
+  nus.dump_state();
 
   return 0;
 }

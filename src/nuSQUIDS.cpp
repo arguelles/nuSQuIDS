@@ -6,15 +6,14 @@ void nuSQUIDS::init(double xini){
   // single energy implementation
   ne = 1;
 
-  if (NT == "neutrino" || NT == "antineutrino")
+  if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
   else {
-    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino} not : " + NT);
+    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino} not : " + std::to_string(NT));
   }
 
-  if ( numneu > 6 )
+  if ( numneu > SQUIDS_MAX_HILBERT_DIM )
     throw std::runtime_error("nuSQUIDS::Error::Maximum number of neutrinos exceded");
-  //assert( "nuSQUIDS::Error::Maximum number of neutrinos exceded" && numneu < 6);
   nsun = numneu;
 
   //initialize SQUIDS
@@ -31,7 +30,7 @@ void nuSQUIDS::init(double xini){
   //===============================
   // physics CP sign for aneu    //
   //===============================
-  if ( NT == "antineutrino" ){
+  if ( NT == antineutrino ){
     Set(DELTA1,params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
     Set(DELTA2,params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
     Set(DELTA3,params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
@@ -73,15 +72,15 @@ void nuSQUIDS::Set_E(double Enu){
 void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini)
 {
 
-  if (NT == "neutrino" || NT == "antineutrino")
+  if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
-  else if (NT == "both")
+  else if (NT == both)
     nrhos = 2;
   else {
-    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino,both} not : " + NT);
+    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino,both} not : " + std::to_string(NT));
   }
 
-  if ( numneu > 6 )
+  if ( numneu > SQUIDS_MAX_HILBERT_DIM )
     throw std::runtime_error("nuSQUIDS::Error::Maximum number of neutrinos exceded");
   nsun = numneu;
   if ( Emax < Emin )
@@ -245,8 +244,8 @@ SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
 }
 
 SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
-    double ye = body->ye(track);
-    double density = body->density(track);
+    double ye = body->ye(*track);
+    double density = body->density(*track);
 
     double CC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density*ye;
     double NC;
@@ -267,12 +266,12 @@ SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
       potential += H0_array[ie];
     }
 
-    if ((irho == 0 and NT=="both") or NT=="neutrino"){
+    if ((irho == 0 and NT==both) or NT==neutrino){
         // neutrino potential
         return potential;
-    } else if ((irho == 1 and NT=="both") or NT=="antineutrino"){
+    } else if ((irho == 1 and NT==both) or NT==antineutrino){
         // antineutrino potential
-        return (-1.0)*potential;
+        return (-1.0)*std::move(potential);
     } else{
         throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
     }
@@ -281,7 +280,7 @@ SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
 SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
     SU_vector V(nsun);
     if (not iinteraction){
-      return V
+      return V;
     }
 
     //std::cout << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << std::endl;
@@ -337,7 +336,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
 }
 
 double nuSQUIDS::GetNucleonNumber(){
-    double density = body->density(track);
+    double density = body->density(*track);
     double num_nuc = (params.gr*pow(params.cm,-3))*density*2.0/(params.proton_mass+params.neutron_mass);
 
     #ifdef UpdateInteractions_DEBUG
@@ -600,7 +599,7 @@ void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
-  if( NT == "both" )
+  if( NT == both )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy.");
@@ -638,7 +637,7 @@ void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
-  if( NT == "both" )
+  if( NT == both )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( !itrack or !ibody )
     throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
@@ -673,7 +672,7 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
-  if( NT != "both" )
+  if( NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Supplied neutrino and antineutrino initial state, but not set to both.");
   if( !itrack or !ibody )
     throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
@@ -711,7 +710,7 @@ size_t nuSQUIDS::GetNumE() const{
 double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
-  if ( rho != 0 and NT != "both" )
+  if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if ( basis == mass )
     throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
@@ -721,7 +720,7 @@ double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho) const{
 double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
-  if ( rho != 0 and NT != "both" )
+  if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if ( basis == mass )
     throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
@@ -731,7 +730,7 @@ double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho) const{
 double nuSQUIDS::EvalMassAtNode(unsigned int flv, unsigned int ei, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
-  if ( rho != 0 and NT != "both" )
+  if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if(basis == mass)
     return b0_proj[flv]*state[ei].rho[rho];
@@ -741,7 +740,7 @@ double nuSQUIDS::EvalMassAtNode(unsigned int flv, unsigned int ei, unsigned int 
 double nuSQUIDS::EvalFlavorAtNode(unsigned int flv, unsigned int ei, unsigned int rho) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
-  if ( rho != 0 and NT != "both" )
+  if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if(basis == mass)
     return b1_proj[rho][flv]*state[ei].rho[rho];
@@ -798,7 +797,7 @@ void nuSQUIDS::iniH0(){
 }
 
 void nuSQUIDS::AntineutrinoCPFix(unsigned int rho){
-    if(NT == "antineutrino" or (NT == "both" and rho == 1)){
+    if(NT == antineutrino or (NT == both and rho == 1)){
       Set(DELTA1,-params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
       Set(DELTA2,-params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
       Set(DELTA3,-params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
@@ -922,7 +921,9 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
 
   H5LTset_attribute_int(group_id, "basic","numneu",&numneu, 1);
-  H5LTset_attribute_string(group_id, "basic","NT",NT.c_str());
+  //H5LTset_attribute_string(group_id, "basic","NT",NT.c_str());
+  int auxint = NT;
+  H5LTset_attribute_int(group_id, "basic","NT",&auxint,1); //TODO: do fancy enum stuff
   H5LTset_attribute_string(group_id, "basic", "interactions", (iinteraction) ? "True":"False");
 
   for ( int i = 0; i < 15; i++){
@@ -950,15 +951,15 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   for(int ie = 0; ie < ne; ie++){
     for(int i = 0; i < numneu*numneu; i ++){
-        if (NT == "both"){
+        if (NT == both){
           neustate[ie*numneusq + i] = state[ie].rho[0][i];
           aneustate[ie*numneusq + i] = state[ie].rho[1][i];
         }
-        else if (NT == "neutrino"){
+        else if (NT == neutrino){
           neustate[ie*numneusq + i] = state[ie].rho[0][i];
           aneustate[ie*numneusq + i] = 0.0;
         }
-        else if (NT == "antineutrino"){
+        else if (NT == antineutrino){
           neustate[ie*numneusq + i] = 0.0;
           aneustate[ie*numneusq + i] = state[ie].rho[0][i];
         }
@@ -970,29 +971,29 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
-  if ( NT == "both" )
+  if ( NT == both )
     pdim[1] *= pdim[1];
   std::vector<double> flavor,mass;
 
   for(int ie = 0; ie < ne; ie++){
     // neutrino
     for(int i = 0; i < numneu; i++){
-      if (NT == "both" or NT == "neutrino"){
+      if (NT == both or NT == neutrino){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
         }
-        else if (NT == "antineutrino"){
+        else if (NT == antineutrino){
           neustate.push_back(0.0);
           aneustate.push_back(0.0);
         }
     }
       // antineutrino
     for(int i = 0; i < numneu; i++){
-      if (NT == "both" or NT == "antineutrino"){
+      if (NT == both or NT == antineutrino){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
         }
-        else if (NT == "neutrino"){
+        else if (NT == neutrino){
           neustate.push_back(0.0);
           aneustate.push_back(0.0);
         }
@@ -1120,9 +1121,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // read number of neutrinos
   H5LTget_attribute_int(group_id, "basic", "numneu", &numneu);
   // neutrino/antineutrino/both
+  int auxint;
   char auxchar[20];
-  H5LTget_attribute_string(group_id, "basic", "NT", auxchar);
-  NT = auxchar;
+  H5LTget_attribute_int(group_id, "basic", "NT", &auxint);
+  NT = (NeutrinoType)auxint;
   // interactions
   H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
   std::string aux = auxchar;
@@ -1213,11 +1215,11 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
   for(int ie = 0; ie < dims[0]; ie++){
     for (int j = 0; j < dims[1]; j ++){
-      if (NT == "neutrino")
+      if (NT == neutrino)
         state[ie].rho[0][j] = neudata[ie*dims[1]+j];
-      else if ( NT == "antineutrino")
+      else if ( NT == antineutrino)
         state[ie].rho[0][j] = aneudata[ie*dims[1]+j];
-      else if ( NT == "both" ){
+      else if ( NT == both ){
         state[ie].rho[0][j] = neudata[ie*dims[1]+j];
         state[ie].rho[1][j] = aneudata[ie*dims[1]+j];
       }
@@ -1386,7 +1388,7 @@ void nuSQUIDS::ProgressBar() const{
 }
 
 void nuSQUIDS::Set_TauRegeneration(bool opt){
-    if ( NT != "both" and opt )
+    if ( NT != both and opt )
       throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
     tauregeneration = opt;
 }
@@ -1506,10 +1508,9 @@ void nuSQUIDS::Set_Basis(BASIS b){
 //==================================================================
 //==================================================================
 //==================================================================
-
 nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,int costh_div,
                          double energy_min,double energy_max,int energy_div,
-                         int numneu,std::string NT,
+                         int numneu, nuSQUIDS::NeutrinoType NT,
                          bool elogscale,bool iinteraction){
 
   nusq_array = std::vector<nuSQUIDS>(costh_div);

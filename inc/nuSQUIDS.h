@@ -41,8 +41,6 @@ enum MixingParameter {
   DM21SQ = 18, DM31SQ = 19, DM41SQ = 20, DM51SQ = 21, DM61SQ = 22
                     };
 
-enum mode { neutrino, antineutrino, both };
-
 enum BASIS { mass, interaction };
 
 static std::map<int,std::string> param_label_map {
@@ -66,6 +64,12 @@ static std::map<int,std::vector<int>> param_label_index {
                                                     };
 
 class nuSQUIDS: public SQUIDS {
+  public:
+    enum NeutrinoType {
+      neutrino=0b01,
+      antineutrino=0b10,
+      both=0b11
+    };
   protected:
     BASIS basis = interaction;
     int numneu;
@@ -120,7 +124,7 @@ class nuSQUIDS: public SQUIDS {
     int progressbar_count = 0;
     int progressbar_loop = 100;
     // neutrino type
-    std::string NT = "both"; // {"neutrino","antineutrino","both"}
+    NeutrinoType NT = both;
 
     void iniProjectors();
     void SetIniFlavorProyectors();
@@ -140,12 +144,12 @@ class nuSQUIDS: public SQUIDS {
      const Const units;
      // initializers
      nuSQUIDS(){};
-     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,std::string NT = "both",
+     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
          bool elogscale = true,bool iinteraction = false):
      iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
      {init(Emin,Emax,Esize);};
 
-     void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,std::string NT_ = "both",
+     void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
          bool elogscale_ = true,bool iinteraction_ = false){
        iinteraction = iinteraction_;
        elogscale = elogscale_;
@@ -154,11 +158,11 @@ class nuSQUIDS: public SQUIDS {
        init(Emin,Emax,Esize);
      };
 
-     nuSQUIDS(int numneu, std::string NT = "neutrino"):
+     nuSQUIDS(int numneu, NeutrinoType NT = neutrino):
      iinteraction(false),elogscale(false),numneu(numneu),NT(NT)
      {init();};
 
-     void Init(int numneu_, std::string NT_ = "neutrino"){
+     void Init(int numneu_, NeutrinoType NT_ = neutrino){
       iinteraction = false;
       elogscale = false;
       numneu = numneu_;
@@ -234,6 +238,7 @@ class nuSQUIDS: public SQUIDS {
  * where a collection of trayectories is explored.
  */
 
+//template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>>::type >
 class nuSQUIDSAtm {
   private:
     bool progressbar = false;
@@ -250,7 +255,7 @@ class nuSQUIDSAtm {
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
   public:
     nuSQUIDSAtm(double,double,int,double,double,int,
-                int numneu,std::string NT = "both",
+                int numneu,nuSQUIDS::NeutrinoType NT = nuSQUIDS::both,
                 bool elogscale = true, bool iinteraction = false);
     nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
 

@@ -48,7 +48,7 @@ class nuSQUIDSLV: public nuSQUIDS {
       return (1.0e-27*E_range[ei])*LVP_evol[ei];
     }
 
-    nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,std::string NT_,
+    nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,NeutrinoType NT_,
          bool elogscale_,bool iinteraction_)
     {
        Init(Emin_,Emax_,Esize_,numneu_,NT_,
@@ -73,7 +73,7 @@ class nuSQUIDSLV: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSLV nus(1.e4,1.e6,150,3,"neutrino",true,false);
+  nuSQUIDSLV nus(1.e4,1.e6,150,3,nuSQUIDS::neutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();

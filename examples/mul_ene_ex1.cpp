@@ -33,7 +33,7 @@ using namespace nusquids;
 
 int main()
 {
-  nuSQUIDS nus(1.,1.e2,200,4,"neutrino",true,false);
+  nuSQUIDS nus(1.,1.e2,200,4,nuSQUIDS::neutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
