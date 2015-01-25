@@ -36,8 +36,8 @@ class Body{
                 std::vector<double> GetTrackParams(){ return TrackParams; };
                 std::vector<double> TrackParams;
         };
-        virtual double density(std::shared_ptr<Track>);
-        virtual double ye(std::shared_ptr<Track>);
+        virtual double density(const Track&);
+        virtual double ye(const Track&);
         const std::vector<double>& GetBodyParams(){ return BodyParams;};
         std::vector<double> BodyParams;
 };
@@ -55,8 +55,8 @@ class Vacuum: public Body {
                 Track();
         };
 
-        double density(std::shared_ptr<GenericTrack>);
-        double ye(std::shared_ptr<GenericTrack>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 };
 
 class ConstantDensity: public Body{
@@ -73,8 +73,8 @@ class ConstantDensity: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<GenericTrack>);
-        double ye(std::shared_ptr<GenericTrack>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 };
 
 class VariableDensity: public Body{
@@ -103,8 +103,8 @@ class VariableDensity: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<GenericTrack>);
-        double ye(std::shared_ptr<GenericTrack>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 };
 
 class Earth: public Body{
@@ -133,8 +133,8 @@ class Earth: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<Body::Track>);
-        double ye(std::shared_ptr<GenericTrack>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 
         ~Earth();
 };
@@ -173,8 +173,8 @@ class Sun: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<Body::Track>);
-        double ye(std::shared_ptr<Body::Track>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 };
 
 class SunASnu: public Body{
@@ -207,8 +207,8 @@ class SunASnu: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<Body::Track>);
-        double ye(std::shared_ptr<Body::Track>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
 };
 
 class EarthAtm: public Body{
@@ -240,8 +240,8 @@ class EarthAtm: public Body{
                 Track();
         };
 
-        double density(std::shared_ptr<Body::Track>);
-        double ye(std::shared_ptr<Body::Track>);
+        double density(const GenericTrack&);
+        double ye(const GenericTrack&);
         ~EarthAtm();
 };
 

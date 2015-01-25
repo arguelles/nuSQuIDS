@@ -281,7 +281,7 @@ SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
 SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
     SU_vector V(nsun);
     if (not iinteraction){
-      return V;
+      return V
     }
 
     //std::cout << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << std::endl;
@@ -898,8 +898,11 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // H5F_ACC_TRUNC : overwrittes file
   // H5F_ACC_EXCL  : files if file existsi 
   file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-  if (file_id < 0 ) // file already exists
+  if (file_id < 0 ) {// file already exists
     file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (file_id < 0)
+        throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + str + ".");
+  }
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
   if ( grp != "/" )
     group_id = H5Gcreate(root_id, grp.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1107,6 +1110,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
   file_id = H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0)
+      throw std::runtime_error("nuSQUIDS::Error::file not found : " + str + ".");
   root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
   group_id = H5Gopen(root_id, grp.c_str(), H5P_DEFAULT);
   if ( group_id < 0 )
@@ -1182,9 +1187,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // setting body and track
   SetBodyTrack(id,dimbody[0],body_params,dimtrack[0],track_params);
 
-  // set projector to current position
+  // set trayectory to current time
   track->SetX(x_current);
-  EvolveProjectors(track->GetX());
 
   // initializing nuSQUIDS
   if (ne == 1){
@@ -1196,6 +1200,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     init(data[0]/units.GeV,data[ne-1]/units.GeV,ne,false,track->GetInitialX());
   }
 
+  // evolve projectors to current time
+  EvolveProjectors(track->GetX());
   // reading state
   H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
   double neudata[dims[0]*dims[1]];
@@ -1581,6 +1587,8 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
   hid_t dset_id;
   // create HDF5 file
   file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (file_id < 0)
+      throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + filename + ".");
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
 
   // write the zenith range

@@ -38,11 +38,11 @@ Body::Track::Track(): TrackParams({})
             //pass
         }
 
-double Body::density(std::shared_ptr<Track> track_input){
+double Body::density(const Track& track_input){
             return 0.0;
         }
 
-double Body::ye(std::shared_ptr<Track> track_input){
+double Body::ye(const Track& track_input){
             return 1.0;
         }
 
@@ -72,11 +72,11 @@ Vacuum::Track::Track()
             //pass
         }
 
-double Vacuum::density(std::shared_ptr<GenericTrack> track_input){
+double Vacuum::density(const GenericTrack& track_input){
             return 0.0;
         }
 
-double Vacuum::ye(std::shared_ptr<GenericTrack> track_input){
+double Vacuum::ye(const GenericTrack& track_input){
             return 1.0;
         }
 
@@ -113,12 +113,12 @@ ConstantDensity::Track::Track()
             //pass
         }
 
-double ConstantDensity::density(std::shared_ptr<GenericTrack> track_input)
+double ConstantDensity::density(const GenericTrack& track_input)
         {
             return constant_density;
         }
 
-double ConstantDensity::ye(std::shared_ptr<GenericTrack> track_input)
+double ConstantDensity::ye(const GenericTrack& track_input)
         {
             return constant_ye;
         }
@@ -181,18 +181,18 @@ VariableDensity::Track::Track()
             //pass
         }
 
-double VariableDensity::density(std::shared_ptr<GenericTrack> track_input)
+double VariableDensity::density(const GenericTrack& track_input)
         {
-          double x = track_input->x;
+          double x = track_input.x;
           if (x < x_min or x > x_max ){
               return 0;
           } else {
               return gsl_spline_eval(inter_density,x,inter_density_accel);
           }
         }
-double VariableDensity::ye(std::shared_ptr<GenericTrack> track_input)
+double VariableDensity::ye(const GenericTrack& track_input)
         {
-          double x = track_input->x;
+          double x = track_input.x;
           if (x < x_min or x > x_max ){
               return 0;
           } else {
@@ -226,11 +226,12 @@ Earth::Track::Track()
             //pass
         }
 
-double Earth::density(std::shared_ptr<Body::Track> track_input)
+double Earth::density(const GenericTrack& track_input)
         {
-            std::shared_ptr<Earth::Track> track_earth = std::static_pointer_cast< Earth::Track >(track_input);
-            double xkm = track_earth->x/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth->baseline/param.km)*xkm);
+            //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
+            const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+            double xkm = track_earth.x/param.km;
+            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.baseline/param.km)*xkm);
 
             if ( r/radius < x_radius_min ){
               return x_rho_min;
@@ -243,11 +244,12 @@ double Earth::density(std::shared_ptr<Body::Track> track_input)
             }
         }
 
-double Earth::ye(std::shared_ptr<Body::Track> track_input)
+double Earth::ye(const GenericTrack& track_input)
         {
-            std::shared_ptr<Earth::Track> track_earth = std::static_pointer_cast< Earth::Track >(track_input);
-            double xkm = track_earth->x/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth->baseline/param.km)*xkm);
+            //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
+            const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+            double xkm = track_earth.x/param.km;
+            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.baseline/param.km)*xkm);
 
             if ( r/radius < x_radius_min ){
               return x_ye_min;
@@ -375,14 +377,14 @@ double Sun::rxh(double x){
             }
         }
 
-double Sun::density(std::shared_ptr<GenericTrack> track_input)
+double Sun::density(const GenericTrack& track_input)
         {
-            double r = track_input->x/(radius*param.km);
+            double r = track_input.x/(radius*param.km);
             return rdensity(r);
         }
-double Sun::ye(std::shared_ptr<GenericTrack> track_input)
+double Sun::ye(const GenericTrack& track_input)
         {
-            double r = track_input->x/(radius*param.km);
+            double r = track_input.x/(radius*param.km);
             return 0.5*(1.0+rxh(r));
         }
 
@@ -457,22 +459,24 @@ double SunASnu::rxh(double x){
             }
         }
 
-double SunASnu::density(std::shared_ptr<Body::Track> track_input)
+double SunASnu::density(const GenericTrack& track_input)
         {
-            std::shared_ptr<SunASnu::Track> track_sunasnu = std::static_pointer_cast< SunASnu::Track >(track_input);
-            double xkm = track_sunasnu->x/param.km;
-            double bkm = track_sunasnu->b_impact/param.km;
+            //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
+            const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
+            double xkm = track_sunasnu.x/param.km;
+            double bkm = track_sunasnu.b_impact/param.km;
 
             double r = sqrt(SQR(radius)+SQR(xkm)-2.0*xkm*sqrt(SQR(radius)-SQR(bkm)))/radius;
 
             return rdensity(r);
         }
 
-double SunASnu::ye(std::shared_ptr<Body::Track> track_input)
+double SunASnu::ye(const GenericTrack& track_input)
         {
-            std::shared_ptr<SunASnu::Track> track_sunasnu = std::static_pointer_cast< SunASnu::Track >(track_input);
-            double xkm = track_sunasnu->x/param.km;
-            double bkm = track_sunasnu->b_impact/param.km;
+            //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
+            const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
+            double xkm = track_sunasnu.x/param.km;
+            double bkm = track_sunasnu.b_impact/param.km;
             double r = sqrt(SQR(radius)+SQR(xkm)-2.0*xkm*sqrt(SQR(radius)-SQR(bkm)))/radius;
             return 0.5*(1.0+rxh(r));
         }
@@ -539,12 +543,12 @@ EarthAtm::Track::Track()
             //pass
         }
 
-double EarthAtm::density(std::shared_ptr<Body::Track> track_input)
+double EarthAtm::density(const GenericTrack& track_input)
         {
-            std::shared_ptr<EarthAtm::Track> track_earthatm = std::static_pointer_cast< EarthAtm::Track >(track_input);
-            double xkm = track_earthatm->x/param.km;
+            const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+            double xkm = track_earthatm.x/param.km;
 
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
 
             #ifdef EarthAtm_DEBUG
             cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
@@ -568,11 +572,11 @@ double EarthAtm::density(std::shared_ptr<Body::Track> track_input)
             }
         }
 
-double EarthAtm::ye(std::shared_ptr<Body::Track> track_input)
+double EarthAtm::ye(const GenericTrack& track_input)
         {
-            std::shared_ptr<EarthAtm::Track> track_earthatm = std::static_pointer_cast< EarthAtm::Track >(track_input);
-            double xkm = track_earthatm->x/param.km;
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm->L/param.km)*xkm);
+            const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+            double xkm = track_earthatm.x/param.km;
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
 
             double rel_r = r/earth_with_atm_radius;
             if ( rel_r < x_radius_min ){
