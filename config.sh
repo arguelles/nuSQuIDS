@@ -143,8 +143,7 @@ if [ "$HDF5_INCDIR" -a "$HDF5_LIBDIR" ]; then
          -a -f "$HDF5_INCDIR/H5version.h" \
          -a -d "$HDF5_LIBDIR" \
          -a -f "$HDF5_LIBDIR/libhdf5.a" \
-         -a -f "$HDF5_LIBDIR/libhdf5_hl.a" \
-         -a -f "$HDF5_LIBDIR/libhdf5_hl_cpp.a" ]; then
+         -a -f "$HDF5_LIBDIR/libhdf5_hl.a" ]; then
 		HDF5_FOUND=1
 		HDF5_CFLAGS="-I$HDF5_INCDIR"
 		HDF5_LDFLAGS="-L$HDF5_LIBDIR -lhdf5 -lhdf5_hl"
