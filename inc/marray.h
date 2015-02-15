@@ -332,12 +332,20 @@ struct multidimensional_initializer{
 		for(const auto& i : init)
 			multidimensional_initializer<T,Rank,Allocator,IRank-1>::initialize(i,alloc,write_ptr);
 	}
+	static void assign(const typename detail::initializer_for_rank<T,IRank>::type& init, T*& write_ptr){
+		for(const auto& i : init)
+			multidimensional_initializer<T,Rank,Allocator,IRank-1>::assign(i,write_ptr);
+	}
 };
 template<typename T, unsigned int Rank, typename Allocator>
 struct multidimensional_initializer<T,Rank,Allocator,1>{
 	static void initialize(const typename detail::initializer_for_rank<T,1>::type& init, Allocator& alloc, T*& write_ptr){
 		for(const auto& i : init)
 			std::allocator_traits<Allocator>::construct(alloc,write_ptr++,i);
+	}
+	static void assign(const typename detail::initializer_for_rank<T,1>::type& init, T*& write_ptr){
+		for(const auto& i : init)
+			*(write_ptr++)=i;
 	}
 };
 	
@@ -689,6 +697,19 @@ public:
 		return(*this);
 	}
 	
+	///Assignment from a multidimensional initializer
+	///\todo: make this exception safe
+	///\todo: make this work when the initializer shape does not match the array shape
+	///\todo: when the shapes do match and value_type is nothrow-copy-assignable do not reallocate
+	marray& operator=(typename detail::initializer_for_rank<value_type,Rank>::type init){
+		//ensure that the initializer has the same shape
+		detail::initializer_shape_checker<value_type,Rank,Rank>::check(extents,init,0);
+		
+		pointer write_pos=data;
+		detail::multidimensional_initializer<value_type,Rank,allocator_type,Rank>::assign(init,write_pos);
+		return(*this);
+	}
+	
 	subscript_type operator[](size_type i){
 		return(subscript_traits::make_subscript(data,extents,i));
 	}
@@ -978,9 +999,14 @@ public:
 	///Get the allocator currently used by the array
 	allocator_type get_allocator() const{ return(allocator()); }
 	
+	///Get the rank (number of dimensions) of the array
 	constexpr size_type rank() const noexcept{ return(Rank); }
+	///Get the size of the array in the given dimension
+	///\param dim the dimension to query
 	size_type extent(size_type dim) const{ return(extents[dim]); }
+	///Get the the total size of the array (the product of sizes in all dimensions)
 	size_type size() const noexcept{ return(total_size()); }
+	///Check whether the array is empty (has zero size)
 	bool empty() const noexcept{ return(total_size()==0); }
 	const pointer get_data() const noexcept{ return(data); }
 	
