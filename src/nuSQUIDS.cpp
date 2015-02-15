@@ -494,7 +494,7 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   ini(ne,numneu,nrhos,nscalars,track->GetInitialX());
   // reset energy
   if (ienergy) {
-    Set_xrange(E_range[0],E_range[E_range.size()-1],(elogscale) ? "log":"lin");
+    Set_xrange(E_range[0],E_range[E_range.extent(0)-1],(elogscale) ? "log":"lin");
   }
   istate = false;
 }
@@ -582,9 +582,9 @@ void nuSQUIDS::ConvertTauIntoNuTau(void){
 }
 
 void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
-  if( v.size() == 0 )
+  if( v.size()== 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
-  if( v.size() != numneu )
+  if( v.extent(0) != numneu )
     throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
@@ -601,14 +601,14 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
     for(int r = 0; r < nrhos; r++){
       if (basis == "flavor"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < v.size(); j++)
+        for(int j = 0; j < v.extent(0); j++)
         {
           state[i].rho[r] += v[j]*b1_proj[r][j];
         }
       }
       else if (basis == "mass"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < v.size(); j++)
+        for(int j = 0; j < v.extent(0); j++)
         {
           state[i].rho[r] += v[j]*b0_proj[j];
         }
@@ -622,7 +622,9 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
 void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
-  if( v.size() != ne )
+  if( v.extent(0) != ne )
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+  if( v.extent(1) != numneu)
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
@@ -657,7 +659,11 @@ void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
 void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
-  if( v.size() != ne )
+  if( v.extent(0) != ne )
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+  if( v.extent(1) != nrhos)
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+  if( v.extent(2) != numneu)
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( not (basis == "flavor" || basis == "mass" ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
@@ -893,7 +899,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     group_id = root_id;
 
   // write the energy range
-  hsize_t Edims[1]={E_range.size()};
+  hsize_t Edims[1]={E_range.extent(0)};
   dset_id = H5LTmake_dataset(group_id,"energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.get_data());
   H5LTset_attribute_string(group_id, "energies", "elogscale", (elogscale) ? "True":"False");
 
@@ -1542,8 +1548,10 @@ void nuSQUIDSAtm::EvolveState(void){
 }
 
 void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis){
-  if(ini_flux.size() != costh_array.size())
+  if(ini_flux.extent(0) != costh_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+  if(ini_flux.extent(1) != enu_array.extent(0))
+    throw std::runtime_error("nuSQUIDSAtm::Error::Second dimension of input array is incorrect.");
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     marray<double,2> slice{ini_flux.extent(1),ini_flux.extent(2)};
@@ -1559,7 +1567,7 @@ void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis
 }
 
 void nuSQUIDSAtm::Set_initial_state(marray<double,4> ini_flux, std::string basis){
-  if(ini_flux.size() != costh_array.size())
+  if(ini_flux.extent(0) != costh_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
@@ -1593,9 +1601,9 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
 
   // write the zenith range
-  hsize_t costhdims[1]={costh_array.size()};
+  hsize_t costhdims[1]={costh_array.extent(0)};
   dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.get_data());
-  hsize_t energydims[1]={enu_array.size()};
+  hsize_t energydims[1]={enu_array.extent(0)};
   dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.get_data());
 
   H5Gclose (root_id);
@@ -1699,7 +1707,7 @@ double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned
   SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
 
   int cth_M = -1;
-  for(int i = 0; i < costh_array.size(); i++){
+  for(int i = 0; i < costh_array.extent(0); i++){
     if ( costh >= costh_array[i] and costh <= costh_array[i+1] ) {
       cth_M = i;
       break;
@@ -1708,7 +1716,7 @@ double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned
 
   int loge_M = -1;
   double logE = log(enu);
-  for(int i = 0; i < log_enu_array.size(); i++){
+  for(int i = 0; i < log_enu_array.extent(0); i++){
     if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
       loge_M = i;
       break;
@@ -1741,10 +1749,10 @@ void nuSQUIDSAtm::Set_abs_error(double er){
 }
 
 size_t nuSQUIDSAtm::GetNumE() const{
-  return enu_array.size();
+  return enu_array.extent(0);
 }
 size_t nuSQUIDSAtm::GetNumCos() const{
-  return costh_array.size();
+  return costh_array.extent(0);
 }
 
 void nuSQUIDSAtm::Set_ProgressBar(bool v){
