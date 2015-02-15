@@ -84,20 +84,22 @@ int quickwrite(std::string filepath, Table& tbl){
     return 0;
 };
 
-std::vector<double> linspace(double Emin,double Emax,int div){
-    std::vector<double> linpoints;
+marray<double,1> linspace(double Emin,double Emax,unsigned int div){
+    marray<double,1> linpoints{div+1};
     double step_lin = (Emax - Emin)/double(div);
 
     double EE = Emin;
+    unsigned int i = 0;
     while (EE <= Emax+0.001){
-        linpoints.push_back(EE);
+        linpoints[i] = EE;
         EE = EE + step_lin;
+        i++;
     }
     return linpoints;
 };
 
-std::vector<double> logspace(double Emin,double Emax,int div){
-    std::vector<double> logpoints;
+marray<double,1> logspace(double Emin,double Emax,unsigned int div){
+    marray<double,1> logpoints{div+1};
     double Emin_log,Emax_log;
     if (Emin < 1.0e-5 ) {
         Emin_log = 0.0;
@@ -109,14 +111,16 @@ std::vector<double> logspace(double Emin,double Emax,int div){
     double step_log = (Emax_log - Emin_log)/double(div);
 
     double EE = Emin_log;
+    unsigned int i = 0;
     while (EE <= Emax_log+0.001){
-        logpoints.push_back(exp(EE));
+        logpoints[i] = exp(EE);
         EE = EE + step_log;
+        i++;
     }
     return logpoints;
 };
 
-Table intertable(Table & xy_data, std::vector<double> x_array, int j1 = 0, int j2 = 1){
+Table intertable(Table & xy_data, std::vector<double> x_array, unsigned int j1 = 0, unsigned int j2 = 1){
     Table result;
     int arraysize = xy_data.size();
 

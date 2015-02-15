@@ -4,6 +4,7 @@
 #include "body.h"
 #include "xsections.h"
 #include "taudecay.h"
+#include "marray.h"
 
 #include <algorithm>
 #include <SQuIDS/SQUIDS.h>
@@ -11,7 +12,6 @@
 #include <map>
 #include <stdexcept>
 
-//#include "H5Exception.h"
 #include "H5Epublic.h"
 #include "H5Tpublic.h"
 #include "hdf5.h"
@@ -25,11 +25,6 @@
 //#define UpdateInteractions_DEBUG
 
 namespace nusquids{
-
-typedef std::vector<double> array1D;
-typedef std::vector<std::vector<double> > array2D;
-typedef std::vector<std::vector<std::vector<double> > > array3D;
-typedef std::vector<std::vector<std::vector<std::vector<double> > > > array4D;
 
 enum MixingParameter {
   TH12 = 0,
@@ -72,25 +67,25 @@ class nuSQUIDS: public SQUIDS {
     };
   protected:
     BASIS basis = interaction;
-    int numneu;
-    int ne = nx;
+    unsigned int numneu;
+    unsigned int ne = nx;
 
     double GetNucleonNumber();
     void UpdateInteractions();
 
-    array1D E_range;
-    array1D delE;
+    marray<double,1> E_range;
+    marray<double,1> delE;
 
     //void Set_Initial_Time();
 
     NeutrinoCrossSections ncs;
-    array4D dNdE_CC,dNdE_NC;
-    array3D invlen_NC,invlen_CC,invlen_INT;
-    array3D sigma_CC,sigma_NC;
+    marray<double,4> dNdE_CC,dNdE_NC;
+    marray<double,3> invlen_NC,invlen_CC,invlen_INT;
+    marray<double,3> sigma_CC,sigma_NC;
 
     TauDecaySpectra tdc;
-    array1D invlen_tau;
-    array2D dNdE_tau_all,dNdE_tau_lep;
+    marray<double,1> invlen_tau;
+    marray<double,2> dNdE_tau_all,dNdE_tau_lep;
     double taubr_lep,tau_lifetime,tau_mass;
     double tau_reg_scale;
 
@@ -98,14 +93,14 @@ class nuSQUIDS: public SQUIDS {
     std::shared_ptr<Track> track;
 
     SU_vector DM2;
-    std::vector<SU_vector> H0_array;
+    marray<SU_vector,1> H0_array;
 
-    std::vector<SU_vector> b0_proj;
-    std::vector<std::vector<SU_vector> > b1_proj;
-    std::vector<std::vector<std::vector<SU_vector> > > evol_b0_proj;
-    std::vector<std::vector<std::vector<SU_vector> > > evol_b1_proj;
+    marray<SU_vector,1> b0_proj;
+    marray<SU_vector,2> b1_proj;
+    marray<SU_vector,3> evol_b0_proj;
+    marray<SU_vector,3> evol_b1_proj;
 
-    std::vector<std::vector<SU_vector> > potential_array;
+    marray<SU_vector,2> potential_array;
 
     void EvolveProjectors(double t);
     void ConvertTauIntoNuTau();
@@ -188,9 +183,9 @@ class nuSQUIDS: public SQUIDS {
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho) const;
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
      // interface
-     void Set_initial_state(array1D, std::string basis = "flavor");
-     void Set_initial_state(array2D, std::string basis = "flavor");
-     void Set_initial_state(array3D, std::string basis = "flavor");
+     void Set_initial_state(marray<double,1>, std::string basis = "flavor");
+     void Set_initial_state(marray<double,2>, std::string basis = "flavor");
+     void Set_initial_state(marray<double,3>, std::string basis = "flavor");
 
      void Set_Body(std::shared_ptr<Body>);
      void Set_Track(std::shared_ptr<Track>);
@@ -210,7 +205,7 @@ class nuSQUIDS: public SQUIDS {
      void Set_TauRegeneration(bool);
      void Set_ProgressBar(bool);
 
-     array1D GetERange() const;
+     marray<double,1> GetERange() const;
      size_t GetNumE() const;
      int GetNumNeu() const;
      SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho = 0);
@@ -246,9 +241,9 @@ class nuSQUIDSAtm {
   protected:
     bool iinistate;
     bool inusquidsatm;
-    std::vector<double> costh_array;
-    std::vector<double> enu_array;
-    std::vector<double> log_enu_array;
+    marray<double,1> costh_array;
+    marray<double,1> enu_array;
+    marray<double,1> log_enu_array;
     std::vector<nuSQUIDS> nusq_array;
 
     std::shared_ptr<EarthAtm> earth_atm;
@@ -259,8 +254,8 @@ class nuSQUIDSAtm {
                 bool elogscale = true, bool iinteraction = false);
     nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
 
-    void Set_initial_state(array3D, std::string basis = "flavor");
-    void Set_initial_state(array4D, std::string basis = "flavor");
+    void Set_initial_state(marray<double,3>, std::string basis = "flavor");
+    void Set_initial_state(marray<double,4>, std::string basis = "flavor");
 
     void EvolveState();
     void Set_TauRegeneration(bool);
@@ -279,8 +274,8 @@ class nuSQUIDSAtm {
 
     size_t GetNumE() const;
     size_t GetNumCos() const;
-    array1D GetERange() const;
-    array1D GetCosthRange() const;
+    marray<double,1> GetERange() const;
+    marray<double,1> GetCosthRange() const;
 };
 
 

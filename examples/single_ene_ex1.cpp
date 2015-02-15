@@ -111,7 +111,7 @@ int main()
   // e.g. (1,1,1), (1,1,0), etc.
 
   // In this case we will start with a pure nu_mu state.
-  std::vector<double> ini_state{0,1,0};
+  marray<double,1> ini_state({3},{0,1,0});
   nus.Set_initial_state(ini_state,"flavor");
 
   // Lets print out the initial state
@@ -205,7 +205,7 @@ int main()
   nus.Set_Track(track_vac);
 
   // Lets set the initial state to electron
-  ini_state = {1,0,0};
+  ini_state = marray<double,1>{{3},{1,0,0}};
   nus.Set_initial_state(ini_state,"flavor");
   // We can change the energy some MeV
   nus.Set_E(15.0*nus.units.MeV);
@@ -259,7 +259,7 @@ int main()
   // Lets set the initial state to electron. Note that we have
   // to set the mixing parameters *before* we set the initial state
   // in the flavor basis.
-  ini_state = {1,0,0};
+  ini_state = marray<double,1>{{3},{1,0,0}};
   nus.Set_initial_state(ini_state,"flavor");
   // We can change the energy some MeV
   nus.Set_E(10.0*nus.units.MeV);
@@ -315,7 +315,7 @@ int main()
   nus.Set_Track(track_vardens);
 
   // Lets set the initial state to electron
-  ini_state = {0,0,1};
+  ini_state = marray<double,1>{{3},{0,0,1}};
   nus.Set_initial_state(ini_state,"flavor");
   // We can change the energy some MeV
   nus.Set_E(100.0*nus.units.GeV);
@@ -360,7 +360,7 @@ int main()
   nus.Set_Track(track_sun);
 
   // Lets set the initial state to electron
-  ini_state = {1,0,0};
+  ini_state = marray<double,1>{{3},{1,0,0}};
   nus.Set_initial_state(ini_state,"flavor");
   // We can change the energy some MeV
   nus.Set_E(10.0*nus.units.MeV);

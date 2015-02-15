@@ -34,7 +34,7 @@ using namespace nusquids;
 
 int main()
 {
-  int numneu = 3;
+  unsigned int numneu = 3;
   nuSQUIDSAtm nus_atm(-1.,0.2,20,5.e2,1.e6,150,numneu,nuSQUIDS::both,true,true);
 
   // set mixing angles and masses
@@ -58,13 +58,11 @@ int main()
 
   // construct the initial state
   double N0 = 1.0;
-  array4D inistate(nus_atm.GetNumCos());
+  marray<double,4> inistate{nus_atm.GetNumCos(),nus_atm.GetNumE(),2,numneu};
+  std::fill(inistate.begin(),inistate.end(),0);
   for ( int ci = 0 ; ci < nus_atm.GetNumCos(); ci++){
-    inistate[ci].resize(nus_atm.GetNumE());
     for ( int ei = 0 ; ei < nus_atm.GetNumE(); ei++){
-      inistate[ci][ei].resize(2);
       for ( int rho = 0; rho < 2; rho ++ ){
-      inistate[ci][ei][rho].resize(3);
         for (int flv = 0; flv < numneu; flv++){
           // initialze muon state
           inistate[ci][ei][rho][flv] = (flv == 1) ? N0 : 0.0;

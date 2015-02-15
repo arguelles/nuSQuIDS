@@ -106,7 +106,7 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,int div_in){
         Emax = Emax_in;
         div = div_in;
 
-        std::vector<double> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
+        marray<double,1> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
         int e_size = E_range_GeV.size();
 
         for (int e1 = 0 ; e1 < e_size ; e1 ++){

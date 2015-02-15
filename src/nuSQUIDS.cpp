@@ -47,7 +47,7 @@ void nuSQUIDS::init(double xini){
   // init square mass difference //
   //===============================
 
-  H0_array.resize(ne);
+  H0_array.resize(std::vector<size_t>{ne});
   for(int ie = 0; ie < ne; ie++){
     H0_array[ie] = SU_vector(nsun);
   }
@@ -63,7 +63,8 @@ void nuSQUIDS::init(double xini){
 void nuSQUIDS::Set_E(double Enu){
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error:Cannot use Set_E in single energy mode.");
-  E_range = std::vector<double>{Enu};
+  E_range = marray<double,1>{1};
+  E_range[0] = Enu;
   Set_xrange(E_range[0],E_range[ne-1],"lin");
 
   ienergy = true;
@@ -116,7 +117,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
     E_range = linspace(Emin*params.GeV,Emax*params.GeV,ne-1);
     Set_xrange(E_range[0],E_range[Esize-1],"lin");
   }
-  delE.resize(ne-1);
+  delE.resize(std::vector<size_t>{ne-1});
   for(int ei = 0; ei < ne -1; ei++)
     delE[ei] = E_range[ei+1] - E_range[ei];
 
@@ -138,7 +139,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   // init square mass difference //
   //===============================
 
-  H0_array.resize(ne);
+  H0_array.resize(std::vector<size_t>{ne});
   for(int ie = 0; ie < ne; ie++){
     H0_array[ie] = SU_vector(nsun);
   }
@@ -188,28 +189,19 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
 void nuSQUIDS::InitializeInteractionVectors(){
 
     // initialize cross section and interaction arrays
-    dNdE_NC.resize(nrhos); dNdE_CC.resize(nrhos);
-    invlen_NC.resize(nrhos); invlen_CC.resize(nrhos); invlen_INT.resize(nrhos);
-    sigma_CC.resize(nrhos); sigma_NC.resize(nrhos);
-    for(int rho = 0; rho < nrhos; rho++){
-      dNdE_NC[rho].resize(numneu); dNdE_CC[rho].resize(numneu);
-      invlen_NC[rho].resize(numneu); invlen_CC[rho].resize(numneu); invlen_INT[rho].resize(numneu);
-      sigma_CC[rho].resize(numneu); sigma_NC[rho].resize(numneu);
-      for(int flv = 0; flv < numneu; flv++){
-          dNdE_NC[rho][flv].resize(ne); dNdE_CC[rho][flv].resize(ne);
-          invlen_NC[rho][flv].resize(ne); invlen_CC[rho][flv].resize(ne); invlen_INT[rho][flv].resize(ne);
-          sigma_CC[rho][flv].resize(ne); sigma_NC[rho][flv].resize(ne);
-          for(int e1 = 0; e1 < ne; e1++){
-            dNdE_NC[rho][flv][e1].resize(e1); dNdE_CC[rho][flv][e1].resize(e1);
-          }
-      }
-    }
+    dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
+    dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
+    // inverse interaction lenghts
+    invlen_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    invlen_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    invlen_INT.resize(std::vector<size_t>{nrhos,numneu,ne});
+    // initialize cross section arrays
+    sigma_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    sigma_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
     // initialize the tau decay and interaction array
-    invlen_tau.resize(ne);
-    dNdE_tau_all.resize(ne); dNdE_tau_lep.resize(ne);
-    for(int e1 = 0; e1 < ne; e1++){
-      dNdE_tau_all[e1].resize(e1); dNdE_tau_lep[e1].resize(e1);
-    }
+    invlen_tau.resize(std::vector<size_t>{ne});
+    dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
+    dNdE_tau_lep.resize(std::vector<size_t>{ne,ne});
 }
 
 void nuSQUIDS::PreDerive(double x){
@@ -382,16 +374,13 @@ void nuSQUIDS::InitializeInteractions(){
 
     // load cross sections
     // initializing cross section arrays temporary array
-    array4D dsignudE_CC,dsignudE_NC;
+    marray<double,4> dsignudE_CC{nrhos,numneu,ne,ne};
+    marray<double,4> dsignudE_NC{nrhos,numneu,ne,ne};
 
     // filling cross section arrays
-    dsignudE_NC.resize(nrhos); dsignudE_CC.resize(nrhos);
     for(int neutype = 0; neutype < nrhos; neutype++){
-      dsignudE_CC[neutype].resize(numneu); dsignudE_NC[neutype].resize(numneu);
       for(int flv = 0; flv < numneu; flv++){
-          dsignudE_CC[neutype][flv].resize(ne); dsignudE_NC[neutype][flv].resize(ne);
           for(int e1 = 0; e1 < ne; e1++){
-              dsignudE_CC[neutype][flv][e1].resize(e1); dsignudE_NC[neutype][flv][e1].resize(e1);
               // differential cross sections
               for(int e2 = 0; e2 < e1; e2++){
                   dsignudE_NC[neutype][flv][e1][e2] = ncs.dsde_NC(e1,e2,flv,neutype)*cm2GeV;
@@ -592,7 +581,7 @@ void nuSQUIDS::ConvertTauIntoNuTau(void){
 
 }
 
-void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != numneu )
@@ -630,7 +619,7 @@ void nuSQUIDS::Set_initial_state(std::vector<double> v, std::string basis){
   istate = true;
 };
 
-void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != ne )
@@ -665,7 +654,7 @@ void nuSQUIDS::Set_initial_state(array2D v, std::string basis){
   istate = true;
 }
 
-void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.size() != ne )
@@ -699,7 +688,7 @@ void nuSQUIDS::Set_initial_state(array3D v, std::string basis){
   istate = true;
 }
 
-array1D nuSQUIDS::GetERange() const{
+marray<double,1> nuSQUIDS::GetERange() const{
   return E_range;
 }
 
@@ -806,14 +795,13 @@ void nuSQUIDS::AntineutrinoCPFix(unsigned int rho){
 
 void nuSQUIDS::iniProjectors(){
 
-  b0_proj.resize(numneu);
+  b0_proj.resize(std::vector<size_t>{numneu});
   for(int flv = 0; flv < numneu; flv++){
     b0_proj[flv] = SU_vector::Projector(nsun,flv);
   }
 
-  b1_proj.resize(nrhos);
+  b1_proj.resize(std::vector<size_t>{nrhos,numneu});
   for(int rho = 0; rho < nrhos; rho++){
-    b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
       b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
 
@@ -823,14 +811,10 @@ void nuSQUIDS::iniProjectors(){
     }
   }
 
-  evol_b0_proj.resize(nrhos);
-  evol_b1_proj.resize(nrhos);
+  evol_b0_proj.resize(std::vector<size_t>{nrhos,numneu,ne});
+  evol_b1_proj.resize(std::vector<size_t>{nrhos,numneu,ne});
   for(int rho = 0; rho < nrhos; rho++){
-    evol_b0_proj[rho].resize(numneu);
-    evol_b1_proj[rho].resize(numneu);
     for(int flv = 0; flv < numneu; flv++){
-      evol_b0_proj[rho][flv].resize(ne);
-      evol_b1_proj[rho][flv].resize(ne);
       for(int e1 = 0; e1 < ne; e1++){
         evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
@@ -910,7 +894,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   // write the energy range
   hsize_t Edims[1]={E_range.size()};
-  dset_id = H5LTmake_dataset(group_id,"energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.data());
+  dset_id = H5LTmake_dataset(group_id,"energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.get_data());
   H5LTset_attribute_string(group_id, "energies", "elogscale", (elogscale) ? "True":"False");
 
   // write mixing parameters
@@ -920,7 +904,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   H5LTmake_dataset(group_id,"CPphases",1,dim,H5T_NATIVE_DOUBLE,0);
   H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
 
-  H5LTset_attribute_int(group_id, "basic","numneu",&numneu, 1);
+  H5LTset_attribute_int(group_id, "basic","numneu",(const int*)&numneu, 1);
   //H5LTset_attribute_string(group_id, "basic","NT",NT.c_str());
   int auxint = NT;
   H5LTset_attribute_int(group_id, "basic","NT",&auxint,1); //TODO: do fancy enum stuff
@@ -1074,7 +1058,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
     // invlen_tau
     hsize_t iltdim[1] {(hsize_t)ne};
-    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,(void*)invlen_tau.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,(void*)invlen_tau.get_data());
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2] {(hsize_t)ne,(hsize_t)ne};
@@ -1119,7 +1103,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
       throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");
 
   // read number of neutrinos
-  H5LTget_attribute_int(group_id, "basic", "numneu", &numneu);
+  H5LTget_attribute_int(group_id, "basic", "numneu", (int*)&numneu);
   // neutrino/antineutrino/both
   int auxint;
   char auxchar[20];
@@ -1521,7 +1505,8 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,int costh_div,
   else{
     enu_array = linspace(energy_min,energy_max,energy_div-1);
   }
-  std::transform(enu_array.begin(),enu_array.end(),std::back_inserter(log_enu_array),[](int enu){ return log(enu);});
+  log_enu_array.resize(0,enu_array.size());
+  std::transform(enu_array.begin(),enu_array.end(),log_enu_array.begin(),[](int enu){ return log(enu);});
 
   earth_atm = std::make_shared<EarthAtm>();
   for(double costh : costh_array)
@@ -1556,23 +1541,38 @@ void nuSQUIDSAtm::EvolveState(void){
   }
 }
 
-void nuSQUIDSAtm::Set_initial_state(array3D ini_flux, std::string basis){
+void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis){
   if(ini_flux.size() != costh_array.size())
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.Set_initial_state(ini_flux[i],basis);
+    marray<double,2> slice{ini_flux.extent(1),ini_flux.extent(2)};
+    for(size_t j=0; j<ini_flux.extent(1); j++){
+      for(size_t k=0; k<ini_flux.extent(2); k++)
+        slice[j][k]=ini_flux[i][j][k];
+    }
+    nsq.Set_initial_state(slice,basis);
+    //nsq.Set_initial_state(ini_flux[i],basis);
     i++;
   }
   iinistate = true;
 }
 
-void nuSQUIDSAtm::Set_initial_state(array4D ini_flux, std::string basis){
+void nuSQUIDSAtm::Set_initial_state(marray<double,4> ini_flux, std::string basis){
   if(ini_flux.size() != costh_array.size())
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.Set_initial_state(ini_flux[i],basis);
+    marray<double,3> slice{ini_flux.extent(1),ini_flux.extent(2),ini_flux.extent(3)};
+    for(size_t j=0; j<ini_flux.extent(1); j++){
+      for(size_t k=0; k<ini_flux.extent(2); k++){
+        for(size_t m=0; m<ini_flux.extent(3); m++)
+        slice[j][k][m]=ini_flux[i][j][k][m];
+      }
+    }
+
+    nsq.Set_initial_state(slice,basis);
+    //nsq.Set_initial_state(ini_flux[i],basis);
     i++;
   }
   iinistate = true;
@@ -1594,9 +1594,9 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
 
   // write the zenith range
   hsize_t costhdims[1]={costh_array.size()};
-  dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.data());
+  dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.get_data());
   hsize_t energydims[1]={enu_array.size()};
-  dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.data());
+  dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.get_data());
 
   H5Gclose (root_id);
   H5Fclose (file_id);
@@ -1643,8 +1643,7 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
 
   double data[costhdims[0]];
   H5LTread_dataset_double(group_id, "zenith_angles", data);
-  costh_array.clear();
-  costh_array.resize(costhdims[0]);
+  costh_array.resize(std::vector<size_t> {costhdims[0]});
   for (int i = 0; i < costhdims[0]; i ++)
     costh_array[i] = data[i];
 
@@ -1653,8 +1652,7 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
 
   double enu_data[energydims[0]];
   H5LTread_dataset_double(group_id, "energy_range", enu_data);
-  enu_array.clear();log_enu_array.clear();
-  enu_array.resize(energydims[0]);log_enu_array.resize(energydims[0]);
+  enu_array.resize(std::vector<size_t>{energydims[0]});log_enu_array.resize(std::vector<size_t>{energydims[0]});
   for (int i = 0; i < energydims[0]; i ++){
     enu_array[i] = enu_data[i];
     log_enu_array[i] = log(enu_data[i]);
@@ -1689,9 +1687,9 @@ double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned
   if(not inusquidsatm)
     throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
 
-  if( costh < costh_array[0] or costh > costh_array.back())
+  if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
     throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
-  if( enu < enu_array[0] or enu > enu_array.back() )
+  if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
     throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.");
 
   std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
@@ -1756,11 +1754,11 @@ void nuSQUIDSAtm::Set_ProgressBar(bool v){
     }
 }
 
-array1D nuSQUIDSAtm::GetERange() const{
+marray<double,1> nuSQUIDSAtm::GetERange() const{
   return enu_array;
 }
 
-array1D nuSQUIDSAtm::GetCosthRange() const{
+marray<double,1> nuSQUIDSAtm::GetCosthRange() const{
   return costh_array;
 }
 

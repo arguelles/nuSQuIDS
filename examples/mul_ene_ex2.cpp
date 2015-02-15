@@ -72,14 +72,13 @@ int main()
   nus.Set_rel_error(1.0e-12);
   nus.Set_abs_error(1.0e-12);
 
-  std::vector<double> E_range = nus.GetERange();
+  marray<double,1> E_range = nus.GetERange();
 
   // construct the initial state
-  array2D inistate(60);
+  marray<double,2> inistate{60,3};
   double N0 = 1.0e18;
-  for ( int i = 0 ; i < inistate.size(); i++){
-      inistate[i].resize(3);
-      for ( int k = 0; k < 3; k ++){
+  for ( int i = 0 ; i < inistate.extent(0); i++){
+      for ( int k = 0; k < inistate.extent(1); k ++){
         // initialze muon state
         inistate[i][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
       }

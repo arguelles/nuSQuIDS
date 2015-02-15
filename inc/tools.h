@@ -14,6 +14,7 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include <stdexcept>
+#include "marray.h"
 
 namespace nusquids{
 
@@ -30,9 +31,9 @@ bool fexists(std::string);
 Table quickread(std::string);
 int quickwrite(std::string,Table&);
 // other tools
-std::vector<double> linspace(double,double,int);
-std::vector<double> logspace(double,double,int);
-Table intertable(Table&,std::vector<double>,int,int);
+marray<double,1> linspace(double,double,unsigned int);
+marray<double,1> logspace(double,double,unsigned int);
+Table intertable(Table&,std::vector<double>,unsigned int,unsigned int);
 // additional GSL-like tools
 void gsl_matrix_complex_conjugate(gsl_matrix_complex*);
 void gsl_matrix_complex_print(gsl_matrix_complex*);
