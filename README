@@ -10,7 +10,7 @@ The following packages are required to build and use the client library, and
 can probably be had from your favorite package manager:
 
 * gsl (>= 1.16): http://www.gnu.org/software/gsl/
-* hdf5 with c++ bindings
+* hdf5 with c bindings
 * C++ compiler with C++11 support: http://www.hdfgroup.org/HDF5/
 * SQUIDS (>= 1.00): https://github.com/jsalvado/SQuIDS/
 
