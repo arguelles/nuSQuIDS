@@ -217,14 +217,14 @@ class nuSQUIDS: public SQUIDS {
      std::shared_ptr<Body> GetBody() const;
 
      void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
+     virtual void AddToWriteHDF5(hid_t hdf5_loc_id) const;
      void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
+     virtual void AddToReadHDF5(hid_t hdf5_loc_id);
 
      void Set(MixingParameter,double);
      void Set_MixingParametersToDefault();
 
      void Set_Basis(BASIS);
-
-    // virtual ~nuSQUIDS(void);
 };
 
 /**

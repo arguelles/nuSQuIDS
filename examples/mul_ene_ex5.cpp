@@ -38,7 +38,8 @@ class nuSQUIDSNSI: public nuSQUIDS {
     std::vector<SU_vector> NSI_evol;
     std::unique_ptr<double[]> hiBuffer;
     double HI_prefactor;
-  public:
+    // nsi parameters
+    double epsilon_mutau;
 
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
@@ -47,6 +48,19 @@ class nuSQUIDSNSI: public nuSQUIDS {
         //NSI_evol[ei] = NSI.Evolve(h0,(x-Get_t_initial()));
         NSI_evol[ei] = NSI.Evolve(H0_array[ei],(x-Get_t_initial()));
       }
+    }
+
+    void AddToReadHDF5(hid_t hdf5_loc_id){
+      // here we read the new parameters now saved in the HDF5 file
+      hid_t nsi = H5Gopen(hdf5_loc_id, "nsi", H5P_DEFAULT);
+      H5LTget_attribute_double(hdf5_loc_id,"nsi","mu_tau" ,&epsilon_mutau);
+      H5Gclose(nsi);
+    }
+
+    void AddToWriteHDF5(hid_t hdf5_loc_id) const {
+      // here we write the new parameters to be saved in the HDF5 file
+      H5Gcreate(hdf5_loc_id, "nsi", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5LTset_attribute_double(hdf5_loc_id, "nsi","mu_tau",&epsilon_mutau, 1);
     }
 
     SU_vector HI(unsigned int ei,unsigned int index_rho) const{
@@ -82,16 +96,15 @@ class nuSQUIDSNSI: public nuSQUIDS {
           throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
       }
     }
-
-    nuSQUIDSNSI(double Emin,double Emax,int Esize,int numneu, nuSQUIDS::NeutrinoType NT,
+  public:
+    nuSQUIDSNSI(double epsilon_mutau,double Emin,double Emax,int Esize,int numneu, nuSQUIDS::NeutrinoType NT,
          bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
-         hiBuffer(new double[nsun*nsun])
+         hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
     {
        assert(numneu == 3);
        // defining a complex matrix M which will contain our flavor
        // violating flavor structure.
        gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
-       double epsilon_mutau = 1.0e-2;
        gsl_complex c { epsilon_mutau , 0.0 };
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
@@ -135,7 +148,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSNSI nus(1.e1,1.e3,200,3,nuSQUIDS::antineutrino,true,false);
+  nuSQUIDSNSI nus(1.0e-2,1.e1,1.e3,200,3,nuSQUIDS::antineutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();

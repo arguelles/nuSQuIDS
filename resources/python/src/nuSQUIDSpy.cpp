@@ -1,15 +1,16 @@
 #include <boost/python.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
-#include <boost/numpy.hpp>
 #include "container_conversions.h"
-#include "nuSQUIDS.h"
-#include "SQUIDS.h"
+#include <SQuIDS/SQUIDS.h>
+#include <nuSQuIDS/nuSQUIDS.h>
+
+#include <numpy/ndarrayobject.h>
+#include <numpy/ndarraytypes.h>
 
 using namespace boost::python;
 using namespace nusquids;
 namespace bp = boost::python;
-namespace np = boost::numpy;
 
 template<class T>
 struct VecToList
@@ -22,6 +23,44 @@ struct VecToList
     return l->ptr();
   }
 };
+
+
+// converting marray to numpy array and back
+template<unsigned int DIM>
+boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
+  // get the data from the marray
+  double * data = iarray.size() ? const_cast<double*>(iarray.get_data()) : static_cast<double*>(NULL);
+  // construct numpy object
+  npy_intp * size = new npy_intp[DIM];
+  for(unsigned int i = 0; i < DIM; i++)
+    size[i] = iarray.extent(i);
+  PyObject * pyObj = PyArray_SimpleNewFromData(DIM,size,NPY_DOUBLE,data);
+  boost::python::handle<> handle(pyObj);
+  boost::python::numeric::array arr(handle);
+
+  delete [] size;
+
+  // return numpy object
+  return arr.copy();
+}
+
+template<unsigned int DIM>
+marray<double,DIM> numpyarray_to_marray(PyArrayObject const & iarray){
+  unsigned int array_dim = PyArray_NDIM(iarray);
+  assert(DIM == array_dim && "No matching dimensions.");
+  npy_intp* array_shape = PyArray_SHAPE(iarray);
+  std::vector<size_t> dimensions;
+  for(unsigned int i = 0; i < array_dim; i++)
+    dimensions.push_back(array_shape[i]);
+
+  // construct output object
+  marray<double,DIM> oarray(dimensions);
+  for(unsigned int i = 0; i < array_dim; i++){
+
+  }
+
+  return oarray;
+}
 
 // nuSQUIDS wrap functions
 static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){

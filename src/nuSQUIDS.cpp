@@ -875,6 +875,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   if (!iinteraction)
     save_cross_section = iinteraction;
 
+  // this lines supress HDF5 error messages
   hid_t error_stack;
   //H5Eset_auto(error_stack, NULL, NULL);
   H5Eset_auto (H5E_DEFAULT,NULL, NULL);
@@ -1087,12 +1088,29 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   // close cross section group
   H5Gclose(xs_group_id);
+
+
+  // write user parameters
+  hid_t user_parameters_id = H5Gcreate(group_id, "user_parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  // give control to the user and temporary restore HDF5 error messages
+  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
+  AddToWriteHDF5(user_parameters_id);
+  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+
   // close root group
   H5Gclose ( root_id );
   if ( root_id != group_id )
     H5Gclose ( group_id );
   // close HDF5 file
   H5Fclose (file_id);
+
+}
+
+void nuSQUIDS::AddToWriteHDF5(hid_t hdf5_loc_id) const {
+
+}
+
+void nuSQUIDS::AddToReadHDF5(hid_t hdf5_loc_id){
 
 }
 
@@ -1291,8 +1309,16 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     }
   }
 
+  // read from user parameters
+  hid_t user_parameters_id = H5Gopen(group_id, "user_parameters", H5P_DEFAULT);
+  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
+  AddToReadHDF5(user_parameters_id);
+  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  H5Gclose(user_parameters_id);
+
   // close HDF5 file
   H5Gclose ( group_id );
+  // close root and file
   H5Gclose ( root_id );
   H5Fclose (file_id);
 }
