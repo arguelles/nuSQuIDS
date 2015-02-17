@@ -57,14 +57,13 @@ static std::map<int,std::vector<int>> param_label_index {
   {15 , {0,2}} , {16, {0,3}} , {17, {0,4}},
   {18, {1,0}} , {19 , {2,0}}, {20,{3,0}} ,{ 21 , {4,0}} , {22, {5,0}}
                                                     };
+enum NeutrinoType {
+  neutrino=0b01,
+  antineutrino=0b10,
+  both=0b11
+};
 
 class nuSQUIDS: public SQUIDS {
-  public:
-    enum NeutrinoType {
-      neutrino=0b01,
-      antineutrino=0b10,
-      both=0b11
-    };
   protected:
     BASIS basis = interaction;
     unsigned int numneu;
@@ -133,9 +132,9 @@ class nuSQUIDS: public SQUIDS {
      void InitializeInteractions();
      void SetScalarsToZero();
      void ProgressBar() const;
-  public:
      virtual void PreDerive(double);
      virtual void AddToPreDerive(double){};
+  public:
      const Const units;
      // initializers
      nuSQUIDS(){};
@@ -167,6 +166,7 @@ class nuSQUIDS: public SQUIDS {
 
      nuSQUIDS(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      void Init(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
+  protected:
      // physics functions
      SU_vector H0(double E, unsigned int irho) const;
 
@@ -182,6 +182,7 @@ class nuSQUIDS: public SQUIDS {
      virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);};
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho) const;
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
+  public:
      // interface
      void Set_initial_state(marray<double,1>, std::string basis = "flavor");
      void Set_initial_state(marray<double,2>, std::string basis = "flavor");
@@ -250,7 +251,7 @@ class nuSQUIDSAtm {
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
   public:
     nuSQUIDSAtm(double,double,int,double,double,int,
-                int numneu,nuSQUIDS::NeutrinoType NT = nuSQUIDS::both,
+                int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false);
     nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
 

@@ -24,12 +24,11 @@ INCSQUIDS=$(PATH_SQUIDS)/inc
 LDFLAGS= -lgsl -lgslcblas
 LDFLAGS+= -L$(LIBSQUIDS) -lSQUIDS
 LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQUIDS
-LDFLAGS+= -lhdf5 -lhdf5_hl -lhdf5_hl_cpp
-LDFLAGS+= -lpython$(PYTHON_VERSION) -lboost_python -lboost_numpy
+LDFLAGS+= -lpython$(PYTHON_VERSION) -lboost_python
 INCCFLAGS+= -I/usr/include/python$(PYTHON_VERSION) -I../inc/
 INCCFLAGS+= -I$(INCnuSQUIDS) -I$(INCSQUIDS)
 #INCCFLAGS+= -I$(INCHDF5)
-CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
+CXXFLAGS= -g -O3 -fPIC -std=c++11 $(INCCFLAGS)
 
 
 # Project files

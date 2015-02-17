@@ -4,9 +4,12 @@
 #include "container_conversions.h"
 #include <SQuIDS/SQUIDS.h>
 #include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/marray.h>
 
 #include <numpy/ndarrayobject.h>
 #include <numpy/ndarraytypes.h>
+#include <numpy/ufuncobject.h>
+
 
 using namespace boost::python;
 using namespace nusquids;
@@ -27,7 +30,7 @@ struct VecToList
 
 // converting marray to numpy array and back
 template<unsigned int DIM>
-boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
+static boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
   // get the data from the marray
   double * data = iarray.size() ? const_cast<double*>(iarray.get_data()) : static_cast<double*>(NULL);
   // construct numpy object
@@ -44,20 +47,80 @@ boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
   return arr.copy();
 }
 
-template<unsigned int DIM>
-marray<double,DIM> numpyarray_to_marray(PyArrayObject const & iarray){
-  unsigned int array_dim = PyArray_NDIM(iarray);
+template<typename T,unsigned int DIM>
+static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num){
+  // es un array de numpy
+  if (! PyArray_Check(iarray) )
+  {
+    PyErr_SetString(PyExc_TypeError, "numpyarray_to_marray: Input is not a numpy array.");
+    boost::python::throw_error_already_set();
+  }
+  // si es que fuera un array de numpy castearlo
+  //PyArrayObject* numpy_array = (PyArrayObject*) iarray;
+  // lets get the contiguos C-style array
+  PyArrayObject* numpy_array = PyArray_GETCONTIGUOUS((PyArrayObject*)iarray);
+
+  // revisemos que los tipos del array sean dobles o que
+  if ( PyArray_DESCR(numpy_array)->type_num != type_num )
+  {
+    if ( PyArray_DESCR(numpy_array)->type_num == NPY_LONG &&
+        PyArray_ITEMSIZE(numpy_array) == 4 && type_num == NPY_INT)
+    {
+      // numpy on 32 bits sets numpy.int32 to NPY_LONG. So its all ok.
+    }
+    else
+    {
+      PyErr_SetString(PyExc_TypeError, "numpyarray_to_marray: numpy type is not the same as the input array type.");
+      boost::python::throw_error_already_set();
+    }
+  }
+
+  // arrays vacios
+  if (PyArray_SIZE(numpy_array) == 0){
+      PyErr_SetString(PyExc_TypeError,"numpyarray_to_marray: empty numpy array.");
+      boost::python::throw_error_already_set();
+  }
+
+  // create numpy iterator
+  NpyIter* iter = NpyIter_New(numpy_array, NPY_ITER_READONLY|
+                             NPY_ITER_EXTERNAL_LOOP|
+                             NPY_ITER_REFS_OK,
+                             NPY_KEEPORDER, NPY_NO_CASTING,
+                             NULL);
+
+  unsigned int array_dim = PyArray_NDIM(numpy_array);
   assert(DIM == array_dim && "No matching dimensions.");
-  npy_intp* array_shape = PyArray_SHAPE(iarray);
+
+  // get numpy array shape and create marray object
+  npy_intp* array_shape = PyArray_SHAPE(numpy_array);
   std::vector<size_t> dimensions;
   for(unsigned int i = 0; i < array_dim; i++)
     dimensions.push_back(array_shape[i]);
 
   // construct output object
-  marray<double,DIM> oarray(dimensions);
-  for(unsigned int i = 0; i < array_dim; i++){
+  marray<T,DIM> oarray;
+  oarray.resize(dimensions);
+  auto it = oarray.begin();
 
-  }
+  NpyIter_IterNextFunc *iternext = NpyIter_GetIterNext(iter, NULL);
+  char** dataptr = NpyIter_GetDataPtrArray(iter);
+  npy_intp* strideptr = NpyIter_GetInnerStrideArray(iter);
+  npy_intp* sizeptr = NpyIter_GetInnerLoopSizePtr(iter);
+  npy_intp iop, nop = NpyIter_GetNOp(iter);
+
+  do{
+    char* data = *dataptr;
+    npy_intp count = *sizeptr;
+    npy_intp stride = *strideptr;
+
+    while (count--)
+    {
+      for (iop = 0; iop < nop; ++iop, data+=stride)
+        *it++ = *(T*)data;
+    }
+  } while(iternext(iter));
+
+  NpyIter_Deallocate(iter);
 
   return oarray;
 }
@@ -71,59 +134,30 @@ static void wrap_ReadStateHDF5(nuSQUIDS* nusq, std::string path){
   nusq->ReadStateHDF5(path);
 }
 
-static void wrap_Set_initial_state(nuSQUIDS* nusq, const np::ndarray & array, std::string neutype){
-  bool isint = false;
-  //if ( array.get_dtype() == np::dtype::get_builtin<int>() | )
-  // int64
-  //  isint = true;
-  if ( array.get_dtype() != np::dtype::get_builtin<double>() )
-    isint = true;
-    //throw std::runtime_error("nuSQUIDS::Input array cannot be converted to double.");
+static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string neutype){
+  if (! PyArray_Check(array) )
+  {
+    throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
+  }
+  PyArrayObject* numpy_array = (PyArrayObject*)array;
+  unsigned int array_dim = PyArray_NDIM(numpy_array);
 
-  Py_intptr_t const * strides = array.get_strides();
-  if ( array.get_nd() == 1 ) {
-    std::vector<double> state(array.shape(0));
-    for (int i = 0; i < array.shape(0); i++){
-      if (isint)
-        state[i] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0]);
-      else
-        state[i] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0]);
-    }
+
+  if ( array_dim == 1 ) {
+    marray<double,1> state = numpyarray_to_marray<double,1>(array, NPY_DOUBLE);
     nusq->Set_initial_state(state,neutype);
-  } else if ( array.get_nd() == 2 ) {
-    std::vector< std::vector<double> > state(array.shape(0));
-    for (int i = 0; i < array.shape(0); i++){
-      state[i].resize(array.shape(1));
-      for (int j = 0; j < array.shape(1); j++){
-        if (isint)
-          state[i][j] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1]);
-        else
-          state[i][j] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1]);
-      }
-    }
+  } else if ( array_dim == 2 ) {
+    marray<double,2> state = numpyarray_to_marray<double,2>(array, NPY_DOUBLE);
     nusq->Set_initial_state(state,neutype);
-  } else if ( array.get_nd() == 3 ) {
-    std::vector< std::vector < std::vector<double> > > state(array.shape(0));
-    for (int i = 0; i < array.shape(0); i++){
-      state[i].resize(array.shape(1));
-      for (int j = 0; j < array.shape(1); j++){
-        state[i][j].resize(array.shape(2));
-        for (int k = 0; k < array.shape(2); k++){
-          if (isint) {
-            state[i][j][k] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
-          } else {
-            state[i][j][k] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
-            //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
-          }
-        }
-      }
-    }
+  } else if ( array_dim == 3 ) {
+    marray<double,3> state = numpyarray_to_marray<double,3>(array, NPY_DOUBLE);
     nusq->Set_initial_state(state,neutype);
   } else
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
-static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, const np::ndarray & array, std::string neutype){
+static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, PyObject * array, std::string neutype){
+  /*
   bool isint = false;
   //if ( array.get_dtype() == np::dtype::get_builtin<int>() | )
   // int64
@@ -174,6 +208,7 @@ static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, const np::ndarray 
     nusq_atm->Set_initial_state(state,neutype);
   } else
     throw std::runtime_error("nuSQUIDSAtm::Error:Input array has wrong dimenions.");
+*/
 }
 
 enum GSL_STEP_FUNCTIONS {
@@ -236,8 +271,10 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
 {
-  //Py_Initialize();
-  np::initialize();
+
+  // import numpy array definitions
+  import_array();
+  import_ufunc();
 
   enum_<GSL_STEP_FUNCTIONS>("GSL_STEP_FUNCTIONS")
     .value("GSL_STEP_RK2",GSL_STEP_RK2)
@@ -253,12 +290,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GSL_STEP_MSBDF",GSL_STEP_MSBDF)
     */
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
-    ;
+  ;
 
   enum_<BASIS>("BASIS")
     .value("MASS",mass)
     .value("INTERACTION",interaction)
-    ;
+  ;
 
   enum_<MixingParameter>("MixingParameter")
     .value("TH12",TH12)
@@ -284,7 +321,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("DM41SQ",DM41SQ)
     .value("DM51SQ",DM51SQ)
     .value("DM61SQ",DM61SQ)
-    ;
+  ;
 
   class_<SU_vector, boost::noncopyable,std::shared_ptr<SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
@@ -294,17 +331,15 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetComponents",&SU_vector::GetComponents)
   ;
 
-  //class_<SQUIDS>("SQUIDS")
-  //  .def("Set",&SQUIDS::Set)
-  //;
+  enum_<NeutrinoType>("NeutrinoType")
+    .value("neutrino",neutrino)
+    .value("antineutrino",antineutrino)
+    .value("both",both)
+  ;
 
-  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,unsigned int,unsigned int,std::string,bool,bool>())
+  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
     .def(init<std::string>())
-    .def(init<unsigned int,std::string>())
-    .def("Set_initial_state",
-        (void(nuSQUIDS::*)(std::vector<double>,std::string))&nuSQUIDS::Set_initial_state,
-        ( bp::arg("InitialState"), bp::arg("NeutrinoType") )
-        )
+    .def(init<unsigned int,NeutrinoType>())
     .def("Set_initial_state",wrap_Set_initial_state)
     .def("Set_Body",&nuSQUIDS::Set_Body, bp::arg("Body"))
     .def("Set_Track",&nuSQUIDS::Set_Track, bp::arg("Track"))
@@ -349,7 +384,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("units", &nuSQUIDS::units)
   ;
 
-  class_<nuSQUIDSAtm, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,std::string,bool,bool>())
+  class_<nuSQUIDSAtm, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
     .def(init<std::string>())
     .def("EvolveState",&nuSQUIDSAtm::EvolveState)
     .def("Set_TauRegeneration",&nuSQUIDSAtm::Set_TauRegeneration)
