@@ -107,6 +107,11 @@ static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num)
   npy_intp* sizeptr = NpyIter_GetInnerLoopSizePtr(iter);
   npy_intp iop, nop = NpyIter_GetNOp(iter);
 
+  // magic to make the int work
+  bool magic = false;
+  if ( type_num == NPY_INT or type_num == NPY_LONG )
+    magic = true;
+
   do{
     char* data = *dataptr;
     npy_intp count = *sizeptr;
@@ -114,8 +119,12 @@ static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num)
 
     while (count--)
     {
-      for (iop = 0; iop < nop; ++iop, data+=stride)
-        *it++ = *(T*)data;
+      for (iop = 0; iop < nop; ++iop, data+=stride){
+        if (magic)
+          *it++ = *(T*)(reinterpret_cast<int*>(data));
+        else
+          *it++ = *(T*)(data);
+      }
     }
   } while(iternext(iter));
 
@@ -138,17 +147,24 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string
   {
     throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
   }
+
   PyArrayObject* numpy_array = (PyArrayObject*)array;
   unsigned int array_dim = PyArray_NDIM(numpy_array);
+  NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
+
+  // things i think can cast ok to doubles
+  if (!( type == NPY_LONG or type == NPY_INT or type == NPY_SHORT or type == NPY_FLOAT or
+      type == NPY_DOUBLE or type == NPY_LONGDOUBLE or type == NPY_CFLOAT or type == NPY_CDOUBLE))
+    throw std::runtime_error("nuSQUIDSpy::Error:Input numpy array cannot be meaninfully casted into double.");
 
   if ( array_dim == 1 ) {
-    marray<double,1> state = numpyarray_to_marray<double,1>(array, NPY_DOUBLE);
+    marray<double,1> state = numpyarray_to_marray<double,1>(array, type);
     nusq->Set_initial_state(state,neutype);
   } else if ( array_dim == 2 ) {
-    marray<double,2> state = numpyarray_to_marray<double,2>(array, NPY_DOUBLE);
+    marray<double,2> state = numpyarray_to_marray<double,2>(array, type);
     nusq->Set_initial_state(state,neutype);
   } else if ( array_dim == 3 ) {
-    marray<double,3> state = numpyarray_to_marray<double,3>(array, NPY_DOUBLE);
+    marray<double,3> state = numpyarray_to_marray<double,3>(array, type);
     nusq->Set_initial_state(state,neutype);
   } else
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");

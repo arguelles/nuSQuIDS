@@ -63,75 +63,221 @@ enum NeutrinoType {
   both=0b11
 };
 
+///\brief nu-SQuIDS main class
 class nuSQUIDS: public SQUIDS {
+  // nuSQUIDSAtm is a friend class so it can use H0 to evolve operators
+  // and thus evaluate expectation values.
+  friend class nuSQUIDSAtm;
   protected:
+    /// \brief Sets the basis in which the problem will be solved.
+    ///
+    /// If interaction basis is used the projectors will be evolved at
+    /// every time step. On the other hand, if mass basis is used no evolution
+    /// is performed.
     BASIS basis = interaction;
+    /// \brief number of neutrino flavors.
     unsigned int numneu;
+    /// \brief number of energy nodes.
     unsigned int ne = nx;
 
+    /// \brief Returns the number of nucleons at a given position.
+    ///
+    /// Isoscalar medium is assumed and the position is obtained
+    /// at x = track.GetX().
     double GetNucleonNumber();
+
+    /// \brief Updates the interaction length arrays.
+    ///
+    /// Uses GetNucleonNumber() together with the stored cross section
+    /// information to update: nuSQUIDS#invlen_NC, nuSQUIDS#invlen_CC, nuSQUIDS#invlen_INT, and nuSQUIDS#invlen_tau.
     void UpdateInteractions();
 
+    /// \brief Contains the energy nodes.
     marray<double,1> E_range;
+    /// \brief Contains the spaces between nodes.
+    ///
+    /// It has length len(E_range)-1.
     marray<double,1> delE;
 
-    //void Set_Initial_Time();
-
+    /// \brief Interface that calculate and interpolates neutrino cross sections.
     NeutrinoCrossSections ncs;
-    marray<double,4> dNdE_CC,dNdE_NC;
-    marray<double,3> invlen_NC,invlen_CC,invlen_INT;
-    marray<double,3> sigma_CC,sigma_NC;
+    /// \brief Neutrino charge current differential cross section with respect to
+    /// the outgoing lepton energy.
+    ///
+    /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
+    /// its initialized when InitializeInteractions() is called. The first dimension
+    /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
+    /// and the last two the initial and final energy node respectively.
+    marray<double,4> dNdE_CC;
+    /// \brief Neutrino neutral current differential cross section with respect to
+    /// the outgoing lepton energy.
+    ///
+    /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
+    /// its initialized when InitializeInteractions() is called. The first dimension
+    /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
+    /// and the last two the initial and final energy node respectively.
+    marray<double,4> dNdE_NC;
+    /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+    /// the second to the flavor, and the last one to the energy.
+    marray<double,3> invlen_NC;
+    /// \brief Array that contains the inverse of the neutrino charge current mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+    /// the second to the flavor, and the last one to the energy.
+    marray<double,3> invlen_CC;
+    /// \brief Array that contains the inverse of the neutrino total mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
+    /// added together.
+    marray<double,3> invlen_INT;
+    /// \brief Array that contains the neutrino charge current cross section.
+    /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
+    /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+    /// initialized by InitializeInteractions() .
+    marray<double,3> sigma_CC;
+    /// \brief Array that contains the neutrino neutral current cross section.
+    /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
+    /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+    /// initialized by InitializeInteractions() .
+    marray<double,3> sigma_NC;
 
+    /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
     marray<double,1> invlen_tau;
-    marray<double,2> dNdE_tau_all,dNdE_tau_lep;
-    double taubr_lep,tau_lifetime,tau_mass;
+    marray<double,2> dNdE_tau_all;
+    marray<double,2> dNdE_tau_lep;
+    /// \brief Tau branching ratio to leptons.
+    double taubr_lep;
+    /// \brief Tau lifetime in natural units.
+    double tau_lifetime;
+    /// \brief Tau mass in natural units.
+    double tau_mass;
+    /// \brief Length upon which charge tau lepton conversion to neutrino happens.
+    /// \defailts By default set to 100 km (in natural units).
+    /// @see ConvertTauIntoNuTau()
     double tau_reg_scale;
 
+    /// \brief Body where the neutrino propagation takes place.
     std::shared_ptr<Body> body;
+    /// \brief Trayectory within the body.
+    /// \details Stores the position within the body and its updated every evolution
+    /// step.
     std::shared_ptr<Track> track;
 
+    /// \brief SU_vector that represents the neutrino square mass difference matrix in the mass basis.
+    ///  It is used to construct nuSQUIDS#H0_array and H0()
     SU_vector DM2;
+    /// \brief Stores the time independent hamiltonian corresponding to each energy node.
     marray<SU_vector,1> H0_array;
 
+    /// \brief Mass basis projectors.
+    /// \details The i-entry corresponds to the projector in the ith mass eigenstate.
     marray<SU_vector,1> b0_proj;
+    /// \brief Flavor basis projectors.
+    /// \details The first dismension corresponds to the neutrino type. When NeutrinoType = both, then
+    /// the first dimension equal 0 means neutrinos and 1 antineutrinos. The second dimension corresponds
+    /// to the flavor eigenstates where 0 corresponds to nu_e, 1 to nu_mu, 2 to nu_tau, and the others
+    /// to sterile neutrinos.
     marray<SU_vector,2> b1_proj;
+    /// \brief Mass basis projectors in the interaction picture.
+    /// The index meaning are the same as nuSQUIDS#b1_proj but for mass eigenstates,
+    /// with an added third dimension that corresponds to the energy node index.
     marray<SU_vector,3> evol_b0_proj;
+    /// \brief Flavor basis projectors in the interaction picture.
+    /// The index meaning are the same as nuSQUIDS#b1_proj ,
+    /// with an added third dimension that corresponds to the energy node index.
     marray<SU_vector,3> evol_b1_proj;
 
-    marray<SU_vector,2> potential_array;
-
+    /// \brief Evolves the flavor projectors in the interaction basis to a time t.
+    /// \details It uses H0() to evolve SQUIDS#b0_proj and SQUIDS#b1_proj into 
+    /// SQUIDS#evol_b0_proj and SQUIDS#evol_b1_proj.
+    /// \warning Since the RHS of the differential equation only involves flavor projectors
+    /// we do not current evolve mass projectors.
     void EvolveProjectors(double t);
+
+    /// \brief When called converts the flux of tau charged leptons to neutrinos. It
+    /// is only called when tauregeneration = True and NeutrinoType = both.
+    ///
+    /// At a given time we the system has a flux of charged tau leptons \phi_\tau(E) and
+    /// \phi_\taubar(E) where E is given in the system nodes. When the tau/taubar decays
+    /// it will produce a taunu/taunubar following a distribution dN/dE_all, where all
+    /// means that both hadronic and leptonic decay channels are considered.
+    /// Furthermore, the taus can decay leptonically with a distribution dN/dE_lep
+    /// and branching ration br_lep.
+    ///
+    /// Considering this we calculate the resulting neutrinos fluxes and add them
+    /// to the current neutrino state flux. In order to do this it is useful to define
+    /// the following functions:
+    ///
+    /// \f$ F_{\tau|\bar{\tau}}(E) = \int_E^\infty d\bar{E} \frac{dN}{d\bar{E}_{all}} \phi_{\tau|\bar{\tau}}\f$
+    ///
+    /// then
+    ///
+    /// \f{eqnarray*}{
+    /// \phi_{\nu_\tau}(E) &=& F_{\tau}\, \\
+    /// \phi_{\bar{\nu}_\tau}(E) &=& F_{\bar{\tau}}\,\\
+    /// \phi_{\nu_e} &=& F_{\bar{\tau}}*br_{lep}\,\\
+    /// \phi_{\bar{\nu}_e} &=& F_{\tau}*br_{lep},
+    /// \f}
+    ///
+    /// and similarly for \f$\nu_\mu\f$. After this transformation is done SetScalarsToZero()
+    /// is called to remove the charged lepton flux.
     void ConvertTauIntoNuTau();
 
     // bool requirements
+  private:
+    /// \brief Boolean that signals the object correct initialization.
     bool inusquids = false;
+    /// \brief Boolean that signals that a Body object has being set.
     bool ibody = false;
+    /// \brief Boolean that signals that the neutrino energies has being set.
     bool ienergy = false;
+    /// \brief Boolean that signals that a Track object has being set.
     bool itrack = false;
-    bool ioscpar = false;
+    /// \brief Boolean that signals that an initial state has being set.
     bool istate = false;
     bool iinteraction = false;
+    /// \brief When multienergy mode is used, it signals that the neutrino energies is in logarithmic scale.
     bool elogscale = true;
+    /// \brief Boolean that signals that tau regeneration is being used.
     bool tauregeneration = false;
+    /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
+    /// \brief Integer to keep track of the progress bar evolution.
     int progressbar_count = 0;
+    /// \brief Number of steps upon which the progress bar will be updated.
     int progressbar_loop = 100;
-    // neutrino type
+    /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
-
+  protected:
+    /// \brief Initializes flavor and mass projectors
+    /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
+    /// which temporary flips the CP phase.
     void iniProjectors();
+    /// \brief Reinitializes the flavor projectors.
+    /// \details It is called before evolving the system and every time the system
+    /// state is going to be set, since the definition of mass and flavor basis might
+    /// have changed.
     void SetIniFlavorProyectors();
+    /// \brief Initializes the time independent hamiltonian for each energy node.
+    /// \defails It constructs nuSQUIDS#DM2 and nuSQUIDS#H0_array
     void iniH0();
+    /// \brief Changes the CP sign of the complex matrices stored in params.
     void AntineutrinoCPFix(unsigned int irho);
+    /// \brief Serializes the initialization of the Body and Track objects.
+    /// @see ReadStateHDF5
     void SetBodyTrack(int,int,double*,int,double*);
 
      void init(double,double,unsigned int,bool initialize_intereractions = true, double xini = 0.0);
      void init(double xini = 0.0);
      void InitializeInteractionVectors();
      void InitializeInteractions();
+  private:
      void SetScalarsToZero();
      void ProgressBar() const;
+  protected:
      virtual void PreDerive(double);
      virtual void AddToPreDerive(double){};
   public:
