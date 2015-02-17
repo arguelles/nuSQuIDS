@@ -306,7 +306,7 @@ class nuSQUIDS: public SQUIDS {
     /// \brief Updates all quantities needed during the evaluation of the RHS.
     /// @param x Position of the system.
     /// \details Dependind on the basis used it evolves the flavor projectors
-    /// by means of EvolveProjectors(). Also, when interactions are considered, 
+    /// by means of EvolveProjectors(). Also, when interactions are considered,
     /// it updates the interaction arrays by calling UpdateInteractions(). Finally,
     /// it handles control to the user implemented updates via AddToPreDerive().
     /// @see AddToPreDerive
@@ -318,14 +318,52 @@ class nuSQUIDS: public SQUIDS {
     /// @see PreDerive
     virtual void AddToPreDerive(double x){};
   public:
-     const Const units;
-     // initializers
-     nuSQUIDS(){};
-     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
-         bool elogscale = true,bool iinteraction = false):
-     iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
-     {init(Emin,Emax,Esize);};
+    /// \brief Incorporated const object useful to evaluate units.
+    const Const units;
+    /************************************************************************************
+     * CONSTRUCTORS
+    *************************************************************************************/
 
+    /// \brief Default void constructor.
+    nuSQUIDS(){};
+    /// \brief Multiple energy mode constructor.
+    /// @param Emin Minimum neutrino energy [GeV].
+    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Esize Number of energy nodes.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By default the energy scale is logarithmic and interactions are turn off.
+    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
+    /// cross section which make take considertable time depending on the energy grid.
+    /// @see init
+    nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
+       bool elogscale = true,bool iinteraction = false):
+    iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
+    {init(Emin,Emax,Esize);};
+
+    /// \brief Single energy mode constructor.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino or antineutrino.
+    /// \warning Interactions are not possible in the single energy mode, nor is simultaneous
+    /// neutrino-antineutrino solution (both) possible.
+    /// \details Constructors projectors and initializes Hamiltonian.
+    nuSQUIDS(int numneu, NeutrinoType NT = neutrino):
+    iinteraction(false),elogscale(false),numneu(numneu),NT(NT)
+    {init();};
+
+    /// \brief Constructor from a HDF5 filepath.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
+    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
+    /// restoring all properties as well as the state.
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
+
+  protected:// should this be public? should this by private? should this exist?
+    /************************************************************************************
+     * INITIALIZERS
+    *************************************************************************************/
      void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
          bool elogscale_ = true,bool iinteraction_ = false){
        iinteraction = iinteraction_;
@@ -335,10 +373,6 @@ class nuSQUIDS: public SQUIDS {
        init(Emin,Emax,Esize);
      };
 
-     nuSQUIDS(int numneu, NeutrinoType NT = neutrino):
-     iinteraction(false),elogscale(false),numneu(numneu),NT(NT)
-     {init();};
-
      void Init(int numneu_, NeutrinoType NT_ = neutrino){
       iinteraction = false;
       elogscale = false;
@@ -347,10 +381,11 @@ class nuSQUIDS: public SQUIDS {
       init();
      };
 
-     nuSQUIDS(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
      void Init(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
   protected:
-     // physics functions
+    /************************************************************************************
+     * PHYSICS FUNCTIONS - SUPER IMPORTANT
+    *************************************************************************************/
      SU_vector H0(double E, unsigned int irho) const;
 
      virtual SU_vector HI(unsigned int ie, unsigned int irho) const;
@@ -366,7 +401,9 @@ class nuSQUIDS: public SQUIDS {
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho) const;
      virtual double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
   public:
-     // interface
+    /************************************************************************************
+     * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
+    *************************************************************************************/
      void Set_initial_state(marray<double,1>, std::string basis = "flavor");
      void Set_initial_state(marray<double,2>, std::string basis = "flavor");
      void Set_initial_state(marray<double,3>, std::string basis = "flavor");
