@@ -84,7 +84,7 @@ class nuSQUIDS: public SQUIDS {
     ///
     /// Isoscalar medium is assumed and the position is obtained
     /// at x = track.GetX().
-    double GetNucleonNumber();
+    double GetNucleonNumber() const;
 
     /// \brief Updates the interaction length arrays.
     ///
@@ -270,16 +270,53 @@ class nuSQUIDS: public SQUIDS {
     /// @see ReadStateHDF5
     void SetBodyTrack(int,int,double*,int,double*);
 
-     void init(double,double,unsigned int,bool initialize_intereractions = true, double xini = 0.0);
-     void init(double xini = 0.0);
-     void InitializeInteractionVectors();
-     void InitializeInteractions();
+    /// \brief General initilizer for the multi energy mode
+    /// @param Emin Minimum neutrino energy [GeV].
+    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Esize Number of energy nodes.
+    /// @param initialize_intereractions Togles interaction arrays initialization.
+    /// @param xini The initial position of the system.
+    /// \defails Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
+    /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions 
+    /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
+    /// are called.
+    void init(double Emin,double Emax,unsigned int Esize,bool initialize_intereractions = true, double xini = 0.0);
+    /// \brief Initilizer for the single energy mode
+    /// @param xini The initial position of the system. By default is set to 0.
+    void init(double xini = 0.0);
+    /// \brief Initilizes auxiliary cross section arrays.
+    /// \details The arrays are initialize, but not filled with contented. To fill the arrays
+    /// call InitializeInteractions().
+    void InitializeInteractionVectors();
+    /// \brief Fills in auxiliary cross section arrays.
+    /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
+    /// nuSQUIDS#dNdE_CC , nuSQUIDS#dNdE_NC , nuSQUIDS#sigma_CC , nuSQUIDS#sigma_NC ,
+    /// nuSQUIDS#invlen_CC , nuSQUIDS#invlen_NC , nuSQUIDS#invlen_INT ,
+    /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep , nuSQUIDS#invlen_tau
+    /// @see InitializeInteractionVectors
+    void InitializeInteractions();
   private:
-     void SetScalarsToZero();
-     void ProgressBar() const;
+
+    /// \brief Sets all scalar arrays to zero.
+    void SetScalarsToZero();
+    /// \brief Prints progress bar.
+    /// \details To enable it call Set_ProgressBar()
+    void ProgressBar() const;
   protected:
-     virtual void PreDerive(double);
-     virtual void AddToPreDerive(double){};
+    /// \brief Updates all quantities needed during the evaluation of the RHS.
+    /// @param x Position of the system.
+    /// \details Dependind on the basis used it evolves the flavor projectors
+    /// by means of EvolveProjectors(). Also, when interactions are considered, 
+    /// it updates the interaction arrays by calling UpdateInteractions(). Finally,
+    /// it handles control to the user implemented updates via AddToPreDerive().
+    /// @see AddToPreDerive
+    /// @see EvolveProjectors
+    /// @see UpdateInteractions
+    void PreDerive(double x);
+    /// \brief User supplied function that is called before performing a derivative.
+    /// @param x Position of the system.
+    /// @see PreDerive
+    virtual void AddToPreDerive(double x){};
   public:
      const Const units;
      // initializers

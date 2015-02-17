@@ -327,7 +327,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   return nutautoleptau;
 }
 
-double nuSQUIDS::GetNucleonNumber(){
+double nuSQUIDS::GetNucleonNumber() const{
     double density = body->density(*track);
     double num_nuc = (params.gr*pow(params.cm,-3))*density*2.0/(params.proton_mass+params.neutron_mass);
 
