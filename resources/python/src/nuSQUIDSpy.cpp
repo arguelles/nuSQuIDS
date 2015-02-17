@@ -27,7 +27,6 @@ struct VecToList
   }
 };
 
-
 // converting marray to numpy array and back
 template<unsigned int DIM>
 static boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
@@ -142,7 +141,6 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string
   PyArrayObject* numpy_array = (PyArrayObject*)array;
   unsigned int array_dim = PyArray_NDIM(numpy_array);
 
-
   if ( array_dim == 1 ) {
     marray<double,1> state = numpyarray_to_marray<double,1>(array, NPY_DOUBLE);
     nusq->Set_initial_state(state,neutype);
@@ -157,58 +155,21 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string
 }
 
 static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, PyObject * array, std::string neutype){
-  /*
-  bool isint = false;
-  //if ( array.get_dtype() == np::dtype::get_builtin<int>() | )
-  // int64
-  //  isint = true;
-  if ( array.get_dtype() != np::dtype::get_builtin<double>() )
-    isint = true;
-    //throw std::runtime_error("nuSQUIDS::Input array cannot be converted to double.");
+  if (! PyArray_Check(array) )
+  {
+    throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
+  }
+  PyArrayObject* numpy_array = (PyArrayObject*)array;
+  unsigned int array_dim = PyArray_NDIM(numpy_array);
 
-  Py_intptr_t const * strides = array.get_strides();
-
-
-  if ( array.get_nd() == 3 ) {
-    std::vector< std::vector < std::vector<double> > > state(array.shape(0));
-    for (int i = 0; i < array.shape(0); i++){
-      state[i].resize(array.shape(1));
-      for (int j = 0; j < array.shape(1); j++){
-        state[i][j].resize(array.shape(2));
-        for (int k = 0; k < array.shape(2); k++){
-          if (isint) {
-            state[i][j][k] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
-          } else {
-            state[i][j][k] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2]);
-            //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
-          }
-        }
-      }
-    }
+  if ( array_dim == 3 ) {
+    marray<double,3> state = numpyarray_to_marray<double,3>(array, NPY_DOUBLE);
     nusq_atm->Set_initial_state(state,neutype);
-   } else if ( array.get_nd() == 4 ) {
-    std::vector < std::vector< std::vector < std::vector<double> > > >  state(array.shape(0));
-    for (int i = 0; i < array.shape(0); i++){
-      state[i].resize(array.shape(1));
-      for (int j = 0; j < array.shape(1); j++){
-        state[i][j].resize(array.shape(2));
-        for (int k = 0; k < array.shape(2); k++){
-          state[i][j][k].resize(array.shape(3));
-          for (int l = 0; l < array.shape(3); l++){
-            if (isint) {
-              state[i][j][k][l] = (double)*reinterpret_cast<const int*>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2] + l*strides[3]);
-            } else {
-              state[i][j][k][l] = (double)*reinterpret_cast<const double *>(array.get_data() + i*strides[0] + j*strides[1] + k*strides[2] + l*strides[3]);
-              //std::cout << i << " " << j << " " << k << " " << state[i][j][k] << std::endl;
-            }
-          }
-        }
-      }
-    }
+  } else if ( array_dim == 4 ) {
+    marray<double,4> state = numpyarray_to_marray<double,4>(array, NPY_DOUBLE);
     nusq_atm->Set_initial_state(state,neutype);
   } else
-    throw std::runtime_error("nuSQUIDSAtm::Error:Input array has wrong dimenions.");
-*/
+    throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
 enum GSL_STEP_FUNCTIONS {
