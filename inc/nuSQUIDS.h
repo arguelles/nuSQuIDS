@@ -361,7 +361,7 @@ class nuSQUIDS: public SQUIDS {
     /// @see ReadStateHDF5
     nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
 
-  protected:// should this be public? should this by private? should this exist?
+  public:// should this be protected? should this by private? should this exist?
     /************************************************************************************
      * INITIALIZERS
     *************************************************************************************/
@@ -563,21 +563,64 @@ class nuSQUIDS: public SQUIDS {
     std::shared_ptr<Body> GetBody() const;
 
     /// \brief Writes the object into an HDF5 file.
-    void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
-    /// \brief User function to write properties into HDf5 files.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param group Path to the group where the nuSQUIDS content will be saved.
+    /// @param save_cross_sections If \c true the cross section tables will also be saved.
+    /// @param cross_section_grp_loc Path to the group where the cross section will be saved.
+    /// \details By default all contents are saved to the \c root of the HDF5 file
+    /// if the user wants a different location it can use \c group and \c save_cross_sections to
+    /// change the nuSQUIDS location and the cross section information location. Furthermore, the 
+    /// \c save_cross_sections flag, which defaults to \c false decides if the cross section
+    /// will be saved. Finally, it calls AddToWriteHDF5() to enable user defined parameters
+    /// to be saved.
+    /// @see AddToWriteHDF5
+    /// @see ReadStateHDF5
+    void WriteStateHDF5(std::string hdf5_filename,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
+    /// \brief User function to write user defined properties from an HDF5 file.
+    /// @param hdf5_loc_id HDF5 group id
+    /// \details This function will be called by WriteStateHDF5() which will provide
+    /// the hdf5_loc_id enabling the user to read user defined contents.
+    /// @see WriteStateHDF5
+    /// @see AddToReadHDF5
     virtual void AddToWriteHDF5(hid_t hdf5_loc_id) const;
     /// \brief Reads and constructs the object from an HDF5 file.
-    void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
-    /// \brief User function to read properties from an HDF5 file.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param group Path to the group where the nuSQUIDS content will be saved.
+    /// @param cross_section_grp_loc Path to the group where the cross section will be saved.
+    /// \details By default all contents are assumed to be in the \c root of the HDF5 file
+    /// if the user wants a different location it can use \c group and \c save_cross_sections to
+    /// change the nuSQUIDS location and the cross section information location.
+    /// Finally, it calls AddToReadHDF5() to enable user defined parameters
+    /// to be read.
+    /// @see AddToReadHDF5
+    /// @see WriteStateHDF5
+    void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::string cross_section_grp_loc = "");
+    /// \brief User function to read user defined properties from an HDF5 file.
+    /// @param hdf5_loc_id HDF5 group id
+    /// \details This function will be called by ReadStateHDF5() which will provide
+    /// the hdf5_loc_id enabling the user to read user defined contents.
+    /// @see ReadStateHDF5
+    /// @see AddToWriteHDF5
     virtual void AddToReadHDF5(hid_t hdf5_loc_id);
 
     /// \brief Sets mixing parameter.
-    void Set(MixingParameter,double);
+    /// @param mp Mixing parameter
+    /// @param val Value of the parameter
+    /// \details Mixing parameters can correspond to mixing angles, CP phases, or 
+    /// square mass differences.
+    void Set(MixingParameter mp,double val);
+
     /// \brief Sets the mixing parameters to default.
     void Set_MixingParametersToDefault();
 
     /// \brief Sets the basis on which the evolution will be perfomed.
-    void Set_Basis(BASIS);
+    /// @param basis Evolution basis can be either \c mass or \c interaction.
+    /// \details By detault the solution is perfomed in the interaction basis, which
+    /// is recommended for most problems. One might consider the user of the mass
+    /// basis when collective effects, defined by new
+    /// interactions introduce phases that cannot be cancelled as one goes to the
+    /// interaction basis.
+    void Set_Basis(BASIS basis);
 };
 
 /**
