@@ -358,94 +358,226 @@ class nuSQUIDS: public SQUIDS {
     /// @param grp HDF5 file group path where the nuSQUIDS object is save.
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
+    /// @see ReadStateHDF5
     nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
 
   protected:// should this be public? should this by private? should this exist?
     /************************************************************************************
      * INITIALIZERS
     *************************************************************************************/
-     void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
-         bool elogscale_ = true,bool iinteraction_ = false){
-       iinteraction = iinteraction_;
-       elogscale = elogscale_;
-       numneu = numneu_;
-       NT = NT_;
-       init(Emin,Emax,Esize);
-     };
+    /// \brief Multiple energy mode initializer.
+    /// @param Emin Minimum neutrino energy [GeV].
+    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Esize Number of energy nodes.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By default the energy scale is logarithmic and interactions are turn off.
+    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
+    /// cross section which make take considertable time depending on the energy grid.
+    /// @see init
+    void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
+      bool elogscale_ = true,bool iinteraction_ = false){
+      iinteraction = iinteraction_;
+      elogscale = elogscale_;
+      numneu = numneu_;
+      NT = NT_;
+      init(Emin,Emax,Esize);
+    };
 
-     void Init(int numneu_, NeutrinoType NT_ = neutrino){
+    /// \brief Single energy mode initializer.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino or antineutrino.
+    /// \warning Interactions are not possible in the single energy mode, nor is simultaneous
+    /// neutrino-antineutrino solution (both) possible.
+    /// \details Constructors projectors and initializes Hamiltonian.
+    void Init(int numneu_, NeutrinoType NT_ = neutrino){
       iinteraction = false;
       elogscale = false;
       numneu = numneu_;
       NT = NT_;
       init();
-     };
+    };
 
-     void Init(std::string in_hdf5, std::string grp = "/") { ReadStateHDF5(in_hdf5, grp); };
+    /// \brief Initializer from a HDF5 filepath.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
+    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
+    /// restoring all properties as well as the state.
+    /// @see ReadStateHDF5
+    void Init(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
   protected:
     /************************************************************************************
      * PHYSICS FUNCTIONS - SUPER IMPORTANT
     *************************************************************************************/
-     SU_vector H0(double E, unsigned int irho) const;
 
-     virtual SU_vector HI(unsigned int ie, unsigned int irho) const;
-     virtual SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);};
+    /// \brief Returns the time independent part of the Hamiltonian
+    /// @param E Neutrino energy [eV]
+    /// @param irho Density matrix equation index.
+    /// \details \c irho is the index of the equation on which the Hamiltonian
+    /// is used. When not in NeutrinoType == \c both \irho is only 0, but if 
+    /// neutrinos and antineutrinos are solved simultaneously, then 0 is for
+    /// neutrinos and 1 for antineutrinos.
+    SU_vector H0(double E, unsigned int irho) const;
 
-     virtual SU_vector GammaRho(unsigned int ei, unsigned int irho) const;
-     virtual SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);};
-     virtual double GammaScalar(unsigned int ei, unsigned int iscalar) const;
-     virtual double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);};
+    /// \brief Returns the time dependent part of the Hamiltonian at an energy node \c ie
+    /// @param ie Energy node
+    /// @param irho Density matrix equation index.
+    /// @see H0 for convention on \c irho.
+    virtual SU_vector HI(unsigned int ie, unsigned int irho) const;
 
-     virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho) const;
-     virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);};
-     virtual double InteractionsScalar(unsigned int ei, unsigned int irho) const;
-     virtual double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
+    /// \brief Returns noncoherent interaction term in the Hamiltonian at node \c ie
+    /// @param ie Energy node
+    /// @param irho Density matrix equation index.
+    /// @see H0 for convention on \c irho.
+    virtual SU_vector GammaRho(unsigned int ei, unsigned int irho) const;
+
+    /// \brief Returns the scalar quantity decay rate at an energy node \c ie
+    /// @param ie Energy node
+    /// @param iscalar scalar equation index.
+    /// \details When tau regenereation is considered \c iscalar = 0 corresponds
+    /// to the tau flux.
+    virtual double GammaScalar(unsigned int ei, unsigned int iscalar) const;
+
+    /// \brief Returns interaction of the density matrix at an energy node \c ie
+    /// @param ie Energy node
+    /// @param irho Density matrix equation index.
+    /// @see H0 for convention on \c irho.
+    virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho) const;
+
+    /// \brief Returns scalar interactions at an energy node \c ie
+    /// @param ie Energy node
+    /// @param iscalar scalar equation index.
+    /// @param irho Density matrix equation index.
+    /// @see GammaScalar for convention on \c iscalar.
+    virtual double InteractionsScalar(unsigned int ei, unsigned int iscalar) const;
+  private:
+    /// \brief SQuIDS signature of HI
+    SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);};
+    /// \brief SQuIDS signature of GammaRho
+    SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);};
+    /// \brief SQuIDS signature of GammaScalar
+    double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);};
+    /// \brief SQuIDS signature of InteractionsRho
+    SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);};
+    /// \brief SQuIDS signature of InteractionsScalar
+    double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
   public:
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
     *************************************************************************************/
-     void Set_initial_state(marray<double,1>, std::string basis = "flavor");
-     void Set_initial_state(marray<double,2>, std::string basis = "flavor");
-     void Set_initial_state(marray<double,3>, std::string basis = "flavor");
 
-     void Set_Body(std::shared_ptr<Body>);
-     void Set_Track(std::shared_ptr<Track>);
+    /// \brief Sets the initial state in the single energy mode
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state length has to be equal to \c numneu. If the basis is 
+    /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
+    /// while if the mass basis is used then the first entries correspond to the active
+    /// mass eigenstates.
+    void Set_initial_state(marray<double,1> ini_state, std::string basis = "flavor");
 
-     void Set_E(double);
+    /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state first dimension has length equal to \c ne (number of energy nodes), while
+    /// the second dimension has length equal to \c numneu (number of flavors). If the basis is
+    /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
+    /// while if the mass basis is used then the first entries correspond to the active
+    /// mass eigenstates.
+    void Set_initial_state(marray<double,2> ini_state, std::string basis = "flavor");
 
-     void EvolveState();
+    /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state first dimension has length equal to \c ne (number of energy nodes), while
+    /// the second dimension has length equal to \c numneu (number of flavors). If the basis is
+    /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
+    /// while if the mass basis is used then the first entries correspond to the active
+    /// mass eigenstates.
+    void Set_initial_state(marray<double,3> ini_state, std::string basis = "flavor");
 
-     double EvalMassAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
-     double EvalFlavorAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
+    /// \brief Sets the body where the neutrino will propagate.
+    /// @param body Body object.
+    void Set_Body(std::shared_ptr<Body> body);
 
-     double EvalMass(unsigned int,double,unsigned int rho = 0) const;
-     double EvalFlavor(unsigned int,double,unsigned int rho = 0) const;
-     double EvalMass(unsigned int) const;
-     double EvalFlavor(unsigned int) const;
+    /// \brief Sets neutrino trajectory
+    /// @param track Trajectory corresponding to the Body.
+    void Set_Track(std::shared_ptr<Track> track);
 
-     void Set_TauRegeneration(bool);
-     void Set_ProgressBar(bool);
+    /// \brief Sets the neutrino energy in single energy mode.
+    /// @param enu Neutrino energy [eV]
+    /// @pre NeutrinoType must be neutrino or antineutrino, not both.
+    void Set_E(double enu);
 
-     marray<double,1> GetERange() const;
-     size_t GetNumE() const;
-     int GetNumNeu() const;
-     SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho = 0);
-     SU_vector GetState(unsigned int,unsigned int rho = 0) const;
-     SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
-     SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
+    /// \brief Evolves the system.
+    /// @pre Body, track, neutrino state, and energy must has being set
+    /// before calling this function.
+    void EvolveState();
 
-     std::shared_ptr<Track> GetTrack() const;
-     std::shared_ptr<Body> GetBody() const;
+    /// \brief Returns the mass composition at a given node.
+    double EvalMassAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
+    /// \brief Returns the flavor composition at a given node.
+    double EvalFlavorAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
 
-     void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
-     virtual void AddToWriteHDF5(hid_t hdf5_loc_id) const;
-     void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
-     virtual void AddToReadHDF5(hid_t hdf5_loc_id);
+    /// \brief Returns the mass composition at a given energy in the multiple energy mode.
+    double EvalMass(unsigned int,double,unsigned int rho = 0) const;
+    /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
+    double EvalFlavor(unsigned int,double,unsigned int rho = 0) const;
+    /// \brief Returns the mass composition in the single energy mode.
+    /// @param flv Neutrino flavor.
+    double EvalMass(unsigned int flv) const;
+    /// \brief Returns the flavor composition in the single energy mode.
+    /// @param flv Neutrino flavor.
+    double EvalFlavor(unsigned int flv) const;
 
-     void Set(MixingParameter,double);
-     void Set_MixingParametersToDefault();
+    /// \brief Toggles tau regeneration on and off.
+    /// @param opt If \c true tau regeneration will be considered.
+    void Set_TauRegeneration(bool opt);
 
-     void Set_Basis(BASIS);
+    /// \brief Toggles the progress bar printing on and off
+    /// @param opt If \c true a progress bar will be printed.
+    void Set_ProgressBar(bool opt);
+
+    /// \brief Returns the energy nodes values.
+    marray<double,1> GetERange() const;
+
+    /// \brief Returns number of energy nodes.
+    size_t GetNumE() const;
+
+    /// \brief Returns the number of neutrino flavors.
+    unsigned int GetNumNeu() const;
+
+    /// \brief Return the Hamiltonian.
+    SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho = 0);
+    /// \brief Returns the state
+    SU_vector GetState(unsigned int,unsigned int rho = 0) const;
+    /// \brief Returns the flavor projector
+    SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
+    /// \brief Returns the mass projector
+    SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
+
+    /// \brief Returns the trajectory object.
+    std::shared_ptr<Track> GetTrack() const;
+    /// \brief Returns the body object.
+    std::shared_ptr<Body> GetBody() const;
+
+    /// \brief Writes the object into an HDF5 file.
+    void WriteStateHDF5(std::string,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
+    /// \brief User function to write properties into HDf5 files.
+    virtual void AddToWriteHDF5(hid_t hdf5_loc_id) const;
+    /// \brief Reads and constructs the object from an HDF5 file.
+    void ReadStateHDF5(std::string,std::string group = "/", std::string cross_section_grp_loc = "");
+    /// \brief User function to read properties from an HDF5 file.
+    virtual void AddToReadHDF5(hid_t hdf5_loc_id);
+
+    /// \brief Sets mixing parameter.
+    void Set(MixingParameter,double);
+    /// \brief Sets the mixing parameters to default.
+    void Set_MixingParametersToDefault();
+
+    /// \brief Sets the basis on which the evolution will be perfomed.
+    void Set_Basis(BASIS);
 };
 
 /**

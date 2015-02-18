@@ -1384,7 +1384,7 @@ void nuSQUIDS::SetBodyTrack(int body_id, int body_params_len, double body_params
     }
 }
 
-int nuSQUIDS::GetNumNeu() const{
+unsigned int nuSQUIDS::GetNumNeu() const{
   return numneu;
 }
 
