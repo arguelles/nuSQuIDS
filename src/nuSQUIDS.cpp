@@ -1524,9 +1524,9 @@ void nuSQUIDS::Set_Basis(BASIS b){
 //==================================================================
 //==================================================================
 //==================================================================
-nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,int costh_div,
-                         double energy_min,double energy_max,int energy_div,
-                         int numneu, NeutrinoType NT,
+nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
+                         double energy_min,double energy_max,unsigned int energy_div,
+                         unsigned int numneu, NeutrinoType NT,
                          bool elogscale,bool iinteraction){
 
   nusq_array = std::vector<nuSQUIDS>(costh_div);

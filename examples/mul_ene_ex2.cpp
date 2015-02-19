@@ -43,7 +43,7 @@ int main()
   // 6) Energy log scale : true (log) or false (linear).
   // 7) Interactions : true or false.
   // We do this in the following declaration.
-  nuSQUIDS nus(1.e2,1.e6,60,3,nuSQUIDS::neutrino,true,true);
+  nuSQUIDS nus(1.e2,1.e6,60,3,neutrino,true,true);
 
   // now we need to specify a medium where this neutrinos propagate.
   // a classical scenario where this is relevant is high energy

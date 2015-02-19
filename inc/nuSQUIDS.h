@@ -238,6 +238,7 @@ class nuSQUIDS: public SQUIDS {
     bool itrack = false;
     /// \brief Boolean that signals that an initial state has being set.
     bool istate = false;
+    /// \brief Boolean that signals that interactions will be taken into account.
     bool iinteraction = false;
     /// \brief When multienergy mode is used, it signals that the neutrino energies is in logarithmic scale.
     bool elogscale = true;
@@ -249,9 +250,9 @@ class nuSQUIDS: public SQUIDS {
     int progressbar_count = 0;
     /// \brief Number of steps upon which the progress bar will be updated.
     int progressbar_loop = 100;
+  protected:
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
-  protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
     /// which temporary flips the CP phase.
@@ -516,14 +517,34 @@ class nuSQUIDS: public SQUIDS {
     void EvolveState();
 
     /// \brief Returns the mass composition at a given node.
-    double EvalMassAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
+    /// @param flv Neutrino flavor.
+    /// @param ie Energy node index.
+    /// @param rho Index of the equation, see details.
+    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1).
+    double EvalMassAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
     /// \brief Returns the flavor composition at a given node.
-    double EvalFlavorAtNode(unsigned int,unsigned int,unsigned int rho = 0) const;
+    /// @param flv Neutrino flavor.
+    /// @param ie Energy node index.
+    /// @param rho Index of the equation, see details.
+    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1).
+    double EvalFlavorAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
 
     /// \brief Returns the mass composition at a given energy in the multiple energy mode.
-    double EvalMass(unsigned int,double,unsigned int rho = 0) const;
+    /// @param flv Neutrino flavor.
+    /// @param enu Neutrino energy in natural units [eV].
+    /// @param rho Index of the equation, see details.
+    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1).
+    double EvalMass(unsigned int flv,double enu,unsigned int rho = 0) const;
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
-    double EvalFlavor(unsigned int,double,unsigned int rho = 0) const;
+    /// @param flv Neutrino flavor.
+    /// @param enu Neutrino energy in natural units [eV].
+    /// @param rho Index of the equation, see details.
+    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1).
+    double EvalFlavor(unsigned int flv,double enu,unsigned int rho = 0) const;
     /// \brief Returns the mass composition in the single energy mode.
     /// @param flv Neutrino flavor.
     double EvalMass(unsigned int flv) const;
@@ -632,45 +653,140 @@ class nuSQUIDS: public SQUIDS {
 //template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>>::type >
 class nuSQUIDSAtm {
   private:
+    /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
+    /// \brief Bilinear interpolator.
     double LinInter(double,double,double,double,double) const;
-  protected:
+    /// \brief Boolean that signals that an initial state has being set.
     bool iinistate;
+    /// \brief Boolean that signals the object correct initialization.
     bool inusquidsatm;
+    /// \brief Contains the cos(zenith) nodes.
     marray<double,1> costh_array;
+    /// \brief Contains the energy nodes.
     marray<double,1> enu_array;
+    /// \brief Contains the log of energy nodes.
     marray<double,1> log_enu_array;
+    /// \brief Contains the nuSQUIDS objects for each zenith.
     std::vector<nuSQUIDS> nusq_array;
 
+    /// \brief Contains the Earth in atmospheric configuration.
     std::shared_ptr<EarthAtm> earth_atm;
+    /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
   public:
-    nuSQUIDSAtm(double,double,int,double,double,int,
-                int numneu,NeutrinoType NT = both,
+    /************************************************************************************
+     * CONSTRUCTORS
+    *************************************************************************************/
+
+    /// \brief Basic constructor.
+    /// @param costh_min Minimum cos(th) value.
+    /// @param costh_max Maximum cos(th) value.
+    /// @param costh_div Number of divisions in cos(th).
+    /// @param energy_min Minimum neutrino energy value [Gev].
+    /// @param energy_max Maximum neutrino energy value [GeV].
+    /// @param energy_div Number of energy divisions.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
+                double energy_min,double energy_max,unsigned int energy_div,
+                unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false);
+
+    /// \brief Constructor from a HDF5 filepath.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
+    /// restoring all properties as well as the state.
+    /// @see ReadStateHDF5
     nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
 
-    void Set_initial_state(marray<double,3>, std::string basis = "flavor");
-    void Set_initial_state(marray<double,4>, std::string basis = "flavor");
+    /************************************************************************************
+     * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
+    *************************************************************************************/
 
+    /// \brief Sets the initial state in the multiple energy mode
+    /// when only considering neutrinos or antineutrinos
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state first dimension lenght has to be equal to the number of
+    /// zenith bins, the second dimension is the number of energy bins, and the third
+    /// dimension corresponds to the number of neutrino flavors. If the basis is
+    /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
+    /// while if the mass basis is used then the first entries correspond to the active
+    /// mass eigenstates.
+    void Set_initial_state(marray<double,3> ini_state, std::string basis = "flavor");
+    /// \brief Sets the initial state in the multiple energy mode when
+    /// considering neutrinos and antineutrinos simultaneously
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state first dimension lenght has to be equal to the number of
+    /// zenith bins, the second dimension is the number of energy bins, the third
+    /// dimension must have length two corresponding to neutrinos and antineutrinos 
+    /// respectifully, finally the fourth
+    /// dimension corresponds to the number of neutrino flavors. If the basis is
+    /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
+    /// while if the mass basis is used then the first entries correspond to the active
+    /// mass eigenstates.
+    void Set_initial_state(marray<double,4> ini_state, std::string basis = "flavor");
+
+    /// \brief Evolves the system.
     void EvolveState();
-    void Set_TauRegeneration(bool);
+    /// \brief Toggles tau regeneration on and off.
+    /// @param opt If \c true tau regeneration will be considered.
+    void Set_TauRegeneration(bool opt);
 
-    double EvalFlavor(unsigned int,double,double,unsigned int rho = 0) const;
+    /// \brief Returns the flavor composition at a given energy and zenith.
+    /// @param flv Neutrino flavor.
+    /// @param costh Cosine of the zenith.
+    /// @param enu Neutrino energy in natural units [eV].
+    /// @param rho Index of the equation, see details.
+    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
+    /// is done in the logarithm of the energy and cos(zenith).
+    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0) const;
 
-    void WriteStateHDF5(std::string) const;
-    void ReadStateHDF5(std::string);
-    void Set_MixingParametersToDefault(void);
-    void Set(MixingParameter,double);
-    void Set_abs_error(double);
-    void Set_rel_error(double);
+    /// \brief Writes the object into an HDF5 file.
+    /// @param hdf5_filename Filename of the HDF5 into which save the object.
+    /// \details All contents are saved to the \c root of the HDF5 file.
+    /// @see ReadStateHDF5
+    void WriteStateHDF5(std::string hdf5_filename) const;
+    /// \brief Reads the object from an HDF5 file.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// \details All contents are assumed to be saved to the \c root of the HDF5 file.
+    /// @see WriteStateHDF5
+    void ReadStateHDF5(std::string hdf5_filename);
+
+    /// \brief Sets the mixing parameters to default.
+    void Set_MixingParametersToDefault();
+    /// \brief Sets mixing parameter.
+    /// @param mp Mixing parameter
+    /// @param val Value of the parameter
+    /// \details Mixing parameters can correspond to mixing angles, CP phases, or
+    /// square mass differences.
+    void Set(MixingParameter mp,double val);
+    /// \brief Sets the absolute numerical error.
+    /// @param eps Error.
+    void Set_abs_error(double eps);
+    /// \brief Sets the relative numerical error.
+    /// @param eps Error.
+    void Set_rel_error(double eps);
+    /// \brief Incorporated const object useful to evaluate units.
     const Const units;
 
-    void Set_ProgressBar(bool);
+    /// \brief Toggles the progress bar printing on and off
+    /// @param opt If \c true a progress bar will be printed.
+    void Set_ProgressBar(bool opt);
 
+    /// \brief Returns number of energy nodes.
     size_t GetNumE() const;
+    /// \brief Returns number of zenith nodes.
     size_t GetNumCos() const;
+    /// \brief Returns the energy nodes values.
     marray<double,1> GetERange() const;
+    /// \brief Returns the cos(zenith) nodes values.
     marray<double,1> GetCosthRange() const;
 };
 

@@ -86,10 +86,10 @@ class nuSQUIDSNSI: public nuSQUIDS {
       // and the factor of 3 comes from average n_n/n_e at Earth.
       potential += (3.0*CC)*NSI_evol[ei];
 
-      if ((index_rho == 0 and NT==nuSQUIDS::both) or NT==nuSQUIDS::neutrino){
+      if ((index_rho == 0 and NT==both) or NT==neutrino){
           // neutrino potential
           return potential;
-      } else if ((index_rho == 1 and NT==nuSQUIDS::both) or NT==nuSQUIDS::antineutrino){
+      } else if ((index_rho == 1 and NT==both) or NT==antineutrino){
           // antineutrino potential
           return (-1.0)*std::move(potential);
       } else{
@@ -97,7 +97,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
       }
     }
   public:
-    nuSQUIDSNSI(double epsilon_mutau,double Emin,double Emax,int Esize,int numneu, nuSQUIDS::NeutrinoType NT,
+    nuSQUIDSNSI(double epsilon_mutau,double Emin,double Emax,int Esize,int numneu, NeutrinoType NT,
          bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
          hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
     {
@@ -148,7 +148,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSNSI nus(1.0e-2,1.e1,1.e3,200,3,nuSQUIDS::antineutrino,true,false);
+  nuSQUIDSNSI nus(1.0e-2,1.e1,1.e3,200,3,antineutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();

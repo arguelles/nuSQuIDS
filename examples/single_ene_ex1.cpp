@@ -38,7 +38,7 @@ int main()
   // going to consider neutrino or antineutrino oscillations.
 
   // In this example we set N_neutrino = 3 and Type = "neutrino".
-  nuSQUIDS nus(3,nuSQUIDS::neutrino);
+  nuSQUIDS nus(3,neutrino);
 
   // We will now set the mixing paremeters and square mass
   // differences. The angles will be given in radians and the
