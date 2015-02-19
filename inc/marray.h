@@ -37,6 +37,8 @@
 #include "libdivide.h"
 #endif
 
+namespace nusquids{
+
 namespace detail{
 	
 //This simple compressed pair is based heavily on the implementation in libc++
@@ -1199,5 +1201,7 @@ template<typename T, unsigned Rank, typename U>
 marray<T,Rank> operator/(const U& f, marray<T,Rank>& a){
 	return(marray<T,Rank>(a)/=f);
 }
+
+} // end namespace nusquids
 
 #endif //MARRAY_H
