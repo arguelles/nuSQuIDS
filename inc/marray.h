@@ -30,6 +30,7 @@
 #include <functional>
 #include <numeric>
 #include <string>
+#include <algorithm>
 
 #include <iosfwd>
 
