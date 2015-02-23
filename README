@@ -59,5 +59,5 @@ The path for the HDF5 libraries can be specified by running:
 
 Finally, the path for SQuIDS can be specified by:
 
-./config.sh -SQUIDS_PATH=path_to_SQUIDS
+./config.sh --with-squids-incdir=SQuIDS_include_path --with-squids-libdir=SQuIDS_library_path
 
