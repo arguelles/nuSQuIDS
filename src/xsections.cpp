@@ -12,7 +12,7 @@ double NeutrinoCrossSections::SigmaInter(double logE, gsl_spline * inter, gsl_in
   return gsl_spline_eval(inter,logE,acc);
 }
 
-double NeutrinoCrossSections::DSDEInter(double Enu1,double Enu2,int flavor,std::vector<double> loge_range, std::string current){
+double NeutrinoCrossSections::DSDEInter(double Enu1,double Enu2,int flavor,std::vector<double> loge_range,Current current){
   double logE1 = log(Enu1);
   double logE2 = log(Enu2);
   double dlogE = loge_range[1]-loge_range[0];
@@ -24,12 +24,12 @@ double NeutrinoCrossSections::DSDEInter(double Enu1,double Enu2,int flavor,std::
     return 0.0;
 
   double phiMM,phiMP,phiPM,phiPP;
-  if (current == "CC"){
+  if (current == CC){
     phiMM = dsde_CC_data[loge_M1*loge_range.size()+loge_M2][2+flavor];
     phiMP = dsde_CC_data[loge_M1*loge_range.size()+(loge_M2+1)][2+flavor];
     phiPM = dsde_CC_data[(loge_M1+1)*loge_range.size()+(loge_M2)][2+flavor];
     phiPP = dsde_CC_data[(loge_M1+1)*loge_range.size()+(loge_M2+1)][2+flavor];
-  } else if (current == "NC"){
+  } else if (current == NC){
     phiMM = dsde_NC_data[loge_M1*loge_range.size()+loge_M2][2+flavor];
     phiMP = dsde_NC_data[loge_M1*loge_range.size()+(loge_M2+1)][2+flavor];
     phiPM = dsde_NC_data[(loge_M1+1)*loge_range.size()+(loge_M2)][2+flavor];
@@ -118,8 +118,8 @@ void NeutrinoCrossSections::Init(double Emin_in, double Emax_in, int div_in){
                         dsde_cc.push_back(0.0);
                         dsde_nc.push_back(0.0);
                       } else {
-                        dsde_cc.push_back(DSDEInter(Enu1,Enu2,flavor,logE_data_range,"CC"));
-                        dsde_nc.push_back(DSDEInter(Enu1,Enu2,flavor,logE_data_range,"NC"));
+                        dsde_cc.push_back(DSDEInter(Enu1,Enu2,flavor,logE_data_range,CC));
+                        dsde_nc.push_back(DSDEInter(Enu1,Enu2,flavor,logE_data_range,NC));
                       }
                   }
                   dsde_CC_tbl.push_back(dsde_cc);
