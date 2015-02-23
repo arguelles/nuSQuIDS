@@ -1014,8 +1014,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   } else {
     H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
   }
-  H5LTset_attribute_string(group_id, "body", "NAME", body->name.c_str());
-  int bid = body->id;
+  H5LTset_attribute_string(group_id, "body", "NAME", body->GetName().c_str());
+  int bid = body->GetId();
   H5LTset_attribute_int(group_id, "body", "ID", &bid,1);
 
   // writing cross section information 

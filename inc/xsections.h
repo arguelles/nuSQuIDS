@@ -14,6 +14,10 @@
 
 namespace nusquids{
 
+/// \class NeutrinoCrossSections
+/// \brief Tabulates and interpolates all cross sections for a given energy array.
+/// \details The cross section tables are supplied data/xsections/ and bilinear
+/// interpolation is performed on the logarithm of the energy.
 class NeutrinoCrossSections{
     private :
       double Emin;

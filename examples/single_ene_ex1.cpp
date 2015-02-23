@@ -354,7 +354,7 @@ int main()
   // using the standard solar model
 
   std::shared_ptr<Sun> sun = std::make_shared<Sun>();
-  std::shared_ptr<Sun::Track> track_sun = std::make_shared<Sun::Track>(0.0,sun->radius*nus.units.km);
+  std::shared_ptr<Sun::Track> track_sun = std::make_shared<Sun::Track>(0.0,sun->GetRadius());
 
   nus.Set_Body(sun);
   nus.Set_Track(track_sun);

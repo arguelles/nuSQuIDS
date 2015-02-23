@@ -14,69 +14,23 @@ namespace nusquids{
 Const param;
 
 /*
------------------------------------------------------------------------
-         BODY CLASS DEFINITIONS
------------------------------------------------------------------------
-*/
-
-
-Body::Body()
-        {
-            id = 0;
-            name = "GenericBody";
-        }
-
-// track constructor
-Body::Track::Track(double xini_input, double xend_input): TrackParams({xini_input,xend_input})
-        {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
-        }
-Body::Track::Track(): TrackParams({})
-        {
-            //pass
-        }
-
-double Body::density(const Track& track_input){
-            return 0.0;
-        }
-
-double Body::ye(const Track& track_input){
-            return 1.0;
-        }
-
-/*
 ----------------------------------------------------------------------
          VACUUM CLASS DEFINITIONS
 ----------------------------------------------------------------------
 */
 
-// vacuum constructor
-Vacuum::Vacuum()
-        {
-            id = 1;
-            name = "Vacuum";
-        }
-
 // track constructor
-Vacuum::Track::Track(double xini_input, double xend_input)
+Vacuum::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
+            x = xini;
             TrackParams = {xini,xend};
         }
-Vacuum::Track::Track()
-        {
-            //pass
-        }
 
-double Vacuum::density(const GenericTrack& track_input){
+double Vacuum::density(const GenericTrack& track_input) const{
             return 0.0;
         }
 
-double Vacuum::ye(const GenericTrack& track_input){
+double Vacuum::ye(const GenericTrack& track_input) const{
             return 1.0;
         }
 
@@ -87,38 +41,26 @@ double Vacuum::ye(const GenericTrack& track_input){
 */
 
 // constructor
-ConstantDensity::ConstantDensity(double density_input,double ye_input)
+ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Body(2,"ConstantDensity"),
+                                                                             constant_density(constant_density),
+                                                                             constant_ye(constant_ye)
         {
-            name = "ConstantDensity";
-            id = 2;
-            constant_density = density_input;
-            constant_ye = ye_input;
             BodyParams = {constant_density, constant_ye};
         }
 
-ConstantDensity::ConstantDensity(void)
-        {
-        }
-
 // track constructor
-ConstantDensity::Track::Track(double xini_input, double xend_input)
+ConstantDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
+            x = xini;
             TrackParams = {xini,xend};
         }
-ConstantDensity::Track::Track()
-        {
-            //pass
-        }
 
-double ConstantDensity::density(const GenericTrack& track_input)
+double ConstantDensity::density(const GenericTrack& track_input) const
         {
             return constant_density;
         }
 
-double ConstantDensity::ye(const GenericTrack& track_input)
+double ConstantDensity::ye(const GenericTrack& track_input) const
         {
             return constant_ye;
         }
@@ -130,11 +72,8 @@ double ConstantDensity::ye(const GenericTrack& track_input)
 */
 
 // constructor
-VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input)
+VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):Body(3,"VariableDensity")
         {
-            name = "VariableDensity";
-            id = 3;
-
             assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_input.size() == density_input.size() && x_input.size() == ye_input.size());
             arraysize = x_input.size();
 
@@ -167,32 +106,25 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
               BodyParams.push_back(ye);
         }
 
-VariableDensity::VariableDensity(){};
 // track constructor
-VariableDensity::Track::Track(double xini_input, double xend_input)
+VariableDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
+            x = xini;
             TrackParams = {xini,xend};
         }
-VariableDensity::Track::Track()
-        {
-            //pass
-        }
 
-double VariableDensity::density(const GenericTrack& track_input)
+double VariableDensity::density(const GenericTrack& track_input) const
         {
-          double x = track_input.x;
+          double x = track_input.GetX();
           if (x < x_min or x > x_max ){
               return 0;
           } else {
               return gsl_spline_eval(inter_density,x,inter_density_accel);
           }
         }
-double VariableDensity::ye(const GenericTrack& track_input)
+double VariableDensity::ye(const GenericTrack& track_input) const
         {
-          double x = track_input.x;
+          double x = track_input.GetX();
           if (x < x_min or x > x_max ){
               return 0;
           } else {
@@ -212,26 +144,18 @@ Earth::Earth():Earth((std::string) EARTH_MODEL_LOCATION )
         }
 
 // track constructor
-Earth::Track::Track(double xini_input, double xend_input,double baseline_input)
+Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,xend),baseline(baseline)
         {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
-            baseline = baseline_input;
+            x = xini;
             TrackParams = {xini,xend,baseline};
         }
 
-Earth::Track::Track()
-        {
-            //pass
-        }
-
-double Earth::density(const GenericTrack& track_input)
+double Earth::density(const GenericTrack& track_input) const
         {
             //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
             const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
-            double xkm = track_earth.x/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.baseline/param.km)*xkm);
+            double xkm = track_earth.GetX()/param.km;
+            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
 
             if ( r/radius < x_radius_min ){
               return x_rho_min;
@@ -244,12 +168,12 @@ double Earth::density(const GenericTrack& track_input)
             }
         }
 
-double Earth::ye(const GenericTrack& track_input)
+double Earth::ye(const GenericTrack& track_input) const
         {
             //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
             const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
-            double xkm = track_earth.x/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.baseline/param.km)*xkm);
+            double xkm = track_earth.GetX()/param.km;
+            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
 
             if ( r/radius < x_radius_min ){
               return x_ye_min;
@@ -262,12 +186,10 @@ double Earth::ye(const GenericTrack& track_input)
             }
         }
 
-Earth::Earth(std::string filepath)
+Earth::Earth(std::string filepath):Body(4,"Earth")
         {
           // The Input file should have the radius specified from 0 to 1.
           // where 0 is the center of the Earth and 1 is the surface.
-            name = "Earth";
-            id = 4;
             radius = 6371.0; // [km]
 
             Table earth_model = quickread(filepath);
@@ -313,13 +235,9 @@ Earth::~Earth(){
 */
 
 // constructor
-Sun::Sun()
+Sun::Sun():Body(5,"Sun")
         {
-            name = "Sun";
-            id = 5;
-            //radius = 694439.0;
-            radius = 695980.0;
-
+            radius = 695980.0*param.km;
 
             // import sun model
             sun_model = quickread(SUN_MODEL_LOCATION);
@@ -344,18 +262,13 @@ Sun::Sun()
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
 // track constructor
-Sun::Track::Track(double xini_input, double xend_input)
+Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
-            x = xini_input;
-            xini = xini_input;
-            xend = xend_input;
+            x = xini;
             TrackParams = {xini,xend};
         }
-Sun::Track::Track()
-        {
-            //pass
-        }
-double Sun::rdensity(double x){
+
+double Sun::rdensity(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
             if (x < sun_radius[0]){
                 return sun_density[0];
@@ -366,7 +279,7 @@ double Sun::rdensity(double x){
             }
         }
 
-double Sun::rxh(double x){
+double Sun::rxh(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
             if (x < sun_radius[0]){
                 return sun_xh[0];
@@ -377,17 +290,30 @@ double Sun::rxh(double x){
             }
         }
 
-double Sun::density(const GenericTrack& track_input)
+double Sun::density(const GenericTrack& track_input) const
         {
-            double r = track_input.x/(radius*param.km);
+            double r = track_input.GetX()/(radius);
             return rdensity(r);
         }
-double Sun::ye(const GenericTrack& track_input)
+double Sun::ye(const GenericTrack& track_input) const
         {
-            double r = track_input.x/(radius*param.km);
+            double r = track_input.GetX()/(radius);
             return 0.5*(1.0+rxh(r));
         }
 
+Sun::~Sun(){
+  free(sun_radius);
+  free(sun_density);
+  free(sun_xh);
+  free(sun_nele_radius);
+  free(sun_nele);
+  free(inter_density);
+  free(inter_density_accel);
+  free(inter_rxh);
+  free(inter_rxh_accel);
+  free(inter_nele);
+  free(inter_nele_accel);
+}
 /*
 ----------------------------------------------------------------------
          SUN ASNU CLASS DEFINITIONS
@@ -395,11 +321,9 @@ double Sun::ye(const GenericTrack& track_input)
 */
 
 // constructor
-SunASnu::SunASnu()
+SunASnu::SunASnu():Body(6,"SunASnu")
         {
-            name = "SunASnu";
-            id = 6;
-            radius = 694439.0;
+            radius = 694439.0*param.km;
 
             sun_model = quickread(SUN_MODEL_LOCATION);
             arraysize = sun_model.size();
@@ -423,21 +347,17 @@ SunASnu::SunASnu()
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
 // track constructor
-SunASnu::Track::Track(double xini_input, double b_impact_input)
+SunASnu::Track::Track(double xini, double b_impact):
+  radius_nu(694439.0*param.km),
+  b_impact(b_impact),
+  Body::Track(xini,xini)
         {
-            radius_nu = 694439.0*param.km;
-            x = xini_input;
-            xini = xini_input;
-            b_impact = b_impact_input;
+            x = xini;
             xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));
-            TrackParams = {xini,xend, b_impact_input};
-        }
-SunASnu::Track::Track()
-        {
-            //pass
+            TrackParams = {xini,xend,b_impact};
         }
 
-double SunASnu::rdensity(double x){
+double SunASnu::rdensity(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
             if (x < sun_radius[0]){
                 return sun_density[0];
@@ -448,7 +368,7 @@ double SunASnu::rdensity(double x){
             }
         }
 
-double SunASnu::rxh(double x){
+double SunASnu::rxh(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
             if (x < sun_radius[0]){
                 return sun_xh[0];
@@ -459,27 +379,37 @@ double SunASnu::rxh(double x){
             }
         }
 
-double SunASnu::density(const GenericTrack& track_input)
+double SunASnu::density(const GenericTrack& track_input) const
         {
             //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
             const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
-            double xkm = track_sunasnu.x/param.km;
-            double bkm = track_sunasnu.b_impact/param.km;
+            double x = track_sunasnu.GetX();
+            double b = track_sunasnu.b_impact;
 
-            double r = sqrt(SQR(radius)+SQR(xkm)-2.0*xkm*sqrt(SQR(radius)-SQR(bkm)))/radius;
+            double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
 
             return rdensity(r);
         }
 
-double SunASnu::ye(const GenericTrack& track_input)
+double SunASnu::ye(const GenericTrack& track_input) const
         {
             //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
             const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
-            double xkm = track_sunasnu.x/param.km;
-            double bkm = track_sunasnu.b_impact/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-2.0*xkm*sqrt(SQR(radius)-SQR(bkm)))/radius;
+            double x = track_sunasnu.GetX();
+            double b = track_sunasnu.b_impact;
+            double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
             return 0.5*(1.0+rxh(r));
         }
+
+SunASnu::~SunASnu(){
+  free(sun_radius);
+  free(sun_density);
+  free(sun_xh);
+  free(inter_density);
+  free(inter_density_accel);
+  free(inter_rxh);
+  free(inter_rxh_accel);
+}
 
 /*
 ----------------------------------------------------------------------
@@ -493,7 +423,7 @@ EarthAtm::EarthAtm():EarthAtm((std::string) EARTH_MODEL_LOCATION )
         }
 
 // track constructor
-EarthAtm::Track::Track(double phi_input)
+EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
         {
             radius_nu = 6371.0*param.km;
             atmheight = 100.0*param.km;
@@ -538,15 +468,10 @@ EarthAtm::Track::Track(double phi_input)
             TrackParams = {xini,xend, phi_input};
         }
 
-EarthAtm::Track::Track()
-        {
-            //pass
-        }
-
-double EarthAtm::density(const GenericTrack& track_input)
+double EarthAtm::density(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
-            double xkm = track_earthatm.x/param.km;
+            double xkm = track_earthatm.GetX()/param.km;
 
             double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
 
@@ -572,10 +497,10 @@ double EarthAtm::density(const GenericTrack& track_input)
             }
         }
 
-double EarthAtm::ye(const GenericTrack& track_input)
+double EarthAtm::ye(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
-            double xkm = track_earthatm.x/param.km;
+            double xkm = track_earthatm.GetX()/param.km;
             double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
 
             double rel_r = r/earth_with_atm_radius;
@@ -592,10 +517,8 @@ double EarthAtm::ye(const GenericTrack& track_input)
             }
         }
 
-EarthAtm::EarthAtm(std::string filepath)
+EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
         {
-            name = "EarthAtm";
-            id = 7;
             radius = 6371.0; // km
             atm_height = 100; // km
             earth_with_atm_radius = radius + atm_height;

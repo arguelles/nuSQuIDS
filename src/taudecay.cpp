@@ -5,7 +5,7 @@
 // decay formulaes
 namespace nusquids{
 
-double TauDecaySpectra::TauDecayToLepton(double E_tau,double E_nu){
+double TauDecaySpectra::TauDecayToLepton(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
     double g0 = 5.0/3.0-3.0*pow(z,2.0)+(4.0/3.0)*pow(z,3.0);
     double g1 = 1.0/3.0-3.0*pow(z,2.0)+(8.0/3.0)*pow(z,3.0);
@@ -13,7 +13,7 @@ double TauDecaySpectra::TauDecayToLepton(double E_tau,double E_nu){
     return g0+TauPolarization*g1;
 }
 
-double TauDecaySpectra::TauDecayToPion(double E_tau,double E_nu){
+double TauDecaySpectra::TauDecayToPion(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
 
     double g0 = 0.0;
@@ -29,7 +29,7 @@ double TauDecaySpectra::TauDecayToPion(double E_tau,double E_nu){
     return g0+TauPolarization*g1;
 }
 
-double TauDecaySpectra::TauDecayToRho(double E_tau,double E_nu){
+double TauDecaySpectra::TauDecayToRho(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
 
     double g0 = 0.0;
@@ -45,7 +45,7 @@ double TauDecaySpectra::TauDecayToRho(double E_tau,double E_nu){
     return g0+TauPolarization*g1;
 }
 
-double TauDecaySpectra::TauDecayToA1(double E_tau,double E_nu){
+double TauDecaySpectra::TauDecayToA1(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
 
     double g0 = 0.0;
@@ -61,7 +61,7 @@ double TauDecaySpectra::TauDecayToA1(double E_tau,double E_nu){
     return g0+TauPolarization*g1;
 }
 
-double TauDecaySpectra::TauDecayToHadron(double E_tau,double E_nu){
+double TauDecaySpectra::TauDecayToHadron(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
 
     double g0 = 0.0;
@@ -74,7 +74,7 @@ double TauDecaySpectra::TauDecayToHadron(double E_tau,double E_nu){
     return g0+TauPolarization*g1;
 }
 
-double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu){
+double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
     double decay_spectra = 0.0;
 
     decay_spectra += 2.0*BrLepton*TauDecayToLepton(E_tau,E_nu);
@@ -90,17 +90,17 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu){
 
 TauDecaySpectra::TauDecaySpectra(){};
 
-void TauDecaySpectra::SetParameters(void){
+void TauDecaySpectra::SetParameters(){
   TauPolarization = -1.0;
   RPion = SQR(0.07856),RRho = SQR(0.43335),RA1 = SQR(0.70913);
   BrLepton = 0.18,BrPion = 0.12,BrRho = 0.26,BrRA1 = 0.13,BrHadron = 0.13;
 }
 
-TauDecaySpectra::TauDecaySpectra(double Emin_in,double Emax_in,int div_in){
+TauDecaySpectra::TauDecaySpectra(double Emin_in,double Emax_in,unsigned int div_in){
   Init(Emin_in,Emax_in,div_in);
 };
 
-void TauDecaySpectra::Init(double Emin_in,double Emax_in,int div_in){
+void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
         SetParameters();
         Emin = Emin_in;
         Emax = Emax_in;
@@ -151,24 +151,24 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,int div_in){
 
 // tau decay spectra returned in units of [GeV^-1]
 
-double TauDecaySpectra::dNdEnu_All(int i_enu, int i_ele){
-    int ii = i_enu*(div+1) + (i_ele);
+double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const{
+    unsigned int ii = i_enu*(div+1) + (i_ele);
     return dNdEnu_All_tbl[ii][2];
 };
 
-double TauDecaySpectra::dNdEnu_Lep(int i_enu, int i_ele){
-    int ii = i_enu*(div+1) + i_ele;
+double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const{
+    unsigned int ii = i_enu*(div+1) + i_ele;
     return (double) dNdEnu_Lep_tbl[ii][2];
 };
 
-double TauDecaySpectra::dNdEle_All(int i_enu, int i_ele){
-        int ii = i_enu*(div+1) + (i_ele);
-        return dNdEle_All_tbl[ii][2];
+double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele) const{
+    unsigned int ii = i_enu*(div+1) + (i_ele);
+    return dNdEle_All_tbl[ii][2];
 };
 
-double TauDecaySpectra::dNdEle_Lep(int i_enu, int i_ele){
-        int ii = i_enu*(div+1) + i_ele;
-        return (double) dNdEle_Lep_tbl[ii][2];
+double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const{
+    unsigned int ii = i_enu*(div+1) + i_ele;
+    return (double) dNdEle_Lep_tbl[ii][2];
 };
 
 }// close namespace

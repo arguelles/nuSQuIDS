@@ -63,6 +63,7 @@ enum NeutrinoType {
   both=0b11
 };
 
+///\class nuSQUIDS
 ///\brief nu-SQuIDS main class
 class nuSQUIDS: public SQUIDS {
   // nuSQUIDSAtm is a friend class so it can use H0 to evolve operators
@@ -145,8 +146,16 @@ class nuSQUIDS: public SQUIDS {
 
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
+    /// \brief Array that contains the inverse of the tau decay length for each energy node.
     marray<double,1> invlen_tau;
+    /// \brief Array that contains the tau decay spectrum to all particles.
+    /// \details The first dimension corresponds to initial tau energy and the
+    /// second one to the outgoing lepton.
     marray<double,2> dNdE_tau_all;
+    /// \brief Array that contains the tau decay spectrum to leptons.
+    /// \brief Array that contains the tau decay spectrum to all particles.
+    /// \details The first dimension corresponds to initial tau energy and the
+    /// second one to the outgoing lepton.
     marray<double,2> dNdE_tau_lep;
     /// \brief Tau branching ratio to leptons.
     double taubr_lep;
@@ -155,7 +164,7 @@ class nuSQUIDS: public SQUIDS {
     /// \brief Tau mass in natural units.
     double tau_mass;
     /// \brief Length upon which charge tau lepton conversion to neutrino happens.
-    /// \defailts By default set to 100 km (in natural units).
+    /// \details By default set to 100 km (in natural units).
     /// @see ConvertTauIntoNuTau()
     double tau_reg_scale;
 
@@ -200,8 +209,8 @@ class nuSQUIDS: public SQUIDS {
     /// \brief When called converts the flux of tau charged leptons to neutrinos. It
     /// is only called when tauregeneration = True and NeutrinoType = both.
     ///
-    /// At a given time we the system has a flux of charged tau leptons \phi_\tau(E) and
-    /// \phi_\taubar(E) where E is given in the system nodes. When the tau/taubar decays
+    /// At a given time we the system has a flux of charged tau leptons \f$ \phi_\tau(E) \f$ and
+    /// \f$ \phi_{\bar{\tau}}(E) \f$  where E is given in the system nodes. When the tau/taubar decays
     /// it will produce a taunu/taunubar following a distribution dN/dE_all, where all
     /// means that both hadronic and leptonic decay channels are considered.
     /// Furthermore, the taus can decay leptonically with a distribution dN/dE_lep
@@ -263,7 +272,7 @@ class nuSQUIDS: public SQUIDS {
     /// have changed.
     void SetIniFlavorProyectors();
     /// \brief Initializes the time independent hamiltonian for each energy node.
-    /// \defails It constructs nuSQUIDS#DM2 and nuSQUIDS#H0_array
+    /// \details It constructs nuSQUIDS#DM2 and nuSQUIDS#H0_array
     void iniH0();
     /// \brief Changes the CP sign of the complex matrices stored in params.
     void AntineutrinoCPFix(unsigned int irho);
@@ -277,7 +286,7 @@ class nuSQUIDS: public SQUIDS {
     /// @param Esize Number of energy nodes.
     /// @param initialize_intereractions Togles interaction arrays initialization.
     /// @param xini The initial position of the system.
-    /// \defails Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
+    /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
     /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions 
     /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
     /// are called.
@@ -370,10 +379,10 @@ class nuSQUIDS: public SQUIDS {
     /// @param Emin Minimum neutrino energy [GeV].
     /// @param Emax Maximum neutirno energy [GeV].
     /// @param Esize Number of energy nodes.
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param elogscale Sets the energy scale to be logarithmic
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param numneu_ Number of neutrino flavors.
+    /// @param NT_ NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param elogscale_ Sets the energy scale to be logarithmic
+    /// @param iinteraction_ Sets the neutrino noncoherent neutrino interactions on.
     /// \details By default the energy scale is logarithmic and interactions are turn off.
     /// \warning When interactions are present interpolation is performed to precalculate the neutrino
     /// cross section which make take considertable time depending on the energy grid.
@@ -388,8 +397,8 @@ class nuSQUIDS: public SQUIDS {
     };
 
     /// \brief Single energy mode initializer.
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT NeutrinoType: neutrino or antineutrino.
+    /// @param numneu_ Number of neutrino flavors.
+    /// @param NT_ NeutrinoType: neutrino or antineutrino.
     /// \warning Interactions are not possible in the single energy mode, nor is simultaneous
     /// neutrino-antineutrino solution (both) possible.
     /// \details Constructors projectors and initializes Hamiltonian.
@@ -417,7 +426,7 @@ class nuSQUIDS: public SQUIDS {
     /// @param E Neutrino energy [eV]
     /// @param irho Density matrix equation index.
     /// \details \c irho is the index of the equation on which the Hamiltonian
-    /// is used. When not in NeutrinoType == \c both \irho is only 0, but if 
+    /// is used. When not in NeutrinoType == \c both \c irho is only 0, but if 
     /// neutrinos and antineutrinos are solved simultaneously, then 0 is for
     /// neutrinos and 1 for antineutrinos.
     SU_vector H0(double E, unsigned int irho) const;
@@ -432,27 +441,26 @@ class nuSQUIDS: public SQUIDS {
     /// @param ie Energy node
     /// @param irho Density matrix equation index.
     /// @see H0 for convention on \c irho.
-    virtual SU_vector GammaRho(unsigned int ei, unsigned int irho) const;
+    virtual SU_vector GammaRho(unsigned int ie, unsigned int irho) const;
 
     /// \brief Returns the scalar quantity decay rate at an energy node \c ie
     /// @param ie Energy node
     /// @param iscalar scalar equation index.
     /// \details When tau regenereation is considered \c iscalar = 0 corresponds
     /// to the tau flux.
-    virtual double GammaScalar(unsigned int ei, unsigned int iscalar) const;
+    virtual double GammaScalar(unsigned int ie, unsigned int iscalar) const;
 
     /// \brief Returns interaction of the density matrix at an energy node \c ie
     /// @param ie Energy node
     /// @param irho Density matrix equation index.
     /// @see H0 for convention on \c irho.
-    virtual SU_vector InteractionsRho(unsigned int ei, unsigned int irho) const;
+    virtual SU_vector InteractionsRho(unsigned int ie, unsigned int irho) const;
 
     /// \brief Returns scalar interactions at an energy node \c ie
     /// @param ie Energy node
     /// @param iscalar scalar equation index.
-    /// @param irho Density matrix equation index.
     /// @see GammaScalar for convention on \c iscalar.
-    virtual double InteractionsScalar(unsigned int ei, unsigned int iscalar) const;
+    virtual double InteractionsScalar(unsigned int ie, unsigned int iscalar) const;
   private:
     /// \brief SQuIDS signature of HI
     SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);};
@@ -520,14 +528,14 @@ class nuSQUIDS: public SQUIDS {
     /// @param flv Neutrino flavor.
     /// @param ie Energy node index.
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalMassAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
     /// \brief Returns the flavor composition at a given node.
     /// @param flv Neutrino flavor.
     /// @param ie Energy node index.
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalFlavorAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
 
@@ -535,14 +543,14 @@ class nuSQUIDS: public SQUIDS {
     /// @param flv Neutrino flavor.
     /// @param enu Neutrino energy in natural units [eV].
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalMass(unsigned int flv,double enu,unsigned int rho = 0) const;
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
     /// @param flv Neutrino flavor.
     /// @param enu Neutrino energy in natural units [eV].
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalFlavor(unsigned int flv,double enu,unsigned int rho = 0) const;
     /// \brief Returns the mass composition in the single energy mode.
@@ -701,7 +709,7 @@ class nuSQUIDSAtm {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDSAtm(std::string str) {ReadStateHDF5(str);};
+    nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);};
 
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
@@ -743,7 +751,7 @@ class nuSQUIDSAtm {
     /// @param costh Cosine of the zenith.
     /// @param enu Neutrino energy in natural units [eV].
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \rho specifies wether one
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
     /// is done in the logarithm of the energy and cos(zenith).
     double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0) const;

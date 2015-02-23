@@ -15,234 +15,492 @@
 
 namespace nusquids{
 
+/// \class Body
+/// \brief Abstract body class.
+/// \details This abstract class serves as a prototype
+/// of neutrino propagation environments. When implementing
+/// the subclasses one must define the density() and ye()
 class Body{
-    public:
-        std::string name;
-        int id;
+  protected:
+    /// \brief Body parameters.
+    std::vector<double> BodyParams;
+    /// \brief Body name.
+    const std::string name;
+    /// \brief Body id.
+    const unsigned int id;
+  public:
+    /// \brief Body Constructor;
+    Body(unsigned int id, std::string name):name(name),id(id){};
 
-        Body();
-
-        class Track{
-            public:
-                double x;
-                double xini;
-                double xend;
-                Track(double,double);
-                Track();
-                void SetX(double y){ x = y; };
-                double GetX(){ return x; };
-                double GetInitialX(){ return xini; };
-                double GetFinalX(){ return xend; };
-                std::vector<double> GetTrackParams(){ return TrackParams; };
-                std::vector<double> TrackParams;
-        };
-        virtual double density(const Track&);
-        virtual double ye(const Track&);
-        const std::vector<double>& GetBodyParams(){ return BodyParams;};
-        std::vector<double> BodyParams;
+    /// \class Track
+    /// \brief Trajectory subclass. Specifies the trajectory
+    /// to take within the body.
+    class Track{
+        friend class Body;
+        protected:
+          /// \brief Current position.
+          double x;
+          /// \brief Initial position.
+          double xini;
+          /// \brief Final position.
+          double xend;
+          /// \brief Trajetory parameters.
+          std::vector<double> TrackParams;
+        public:
+          /// \brief Default constructor.
+          Track(double xini, double xend): xini(xini),xend(xend) {};
+          /// \brief Sets the current position along the trajectory.
+          void SetX(double y){ x = y; };
+          /// \brief Returns the current position along the trajectory.
+          double GetX() const { return x; };
+          /// \brief Returns the initial position measured along the trajectory.
+          double GetInitialX() const { return xini; };
+          /// \brief Returns the final position measured along the trajectory.
+          double GetFinalX() const { return xend; };
+          /// \brief Returns parameters that define the trajectory.
+          std::vector<double> GetTrackParams() const { return TrackParams; };
+    };
+    /// \brief Retursn the density at a given trajectory object.
+    virtual double density(const Track&) const = 0;
+    /// \brief Retursn the electron fraction at a given trajectory object.
+    virtual double ye(const Track&) const = 0;
+    /// \brief Returns parameters that define the body.
+    const std::vector<double>& GetBodyParams() const { return BodyParams;};
+    /// \brief Returns the body identifier.
+    unsigned int GetId() const {return id;};
+    /// \brief Returns the name of the body.
+    std::string GetName() const {return name;};
 };
 
 // type defining
 typedef Body::Track GenericTrack;
 
+/// \class Vacuum
+/// \brief Vacuum body.
+/// \details A zero density body.
 class Vacuum: public Body {
-    public:
-        Vacuum();
+  public:
+    /// \brief Constructor.
+    Vacuum():Body(1,"Vacuum"){};
 
-        class Track: public Body::Track {
-            public :
-                Track(double,double);
-                Track();
-        };
+    /// \class Track
+    /// \brief Vacuum trajectory
+    class Track: public Body::Track {
+      public :
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double xini,double xend);
+        /// \brief Construct a trajectory of distance xend.
+        /// @param xend Final position in eV^-1.
+        /// \details In this case initial position is assumed 0.
+        Track(double xend):Track(0.0,xend){};
+    };
 
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 };
 
+/// \class ConstantDensity
+/// \brief Constant density body.
+/// \details A body with constant density
 class ConstantDensity: public Body{
-    public:
-        double constant_density;
-        double constant_ye;
+  private:
+    /// \brief Constant density in g/cm^3
+    const double constant_density;
+    /// \brief Constant electron fraction
+    const double constant_ye;
+  public:
+    /// \brief Constructor
+    /// @param density Density in g/cm^3.
+    /// @param ye electron fraction.
+    ConstantDensity(double density,double ye);
 
-        ConstantDensity(double,double);
-        ConstantDensity();
+    /// \class Track
+    /// \brief Constant density trajectory
+    class Track: public Body::Track{
+      public :
+        /// \brief Construct a trajectory between an initial position and final position.
+        /// @param xini Initial position in eV^-1.
+        /// @param xend Final position in eV^-1.
+        Track(double xini,double xend);
+        /// \brief Construct a trajectory of distance xend.
+        /// @param xend Final position in eV^-1.
+        /// \details In this case initial position is assumed 0.
+        Track(double xend):Track(0.0,xend){};
+    };
 
-        class Track: public Body::Track{
-            public :
-                Track(double,double);
-                Track();
-        };
-
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 };
 
+/// \class VariableDensity
+/// \brief Variable user defined density body.
+/// \details The user provides arrays which contain the body
+/// information.
 class VariableDensity: public Body{
-    public:
-        double* x_arr;
-        double* density_arr;
-        double* ye_arr;
+  private:
+    /// \brief Array of length \c arraysize containing spline position nodes.
+    double* x_arr;
+    /// \brief Array of length \c arraysize containing the density at each position nodes.
+    double* density_arr;
+    /// \brief Array of length \c arraysize containing the electron fraction at each position nodes.
+    double* ye_arr;
+    /// \brief Size of array used to create spline.
+    int arraysize;
 
-        int arraysize;
+    /// \brief Minimum value of \c x_arr.
+    double x_max;
+    /// \brief Maximum value of \c x_arr.
+    double x_min;
 
-        double x_max;
-        double x_min;
+    /// \brief Density gsl spline.
+    gsl_spline * inter_density;
+    /// \brief Density gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_density_accel;
 
-        gsl_spline * inter_density;
-        gsl_interp_accel * inter_density_accel;
+    /// \brief Electron fraction gsl spline.
+    gsl_spline * inter_ye;
+    /// \brief Electron fraction gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_ye_accel;
+  public:
+    /// \brief Constructor.
+    /// @param x Vector containing position nodes.
+    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// \pre All input vectors must be of equal size.
+    VariableDensity(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
 
-        gsl_spline * inter_ye;
-        gsl_interp_accel * inter_ye_accel;
+    /// \class Track
+    /// \brief Variable density trajectory
+    class Track: public Body::Track{
+      public :
+        /// \brief Construct a trajectory between an initial position and final position.
+        /// @param xini Initial position in eV^-1.
+        /// @param xend Final position in eV^-1.
+        Track(double xini,double xend);
+        /// \brief Construct a trajectory of distance xend.
+        /// @param xend Final position in eV^-1.
+        /// \details In this case initial position is assumed 0.
+        Track(double xend):Track(0.0,xend){};
+    };
 
-        VariableDensity(std::vector<double>,std::vector<double>,std::vector<double>);
-        VariableDensity();
-
-        class Track: public Body::Track{
-            public :
-                Track(double,double);
-                Track();
-        };
-
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 };
 
+/// \class Earth
+/// \brief Earth model based on PREM.
 class Earth: public Body{
-    public:
-        double radius;
-        double ye_mantle,ye_outercore,ye_innercore;
+  private:
+    /// \brief Radius of the Earth.
+    double radius;
+    /// \brief Mantle electron fraction.
+    double ye_mantle;
+    /// \brief Outer core electron fraction.
+    double ye_outercore;
+    /// \brief Inner core electron fraction.
+    double ye_innercore;
 
-        gsl_spline * inter_density;
-        gsl_interp_accel * inter_density_accel;
-        gsl_spline * inter_ye;
-        gsl_interp_accel * inter_ye_accel;
+    /// \brief Density gsl spline.
+    gsl_spline * inter_density;
+    /// \brief Density gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_density_accel;
+    /// \brief Electron fraction gsl spline.
+    gsl_spline * inter_ye;
+    /// \brief Electron fraction gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_ye_accel;
 
-        double x_radius_min, x_radius_max;
-        double x_rho_min, x_rho_max;
-        double x_ye_min, x_ye_max;
+    /// \brief Minimum radius.
+    double x_radius_min;
+    /// \brief Maximum radius.
+    double x_radius_max;
+    /// \brief Density at minimum radius.
+    double x_rho_min;
+    /// \brief Density at maximum radius.
+    double x_rho_max;
+    /// \brief Electron fraction at minimum radius.
+    double x_ye_min;
+    /// \brief Electron fraction at maximum radius.
+    double x_ye_max;
+  public:
+    /// \brief Default constructor using supplied PREM.
+    Earth();
+    /// \brief Constructor from a user supplied Earth model.
+    /// @param earthmodel Path to the Earth model file.
+    /// \details The input file should have three columns.
+    /// The first one must run from zero to one representing
+    /// the center and surface of the Earth respectively. The
+    /// second column must contain the Earth density in gr/cm^3 at
+    /// a given position, while the third column must contain
+    /// the electron fraction.
+    Earth(std::string earthmodel);
+    /// \brief Destructor.
+    ~Earth();
 
-        Earth();
-        Earth(std::string);
+    /// \class Track
+    /// \brief Earth trajectory
+    class Track: public Body::Track{
+      private:
+        /// \brief Baseline of the neutrino experiment in natural units.
+        const double baseline;
+      public :
+        /// \brief Construct a trajectory between an initial position and final position.
+        /// @param xini Initial position in eV^-1.
+        /// @param xend Final position in eV^-1.
+        /// @param baseline Baseline of experiment in eV^-1.
+        Track(double xini,double xend,double baseline);
+        /// \brief Construct a trajectory where the neutrino travels a distance given by baseline.
+        /// @param baseline Traverse distance in eV^-1.
+        /// \details In this case \c xini = 0, \c xend = \c baseline.
+        Track(double baseline):Track(0.,baseline,baseline){};
+        /// \brief Returns the neutrino baseline in natural units.
+        double GetBaseline() const {return baseline;};
+    };
 
-        double rdensity(double);
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 
-        class Track: public Body::Track{
-            public :
-                double baseline;
-                Track(double,double,double);
-                Track();
-        };
-
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
-
-        ~Earth();
+    /// \brief Returns the radius of the Earth in natural units.
+    double GetRadius() const {return radius;};
 };
 
+/// \class Sun
+/// \brief A model of the Sun.
 class Sun: public Body{
-    public:
-        Table sun_model;
-        Table sun_model_nele;
-        double* sun_radius;
-        double* sun_density;
-        double* sun_xh;
-        double* sun_nele_radius;
-        double* sun_nele;
+  private:
+    /// \brief Array that contains all the Solar model parameters.
+    Table sun_model;
+    /// \brief Array that contains all the Solar electron density parameters.
+    Table sun_model_nele;
+    /// \brief Array of length \c arraysize containing spline position nodes.
+    double* sun_radius;
+    /// \brief Array of length \c arraysize containing the density at position nodes.
+    double* sun_density;
+    /// \brief Array of length \c arraysize containing the hydrogen fraction at position nodes.
+    double* sun_xh;
+    /// \brief Array of length \c arraysize_2 containing spline position nodes.
+    double* sun_nele_radius;
+    /// \brief Array of length \c arraysize_2 containing spline position nodes.
+    double* sun_nele;
 
-        int arraysize,arraysize_2;
+    /// \brief Size of \c sun_radius array.
+    int arraysize;
+    /// \brief Size of \c sun_nele_radius array.
+    int arraysize_2;
 
-        double radius;
+    /// \brief Radius of the Sun.
+    double radius;
 
-        gsl_spline * inter_density;
-        gsl_interp_accel * inter_density_accel;
+    /// \brief Density gsl spline.
+    gsl_spline * inter_density;
+    /// \brief Density gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_density_accel;
 
-        gsl_spline * inter_rxh;
-        gsl_interp_accel * inter_rxh_accel;
+    /// \brief Hidrogen fraction gsl spline.
+    gsl_spline * inter_rxh;
+    /// \brief Hidrogen fraction gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_rxh_accel;
 
-        gsl_spline * inter_nele;
-        gsl_interp_accel * inter_nele_accel;
+    /// \brief Electron content gsl spline.
+    gsl_spline * inter_nele;
+    /// \brief Electron content gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_nele_accel;
 
-        Sun();
+    /// \brief Returns the density in g/cm^3 at a given radius fraction x
+    /// @param x Radius fraction: 0:center, 1:surface.
+    double rdensity(double x) const;
+    /// \brief Returns the electron fraction at a given radius fraction x
+    /// @param x Radius fraction: 0:center, 1:surface.
+    double rxh(double x) const;
+  public:
+    /// \brief Detault constructor.
+    Sun();
+    ~Sun();
+    /// \class Track
+    /// \brief Sun trajectory
+    class Track: public Body::Track{
+      public :
+        /// \brief Construct a trajectory between an initial position and final position.
+        /// @param xini Initial position in eV^-1.
+        /// @param xend Final position in eV^-1.
+        /// \details The trajectory is measured from the sun center which is set to zero.
+        Track(double xini,double xend);
+        /// \brief Construct a trajectory from the sun center to a final position.
+        /// @param xend Final position in eV^-1.
+        /// \details The trajectory is measured from the sun center which is set to zero.
+        Track(double xend):Track(0.,xend){};
+    };
 
-        double rdensity(double);
-        double rxh(double);
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 
-        class Track: public Body::Track{
-            public :
-                Track(double,double);
-                Track();
-        };
-
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
+    /// \brief Returns the radius of the Sun in natural units.
+    double GetRadius() const {return radius;};
 };
 
+/// \class SunASnu
+/// \brief A model of the Sun with atmospheric solar neutrinos geometry.
 class SunASnu: public Body{
-    public:
-        Table sun_model;
-        double* sun_radius;
-        double* sun_density;
-        double* sun_xh;
+  private:
+    /// \brief Array that contains all the Solar model parameters.
+    Table sun_model;
+    /// \brief Array of length \c arraysize containing spline position nodes.
+    double* sun_radius;
+    /// \brief Array of length \c arraysize containing the density at position nodes.
+    double* sun_density;
+    /// \brief Array of length \c arraysize containing the hydrogen fraction at position nodes.
+    double* sun_xh;
 
-        int arraysize;
+    /// \brief Size of \c sun_radius array.
+    int arraysize;
 
-        double radius;
+    /// \brief Radius of the Sun.
+    double radius;
 
-        gsl_spline * inter_density;
-        gsl_interp_accel * inter_density_accel;
+    /// \brief Density gsl spline.
+    gsl_spline * inter_density;
+    /// \brief Density gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_density_accel;
 
-        gsl_spline * inter_rxh;
-        gsl_interp_accel * inter_rxh_accel;
+    /// \brief Hidrogen fraction gsl spline.
+    gsl_spline * inter_rxh;
+    /// \brief Hidrogen fraction gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_rxh_accel;
 
-        SunASnu();
+    /// \brief Returns the density in g/cm^3 at a given radius fraction x
+    /// @param x Radius fraction: 0:center, 1:surface.
+    double rdensity(double x) const;
+    /// \brief Returns the electron fraction at a given radius fraction x
+    /// @param x Radius fraction: 0:center, 1:surface.
+    double rxh(double x) const;
+  public:
+    /// \brief Detault constructor.
+    SunASnu();
+    ~SunASnu();
 
-        double rdensity(double);
-        double rxh(double);
+    /// \class Track
+    /// \brief SunASnu trajectory
+    class Track: public Body::Track{
+      friend class SunASnu;
+      private:
+        /// \brief Radius of the Sun.
+        double radius_nu;
+        /// \brief Impact parameter.
+        double b_impact;
+      public:
+        /// \brief Construct a trajectory between an initial position and final position.
+        /// @param xini Initial position in eV^-1.
+        /// @param b_impact impact parameter in eV^-1.
+        /// \details The trajectory baseline is determined by the impact parameter and starts
+        /// at \c xini, and ends when the neutrino exits the sun.
+        Track(double xini,double b_impact);
+        /// \brief Construct a for a given impact parameter.
+        /// @param b_impact impact parameter in eV^-1.
+        /// \details The trajectory baseline is determined by the impact parameter and starts
+        /// at \c xini = 0, and ends when the neutrino exits the sun.
+        Track(double b_impact):Track(0.0,b_impact){};
+    };
 
-        class Track: public Body::Track{
-            public :
-                double b_impact;
-                double radius_nu;
-                Track(double,double);
-                Track();
-        };
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
 
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
+    /// \brief Returns the radius of the Sun in natural units.
+    double GetRadius() const {return radius;};
 };
 
+/// \class EarthAtm
+/// \brief A model of the Earth with atmospheric neutrinos geometry.
 class EarthAtm: public Body{
-    public:
-        double radius,atm_height,earth_with_atm_radius;
-        double ye_mantle,ye_outercore,ye_innercore;
+  private:
+    /// \brief Radius of the Earth.
+    double radius;
+    /// \brief Height of the atmosphere.
+    double atm_height;
+    /// \brief Radius of the Earth plus atmosphere.
+    double earth_with_atm_radius;
+    /// \brief Mantle electron fraction.
+    double ye_mantle;
+    /// \brief Outer core electron fraction.
+    double ye_outercore;
+    /// \brief Inner core electron fraction.
+    double ye_innercore;
 
-        gsl_spline * inter_density;
-        gsl_interp_accel * inter_density_accel;
-        gsl_spline * inter_ye;
-        gsl_interp_accel * inter_ye_accel;
+    /// \brief Density gsl spline.
+    gsl_spline * inter_density;
+    /// \brief Density gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_density_accel;
+    /// \brief Electron fraction gsl spline.
+    gsl_spline * inter_ye;
+    /// \brief Electron fraction gsl spline auxiliary pointer.
+    gsl_interp_accel * inter_ye_accel;
 
-        double x_radius_min, x_radius_max;
-        double x_rho_min, x_rho_max;
-        double x_ye_min, x_ye_max;
+    /// \brief Minimum radius.
+    double x_radius_min;
+    /// \brief Maximum radius.
+    double x_radius_max;
+    /// \brief Density at minimum radius.
+    double x_rho_min;
+    /// \brief Density at maximum radius.
+    double x_rho_max;
+    /// \brief Electron fraction at minimum radius.
+    double x_ye_min;
+    /// \brief Electron fraction at maximum radius.
+    double x_ye_max;
+  public:
+    /// \brief Default constructor using supplied PREM.
+    EarthAtm();
+    /// \brief Constructor from a user supplied Earth model.
+    /// @param earthmodel Path to the Earth model file.
+    /// \details The input file should have three columns.
+    /// The first one must run from zero to one representing
+    /// the center and surface of the Earth respectively. The
+    /// second column must contain the Earth density in gr/cm^3 at
+    /// a given position, while the third column must contain
+    /// the electron fraction.
+    EarthAtm(std::string earthmodel);
+    ~EarthAtm();
+    /// \class Track
+    /// \brief EarthAtm trajectory
+    class Track: public Body::Track{
+      friend class EarthAtm;
+      private:
+        /// \brief Zenith angle in radians.
+        double phi;
+        /// \brief Cosine of the zenith angle.
+        double cosphi;
+        /// \brief Radius of the Earth.
+        double radius_nu;
+        /// \brief Height of the atmosphere.
+        double atmheight;
+        /// \brief Baseline.
+        double L;
+      public :
+        /// \brief Construct trajectory.
+        /// @param phi Zenith angle in radians.
+        Track(double phi);
+        /// \brief Returns the neutrino baseline in natural units.
+        double GetBaseline() const {return L;};
+    };
 
-        EarthAtm();
-        EarthAtm(std::string);
-
-        class Track: public Body::Track{
-            public :
-                double phi;
-                double cosphi;
-                double radius_nu;
-                double atmheight;
-                double L;
-
-                Track(double);
-                Track();
-        };
-
-        double density(const GenericTrack&);
-        double ye(const GenericTrack&);
-        ~EarthAtm();
+    /// \brief Returns the density in g/cm^3
+    double density(const GenericTrack&) const;
+    /// \brief Returns the electron fraction
+    double ye(const GenericTrack&) const;
+    /// \brief Returns the radius of the Earth in natural units.
+    double GetRadius() const {return radius;};
 };
 
 // type defining

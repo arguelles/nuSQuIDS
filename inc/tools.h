@@ -30,8 +30,12 @@ typedef std::vector<Row> Table;
 bool fexists(std::string);
 Table quickread(std::string);
 int quickwrite(std::string,Table&);
-// other tools
-marray<double,1> linspace(double,double,unsigned int);
+/// \brief Construct a linear space
+/// @param min Minimum value in the linear span.
+/// @param max Maximum value in the linear span.
+/// @param div Number of divisions in the span.
+marray<double,1> linspace(double min,double max,unsigned int div);
+/// \brief 
 marray<double,1> logspace(double,double,unsigned int);
 Table intertable(Table&,std::vector<double>,unsigned int,unsigned int);
 // additional GSL-like tools
