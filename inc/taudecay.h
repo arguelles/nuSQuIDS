@@ -58,18 +58,43 @@ class TauDecaySpectra{
     /// \brief Sets mass ratios, branching ratios, and polarizations.
     void SetParameters();
   protected:
-    double TauDecayToLepton(double,double) const;
-    double TauDecayToPion(double,double) const;
-    double TauDecayToRho(double,double) const;
-    double TauDecayToA1(double,double) const;
-    double TauDecayToHadron(double,double) const;
-    double TauDecayToAll(double,double) const;
+    /// \brief Calculates the differential spectrum for tau to leptons with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToLepton(double E_tau,double E_nu) const;
+    /// \brief Calculates the differential spectrum for tau to pions with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToPion(double E_tau,double E_nu) const;
+    /// \brief Calculates the differential spectrum for tau to rhos with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToRho(double E_tau,double E_nu) const;
+    /// \brief Calculates the differential spectrum for tau to A1 with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToA1(double E_tau,double E_nu) const;
+    /// \brief Calculates the differential spectrum for tau to hadrons with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToHadron(double E_tau,double E_nu) const;
+    /// \brief Calculates the differential spectrum for tau to all channels with respect to z = E_nu/E_tau.
+    /// @param E_tau Tau energy.
+    /// @param E_nu Tau neutrino energy.
+    double TauDecayToAll(double E_tau,double E_nu) const;
   private:
-    /// \brief Stores the 
+    /// \brief Stores the differential spectrum with respect to the incoming neutrino
+    /// energy for all channels.
     Table dNdEnu_All_tbl;
+    /// \brief Stores the differential spectrum with respect to the incoming neutrino
+    /// energy for leptonic channels.
     Table dNdEnu_Lep_tbl;
 
+    /// \brief Stores the differential spectrum with respect to the outgoing lepton
+    /// energy for all channels.
     Table dNdEle_All_tbl;
+    /// \brief Stores the differential spectrum with respect to the outgoing lepton
+    /// energy for leptonic channels.
     Table dNdEle_Lep_tbl;
 
     /// \brief Minimum energy in the array.
