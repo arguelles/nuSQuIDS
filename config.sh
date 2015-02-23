@@ -280,6 +280,7 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@mkdir -p $(PREFIX)/include/nuSQuIDS
 	@cp $(INCnuSQUIDS)/*.h $(PREFIX)/include/nuSQuIDS
 	@echo Installing libraries in $(PREFIX)/lib
+	@mkdir -p $(PREFIX)/lib
 	@cp $(LIBnuSQUIDS)/$(DYN_PRODUCT) $(LIBnuSQUIDS)/$(STAT_PRODUCT) $(PREFIX)/lib
 	@echo Installing config information in $(PREFIX)/lib/pkgconfig
 	@mkdir -p $(PREFIX)/lib/pkgconfig
