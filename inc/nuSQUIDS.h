@@ -101,7 +101,7 @@ class nuSQUIDS: public SQUIDS {
     marray<double,1> delE;
 
     /// \brief Interface that calculate and interpolates neutrino cross sections.
-    NeutrinoCrossSections ncs;
+    std::unique_ptr<NeutrinoCrossSections> ncs;
     /// \brief Neutrino charge current differential cross section with respect to
     /// the outgoing lepton energy.
     ///

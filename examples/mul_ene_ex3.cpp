@@ -79,9 +79,9 @@ int main()
 
   marray<double,3> inistate{300,2,3};
   double N0 = 1.0e18;
-  for ( int i = 0 ; i < inistate.extent(300); i++){
-    for ( int j = 0; j < inistate.extent(2) ; j++ ){
-      for ( int k = 0; k < inistate.extent(3); k ++){
+  for ( int i = 0 ; i < inistate.extent(0); i++){
+    for ( int j = 0; j < inistate.extent(1) ; j++ ){
+      for ( int k = 0; k < inistate.extent(2); k ++){
         // initialze muon state
         inistate[i][j][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
       }

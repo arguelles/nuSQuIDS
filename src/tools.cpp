@@ -22,21 +22,19 @@ bool fexists(std::string filepath)
   return (bool) ifile;
 };
 
-Table quickread(std::string filepath){
+marray<double,2> quickread(std::string filepath){
     // create and open file stream
     std::ifstream infile(filepath.c_str());
 
     if(!infile){
         throw std::runtime_error("Error: file could not be opened. Filepath " + filepath);
     }
-    #ifdef quickread_DEBUG
-    int x,y;
-    #endif
-    Table table;
 
+    std::vector< std::vector<double> > table;
     std::string line;
+    unsigned int column_number = -1;
     while(getline(infile,line)){
-        Row row;
+        std::vector<double> row;
         std::stringstream linestream(line);
 
         double data;
@@ -47,19 +45,28 @@ Table quickread(std::string filepath){
             #ifdef quickread_DEBUG
             y = row.size();
             #endif
+            if(!table.empty() and column_number != row.size())
+              throw std::runtime_error("nuSQuIDS::tools::quickread: Number of columns in file not equal.");
             table.push_back(row);
         }
+
+        column_number = row.size();
     }
+
+    marray<double,2> otable {table.size(),column_number};
+    for (unsigned int i = 0; i < table.size(); i++)
+      for (unsigned int j = 0; j < column_number; j++)
+        otable[i][j] = table[i][j];
 
     #ifdef quickread_DEBUG
     x = table.size();
     cout << "x: " << x << " y: "<< y << endl;
     cout << table[10][0] << endl;
     #endif
-    return table;
+    return otable;
 };
 
-int quickwrite(std::string filepath, Table& tbl){
+int quickwrite(std::string filepath, marray<double,2>& tbl){
     // create and open file stream
     std::ofstream outfile(filepath.c_str());
 
@@ -68,15 +75,12 @@ int quickwrite(std::string filepath, Table& tbl){
         exit(1);
     }
 
-    int tbl_size = tbl.size();
     outfile.precision(15);
-    for (int i=0; i < tbl_size;i++){
-        std::vector<double> line = tbl[i];
-        int line_size = line.size();
-        for(int j=0; j < line_size; j++){
-           outfile << line[j] << " ";
-        }
-        outfile << std::endl;
+    for (unsigned int i=0; i < tbl.extent(0); i++){
+      for ( unsigned int j=0; j < tbl.extent(1); j++){
+         outfile << tbl[i][j] << " ";
+      }
+      outfile << std::endl;
     }
 
     outfile.close();
@@ -118,39 +122,6 @@ marray<double,1> logspace(double Emin,double Emax,unsigned int div){
         i++;
     }
     return logpoints;
-};
-
-Table intertable(Table & xy_data, std::vector<double> x_array, unsigned int j1 = 0, unsigned int j2 = 1){
-    Table result;
-    int arraysize = xy_data.size();
-
-    double xx[arraysize];
-    double yy[arraysize];
-
-    for (int i=0; i < arraysize;i++){
-        xx[i] = xy_data[i][j1];
-        yy[i] = xy_data[i][j2];
-    }
-
-    gsl_spline* inter = gsl_spline_alloc(gsl_interp_cspline,arraysize);
-    gsl_interp_accel* inter_accel = gsl_interp_accel_alloc ();
-    gsl_spline_init(inter,xx,yy,arraysize);
-
-    for(unsigned int i=0; i < x_array.size();i++){
-        Row row;
-        row.push_back(x_array[i]);
-        if (x_array[i] > xx[arraysize-1] or x_array[i] < xx[0]){
-            row.push_back(0.0);
-        } else {
-            row.push_back(gsl_spline_eval(inter,x_array[i],inter_accel));
-        }
-        result.push_back(row);
-    }
-
-    gsl_spline_free(inter);
-    gsl_interp_accel_free(inter_accel);
-
-    return result;
 };
 
 // additional GSL-like tools

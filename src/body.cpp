@@ -115,7 +115,7 @@ VariableDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
 
 double VariableDensity::density(const GenericTrack& track_input) const
         {
-          double x = track_input.GetX();
+          double x = track_input.GetX()/param.cm;
           if (x < x_min or x > x_max ){
               return 0;
           } else {
@@ -124,7 +124,7 @@ double VariableDensity::density(const GenericTrack& track_input) const
         }
 double VariableDensity::ye(const GenericTrack& track_input) const
         {
-          double x = track_input.GetX();
+          double x = track_input.GetX()/param.cm;
           if (x < x_min or x > x_max ){
               return 0;
           } else {
@@ -192,8 +192,8 @@ Earth::Earth(std::string filepath):Body(4,"Earth")
           // where 0 is the center of the Earth and 1 is the surface.
             radius = 6371.0; // [km]
 
-            Table earth_model = quickread(filepath);
-            size_t arraysize = earth_model.size();
+            marray<double,2> earth_model = quickread(filepath);
+            size_t arraysize = earth_model.extent(0);
 
             double earth_radius[arraysize];
             double earth_density[arraysize];
@@ -241,13 +241,13 @@ Sun::Sun():Body(5,"Sun")
 
             // import sun model
             sun_model = quickread(SUN_MODEL_LOCATION);
-            arraysize = sun_model.size();
+            arraysize = sun_model.extent(0);
 
             sun_radius = new double[arraysize];
             sun_density = new double[arraysize];
             sun_xh = new double[arraysize];
 
-            for (int i=0; i < arraysize;i++){
+            for (unsigned int i=0; i < arraysize;i++){
                 sun_radius[i] = sun_model[i][1];
                 sun_density[i] = sun_model[i][3];
                 sun_xh[i] = sun_model[i][6];
@@ -326,13 +326,13 @@ SunASnu::SunASnu():Body(6,"SunASnu")
             radius = 694439.0*param.km;
 
             sun_model = quickread(SUN_MODEL_LOCATION);
-            arraysize = sun_model.size();
+            arraysize = sun_model.extent(0);
 
             sun_radius = new double[arraysize];
             sun_density = new double[arraysize];
             sun_xh = new double[arraysize];
 
-            for (int i=0; i < arraysize;i++){
+            for (unsigned int i=0; i < arraysize;i++){
                 sun_radius[i] = sun_model[i][1];
                 sun_density[i] = sun_model[i][3];
                 sun_xh[i] = sun_model[i][6];
@@ -523,14 +523,14 @@ EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
             atm_height = 100; // km
             earth_with_atm_radius = radius + atm_height;
 
-            Table earth_model = quickread(filepath);
-            size_t arraysize = earth_model.size();
+            marray<double,2> earth_model = quickread(filepath);
+            size_t arraysize = earth_model.extent(0);
 
             double earth_radius[arraysize];
             double earth_density[arraysize];
             double earth_ye[arraysize];
 
-            for (int i=0; i < arraysize;i++){
+            for (unsigned int i=0; i < arraysize;i++){
                 earth_radius[i] = earth_model[i][0];
                 earth_density[i] = earth_model[i][1];
                 earth_ye[i] = earth_model[i][2];

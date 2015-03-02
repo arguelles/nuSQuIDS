@@ -161,7 +161,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
     //===============================
 
     // initialize cross section object
-    ncs.Init(E_range[0],E_range[ne-1],ne-1);
+    ncs->Init(E_range[0],E_range[ne-1],ne-1);
     // initialize tau decay spectra object
     tdc.Init(E_range[0],E_range[ne-1],ne-1);
     // initialize cross section and interaction arrays
@@ -372,38 +372,50 @@ void nuSQUIDS::InitializeInteractions(){
     double cm2 = pow(params.cm,2);
     double GeVm1 = pow(params.GeV,-1);
 
+    std::cout << "Begin: Initializing Interaction Arrays" << std::endl;
+
     // load cross sections
     // initializing cross section arrays temporary array
     marray<double,4> dsignudE_CC{nrhos,numneu,ne,ne};
     marray<double,4> dsignudE_NC{nrhos,numneu,ne,ne};
 
     // filling cross section arrays
-    for(int neutype = 0; neutype < nrhos; neutype++){
-      for(int flv = 0; flv < numneu; flv++){
-          for(int e1 = 0; e1 < ne; e1++){
+    std::map<unsigned int,NeutrinoCrossSections::NeutrinoType> neutype_xs_dict;
+    if (NT == neutrino){
+      neutype_xs_dict = (std::map<unsigned int,NeutrinoCrossSections::NeutrinoType>){{0,NeutrinoCrossSections::neutrino}};
+    } else if ( NT == antineutrino ) {
+      neutype_xs_dict = (std::map<unsigned int,NeutrinoCrossSections::NeutrinoType>){{0,NeutrinoCrossSections::antineutrino}};
+    } else {
+      // in this case NT is both
+      neutype_xs_dict = (std::map<unsigned int,NeutrinoCrossSections::NeutrinoType>){{0, NeutrinoCrossSections::neutrino},{1,NeutrinoCrossSections::antineutrino}};
+    }
+
+    for(unsigned int neutype = 0; neutype < nrhos; neutype++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
               // differential cross sections
-              for(int e2 = 0; e2 < e1; e2++){
-                  dsignudE_NC[neutype][flv][e1][e2] = ncs.dsde_NC(e1,e2,flv,neutype)*cm2GeV;
-                  dsignudE_CC[neutype][flv][e1][e2] = ncs.dsde_CC(e1,e2,flv,neutype)*cm2GeV;
+              for(unsigned int e2 = 0; e2 < e1; e2++){
+                  dsignudE_NC[neutype][flv][e1][e2] = ncs->dsde_NC(e1,e2,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2GeV;
+                  dsignudE_CC[neutype][flv][e1][e2] = ncs->dsde_CC(e1,e2,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2GeV;
               }
               // total cross sections
-              sigma_CC[neutype][flv][e1] = ncs.sigma_CC(e1,flv,neutype)*cm2;
-              sigma_NC[neutype][flv][e1] = ncs.sigma_NC(e1,flv,neutype)*cm2;
+              sigma_CC[neutype][flv][e1] = ncs->sigma_CC(e1,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2;
+              sigma_NC[neutype][flv][e1] = ncs->sigma_NC(e1,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2;
           }
       }
     }
 
     #ifdef FixCrossSections
     // fix charge current and neutral current differential cross sections
-    for(int neutype = 0; neutype < nrhos; neutype++){
+    for(unsigned int neutype = 0; neutype < nrhos; neutype++){
       double XCC_MIN,XNC_MIN,XCC_int,XNC_int,CC_rescale,NC_rescale;
-      for(int flv = 0; flv < numneu; flv++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
           XCC_MIN = sigma_CC[neutype][flv][0];
           XNC_MIN = sigma_CC[neutype][flv][0];
-          for(int e1 = 0; e1 < ne; e1++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
               XCC_int = 0.0;
               XNC_int = 0.0;
-              for(int e2 = 0; e2 < e1; e2++){
+              for(unsigned int e2 = 0; e2 < e1; e2++){
                   XCC_int += dsignudE_CC[neutype][flv][e1][e2]*delE[e2];
                   XNC_int += dsignudE_NC[neutype][flv][e1][e2]*delE[e2];
               }
@@ -412,7 +424,7 @@ void nuSQUIDS::InitializeInteractions(){
                   CC_rescale = (sigma_CC[neutype][flv][e1] - XCC_MIN)/XCC_int;
                   NC_rescale = (sigma_NC[neutype][flv][e1] - XNC_MIN)/XNC_int;
 
-                  for(int e2 = 0; e2 < e1; e2++){
+                  for(unsigned int e2 = 0; e2 < e1; e2++){
                       dsignudE_CC[neutype][flv][e1][e2] = dsignudE_CC[neutype][flv][e1][e2]*CC_rescale;
                       dsignudE_NC[neutype][flv][e1][e2] = dsignudE_NC[neutype][flv][e1][e2]*NC_rescale;
                   }
@@ -423,10 +435,10 @@ void nuSQUIDS::InitializeInteractions(){
     #endif
 
     // constructing dNdE
-    for(int rho = 0; rho < nrhos; rho++){
-      for(int flv = 0; flv < numneu; flv++){
-          for(int e1 = 0; e1 < ne; e1++){
-              for(int e2 = 0; e2 < e1; e2++){
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
+              for(unsigned int e2 = 0; e2 < e1; e2++){
                   if (dsignudE_NC[rho][flv][e1][e2] < 1.0e-50 or (dsignudE_NC[rho][flv][e1][e2] != dsignudE_NC[rho][flv][e1][e2])){
                       dNdE_NC[rho][flv][e1][e2] = 0.0;
                   } else {
@@ -444,15 +456,15 @@ void nuSQUIDS::InitializeInteractions(){
 
     // initialize interaction lenghts to zero
     // tau decay length array
-    for(int e1 = 0; e1 < ne; e1++){
+    for(unsigned int e1 = 0; e1 < ne; e1++){
         invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
     }
 
     // load tau decay spectra
 
     // constructing dNdE_tau_lep/dNdE_tau_all
-    for(int e1 = 0; e1 < ne; e1++){
-        for(int e2 = 0; e2 < e1; e2++){
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+        for(unsigned int e2 = 0; e2 < e1; e2++){
             dNdE_tau_all[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1;
             dNdE_tau_lep[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
         }
@@ -461,10 +473,10 @@ void nuSQUIDS::InitializeInteractions(){
     #ifdef FixCrossSections
     // fix tau decay spectra cross section
     double tau_all_int,tau_lep_int,tau_lep_rescale,tau_all_rescale;
-    for(int e1 = 1; e1 < ne; e1++){
+    for(unsigned int e1 = 1; e1 < ne; e1++){
         tau_all_int = 0.0;
         tau_lep_int = 0.0;
-        for(int e2 = 0; e2 < e1; e2++){
+        for(unsigned int e2 = 0; e2 < e1; e2++){
              tau_all_int += dNdE_tau_all[e1][e2]*delE[e2];
              tau_lep_int += dNdE_tau_lep[e1][e2]*delE[e2];
         }
@@ -473,13 +485,15 @@ void nuSQUIDS::InitializeInteractions(){
             tau_all_rescale = (1.0 - dNdE_tau_all[e1][0]*E_range[0])/tau_all_int;
             tau_lep_rescale = (taubr_lep - dNdE_tau_lep[e1][0]*E_range[0])/tau_lep_int;
 
-            for(int e2 = 0; e2 < e1; e2++){
+            for(unsigned int e2 = 0; e2 < e1; e2++){
                 dNdE_tau_all[e1][e2] = dNdE_tau_all[e1][e2]*tau_all_rescale;
                 dNdE_tau_lep[e1][e2] = dNdE_tau_lep[e1][e2]*tau_lep_rescale;
             }
         }
     }
     #endif
+
+    std::cout << "End: Initializing Interaction Arrays" << std::endl;
 }
 
 void nuSQUIDS::Set_Body(std::shared_ptr<Body> body_in){

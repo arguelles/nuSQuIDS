@@ -169,7 +169,7 @@ class VariableDensity: public Body{
     gsl_interp_accel * inter_ye_accel;
   public:
     /// \brief Constructor.
-    /// @param x Vector containing position nodes.
+    /// @param x Vector containing position nodes in cm.
     /// @param rho Density, in gr/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
@@ -278,9 +278,9 @@ class Earth: public Body{
 class Sun: public Body{
   private:
     /// \brief Array that contains all the Solar model parameters.
-    Table sun_model;
+    marray<double,2> sun_model;
     /// \brief Array that contains all the Solar electron density parameters.
-    Table sun_model_nele;
+    marray<double,2> sun_model_nele;
     /// \brief Array of length \c arraysize containing spline position nodes.
     double* sun_radius;
     /// \brief Array of length \c arraysize containing the density at position nodes.
@@ -354,7 +354,7 @@ class Sun: public Body{
 class SunASnu: public Body{
   private:
     /// \brief Array that contains all the Solar model parameters.
-    Table sun_model;
+    marray<double,2> sun_model;
     /// \brief Array of length \c arraysize containing spline position nodes.
     double* sun_radius;
     /// \brief Array of length \c arraysize containing the density at position nodes.

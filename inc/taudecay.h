@@ -85,17 +85,17 @@ class TauDecaySpectra{
   private:
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for all channels.
-    Table dNdEnu_All_tbl;
+    marray<double,2> dNdEnu_All_tbl;
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for leptonic channels.
-    Table dNdEnu_Lep_tbl;
+    marray<double,2> dNdEnu_Lep_tbl;
 
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for all channels.
-    Table dNdEle_All_tbl;
+    marray<double,2> dNdEle_All_tbl;
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for leptonic channels.
-    Table dNdEle_Lep_tbl;
+    marray<double,2> dNdEle_Lep_tbl;
 
     /// \brief Minimum energy in the array.
     double Emin;

@@ -107,43 +107,23 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
         div = div_in;
 
         marray<double,1> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
-        int e_size = E_range_GeV.size();
+        unsigned int e_size = E_range_GeV.size();
 
-        for (int e1 = 0 ; e1 < e_size ; e1 ++){
+        dNdEnu_All_tbl.resize(std::vector<size_t>{e_size,e_size});
+        dNdEnu_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
+        dNdEle_All_tbl.resize(std::vector<size_t>{e_size,e_size});
+        dNdEle_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
+
+        for (unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
             double Enu1 = E_range_GeV[e1];
-            for (int e2 = 0 ; e2 < e_size ; e2 ++){
+            for (unsigned int e2 = 0 ; e2 < e_size ; e2 ++){
                 double Enu2 = E_range_GeV[e2];
-                // create rows
-                Row dNdEle_All;
-                Row dNdEle_Lep;
-                Row dNdEnu_All;
-                Row dNdEnu_Lep;
-
-                // save energies in table
-                dNdEnu_All.push_back(Enu1);
-                dNdEnu_Lep.push_back(Enu1);
-                dNdEnu_All.push_back(Enu2);
-                dNdEnu_Lep.push_back(Enu2);
-
-                dNdEle_All.push_back(Enu1);
-                dNdEle_Lep.push_back(Enu1);
-                dNdEle_All.push_back(Enu2);
-                dNdEle_Lep.push_back(Enu2);
-
                 // save spectra
-                dNdEle_All.push_back(TauDecayToAll(Enu1,Enu2)*Enu2/(Enu1*Enu1));
-                dNdEle_Lep.push_back(BrLepton*TauDecayToLepton(Enu1,Enu2)*Enu2/(Enu1*Enu1));
+                dNdEle_All_tbl[e1][e2] = TauDecayToAll(Enu1,Enu2)*Enu2/(Enu1*Enu1);
+                dNdEle_Lep_tbl[e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)*Enu2/(Enu1*Enu1);
 
-                dNdEnu_All.push_back(TauDecayToAll(Enu1,Enu2)/Enu1);
-                dNdEnu_Lep.push_back(BrLepton*TauDecayToLepton(Enu1,Enu2)/Enu1);
-
-
-                // append row
-                dNdEnu_All_tbl.push_back(dNdEnu_All);
-                dNdEnu_Lep_tbl.push_back(dNdEnu_Lep);
-
-                dNdEle_All_tbl.push_back(dNdEle_All);
-                dNdEle_Lep_tbl.push_back(dNdEle_Lep);
+                dNdEnu_All_tbl[e1][e2] = TauDecayToAll(Enu1,Enu2)/Enu1;
+                dNdEnu_Lep_tbl[e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)/Enu1;
             }
         }
 
@@ -152,23 +132,19 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
 // tau decay spectra returned in units of [GeV^-1]
 
 double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const{
-    unsigned int ii = i_enu*(div+1) + (i_ele);
-    return dNdEnu_All_tbl[ii][2];
+    return dNdEnu_All_tbl[i_enu][i_ele];
 };
 
 double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const{
-    unsigned int ii = i_enu*(div+1) + i_ele;
-    return (double) dNdEnu_Lep_tbl[ii][2];
+    return dNdEnu_Lep_tbl[i_enu][i_ele];
 };
 
 double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele) const{
-    unsigned int ii = i_enu*(div+1) + (i_ele);
-    return dNdEle_All_tbl[ii][2];
+    return dNdEle_All_tbl[i_enu][i_ele];
 };
 
 double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const{
-    unsigned int ii = i_enu*(div+1) + i_ele;
-    return (double) dNdEle_Lep_tbl[ii][2];
+    return dNdEle_Lep_tbl[i_enu][i_ele];
 };
 
 }// close namespace

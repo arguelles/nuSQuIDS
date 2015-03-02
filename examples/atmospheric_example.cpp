@@ -35,8 +35,11 @@ using namespace nusquids;
 int main()
 {
   unsigned int numneu = 3;
+  std::cout << "Begin: constructing nuSQuIDS object" << std::endl;
   nuSQUIDSAtm nus_atm(-1.,0.2,20,5.e2,1.e6,150,numneu,both,true,true);
+  std::cout << "End: constructing nuSQuIDS object" << std::endl;
 
+  std::cout << "Begin: setting mixing angles." << std::endl;
   // set mixing angles and masses
   nus_atm.Set(TH12,0.563942);
   nus_atm.Set(TH13,0.154085);
@@ -51,11 +54,13 @@ int main()
     nus_atm.Set(DM41SQ,1.0);
     nus_atm.Set(TH24,0.26237);
   }
+  std::cout << "End: setting mixing angles." << std::endl;
 
   // setup integration settings
   nus_atm.Set_rel_error(1.0e-11);
   nus_atm.Set_abs_error(1.0e-11);
 
+  std::cout << "Begin: setting initial state." << std::endl;
   // construct the initial state
   double N0 = 1.0;
   marray<double,4> inistate{nus_atm.GetNumCos(),nus_atm.GetNumE(),2,numneu};
@@ -73,6 +78,7 @@ int main()
 
   // set the initial state
   nus_atm.Set_initial_state(inistate,"flavor");
+  std::cout << "End: setting initial state." << std::endl;
 
   nus_atm.Set_ProgressBar(true);
   nus_atm.EvolveState();

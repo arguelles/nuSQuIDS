@@ -18,26 +18,27 @@
 
 namespace nusquids{
 
-// file array
-typedef std::vector<double> Row;
-typedef std::vector<Row> Table;
-
-// string convertion
-//std::string toString(double);
-//std::string toString(int);
-
 // file read and write
-bool fexists(std::string);
-Table quickread(std::string);
-int quickwrite(std::string,Table&);
+/// \brief Checks if a file exist..
+/// @param filename File which exist to check.
+bool fexists(const std::string filename);
+/// \brief Reads and return the values from a file as a bidimensional array.
+/// @param filename Filename to read.
+marray<double,2> quickread(const std::string filename);
+/// \brief Writes a bidimensional array onto a file.
+/// @param filename Filename to write onto.
+/// @param array Array to write onto file.
+int quickwrite(const std::string filename,const marray<double,2>& array);
 /// \brief Construct a linear space
 /// @param min Minimum value in the linear span.
 /// @param max Maximum value in the linear span.
 /// @param div Number of divisions in the span.
 marray<double,1> linspace(double min,double max,unsigned int div);
-/// \brief 
-marray<double,1> logspace(double,double,unsigned int);
-Table intertable(Table&,std::vector<double>,unsigned int,unsigned int);
+/// \brief Construct a logarithmic space.
+/// @param min Minimum value in the logarithmic span.
+/// @param max Maximum value in the logarithmic span.
+/// @param div Number of divisions in the span.
+marray<double,1> logspace(double min,double max,unsigned int div);
 // additional GSL-like tools
 void gsl_matrix_complex_conjugate(gsl_matrix_complex*);
 void gsl_matrix_complex_print(gsl_matrix_complex*);
