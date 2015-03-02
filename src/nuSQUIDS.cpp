@@ -372,8 +372,6 @@ void nuSQUIDS::InitializeInteractions(){
     double cm2 = pow(params.cm,2);
     double GeVm1 = pow(params.GeV,-1);
 
-    std::cout << "Begin: Initializing Interaction Arrays" << std::endl;
-
     // load cross sections
     // initializing cross section arrays temporary array
     marray<double,4> dsignudE_CC{nrhos,numneu,ne,ne};
@@ -492,8 +490,6 @@ void nuSQUIDS::InitializeInteractions(){
         }
     }
     #endif
-
-    std::cout << "End: Initializing Interaction Arrays" << std::endl;
 }
 
 void nuSQUIDS::Set_Body(std::shared_ptr<Body> body_in){
