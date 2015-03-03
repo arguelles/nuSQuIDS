@@ -22,7 +22,7 @@ INCSQUIDS=$(PATH_SQUIDS)/inc
 
 # FLAGS
 LDFLAGS= -lgsl -lgslcblas
-LDFLAGS+= -L$(LIBSQUIDS) -lSQUIDS
+LDFLAGS+= -L$(LIBSQUIDS) -lSQuIDS
 LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQUIDS
 LDFLAGS+= -lpython$(PYTHON_VERSION) -lboost_python
 INCCFLAGS+= -I/usr/include/python$(PYTHON_VERSION) -I../inc/
