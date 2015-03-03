@@ -78,7 +78,7 @@ class NeutrinoCrossSections{
       virtual double DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current)const;
     public :
       /// \brief Default constructor
-      NeutrinoCrossSections();
+      // NeutrinoCrossSections(){};
       /// \brief Detauls destructor
       virtual ~NeutrinoCrossSections();
       /// \brief Constructor for a given energy range
@@ -116,6 +116,15 @@ class NeutrinoCrossSections{
       /// @param flv Flavor of the neutrino: 0:electron, 1:muon, 2: tau.
       /// @param neutype 0:neutrino, 1:antineutrino.
       double sigma_NC(unsigned int i_enu,NeutrinoFlavor flv,NeutrinoType neutype) const;
+
+      /// \brief Returns the number of energy nodes.
+      unsigned int GetNumE() const {return div + 1;};
+      /// \brief Returns the minimum energy in [eV]
+      double GetEmin() const {return Emin;};
+      /// \brief Returns the maximum energy in [eV]
+      double GetEmax() const {return Emax;};
+      /// \brief Returns true if the object is initialized.
+      bool IsInit() const {return is_init;};
 };
 
 } // close namespace

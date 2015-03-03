@@ -161,7 +161,12 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
     //===============================
 
     // initialize cross section object
-    ncs->Init(E_range[0],E_range[ne-1],ne-1);
+    if ( ncs == nullptr) {
+      ncs = std::make_shared<NeutrinoCrossSections>(E_range[0],E_range[ne-1],ne-1);
+    } else if ( (not ncs->IsInit()) or (ncs->GetNumE() != ne) or abs(ncs->GetEmin() - E_range[0])/E_range[0] > 1.0e-5 or abs(ncs->GetEmax() - E_range[ne-1])/E_range[0] > 1.0e-5 ) {
+      throw std::runtime_error("nuSQUIDS::Error::Provided cross section object not correctly initialized.");
+    } // else we assume the user has already inintialized the object if not throw error.
+
     // initialize tau decay spectra object
     tdc.Init(E_range[0],E_range[ne-1],ne-1);
     // initialize cross section and interaction arrays
@@ -275,12 +280,6 @@ SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
       return V;
     }
 
-    //std::cout << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << " " << invlen_INT[index_rho][0][ei] << std::endl;
-    //std::cout << "GammaRho" << std::endl;
-    //std::cout << evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]) +
-    //       evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]) +
-    //       evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]) << std::endl;
-
     V = evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]);
     V += evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]);
     V += evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]);
@@ -322,8 +321,8 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
 
   double nutautoleptau = 0.0;
   for(int e2 = ei + 1; e2 < ne; e2++)
-    nutautoleptau += (evol_b1_proj[iscalar][2][ei]*state[e2].rho[iscalar])*
-                     (invlen_CC[iscalar][2][ei])*(dNdE_CC[iscalar][2][e2][ei])*delE[e2];
+    nutautoleptau += (evol_b1_proj[iscalar][2][e2]*state[e2].rho[iscalar])*
+                     (invlen_CC[iscalar][2][e2])*(dNdE_CC[iscalar][2][e2][ei])*delE[e2];
   return nutautoleptau;
 }
 
@@ -605,6 +604,10 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
   if( !itrack or !ibody )
     throw std::runtime_error("nuSQUIDS::Error::Body and Trayectory must be specified before setting the initial state.");
 
+  // reset track position to initial condition
+  track->SetX(track->GetInitialX());
+  Set_Track(track);
+  // Reset proyectors
   SetIniFlavorProyectors();
 
   for(int i = 0; i < ne; i++){
@@ -1554,9 +1557,11 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_di
   for(double costh : costh_array)
     track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
 
+  ncs = std::make_shared<NeutrinoCrossSections>(enu_array[0]*units.GeV,enu_array[enu_array.size()-1]*units.GeV,enu_array.size()-1);
+
   int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.Init(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction);
+    nsq.Init(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
     nsq.Set_Body(earth_atm);
     nsq.Set_Track(track_array[i]);
     i++;

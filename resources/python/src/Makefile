@@ -42,9 +42,6 @@ ifeq ($(OS_NAME),Linux)
 	DYN_OPT=-shared -Wl,-soname,$(DYN_PRODUCT)
 endif
 ifeq ($(OS_NAME),Darwin)
-  CC=clang
-	CXX=clang++
-	LD=clang++
 	DYN_SUFFIX=.so
 	DYN_OPT=-dynamiclib -install_name $(PATH_nuSQUIDSpy)/bindings/$(DYN_PRODUCT)
 endif

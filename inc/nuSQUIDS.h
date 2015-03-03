@@ -105,7 +105,7 @@ class nuSQUIDS: public SQUIDS {
     marray<double,1> delE;
 
     /// \brief Interface that calculate and interpolates neutrino cross sections.
-    std::unique_ptr<NeutrinoCrossSections> ncs;
+    std::shared_ptr<NeutrinoCrossSections> ncs;
     /// \brief Neutrino charge current differential cross section with respect to
     /// the outgoing lepton energy.
     ///
@@ -353,8 +353,8 @@ class nuSQUIDS: public SQUIDS {
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
-       bool elogscale = true,bool iinteraction = false):
-    iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT)
+       bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT),ncs(ncs)
     {init(Emin,Emax,Esize);};
 
     /// \brief Single energy mode constructor.
@@ -392,11 +392,12 @@ class nuSQUIDS: public SQUIDS {
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
-      bool elogscale_ = true,bool iinteraction_ = false){
+      bool elogscale_ = true,bool iinteraction_ = false, std::shared_ptr<NeutrinoCrossSections> ncs_ = nullptr){
       iinteraction = iinteraction_;
       elogscale = elogscale_;
       numneu = numneu_;
       NT = NT_;
+      ncs = ncs_;
       init(Emin,Emax,Esize);
     };
 
@@ -686,6 +687,8 @@ class nuSQUIDSAtm {
     std::shared_ptr<EarthAtm> earth_atm;
     /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
+    /// \brief Contains the neutrino cross section object
+    std::shared_ptr<NeutrinoCrossSections> ncs;
   public:
     /************************************************************************************
      * CONSTRUCTORS

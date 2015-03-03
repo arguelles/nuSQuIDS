@@ -61,9 +61,9 @@ class Body{
           std::vector<double> GetTrackParams() const { return TrackParams; };
     };
     /// \brief Retursn the density at a given trajectory object.
-    virtual double density(const Track&) const = 0;
+    virtual double density(const Track&) const {return 0.0;};
     /// \brief Retursn the electron fraction at a given trajectory object.
-    virtual double ye(const Track&) const = 0;
+    virtual double ye(const Track&) const {return 1.0;};
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;};
     /// \brief Returns the body identifier.

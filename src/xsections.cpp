@@ -2,8 +2,6 @@
 
 namespace nusquids{
 
-NeutrinoCrossSections::NeutrinoCrossSections(){};
-
 double NeutrinoCrossSections::LinInter(double x,double xM, double xP,double yM,double yP) const{
   return yM + (yP-yM)*(x-xM)/(xP-xM);
 }

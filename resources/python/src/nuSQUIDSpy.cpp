@@ -29,22 +29,20 @@ struct VecToList
 
 // converting marray to numpy array and back
 template<unsigned int DIM>
-static boost::python::object marray_to_numpyarray( marray<double,DIM> const & iarray){
-  // get the data from the marray
-  double * data = iarray.size() ? const_cast<double*>(iarray.get_data()) : static_cast<double*>(NULL);
-  // construct numpy object
-  npy_intp * size = new npy_intp[DIM];
-  for(unsigned int i = 0; i < DIM; i++)
-    size[i] = iarray.extent(i);
-  PyObject * pyObj = PyArray_SimpleNewFromData(DIM,size,NPY_DOUBLE,data);
-  boost::python::handle<> handle(pyObj);
-  boost::python::numeric::array arr(handle);
+struct marray_to_numpyarray {
+  static PyObject* convert( marray<double,DIM> const & iarray){
+    // get the data from the marray
+    double * data = iarray.size() ? const_cast<double*>(iarray.get_data()) : static_cast<double*>(NULL);
+    // construct numpy object
+    npy_intp size[DIM];
+    for(unsigned int i = 0; i < DIM; i++)
+      size[i] = iarray.extent(i);
+    PyArrayObject * pyObj = (PyArrayObject*) PyArray_SimpleNew(DIM,size,PyArray_DOUBLE);
+    memcpy(pyObj->data, data, sizeof(double) * iarray.size());
 
-  delete [] size;
-
-  // return numpy object
-  return arr.copy();
-}
+    return PyArray_Return(pyObj);
+  }
+};
 
 template<typename T,unsigned int DIM>
 static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num){
@@ -327,9 +325,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteStateHDF5",wrap_WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5)
     .def("ReadStateHDF5",wrap_ReadStateHDF5)
-    .def("H0",&nuSQUIDS::H0)
-    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int,double) const)&nuSQUIDS::HI)
-    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int) const)&nuSQUIDS::HI)
+//    .def("H0",&nuSQUIDS::H0)
+//    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int,double) const)&nuSQUIDS::HI)
+//    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int) const)&nuSQUIDS::HI)
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
     .def("EvalMass",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalMass)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalFlavor)
@@ -407,12 +405,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   {
     scope outer
-    = class_<Body, std::shared_ptr<Body> >("Body")
+    = class_<Body, std::shared_ptr<Body> >("Body", init<unsigned int,std::string>())
     .def("density",&Body::density)
     .def("ye",&Body::ye)
     ;
 
-    class_<Body::Track, std::shared_ptr<Body::Track> >("Track")
+    class_<Body::Track, std::shared_ptr<Body::Track> >("Track", init<double,double>())
     .def("GetInitialX",&Body::Track::GetInitialX)
     .def("GetFinalX",&Body::Track::GetFinalX)
     .def("GetX",&Body::Track::GetX)
@@ -425,7 +423,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     = class_<Vacuum, bases<Body>, std::shared_ptr<Vacuum> >("Vacuum")
     ;
 
-    class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >("Track")
+    class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >("Track", init<double>())
     .def(init<double,double>())
     .def("density",&Vacuum::density)
     .def("ye",&Vacuum::ye)
@@ -441,11 +439,10 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   {
     scope outer
-    = class_<ConstantDensity, bases<Body>, std::shared_ptr<ConstantDensity> >("ConstantDensity")
-    .def(init<double,double>())
+    = class_<ConstantDensity, bases<Body>, std::shared_ptr<ConstantDensity> >("ConstantDensity", init<double,double>())
     ;
 
-    class_<ConstantDensity::Track, std::shared_ptr<ConstantDensity::Track> >("Track")
+    class_<ConstantDensity::Track, std::shared_ptr<ConstantDensity::Track> >("Track", init<double>())
     .def(init<double,double>())
     .def("GetInitialX",&ConstantDensity::Track::GetInitialX)
     .def("GetFinalX",&ConstantDensity::Track::GetFinalX)
@@ -459,11 +456,10 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   {
     scope outer
-    = class_<VariableDensity, bases<Body>, std::shared_ptr<VariableDensity> >("VariableDensity")
-    .def(init< std::vector<double>,std::vector<double>,std::vector<double> >())
+    = class_<VariableDensity, bases<Body>, std::shared_ptr<VariableDensity> >("VariableDensity", init< std::vector<double>,std::vector<double>,std::vector<double> >())
     ;
 
-    class_<VariableDensity::Track, std::shared_ptr<VariableDensity::Track> >("Track")
+    class_<VariableDensity::Track, std::shared_ptr<VariableDensity::Track> >("Track", init<double>())
     .def(init<double,double>())
     .def("GetInitialX",&VariableDensity::Track::GetInitialX)
     .def("GetFinalX",&VariableDensity::Track::GetFinalX)
@@ -481,7 +477,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def(init<std::string>())
     ;
 
-    class_<Earth::Track, std::shared_ptr<Earth::Track> >("Track")
+    class_<Earth::Track, std::shared_ptr<Earth::Track> >("Track", init<double>())
     .def(init<double,double,double>())
     .def("GetInitialX",&Earth::Track::GetInitialX)
     .def("GetFinalX",&Earth::Track::GetFinalX)
@@ -498,7 +494,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     = class_<Sun, bases<Body>, std::shared_ptr<Sun> >("Sun")
     ;
 
-    class_<Sun::Track, std::shared_ptr<Sun::Track> >("Track")
+    class_<Sun::Track, std::shared_ptr<Sun::Track> >("Track", init<double>())
     .def(init<double,double>())
     .def("GetInitialX",&Sun::Track::GetInitialX)
     .def("GetFinalX",&Sun::Track::GetFinalX)
@@ -515,7 +511,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     = class_<SunASnu, bases<Body>, std::shared_ptr<SunASnu> >("SunASnu")
     ;
 
-    class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track")
+    class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track", init<double>())
     .def(init<double,double>())
     .def("GetInitialX",&SunASnu::Track::GetInitialX)
     .def("GetFinalX",&SunASnu::Track::GetFinalX)
@@ -533,8 +529,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def(init<std::string>())
     ;
 
-    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track")
-    .def(init<double>())
+    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<double>())
     .def("GetInitialX",&EarthAtm::Track::GetInitialX)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)
@@ -550,5 +545,10 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   from_python_sequence< std::vector<double>, variable_capacity_policy >();
   //from_python_sequence< std::vector< std::vector<double> >, variable_capacity_policy >();
   to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
+  // register marray converters
+  to_python_converter< marray<double,1> , marray_to_numpyarray<1> >();
+  to_python_converter< marray<double,2> , marray_to_numpyarray<2> >();
+  to_python_converter< marray<double,3> , marray_to_numpyarray<3> >();
+  to_python_converter< marray<double,4> , marray_to_numpyarray<4> >();
 
 }
