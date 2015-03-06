@@ -136,10 +136,10 @@ private:
 public:
 	compressed_pair_base();
 	compressed_pair_base(T1 t1, T2 t2):
-	first_(std::move(t1)),T2(std::move(t2)){}
+	T2(std::move(t2)),first_(std::move(t1)){}
 	compressed_pair_base(const compressed_pair_base& p)
 	noexcept(std::is_nothrow_copy_constructible<T1>::value && std::is_nothrow_copy_constructible<T2>::value):
-	first_(p.first_),T2(p.second_){}
+	T2(p.second_),first_(p.first_){}
 	compressed_pair_base& operator=(const compressed_pair_base& p)
 	noexcept(std::is_nothrow_copy_assignable<T1>::value && std::is_nothrow_copy_assignable<T2>::value){
 		first_=p.first_;
@@ -240,9 +240,9 @@ Alloc select_on_container_move_construction(Alloc& a){
 }
 
 template<typename Alloc>
-void select_on_container_move_assignment(Alloc& src, Alloc& trg, std::false_type) noexcept{/*do nothing*/};
+void select_on_container_move_assignment(Alloc& src, Alloc& trg, std::false_type) noexcept{/*do nothing*/}
 template<typename Alloc>
-void select_on_container_move_assignment(Alloc& src, Alloc& trg, std::true_type) noexcept{ trg=std::move(src); };
+void select_on_container_move_assignment(Alloc& src, Alloc& trg, std::true_type) noexcept{ trg=std::move(src); }
 template<typename Alloc>
 void select_on_container_move_assignment(Alloc& src, Alloc& trg) noexcept{
 	using namespace std;
@@ -1034,11 +1034,11 @@ private:
 	
 	///Verify that an initializer list contains the correct number of sizes
 	///and multiply them all together to get the total represented size
-	///\param dims the putative list of sizes in all dimensions
+	///\param exts the putative list of sizes in all dimensions
 	static size_type compute_total_size(std::initializer_list<size_type> exts){
 		if(exts.size()!=Rank)
 			throw std::logic_error("Incorrect number of dimensions used to initialize multidimensional array");
-		return(std::accumulate(exts.begin(),exts.end(),1.0,std::multiplies<size_type>()));
+		return(std::accumulate(exts.begin(),exts.end(),1UL,std::multiplies<size_type>()));
 	}
 	
 	///Get the number of objects which exist in the array
