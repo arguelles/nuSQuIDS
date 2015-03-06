@@ -889,13 +889,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     save_cross_section = iinteraction;
 
   // this lines supress HDF5 error messages
-  hid_t error_stack;
-  //H5Eset_auto(error_stack, NULL, NULL);
   H5Eset_auto (H5E_DEFAULT,NULL, NULL);
 
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
-  herr_t  status;
   // create HDF5 file
   //std::cout << "writing to hdf5 file" << std::endl;
   // H5F_ACC_TRUNC : overwrittes file
@@ -1128,7 +1125,7 @@ void nuSQUIDS::AddToReadHDF5(hid_t hdf5_loc_id){
 }
 
 void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_section_grp_loc){
-  hid_t file_id,group_id,root_id,status;
+  hid_t file_id,group_id,root_id;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
   file_id = H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -1633,7 +1630,7 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
   if(not inusquidsatm)
     throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
 
-  hid_t file_id,group_id,root_id;
+  hid_t file_id,root_id;
   hid_t dset_id;
   // create HDF5 file
   file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1680,7 +1677,6 @@ void nuSQUIDSAtm::Set_TauRegeneration(bool v){
 void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
 
   hid_t file_id,group_id,root_id;
-  hid_t dset_id;
   // create HDF5 file
   file_id = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);

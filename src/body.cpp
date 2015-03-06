@@ -348,9 +348,9 @@ SunASnu::SunASnu():Body(6,"SunASnu")
         }
 // track constructor
 SunASnu::Track::Track(double xini, double b_impact):
+  Body::Track(xini,xini),
   radius_nu(694439.0*param.km),
-  b_impact(b_impact),
-  Body::Track(xini,xini)
+  b_impact(b_impact)
         {
             x = xini;
             xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));

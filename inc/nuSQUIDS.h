@@ -354,7 +354,7 @@ class nuSQUIDS: public SQUIDS {
     /// @see init
     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
        bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    iinteraction(iinteraction),elogscale(elogscale),numneu(numneu),NT(NT),ncs(ncs)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
     {init(Emin,Emax,Esize);};
 
     /// \brief Single energy mode constructor.
@@ -364,7 +364,7 @@ class nuSQUIDS: public SQUIDS {
     /// neutrino-antineutrino solution (both) possible.
     /// \details Constructors projectors and initializes Hamiltonian.
     nuSQUIDS(int numneu, NeutrinoType NT = neutrino):
-    iinteraction(false),elogscale(false),numneu(numneu),NT(NT)
+    numneu(numneu),iinteraction(false),elogscale(false),NT(NT)
     {init();};
 
     /// \brief Constructor from a HDF5 filepath.
