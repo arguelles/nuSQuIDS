@@ -1,10 +1,34 @@
+ /******************************************************************************
+ *    This program is free software: you can redistribute it and/or modify     *
+ *   it under the terms of the GNU General Public License as published by      *
+ *   the Free Software Foundation, either version 3 of the License, or         *
+ *   (at your option) any later version.                                       *
+ *                                                                             *
+ *   This program is distributed in the hope that it will be useful,           *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ *   GNU General Public License for more details.                              *
+ *                                                                             *
+ *   You should have received a copy of the GNU General Public License         *
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.     *
+ *                                                                             *
+ *   Authors:                                                                  *
+ *      Carlos Arguelles (University of Wisconsin Madison)                     *
+ *         carguelles@icecube.wisc.edu                                         *
+ *      Jordi Salvado (University of Wisconsin Madison)                        *
+ *         jsalvado@icecube.wisc.edu                                           *
+ *      Christopher Weaver (University of Wisconsin Madison)                   *
+ *         chris.weaver@icecube.wisc.edu                                       *
+ ******************************************************************************/
+
+
 #include <iostream>
 #include <iomanip>
 #include <nuSQuIDS/nuSQUIDS.h>
 
 using namespace nusquids;
 
-void exercise_se_mode(unsigned int numneu,std::string NT){
+void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
   nuSQUIDS nus(numneu,NT);
 
   switch (numneu){
@@ -41,7 +65,7 @@ void exercise_se_mode(unsigned int numneu,std::string NT){
   std::cout << std::setprecision(3);
   std::cout << std::scientific;
   for(int flv = 0; flv < numneu; flv++){
-    std::vector<double> ini_state(numneu);
+    marray<double,1> ini_state{numneu};
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
     for(double baseline :test_baseline){
@@ -69,8 +93,8 @@ int main(){
   // this test checks the neutrino oscillation probability
   // for 3 and 4 neutrino flavors for neutrinos/antineutrinos/both
   // and the single and multiple energy modes
-  exercise_se_mode(3,"neutrino");
-  exercise_se_mode(3,"antineutrino");
-  exercise_se_mode(4,"neutrino");
-  exercise_se_mode(4,"antineutrino");
+  exercise_se_mode(3,neutrino);
+  exercise_se_mode(3,antineutrino);
+  exercise_se_mode(4,neutrino);
+  exercise_se_mode(4,antineutrino);
 }

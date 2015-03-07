@@ -1,10 +1,33 @@
+ /******************************************************************************
+ *    This program is free software: you can redistribute it and/or modify     *
+ *   it under the terms of the GNU General Public License as published by      *
+ *   the Free Software Foundation, either version 3 of the License, or         *
+ *   (at your option) any later version.                                       *
+ *                                                                             *
+ *   This program is distributed in the hope that it will be useful,           *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             *
+ *   GNU General Public License for more details.                              *
+ *                                                                             *
+ *   You should have received a copy of the GNU General Public License         *
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.     *
+ *                                                                             *
+ *   Authors:                                                                  *
+ *      Carlos Arguelles (University of Wisconsin Madison)                     *
+ *         carguelles@icecube.wisc.edu                                         *
+ *      Jordi Salvado (University of Wisconsin Madison)                        *
+ *         jsalvado@icecube.wisc.edu                                           *
+ *      Christopher Weaver (University of Wisconsin Madison)                   *
+ *         chris.weaver@icecube.wisc.edu                                       *
+ ******************************************************************************/
+
 #include <iostream>
 #include <iomanip>
 #include <nuSQuIDS/nuSQUIDS.h>
 
 using namespace nusquids;
 
-void exercise_se_mode(unsigned int numneu,std::string NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
+void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);
   nus.Set_Body(body);
@@ -46,14 +69,14 @@ void exercise_se_mode(unsigned int numneu,std::string NT, std::shared_ptr<Body> 
   std::cout << std::setprecision(3);
   std::cout << std::scientific;
   for(int flv = 0; flv < numneu; flv++){
-    std::vector<double> ini_state(numneu);
+    marray<double,1> ini_state{numneu};
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
       for(double Enu : test_energies){
         nus.Set_initial_state(ini_state,"flavor");
         nus.Set_E(Enu*nus.units.GeV);
         nus.EvolveState();
-        std::cout << body->name << " " << flv << " [flv] " << Enu << " [GeV] ";
+        std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
         for (int i = 0; i < numneu; i++){
           double p = nus.EvalFlavor(i);
           if ( p < 1.0e-8)
@@ -78,10 +101,10 @@ int main(){
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
   std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(0.0,1000.0*units.km,1000.0*units.km);
 
-  exercise_se_mode(3,"neutrino",earth,earth_track);
-  exercise_se_mode(3,"antineutrino",earth,earth_track);
-  exercise_se_mode(4,"neutrino",earth,earth_track);
-  exercise_se_mode(4,"antineutrino",earth,earth_track);
+  exercise_se_mode(3,neutrino,earth,earth_track);
+  exercise_se_mode(3,antineutrino,earth,earth_track);
+  exercise_se_mode(4,neutrino,earth,earth_track);
+  exercise_se_mode(4,antineutrino,earth,earth_track);
 
   return 0;
 }

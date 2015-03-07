@@ -17,7 +17,11 @@
  *         carguelles@icecube.wisc.edu                                         *
  *      Jordi Salvado (University of Wisconsin Madison)                        *
  *         jsalvado@icecube.wisc.edu                                           *
+ *      Christopher Weaver (University of Wisconsin Madison)                   *
+ *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
+
+
 
 #include <vector>
 #include <iostream>
