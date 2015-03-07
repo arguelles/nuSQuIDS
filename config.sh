@@ -183,10 +183,10 @@ Name: nuSQuIDS
 Description: Toolbox for neutrino oscillation experiments
 URL: https://github.com/arguelles/nuSQuIDS' >> nusquids.pc
 echo "Version: $VERSION" >> nusquids.pc
-echo 'Requires: gsl >= 1.14
+echo 'Requires: gsl >= 1.15
 Requires: hdf5 >= 1.8
 Requires: squids >= 1.0
-Libs: -L${libdir} -lnuSQUIDS
+Libs: -L${libdir} -lnuSQuIDS
 Cflags: -I${includedir}
 ' >> nusquids.pc
 
@@ -233,11 +233,11 @@ LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
 CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
-LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS) -lnuSQUIDS
+LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS) -lnuSQuIDS
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
 
 # Project files
-NAME=nuSQUIDS
+NAME=nuSQuIDS
 STAT_PRODUCT=lib$(NAME).a
 DYN_PRODUCT=lib$(NAME)$(DYN_SUFFIX)
 
