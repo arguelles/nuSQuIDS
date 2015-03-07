@@ -33,7 +33,7 @@ class NeutrinoCrossSections{
       /// \brief Maximum neutrino energy.
       double Emax;
       /// \brief Number of divisions.
-      int div;
+      unsigned int div;
       /// \brief Stores the neutrino charge current differential cross section evaluated at the nodes.
       marray<double,4> dsde_CC_tbl;
       /// \brief Stores the neutrino neutral current differential cross section evaluated at the nodes.
@@ -69,7 +69,7 @@ class NeutrinoCrossSections{
       /// \details Used to interpolate the total cross sections.
       virtual double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
       /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
-      /// \details
+      /// \details The cross section will be returned in cm^2 GeV^-1.
       /// @param E1 Incident lepton energy.
       /// @param E2 Outgoing lepton energy.
       /// @param flavor Flavor index.
@@ -118,13 +118,13 @@ class NeutrinoCrossSections{
       double sigma_NC(unsigned int i_enu,NeutrinoFlavor flv,NeutrinoType neutype) const;
 
       /// \brief Returns the number of energy nodes.
-      unsigned int GetNumE() const {return div + 1;};
+      unsigned int GetNumE() const {return div + 1;}
       /// \brief Returns the minimum energy in [eV]
-      double GetEmin() const {return Emin;};
+      double GetEmin() const {return Emin;}
       /// \brief Returns the maximum energy in [eV]
-      double GetEmax() const {return Emax;};
+      double GetEmax() const {return Emax;}
       /// \brief Returns true if the object is initialized.
-      bool IsInit() const {return is_init;};
+      bool IsInit() const {return is_init;}
 };
 
 } // close namespace

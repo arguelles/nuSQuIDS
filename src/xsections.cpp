@@ -24,10 +24,10 @@ double NeutrinoCrossSections::DifferentialCrossSection(double E1, double E2, Neu
   double logE2 = log(E2);
   double dlogE = logE_data_range[1]-logE_data_range[0];
 
-  int loge_M1 = (int)((logE1-logE_data_range[0])/dlogE);
-  int loge_M2 = (int)((logE2-logE_data_range[0])/dlogE);
+  size_t loge_M1 = static_cast<size_t>((logE1-logE_data_range[0])/dlogE);
+  size_t loge_M2 = static_cast<size_t>((logE2-logE_data_range[0])/dlogE);
 
-  if (loge_M2 < 0 or loge_M1 < 0)
+  if ( (loge_M2 > div +1) or (loge_M1 > div+1))
     return 0.0;
 
   double phiMM,phiMP,phiPM,phiPP;
@@ -129,8 +129,8 @@ quested below 10 GeV.");
             for (unsigned int e2 = 0; e2 < data_e_size; e2++){
               for ( NeutrinoType neutype : std::vector<NeutrinoType>{neutrino,antineutrino}){
                 for ( NeutrinoFlavor flavor : std::vector<NeutrinoFlavor>{electron,muon,tau}){
-                  dsde_CC_data[e1][e2][neutype][flavor] = dsde_CC_raw_data[e1*data_e_size+e2][2+2*((int)(flavor))+(int)(neutype)];
-                  dsde_NC_data[e1][e2][neutype][flavor] = dsde_NC_raw_data[e1*data_e_size+e2][2+2*((int)(flavor))+(int)(neutype)];
+                  dsde_CC_data[e1][e2][neutype][flavor] = dsde_CC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
+                  dsde_NC_data[e1][e2][neutype][flavor] = dsde_NC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
                 }
               }
             }
@@ -146,7 +146,7 @@ quested below 10 GeV.");
           sigma_CC_tbl.resize(std::vector<size_t>{e_size,2,3});
           sigma_NC_tbl.resize(std::vector<size_t>{e_size,2,3});
 
-          for (int e1 = 0 ; e1 < e_size ; e1 ++){
+          for (unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
               double Enu1 = E_range_GeV[e1];
               // differential cross section
               for (int e2 = 0 ; e2 < e_size ; e2 ++){
@@ -177,11 +177,11 @@ quested below 10 GeV.");
   }
   // declare the object as initialized;
   is_init = true;
-};
+}
 
 NeutrinoCrossSections::NeutrinoCrossSections(double Emin_in,double Emax_in,unsigned int div_in){
   Init(Emin_in,Emax_in,div_in);
-};
+}
 
 NeutrinoCrossSections::~NeutrinoCrossSections(){
   if(is_init){
@@ -204,7 +204,7 @@ double NeutrinoCrossSections::dsde_CC(unsigned int i_enu, unsigned int i_ele, Ne
   } else {
     return dsde_CC_tbl[i_enu][i_ele][neutype][flv];
   }
-};
+}
 
 double NeutrinoCrossSections::dsde_NC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const{
   if (i_ele > i_enu) {
@@ -212,16 +212,16 @@ double NeutrinoCrossSections::dsde_NC(unsigned int i_enu, unsigned int i_ele, Ne
   } else {
     return dsde_NC_tbl[i_enu][i_ele][neutype][flv];
   }
-};
+}
 
 //total cross sections
 
 double NeutrinoCrossSections::sigma_CC(unsigned int i_enu, NeutrinoFlavor flv, NeutrinoType neutype) const{
   return sigma_CC_tbl[i_enu][neutype][flv];
-};
+}
 
 double NeutrinoCrossSections::sigma_NC(unsigned int i_enu, NeutrinoFlavor flv, NeutrinoType neutype) const{
   return sigma_NC_tbl[i_enu][neutype][flv];
-};
+}
 
 } // close namespace

@@ -88,7 +88,7 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
 
 // define tau decay object
 
-TauDecaySpectra::TauDecaySpectra(){};
+TauDecaySpectra::TauDecaySpectra(){}
 
 void TauDecaySpectra::SetParameters(){
   TauPolarization = -1.0;
@@ -98,7 +98,7 @@ void TauDecaySpectra::SetParameters(){
 
 TauDecaySpectra::TauDecaySpectra(double Emin_in,double Emax_in,unsigned int div_in){
   Init(Emin_in,Emax_in,div_in);
-};
+}
 
 void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
         SetParameters();
@@ -127,24 +127,24 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
             }
         }
 
-};
+}
 
 // tau decay spectra returned in units of [GeV^-1]
 
 double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const{
     return dNdEnu_All_tbl[i_enu][i_ele];
-};
+}
 
 double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const{
     return dNdEnu_Lep_tbl[i_enu][i_ele];
-};
+}
 
 double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele) const{
     return dNdEle_All_tbl[i_enu][i_ele];
-};
+}
 
 double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const{
     return dNdEle_Lep_tbl[i_enu][i_ele];
-};
+}
 
 }// close namespace

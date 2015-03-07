@@ -19,8 +19,8 @@ std::string toString(int value) {
 bool fexists(std::string filepath)
 {
   std::ifstream ifile(filepath.c_str());
-  return (bool) ifile;
-};
+  return static_cast<bool>(ifile);
+}
 
 marray<double,2> quickread(std::string filepath){
     // create and open file stream
@@ -32,7 +32,7 @@ marray<double,2> quickread(std::string filepath){
 
     std::vector< std::vector<double> > table;
     std::string line;
-    unsigned int column_number = -1;
+    size_t column_number = -1;
     while(getline(infile,line)){
         std::vector<double> row;
         std::stringstream linestream(line);
@@ -64,7 +64,7 @@ marray<double,2> quickread(std::string filepath){
     cout << table[10][0] << endl;
     #endif
     return otable;
-};
+}
 
 int quickwrite(std::string filepath, marray<double,2>& tbl){
     // create and open file stream
@@ -86,7 +86,7 @@ int quickwrite(std::string filepath, marray<double,2>& tbl){
     outfile.close();
 
     return 0;
-};
+}
 
 marray<double,1> linspace(double Emin,double Emax,unsigned int div){
     marray<double,1> linpoints{div+1};
@@ -100,7 +100,7 @@ marray<double,1> linspace(double Emin,double Emax,unsigned int div){
         i++;
     }
     return linpoints;
-};
+}
 
 marray<double,1> logspace(double Emin,double Emax,unsigned int div){
     marray<double,1> logpoints{div+1};
@@ -122,7 +122,7 @@ marray<double,1> logspace(double Emin,double Emax,unsigned int div){
         i++;
     }
     return logpoints;
-};
+}
 
 // additional GSL-like tools
 
@@ -136,7 +136,7 @@ void gsl_matrix_complex_conjugate(gsl_matrix_complex *cm)
       gsl_matrix_complex_set(cm, i, j, gsl_complex_conjugate(z));
     }
   }
-};
+}
 
 void gsl_matrix_complex_print(gsl_matrix_complex* matrix){
     for(unsigned int i = 0; i < matrix->size1; i++){
@@ -146,10 +146,10 @@ void gsl_matrix_complex_print(gsl_matrix_complex* matrix){
         }
         std::cout << std::endl;
     }
-};
+}
 
 void gsl_matrix_complex_change_basis_UMUC(gsl_matrix_complex* U, gsl_matrix_complex* M){
-    int numneu = U->size1;
+    unsigned int numneu = U->size1;
     gsl_matrix_complex *U1 = gsl_matrix_complex_alloc(numneu,numneu);
     gsl_matrix_complex *U2 = gsl_matrix_complex_alloc(numneu,numneu);
     gsl_matrix_complex_memcpy(U1,U);
@@ -170,10 +170,10 @@ void gsl_matrix_complex_change_basis_UMUC(gsl_matrix_complex* U, gsl_matrix_comp
     gsl_matrix_complex_free(U1);
     gsl_matrix_complex_free(U2);
     gsl_matrix_complex_free(T1);
-};
+}
 
 void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_complex* M){
-    int numneu = U->size1;
+    unsigned int numneu = U->size1;
     gsl_matrix_complex *U1 = gsl_matrix_complex_alloc(numneu,numneu);
     gsl_matrix_complex *U2 = gsl_matrix_complex_alloc(numneu,numneu);
     gsl_matrix_complex_memcpy(U1,U);
@@ -194,6 +194,6 @@ void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_comp
     gsl_matrix_complex_free(U1);
     gsl_matrix_complex_free(U2);
     gsl_matrix_complex_free(T1);
-};
+}
 
 } // close namespace

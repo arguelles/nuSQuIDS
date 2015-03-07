@@ -48,7 +48,7 @@ void nuSQUIDS::init(double xini){
   //===============================
 
   H0_array.resize(std::vector<size_t>{ne});
-  for(int ie = 0; ie < ne; ie++){
+  for(unsigned int ie = 0; ie < ne; ie++){
     H0_array[ie] = SU_vector(nsun);
   }
 
@@ -118,7 +118,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
     Set_xrange(E_range[0],E_range[Esize-1],"lin");
   }
   delE.resize(std::vector<size_t>{ne-1});
-  for(int ei = 0; ei < ne -1; ei++)
+  for(unsigned int ei = 0; ei < ne -1; ei++)
     delE[ei] = E_range[ei+1] - E_range[ei];
 
   ienergy = true;
@@ -140,7 +140,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   //===============================
 
   H0_array.resize(std::vector<size_t>{ne});
-  for(int ie = 0; ie < ne; ie++){
+  for(unsigned int ie = 0; ie < ne; ie++){
     H0_array[ie] = SU_vector(nsun);
   }
 
@@ -163,7 +163,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
     // initialize cross section object
     if ( ncs == nullptr) {
       ncs = std::make_shared<NeutrinoCrossSections>(E_range[0],E_range[ne-1],ne-1);
-    } else if ( (not ncs->IsInit()) or (ncs->GetNumE() != ne) or abs(ncs->GetEmin() - E_range[0])/E_range[0] > 1.0e-5 or abs(ncs->GetEmax() - E_range[ne-1])/E_range[0] > 1.0e-5 ) {
+    } else if ( (not ncs->IsInit()) or (ncs->GetNumE() != ne) or fabs(ncs->GetEmin() - E_range[0])/E_range[0] > 1.0e-5 or fabs(ncs->GetEmax() - E_range[ne-1])/E_range[0] > 1.0e-5 ) {
       throw std::runtime_error("nuSQUIDS::Error::Provided cross section object not correctly initialized.");
     } // else we assume the user has already inintialized the object if not throw error.
 
@@ -225,9 +225,9 @@ void nuSQUIDS::PreDerive(double x){
 }
 
 void nuSQUIDS::EvolveProjectors(double x){
-  for(int rho = 0; rho < nrhos; rho++){
-    for(int flv = 0; flv < numneu; flv++){
-      for(int ei = 0; ei < ne; ei++){
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int flv = 0; flv < numneu; flv++){
+      for(unsigned int ei = 0; ei < ne; ei++){
         // will only evolve the flavor projectors
         //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
         evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
@@ -297,7 +297,7 @@ SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) cons
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
   SU_vector temp1, temp2;
-  for(int e2 = e1 + 1; e2 < ne; e2++){
+  for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
     // here we assume the cross section to be the same for all flavors
     //std::cout << dNdE_NC[index_rho][0][e2][e1] << " " << invlen_NC[index_rho][0][e2] << std::endl;
     temp1 = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
@@ -320,7 +320,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   }
 
   double nutautoleptau = 0.0;
-  for(int e2 = ei + 1; e2 < ne; e2++)
+  for(unsigned int e2 = ei + 1; e2 < ne; e2++)
     nutautoleptau += (evol_b1_proj[iscalar][2][e2]*state[e2].rho[iscalar])*
                      (invlen_CC[iscalar][2][e2])*(dNdE_CC[iscalar][2][e2][ei])*delE[e2];
   return nutautoleptau;
@@ -335,7 +335,7 @@ double nuSQUIDS::GetNucleonNumber() const{
         cout << "Nucleon Number " << num_nuc << endl;
     #endif
 
-    if(num_nuc == 0){
+    if(num_nuc < 1.0e-10 ){
         num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
     }
 
@@ -344,12 +344,12 @@ double nuSQUIDS::GetNucleonNumber() const{
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
-    for(int rho = 0; rho < nrhos; rho++){
-      for(int flv = 0; flv < numneu; flv++){
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
               #ifdef UpdateInteractions_DEBUG
               cout << "============" << flv << "============" << endl;
               #endif
-          for(int e1 = 0; e1 < ne; e1++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
               #ifdef UpdateInteractions_DEBUG
                   cout << "== CC NC Terms x = " << track->x/params.km << " [km] ";
                   cout << "E = " << x[e1] << " [eV] ==" << endl;
@@ -392,12 +392,12 @@ void nuSQUIDS::InitializeInteractions(){
           for(unsigned int e1 = 0; e1 < ne; e1++){
               // differential cross sections
               for(unsigned int e2 = 0; e2 < e1; e2++){
-                  dsignudE_NC[neutype][flv][e1][e2] = ncs->dsde_NC(e1,e2,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2GeV;
-                  dsignudE_CC[neutype][flv][e1][e2] = ncs->dsde_CC(e1,e2,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2GeV;
+                  dsignudE_NC[neutype][flv][e1][e2] = ncs->dsde_NC(e1,e2,static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype])*cm2GeV;
+                  dsignudE_CC[neutype][flv][e1][e2] = ncs->dsde_CC(e1,e2,static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype])*cm2GeV;
               }
               // total cross sections
-              sigma_CC[neutype][flv][e1] = ncs->sigma_CC(e1,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2;
-              sigma_NC[neutype][flv][e1] = ncs->sigma_NC(e1,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype])*cm2;
+              sigma_CC[neutype][flv][e1] = ncs->sigma_CC(e1,static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype])*cm2;
+              sigma_NC[neutype][flv][e1] = ncs->sigma_NC(e1,static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype])*cm2;
           }
       }
     }
@@ -538,11 +538,11 @@ void nuSQUIDS::EvolveState(){
     Evolve(track->GetFinalX()-track->GetInitialX());
   }
   else {
-    int tau_steps = (int) ((track->GetFinalX() - track->GetInitialX())/tau_reg_scale);
-    std::cout << tau_steps << " " << tau_reg_scale/units.km<< std::endl;
+    int tau_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/tau_reg_scale);
+    //std::cout << tau_steps << " " << tau_reg_scale/units.km<< std::endl;
     for (int i = 0; i < tau_steps; i++){
-      double x_inter = track->GetInitialX() + (double)(i)*tau_reg_scale;
-      std::cout << x_inter/units.km << std::endl;
+      //double x_inter = track->GetInitialX() + static_cast<double>(i)*tau_reg_scale;
+      //std::cout << x_inter/units.km << std::endl;
       Evolve(tau_reg_scale);
       ConvertTauIntoNuTau();
     }
@@ -552,8 +552,8 @@ void nuSQUIDS::EvolveState(){
 }
 
 void nuSQUIDS::SetScalarsToZero(void){
-  for(int rho = 0; rho < nscalars; rho++){
-    for(int e1 = 0; e1 < ne; e1++){
+  for(unsigned int rho = 0; rho < nscalars; rho++){
+    for(unsigned int e1 = 0; e1 < ne; e1++){
         state[e1].scalar[rho] = 0.0;
     }
   }
@@ -561,13 +561,13 @@ void nuSQUIDS::SetScalarsToZero(void){
 
 void nuSQUIDS::ConvertTauIntoNuTau(void){
 
-  for(int e1 = 0; e1 < ne; e1++){
+  for(unsigned int e1 = 0; e1 < ne; e1++){
       double tau_neu_all  = 0.0;
       double tau_neu_lep  = 0.0;
       double tau_aneu_all = 0.0;
       double tau_aneu_lep = 0.0;
 
-      for(int e2 = e1 +1; e2 < ne; e2++){
+      for(unsigned int e2 = e1 +1; e2 < ne; e2++){
           //std::cout << dNdE_tau_all[e2][e1] << " " << delE[e2] << " " << state[e2].scalar[0] << std::endl;
           tau_neu_all  += dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[0];
           tau_neu_lep  += dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[0];
@@ -610,11 +610,11 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
   // Reset proyectors
   SetIniFlavorProyectors();
 
-  for(int i = 0; i < ne; i++){
-    for(int r = 0; r < nrhos; r++){
+  for(unsigned int i = 0; i < ne; i++){
+    for(unsigned int r = 0; r < nrhos; r++){
       if (basis == "flavor"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < v.extent(0); j++)
+        for(unsigned int j = 0; j < v.extent(0); j++)
         {
           state[i].rho[r] += v[j]*b1_proj[r][j];
         }
@@ -648,18 +648,18 @@ void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
 
   SetIniFlavorProyectors();
 
-  for(int i = 0; i < ne; i++){
-    for(int r = 0; r < nrhos; r++){
+  for(unsigned int i = 0; i < ne; i++){
+    for(unsigned int r = 0; r < nrhos; r++){
       if (basis == "flavor"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < numneu; j++)
+        for(unsigned int j = 0; j < numneu; j++)
         {
           state[i].rho[r] += v[i][j]*b1_proj[r][j];
         }
       }
       else if (basis == "mass"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < numneu; j++){
+        for(unsigned int j = 0; j < numneu; j++){
           state[i].rho[r] += v[i][j]*b0_proj[j];
         }
       }
@@ -687,18 +687,18 @@ void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
 
   SetIniFlavorProyectors();
 
-  for(int i = 0; i < ne; i++){
-    for(int r = 0; r < nrhos; r++){
+  for(unsigned int i = 0; i < ne; i++){
+    for(unsigned int r = 0; r < nrhos; r++){
       if (basis == "flavor"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < numneu; j++)
+        for(unsigned int j = 0; j < numneu; j++)
         {
           state[i].rho[r] += v[i][r][j]*b1_proj[r][j];
         }
       }
       else if (basis == "mass"){
         state[i].rho[r] = 0.0*b0_proj[0];
-        for(int j = 0; j < numneu; j++){
+        for(unsigned int j = 0; j < numneu; j++){
           state[i].rho[r] += v[i][r][j]*b0_proj[j];
         }
       }
@@ -791,12 +791,12 @@ double nuSQUIDS::EvalFlavor(unsigned int flv) const{
 
 void nuSQUIDS::iniH0(){
   DM2 = SU_vector(nsun);
-  for(int i = 1; i < nsun; i++){
+  for(unsigned int i = 1; i < nsun; i++){
       DM2 += (b0_proj[i])*params.GetEnergyDifference(i);
   }
 
   if(ienergy){
-    for(int ei = 0; ei < ne; ei++){
+    for(unsigned int ei = 0; ei < ne; ei++){
       // here we assume that H0 is the same for neutrinos and antineutrinos
       // else we will need two H0_array.
       H0_array[ei] = H0(E_range[ei],0);
@@ -815,13 +815,13 @@ void nuSQUIDS::AntineutrinoCPFix(unsigned int rho){
 void nuSQUIDS::iniProjectors(){
 
   b0_proj.resize(std::vector<size_t>{numneu});
-  for(int flv = 0; flv < numneu; flv++){
+  for(unsigned int flv = 0; flv < numneu; flv++){
     b0_proj[flv] = SU_vector::Projector(nsun,flv);
   }
 
   b1_proj.resize(std::vector<size_t>{nrhos,numneu});
-  for(int rho = 0; rho < nrhos; rho++){
-    for(int flv = 0; flv < numneu; flv++){
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int flv = 0; flv < numneu; flv++){
       b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
 
       AntineutrinoCPFix(rho);
@@ -832,9 +832,9 @@ void nuSQUIDS::iniProjectors(){
 
   evol_b0_proj.resize(std::vector<size_t>{nrhos,numneu,ne});
   evol_b1_proj.resize(std::vector<size_t>{nrhos,numneu,ne});
-  for(int rho = 0; rho < nrhos; rho++){
-    for(int flv = 0; flv < numneu; flv++){
-      for(int e1 = 0; e1 < ne; e1++){
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int flv = 0; flv < numneu; flv++){
+      for(unsigned int e1 = 0; e1 < ne; e1++){
         evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
         evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
 
@@ -848,9 +848,9 @@ void nuSQUIDS::iniProjectors(){
 }
 
 void nuSQUIDS::SetIniFlavorProyectors(){
-  for(int rho = 0; rho < nrhos; rho++){
-    for(int flv = 0; flv < numneu; flv++){
-      for(int e1 = 0; e1 < ne; e1++){
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int flv = 0; flv < numneu; flv++){
+      for(unsigned int e1 = 0; e1 < ne; e1++){
         evol_b1_proj[rho][flv][e1] = b0_proj[flv];
 
         AntineutrinoCPFix(rho);
@@ -878,9 +878,9 @@ SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
   return b0_proj[flv];
 }
 
-SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho){
-  EvolveProjectors(track->GetX());
-  return H0(E,rho)+HI(track->GetX(),E,rho);
+SU_vector nuSQUIDS::GetHamiltonian(std::shared_ptr<Track> track_, unsigned int ei, unsigned int rho){
+  EvolveProjectors(track_->GetX());
+  return H0(E_range[ei],rho)+HI(track_->GetX(),ei,rho);
 }
 
 void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc) const{
@@ -946,12 +946,12 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     H5LTset_attribute_double(group_id, "massdifferences",label.c_str(),&value, 1);
   }
   //writing state
-  const int numneusq = numneu*numneu;
+  const unsigned int numneusq = numneu*numneu;
   hsize_t statedim[2] {E_range.size(),(hsize_t)numneu*numneu};
   std::vector<double> neustate(numneusq*ne), aneustate(numneusq*ne);
 
-  for(int ie = 0; ie < ne; ie++){
-    for(int i = 0; i < numneu*numneu; i ++){
+  for(unsigned int ie = 0; ie < ne; ie++){
+    for(unsigned int i = 0; i < numneu*numneu; i ++){
         if (NT == both){
           neustate[ie*numneusq + i] = state[ie].rho[0][i];
           aneustate[ie*numneusq + i] = state[ie].rho[1][i];
@@ -967,18 +967,18 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
       }
     }
 
-  dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)neustate.data());
-  dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,(void*)aneustate.data());
+  dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(neustate.data()));
+  dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(aneustate.data()));
 
   // writing state flavor and mass composition
-  hsize_t pdim[2] {E_range.size(), (hsize_t) numneu};
+  hsize_t pdim[2] {E_range.size(), static_cast<hsize_t>(numneu)};
   if ( NT == both )
     pdim[1] *= pdim[1];
   std::vector<double> flavor,mass;
 
-  for(int ie = 0; ie < ne; ie++){
+  for(unsigned int ie = 0; ie < ne; ie++){
     // neutrino
-    for(int i = 0; i < numneu; i++){
+    for(unsigned int i = 0; i < numneu; i++){
       if (NT == both or NT == neutrino){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
@@ -989,7 +989,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
         }
     }
       // antineutrino
-    for(int i = 0; i < numneu; i++){
+    for(unsigned int i = 0; i < numneu; i++){
       if (NT == both or NT == antineutrino){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
@@ -1000,8 +1000,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
         }
     }
   }
-  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)flavor.data());
-  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,(void*)mass.data());
+  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(flavor.data()));
+  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(mass.data()));
 
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};
@@ -1025,8 +1025,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
   }
   H5LTset_attribute_string(group_id, "body", "NAME", body->GetName().c_str());
-  int bid = body->GetId();
-  H5LTset_attribute_int(group_id, "body", "ID", &bid,1);
+  unsigned int bid = body->GetId();
+  H5LTset_attribute_uint(group_id, "body", "ID", &bid,1);
 
   // writing cross section information 
   hid_t xs_group_id;
@@ -1038,27 +1038,32 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   if (iinteraction and save_cross_section) {
     // sigma_CC and sigma_NC
-    hsize_t XSdim[3] {(hsize_t)nrhos,(hsize_t)numneu,(hsize_t)ne};
+    hsize_t XSdim[3] {static_cast<hsize_t>(nrhos),
+                      static_cast<hsize_t>(numneu),
+                      static_cast<hsize_t>(ne)};
     std::vector<double> xsCC(nrhos*numneu*ne),xsNC(nrhos*numneu*ne);
-    for ( int rho = 0; rho < nrhos; rho ++){
-      for ( int flv = 0; flv < numneu; flv ++){
-          for ( int ie = 0; ie < ne; ie ++){
+    for ( unsigned int rho = 0; rho < nrhos; rho ++){
+      for ( unsigned int flv = 0; flv < numneu; flv ++){
+          for ( unsigned int ie = 0; ie < ne; ie ++){
             xsCC[rho*(numneu*ne) +  flv*ne + ie] = sigma_CC[rho][flv][ie];
             xsNC[rho*(numneu*ne) +  flv*ne + ie] = sigma_NC[rho][flv][ie];
           }
       }
     }
-    dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,(void*)xsCC.data());
-    dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,(void*)xsNC.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(xsCC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(xsNC.data()));
 
     // dNdE_CC and dNdE_NC
-    hsize_t dXSdim[4] {(hsize_t)nrhos,(hsize_t)numneu,(hsize_t)ne,(hsize_t)ne};
+    hsize_t dXSdim[4] {static_cast<hsize_t>(nrhos),
+                       static_cast<hsize_t>(numneu),
+                       static_cast<hsize_t>(ne),
+                       static_cast<hsize_t>(ne)};
     std::vector<double> dxsCC(nrhos*numneu*ne*ne),dxsNC(nrhos*numneu*ne*ne);
 
-    for(int rho = 0; rho < nrhos; rho++){
-      for(int flv = 0; flv < numneu; flv++){
-          for(int e1 = 0; e1 < ne; e1++){
-              for(int e2 = 0; e2 < ne; e2++){
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
+              for(unsigned int e2 = 0; e2 < ne; e2++){
                 if (e2 < e1) {
                   dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_CC[rho][flv][e1][e2];
                   dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_NC[rho][flv][e1][e2];
@@ -1070,18 +1075,19 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,(void*)dxsCC.data());
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,(void*)dxsNC.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(dxsCC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(dxsNC.data()));
 
     // invlen_tau
-    hsize_t iltdim[1] {(hsize_t)ne};
-    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,(void*)invlen_tau.get_data());
+    hsize_t iltdim[1] {static_cast<hsize_t>(ne)};
+    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<void*>(invlen_tau.get_data()));
 
     // dNdE_tau_all,dNdE_tau_lep
-    hsize_t dNdEtaudim[2] {(hsize_t)ne,(hsize_t)ne};
+    hsize_t dNdEtaudim[2] {static_cast<hsize_t>(ne),
+                           static_cast<hsize_t>(ne)};
     std::vector<double> dNdEtauall(ne*ne),dNdEtaulep(ne*ne);
-    for(int e1 = 0; e1 < ne; e1++){
-        for(int e2 = 0; e2 < ne; e2++){
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+        for(unsigned int e2 = 0; e2 < ne; e2++){
           if ( e2 < e1 ) {
             dNdEtauall[e1*ne + e2] = dNdE_tau_all[e1][e2];
             dNdEtaulep[e1*ne + e2] = dNdE_tau_lep[e1][e2];
@@ -1092,8 +1098,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
         }
     }
 
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtauall",2,dNdEtaudim,H5T_NATIVE_DOUBLE,(void*)dNdEtauall.data());
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtaulep",2,dNdEtaudim,H5T_NATIVE_DOUBLE,(void*)dNdEtaulep.data());
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtauall",2,dNdEtaudim,H5T_NATIVE_DOUBLE,static_cast<void*>(dNdEtauall.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEtaulep",2,dNdEtaudim,H5T_NATIVE_DOUBLE,static_cast<void*>(dNdEtaulep.data()));
   }
 
   // close cross section group
@@ -1137,12 +1143,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
       throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");
 
   // read number of neutrinos
-  H5LTget_attribute_int(group_id, "basic", "numneu", (int*)&numneu);
+  H5LTget_attribute_uint(group_id, "basic", "numneu", static_cast<unsigned int*>(&numneu));
   // neutrino/antineutrino/both
   int auxint;
   char auxchar[20];
   H5LTget_attribute_int(group_id, "basic", "NT", &auxint);
-  NT = (NeutrinoType)auxint;
+  NT = static_cast<NeutrinoType>(auxint);
   // interactions
   H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
   std::string aux = auxchar;
@@ -1176,7 +1182,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
 
   double data[dims[0]];
-  ne = dims[0];
+  ne = static_cast<unsigned int>(dims[0]);
   H5LTread_dataset_double(group_id, "energies", data);
   //for (int i = 0; i < dims[0]; i ++ )
   //  std::cout << data[i] << std::endl;
@@ -1231,8 +1237,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   double aneudata[dims[0]*dims[1]];
   H5LTread_dataset_double(group_id,"aneustate", aneudata);
 
-  for(int ie = 0; ie < dims[0]; ie++){
-    for (int j = 0; j < dims[1]; j ++){
+  for(unsigned int ie = 0; ie < dims[0]; ie++){
+    for (unsigned int j = 0; j < dims[1]; j ++){
       if (NT == neutrino)
         state[ie].rho[0][j] = neudata[ie*dims[1]+j];
       else if ( NT == antineutrino)
@@ -1267,9 +1273,9 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     double xsNC[XSdim[0]*XSdim[1]*XSdim[2]];
     H5LTread_dataset_double(xs_grp,"sigmanc", xsNC);
 
-    for ( int rho = 0; rho < nrhos; rho ++){
-      for ( int flv = 0; flv < numneu; flv ++){
-          for ( int ie = 0; ie < ne; ie ++){
+    for ( unsigned int rho = 0; rho < nrhos; rho ++){
+      for ( unsigned int flv = 0; flv < numneu; flv ++){
+          for ( unsigned int ie = 0; ie < ne; ie ++){
             sigma_CC[rho][flv][ie] = xsCC[rho*(numneu*ne) +  flv*ne + ie];
             sigma_NC[rho][flv][ie] = xsNC[rho*(numneu*ne) +  flv*ne + ie];
           }
@@ -1285,10 +1291,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     double dxsNC[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]];
     H5LTread_dataset_double(xs_grp,"dNdEnc", dxsNC);
 
-    for(int rho = 0; rho < nrhos; rho++){
-      for(int flv = 0; flv < numneu; flv++){
-          for(int e1 = 0; e1 < ne; e1++){
-              for(int e2 = 0; e2 < e1; e2++){
+    for( unsigned int rho = 0; rho < nrhos; rho++){
+      for( unsigned int flv = 0; flv < numneu; flv++){
+          for( unsigned int e1 = 0; e1 < ne; e1++){
+              for( unsigned int e2 = 0; e2 < e1; e2++){
                 dNdE_CC[rho][flv][e1][e2] = dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
                 dNdE_NC[rho][flv][e1][e2] = dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
               }
@@ -1301,7 +1307,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     H5LTget_dataset_info(xs_grp,"invlentau", iltdim,NULL,NULL);
     double invlentau[iltdim[0]];
     H5LTread_dataset_double(xs_grp,"invlentau", invlentau);
-    for(int ie = 0; ie < ne; ie ++)
+    for(unsigned int ie = 0; ie < ne; ie ++)
       invlen_tau[ie] = invlentau[ie];
 
     // dNdE_tau_all,dNdE_tau_lep
@@ -1311,8 +1317,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     double dNdEtauall[dNdEtaudim[0]*dNdEtaudim[1]];
     double dNdEtaulep[dNdEtaudim[0]*dNdEtaudim[1]];
 
-    for(int e1 = 0; e1 < ne; e1++){
-        for(int e2 = 0; e2 < e1; e2++){
+    for( unsigned int e1 = 0; e1 < ne; e1++){
+        for( unsigned int e2 = 0; e2 < e1; e2++){
           dNdE_tau_all[e1][e2] = dNdEtauall[e1*ne + e2];
           dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
         }
@@ -1334,7 +1340,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 }
 
 
-void nuSQUIDS::SetBodyTrack(int body_id, int body_params_len, double body_params[], int track_params_len, double track_params[]){
+void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, double body_params[], unsigned int track_params_len, double track_params[]){
     switch(body_id){
       case 1:
         {
@@ -1350,9 +1356,9 @@ void nuSQUIDS::SetBodyTrack(int body_id, int body_params_len, double body_params
         }
       case 3:
         {
-          const int xn = body_params_len/3;
+          const unsigned int xn = body_params_len/3;
           std::vector<double> xx(xn),rho(xn),ye(xn);
-          for(int i = 0; i < xn; i++){
+          for(unsigned int i = 0; i < xn; i++){
             xx[i] = body_params[i];
             rho[i] = body_params[xn+i];
             ye[i] = body_params[2*xn+i];
@@ -1556,7 +1562,7 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_di
 
   ncs = std::make_shared<NeutrinoCrossSections>(enu_array[0]*units.GeV,enu_array[enu_array.size()-1]*units.GeV,enu_array.size()-1);
 
-  int i = 0;
+  unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     nsq.Init(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
     nsq.Set_Body(earth_atm);
@@ -1572,7 +1578,7 @@ void nuSQUIDSAtm::EvolveState(void){
     throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
   if(not inusquidsatm)
     throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
-  int i = 0;
+  unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     if(progressbar){
       std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
@@ -1590,7 +1596,7 @@ void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   if(ini_flux.extent(1) != enu_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::Second dimension of input array is incorrect.");
-  int i = 0;
+  unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     marray<double,2> slice{ini_flux.extent(1),ini_flux.extent(2)};
     for(size_t j=0; j<ini_flux.extent(1); j++){
@@ -1607,7 +1613,7 @@ void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis
 void nuSQUIDSAtm::Set_initial_state(marray<double,4> ini_flux, std::string basis){
   if(ini_flux.extent(0) != costh_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
-  int i = 0;
+  unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     marray<double,3> slice{ini_flux.extent(1),ini_flux.extent(2),ini_flux.extent(3)};
     for(size_t j=0; j<ini_flux.extent(1); j++){
@@ -1647,7 +1653,7 @@ void nuSQUIDSAtm::WriteStateHDF5(std::string filename) const{
   H5Gclose (root_id);
   H5Fclose (file_id);
 
-  int i = 0;
+  unsigned int i = 0;
   for(const nuSQUIDS& nsq : nusq_array){
     // use only the first one to write the cross sections on /crosssections
     nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
@@ -1689,7 +1695,7 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
   double data[costhdims[0]];
   H5LTread_dataset_double(group_id, "zenith_angles", data);
   costh_array.resize(std::vector<size_t> {costhdims[0]});
-  for (int i = 0; i < costhdims[0]; i ++)
+  for (unsigned int i = 0; i < costhdims[0]; i ++)
     costh_array[i] = data[i];
 
   hsize_t energydims[1];
@@ -1698,7 +1704,7 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
   double enu_data[energydims[0]];
   H5LTread_dataset_double(group_id, "energy_range", enu_data);
   enu_array.resize(std::vector<size_t>{energydims[0]});log_enu_array.resize(std::vector<size_t>{energydims[0]});
-  for (int i = 0; i < energydims[0]; i ++){
+  for (unsigned int i = 0; i < energydims[0]; i ++){
     enu_array[i] = enu_data[i];
     log_enu_array[i] = log(enu_data[i]);
   }
@@ -1710,7 +1716,7 @@ void nuSQUIDSAtm::ReadStateHDF5(std::string filename){
   nusq_array.clear();
   nusq_array = std::vector<nuSQUIDS>(costhdims[0]);
 
-  int i = 0;
+  unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
     // read the cross sections stored in /crosssections
     nsq.ReadStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),"crosssections");
@@ -1768,9 +1774,9 @@ double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned
   phiPM = nusq_array[cth_M+1].GetState(loge_M,rho)*evol_proj;
   phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho)*evol_proj;
 
-  return LinInter((double)costh,(double)costh_array[cth_M],(double)costh_array[cth_M+1],
-        (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiMM,(double)phiMP),
-        (double)LinInter((double)logE,(double)log_enu_array[loge_M],(double)log_enu_array[loge_M+1],(double)phiPM,(double)phiPP));
+  return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
+        LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
+        LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
 }
 
 void nuSQUIDSAtm::Set_rel_error(double er){

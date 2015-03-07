@@ -105,7 +105,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
        // defining a complex matrix M which will contain our flavor
        // violating flavor structure.
        gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
-       gsl_complex c { epsilon_mutau , 0.0 };
+       gsl_complex c {{ epsilon_mutau , 0.0 }};
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 

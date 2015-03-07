@@ -282,7 +282,7 @@ class nuSQUIDS: public SQUIDS {
     void AntineutrinoCPFix(unsigned int irho);
     /// \brief Serializes the initialization of the Body and Track objects.
     /// @see ReadStateHDF5
-    void SetBodyTrack(int,int,double*,int,double*);
+    void SetBodyTrack(unsigned int,unsigned int,double*,unsigned int,double*);
 
     /// \brief General initilizer for the multi energy mode
     /// @param Emin Minimum neutrino energy [GeV].
@@ -330,7 +330,7 @@ class nuSQUIDS: public SQUIDS {
     /// \brief User supplied function that is called before performing a derivative.
     /// @param x Position of the system.
     /// @see PreDerive
-    virtual void AddToPreDerive(double x){};
+    virtual void AddToPreDerive(double x){}
   public:
     /// \brief Incorporated const object useful to evaluate units.
     const Const units;
@@ -339,7 +339,7 @@ class nuSQUIDS: public SQUIDS {
     *************************************************************************************/
 
     /// \brief Default void constructor.
-    nuSQUIDS(){};
+    nuSQUIDS(){}
     /// \brief Multiple energy mode constructor.
     /// @param Emin Minimum neutrino energy [GeV].
     /// @param Emax Maximum neutirno energy [GeV].
@@ -355,7 +355,7 @@ class nuSQUIDS: public SQUIDS {
     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
        bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
     numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
-    {init(Emin,Emax,Esize);};
+    {init(Emin,Emax,Esize);}
 
     /// \brief Single energy mode constructor.
     /// @param numneu Number of neutrino flavors.
@@ -363,9 +363,9 @@ class nuSQUIDS: public SQUIDS {
     /// \warning Interactions are not possible in the single energy mode, nor is simultaneous
     /// neutrino-antineutrino solution (both) possible.
     /// \details Constructors projectors and initializes Hamiltonian.
-    nuSQUIDS(int numneu, NeutrinoType NT = neutrino):
+    nuSQUIDS(unsigned int numneu, NeutrinoType NT = neutrino):
     numneu(numneu),iinteraction(false),elogscale(false),NT(NT)
-    {init();};
+    {init();}
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
@@ -373,7 +373,7 @@ class nuSQUIDS: public SQUIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); }
 
   public:// should this be protected? should this by private? should this exist?
     /************************************************************************************
@@ -399,7 +399,7 @@ class nuSQUIDS: public SQUIDS {
       NT = NT_;
       ncs = ncs_;
       init(Emin,Emax,Esize);
-    };
+    }
 
     /// \brief Single energy mode initializer.
     /// @param numneu_ Number of neutrino flavors.
@@ -413,7 +413,7 @@ class nuSQUIDS: public SQUIDS {
       numneu = numneu_;
       NT = NT_;
       init();
-    };
+    }
 
     /// \brief Initializer from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
@@ -421,7 +421,7 @@ class nuSQUIDS: public SQUIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    void Init(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); };
+    void Init(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); }
   protected:
     /************************************************************************************
      * PHYSICS FUNCTIONS - SUPER IMPORTANT
@@ -468,15 +468,15 @@ class nuSQUIDS: public SQUIDS {
     virtual double InteractionsScalar(unsigned int ie, unsigned int iscalar) const;
   private:
     /// \brief SQuIDS signature of HI
-    SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);};
+    SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);}
     /// \brief SQuIDS signature of GammaRho
-    SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);};
+    SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);}
     /// \brief SQuIDS signature of GammaScalar
-    double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);};
+    double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);}
     /// \brief SQuIDS signature of InteractionsRho
-    SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);};
+    SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);}
     /// \brief SQuIDS signature of InteractionsScalar
-    double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);};
+    double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);}
   public:
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
@@ -583,7 +583,7 @@ class nuSQUIDS: public SQUIDS {
     unsigned int GetNumNeu() const;
 
     /// \brief Return the Hamiltonian.
-    SU_vector GetHamiltonian(std::shared_ptr<Track> track, double E, unsigned int rho = 0);
+    SU_vector GetHamiltonian(std::shared_ptr<Track> track, unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
     SU_vector GetState(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the flavor projector
@@ -716,7 +716,7 @@ class nuSQUIDSAtm {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);};
+    nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);}
 
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF

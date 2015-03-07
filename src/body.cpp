@@ -2,16 +2,10 @@
 
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
-#define SQR_ABS(x)  (SQR(creal(x)) + SQR(cimag(x)))  // |x|^2
-#define POW10(x)    (exp(M_LN10*(x)))                // 10^x
-#define MIN(X,Y)    ( ((X) < (Y)) ? (X) : (Y) )
-#define MAX(X,Y)    ( ((X) > (Y)) ? (X) : (Y) )
-#define SIGN(a,b)   ( (b) > 0.0 ? (fabs(a)) : (-fabs(a)) )
-#define KRONECKER(i,j)  ( (i)==(j) ? 1 : 0 )
 
 namespace nusquids{
 
-Const param;
+static Const param;
 
 /*
 ----------------------------------------------------------------------
@@ -84,7 +78,7 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
             density_arr = new double[arraysize];
             ye_arr = new double [arraysize];
 
-            for(int i = 0; i < arraysize; i++){
+            for(unsigned int i = 0; i < arraysize; i++){
               x_arr[i] = x_input[i];
               density_arr[i] = density_input[i];
               ye_arr[i] = ye_input[i];
@@ -139,7 +133,7 @@ double VariableDensity::ye(const GenericTrack& track_input) const
 */
 
 // constructor
-Earth::Earth():Earth((std::string) EARTH_MODEL_LOCATION )
+Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION))
         {
         }
 
@@ -199,7 +193,7 @@ Earth::Earth(std::string filepath):Body(4,"Earth")
             double earth_density[arraysize];
             double earth_ye[arraysize];
 
-            for (int i=0; i < arraysize;i++){
+            for (unsigned int i=0; i < arraysize;i++){
                 earth_radius[i] = earth_model[i][0];
                 earth_density[i] = earth_model[i][1];
                 earth_ye[i] = earth_model[i][2];
@@ -305,14 +299,14 @@ Sun::~Sun(){
   free(sun_radius);
   free(sun_density);
   free(sun_xh);
-  free(sun_nele_radius);
-  free(sun_nele);
+  //free(sun_nele_radius);
+  //free(sun_nele);
   free(inter_density);
   free(inter_density_accel);
   free(inter_rxh);
   free(inter_rxh_accel);
-  free(inter_nele);
-  free(inter_nele_accel);
+  //free(inter_nele);
+  //free(inter_nele_accel);
 }
 /*
 ----------------------------------------------------------------------
@@ -418,7 +412,7 @@ SunASnu::~SunASnu(){
 */
 
 // constructor
-EarthAtm::EarthAtm():EarthAtm((std::string) EARTH_MODEL_LOCATION )
+EarthAtm::EarthAtm():EarthAtm(static_cast<std::string>(EARTH_MODEL_LOCATION))
         {
         }
 
