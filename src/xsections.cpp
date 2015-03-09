@@ -26,23 +26,39 @@
 
 namespace nusquids{
 
-double NeutrinoCrossSections::LinInter(double x,double xM, double xP,double yM,double yP) const{
+double NeutrinoDISCrossSectionsFromTables::LinInter(double x,double xM, double xP,double yM,double yP) const{
   return yM + (yP-yM)*(x-xM)/(xP-xM);
 }
 
-double NeutrinoCrossSections::TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
+                           NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
   if (flavor == sterile)
     return 0.0;
+
+  if ( Enu < Emin or Enu > Emax )
+    throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
+quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
+
+  // convert to GeV
+  Enu /= GeV;
 
   double logE = log(Enu);
   return gsl_spline_eval(xs_inter[current][neutype][flavor],logE,xs_acc[current][neutype][flavor]);
 }
 
-double NeutrinoCrossSections::DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+double NeutrinoDISCrossSectionsFromTables::DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
   if (flavor == sterile )
     return 0.0;
+
+  if ( E1 < Emin or E1 > Emax )
+    throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
+quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
+
+  // convert to GeV
+  E1 /= GeV;
+  E2 /= GeV;
 
   double logE1 = log(E1);
   double logE2 = log(E2);
@@ -73,15 +89,7 @@ double NeutrinoCrossSections::DifferentialCrossSection(double E1, double E2, Neu
            LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],phiPM,phiPP));
 }
 
-void NeutrinoCrossSections::Init(double Emin_in, double Emax_in, unsigned int div_in){
-  if ( Emin_in < 10.0e9 )
-    throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
-quested below 10 GeV.");
-
-       Emin = Emin_in;
-       Emax = Emax_in;
-       div = div_in;
-
+void NeutrinoDISCrossSectionsFromTables::Init(){
        std::string root = XSECTION_LOCATION ;
        std::string filename_format = "_1e+11_1e+18_500.dat";
 
@@ -117,6 +125,11 @@ quested below 10 GeV.");
           for( int ie = 0; ie < data_e_size; ie ++){
             logE_data_range[ie] = log(sigma_CC_raw_data[ie][0]);
           }
+
+          Emin = sigma_CC_raw_data[0][0]*GeV;
+          Emax = sigma_CC_raw_data[data_e_size-1][0]*GeV;
+          div = data_e_size;
+
 
           // allocate all gsl interpolators
           xs_inter.resize(std::vector<size_t>{2,2,3});
@@ -160,6 +173,7 @@ quested below 10 GeV.");
             }
           }
 
+          /*
           // fill in interpolated cross section tables at the user provided nodes
           marray<double,1> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
           unsigned int e_size = E_range_GeV.size();
@@ -196,6 +210,7 @@ quested below 10 GeV.");
                 }
               }
           }
+          */
   } else {
     throw std::runtime_error("nuSQUIDS::XSECTIONS::ERROR::Cross section files not found.");
   }
@@ -203,11 +218,7 @@ quested below 10 GeV.");
   is_init = true;
 }
 
-NeutrinoCrossSections::NeutrinoCrossSections(double Emin_in,double Emax_in,unsigned int div_in){
-  Init(Emin_in,Emax_in,div_in);
-}
-
-NeutrinoCrossSections::~NeutrinoCrossSections(){
+NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){
   if(is_init){
     // allocate all gsl interpolators
     for ( auto it = xs_inter.begin(); it != xs_inter.end(); it++){
@@ -220,6 +231,7 @@ NeutrinoCrossSections::~NeutrinoCrossSections(){
   }
 }
 
+/*
 // differential cross sections
 
 double NeutrinoCrossSections::dsde_CC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const{
@@ -247,5 +259,6 @@ double NeutrinoCrossSections::sigma_CC(unsigned int i_enu, NeutrinoFlavor flv, N
 double NeutrinoCrossSections::sigma_NC(unsigned int i_enu, NeutrinoFlavor flv, NeutrinoType neutype) const{
   return sigma_NC_tbl[i_enu][neutype][flv];
 }
+*/
 
 } // close namespace

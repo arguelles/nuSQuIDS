@@ -7,7 +7,6 @@ PYTHON_VERSION = 2.7
 
 PATH_nuSQUIDS= $(shell pwd)/../../../
 PATH_nuSQUIDSpy= $(shell pwd)/../
-PATH_SQUIDS= $(shell pwd)/../../../../SQUIDS/
 
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
@@ -17,16 +16,14 @@ LIBDIR=$(PATH_nuSQUIDS)/lib
 INCDIR=$(PATH_nuSQUIDS)/inc
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
-LIBSQUIDS=$(PATH_SQUIDS)/lib
-INCSQUIDS=$(PATH_SQUIDS)/inc
 
 # FLAGS
 LDFLAGS= -lgsl -lgslcblas
-LDFLAGS+= -L$(LIBSQUIDS) -lSQuIDS
-LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQUIDS
+LDFLAGS+= -lSQuIDS
+LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQuIDS
 LDFLAGS+= -lpython$(PYTHON_VERSION) -lboost_python
 INCCFLAGS+= -I/usr/include/python$(PYTHON_VERSION) -I../inc/
-INCCFLAGS+= -I$(INCnuSQUIDS) -I$(INCSQUIDS)
+INCCFLAGS+= -I$(INCnuSQUIDS)
 #INCCFLAGS+= -I$(INCHDF5)
 CXXFLAGS= -g -O3 -fPIC -std=c++11 $(INCCFLAGS)
 

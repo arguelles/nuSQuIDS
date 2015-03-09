@@ -404,7 +404,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   ;
 
 
-  class_<Const>("Const")
+  class_<Const, boost::noncopyable>("Const")
     .def_readonly("TeV",&Const::TeV)
     .def_readonly("GeV",&Const::GeV)
     .def_readonly("MeV",&Const::MeV)
