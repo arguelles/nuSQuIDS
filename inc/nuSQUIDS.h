@@ -364,6 +364,8 @@ class nuSQUIDS: public SQUIDS {
 
     /// \brief Default void constructor.
     nuSQUIDS(){}
+    /// \brief Move constructor.
+    nuSQUIDS(nuSQUIDS&&);
     /// \brief Multiple energy mode constructor.
     /// @param Emin Minimum neutrino energy [GeV].
     /// @param Emax Maximum neutirno energy [GeV].
