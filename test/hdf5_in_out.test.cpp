@@ -50,15 +50,6 @@ int main(){
   nus.Set_initial_state(inistate,"flavor");
 
   nus.EvolveState();
-
-  for ( int i = 0 ; i < inistate.extent(0); i++){
-      for ( int k = 0; k < inistate.extent(1); k ++){
-        // initialze muon state
-        std::cout << nus.EvalFlavorAtNode(k,i)/inistate[i][k] << " ";
-      }
-      std::cout << std::endl;
-  }
-
   nus.WriteStateHDF5("./out_muon_test.hdf5");
 
   nuSQUIDS nus_read("./out_muon_test.hdf5");
@@ -66,7 +57,7 @@ int main(){
   for ( int i = 0 ; i < nus_read.GetNumE(); i++){
       for ( int k = 0; k < nus_read.GetNumNeu(); k ++){
         // initialze muon state
-        std::cout << nus_read.EvalFlavorAtNode(k,i)/inistate[i][k] << " ";
+        std::cout << fabs(nus.EvalFlavorAtNode(k,i)/inistate[i][k] - nus_read.EvalFlavorAtNode(k,i)/inistate[i][k]) << " ";
       }
       std::cout << std::endl;
   }
