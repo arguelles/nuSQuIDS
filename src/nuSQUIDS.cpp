@@ -1568,7 +1568,7 @@ numneu(other.numneu),
 ne(other.ne),
 E_range(std::move(other.E_range)),
 delE(std::move(other.delE)),
-ncs(other.ncs),
+ncs(std::move(other.ncs)),
 dNdE_CC(std::move(other.dNdE_CC)),
 dNdE_NC(std::move(other.dNdE_NC)),
 invlen_CC(std::move(other.invlen_CC)),
@@ -1576,7 +1576,7 @@ invlen_NC(std::move(other.invlen_NC)),
 invlen_INT(std::move(other.invlen_INT)),
 sigma_CC(std::move(other.sigma_CC)),
 sigma_NC(std::move(other.sigma_NC)),
-tdc(other.tdc),
+tdc(std::move(other.tdc)),
 invlen_tau(std::move(other.invlen_tau)),
 dNdE_tau_all(std::move(other.dNdE_tau_all)),
 dNdE_tau_lep(std::move(other.dNdE_tau_lep)),
@@ -1698,6 +1698,42 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_di
   }
 
   inusquidsatm = true;
+}
+
+nuSQUIDSAtm::nuSQUIDSAtm(nuSQUIDSAtm&& other):
+progressbar(other.progressbar),
+iinistate(other.iinistate),
+inusquidsatm(other.inusquidsatm),
+costh_array(std::move(other.costh_array)),
+enu_array(std::move(other.enu_array)),
+log_enu_array(std::move(other.log_enu_array)),
+nusq_array(std::move(other.nusq_array)),
+earth_atm(std::move(other.earth_atm)),
+track_array(std::move(other.track_array)),
+ncs(std::move(other.ncs))
+{
+  other.inusquidsatm = false;
+}
+
+nuSQUIDSAtm& nuSQUIDSAtm::operator=(nuSQUIDSAtm&& other){
+  if(&other==this)
+    return(*this);
+
+  progressbar = other.progressbar;
+  iinistate = other.iinistate;
+  inusquidsatm = other.inusquidsatm;
+  costh_array = std::move(other.costh_array);
+  enu_array = std::move(other.enu_array);
+  log_enu_array = std::move(other.log_enu_array);
+  nusq_array = std::move(other.nusq_array);
+  earth_atm = std::move(other.earth_atm);
+  track_array = std::move(other.track_array);
+  ncs = std::move(other.ncs);
+
+  // initial nusquids object render useless
+  other.inusquidsatm = false;
+
+  return(*this);
 }
 
 void nuSQUIDSAtm::EvolveState(void){

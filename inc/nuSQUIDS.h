@@ -752,6 +752,13 @@ class nuSQUIDSAtm {
     /// @see ReadStateHDF5
     nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);}
 
+    /// \brief Move constructor.
+    nuSQUIDSAtm(nuSQUIDSAtm&&);
+
+    //***************************************************************
+    ///\brief Move assigns a nuSQUIDSAtm object from an existing object
+    nuSQUIDSAtm& operator=(nuSQUIDSAtm&&);
+
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
     *************************************************************************************/
