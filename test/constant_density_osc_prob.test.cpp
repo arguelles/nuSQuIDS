@@ -4,7 +4,7 @@
 
 using namespace nusquids;
 
-void exercise_se_mode(unsigned int numneu,std::string NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
+void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);
   nus.Set_Body(body);
@@ -46,14 +46,14 @@ void exercise_se_mode(unsigned int numneu,std::string NT, std::shared_ptr<Body> 
   std::cout << std::setprecision(3);
   std::cout << std::scientific;
   for(int flv = 0; flv < numneu; flv++){
-    std::vector<double> ini_state(numneu);
+    marray<double,1> ini_state{numneu};
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
       for(double Enu : test_energies){
         nus.Set_initial_state(ini_state,"flavor");
         nus.Set_E(Enu*nus.units.GeV);
         nus.EvolveState();
-        std::cout << body->name << " " << flv << " [flv] " << Enu << " [GeV] ";
+        std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
         for (int i = 0; i < numneu; i++){
           double p = nus.EvalFlavor(i);
           if ( p < 1.0e-8)
@@ -80,10 +80,10 @@ int main(){
   std::shared_ptr<ConstantDensity> constdens = std::make_shared<ConstantDensity>(density,ye);
   std::shared_ptr<ConstantDensity::Track> track_constdens = std::make_shared<ConstantDensity::Track>(0.0,700.0*units.km);
 
-  exercise_se_mode(3,"neutrino",constdens,track_constdens);
-  exercise_se_mode(3,"antineutrino",constdens,track_constdens);
-  exercise_se_mode(4,"neutrino",constdens,track_constdens);
-  exercise_se_mode(4,"antineutrino",constdens,track_constdens);
+  exercise_se_mode(3,neutrino,constdens,track_constdens);
+  exercise_se_mode(3,antineutrino,constdens,track_constdens);
+  exercise_se_mode(4,neutrino,constdens,track_constdens);
+  exercise_se_mode(4,antineutrino,constdens,track_constdens);
 
   return 0;
 }
