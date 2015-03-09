@@ -28,6 +28,7 @@
 
 using namespace nusquids;
 
+
 void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
   nuSQUIDS nus(numneu,NT);
 
