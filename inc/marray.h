@@ -689,7 +689,7 @@ public:
 	marray& operator=(const marray& other){
 		if(&other==this)
 			return(*this);
-		move_assign(other,typename allocator_traits::propagate_on_container_copy_assignment());
+		copy_assign(other,typename allocator_traits::propagate_on_container_copy_assignment());
 		std::copy_n(other.extents.begin(),Rank,extents.begin());
 		total_size()=other.total_size();
 		return(*this);

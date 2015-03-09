@@ -399,7 +399,15 @@ class nuSQUIDS: public SQUIDS {
     /// @see ReadStateHDF5
     nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); }
 
-  public:// should this be protected? should this by private? should this exist?
+    //***************************************************************
+    virtual ~nuSQUIDS();
+
+    //***************************************************************
+    ///\brief Move assigns a nuSQUIDS object from an existing object
+    nuSQUIDS& operator=(nuSQUIDS&&);
+
+    public:// should this be protected? should this by private? should this exist?
+
     /************************************************************************************
      * INITIALIZERS
     *************************************************************************************/

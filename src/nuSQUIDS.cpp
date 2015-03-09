@@ -1559,6 +1559,61 @@ void nuSQUIDS::Set_Basis(BASIS b){
   basis = b;
 }
 
+nuSQUIDS::~nuSQUIDS(){}
+
+nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
+  if(&other==this)
+    return(*this);
+
+  basis = other.basis;
+  numneu = other.numneu;
+  ne = other.ne;
+  E_range = std::move(other.E_range);
+  delE = std::move(other.delE);
+  ncs = other.ncs;
+  dNdE_CC = std::move(other.dNdE_CC);
+  dNdE_NC = std::move(other.dNdE_NC);
+  invlen_CC = std::move(other.invlen_CC);
+  invlen_NC = std::move(other.invlen_NC);
+  invlen_INT = std::move(other.invlen_INT);
+  sigma_CC = std::move(other.sigma_CC);
+  sigma_NC = std::move(other.sigma_NC);
+  tdc = other.tdc;
+  invlen_tau = std::move(other.invlen_tau);
+  dNdE_tau_all = std::move(other.dNdE_tau_all);
+  dNdE_tau_lep = std::move(other.dNdE_tau_lep);
+  taubr_lep = other.taubr_lep;
+  tau_lifetime = other.tau_lifetime;
+  tau_mass = other.tau_mass;
+  tau_reg_scale = other.tau_reg_scale;
+  body = other.body;
+  track = other.track;
+  DM2 = other.DM2;
+  H0_array = std::move(other.H0_array);
+  b0_proj = std::move(other.b0_proj);
+  b1_proj = std::move(other.b1_proj);
+  evol_b0_proj = std::move(other.evol_b0_proj);
+  evol_b1_proj = std::move(other.evol_b1_proj);
+
+  inusquids = other.inusquids;
+  ibody = other.ibody;
+  ienergy = other.ienergy;
+  itrack = other.itrack;
+  istate = other.istate;
+  iinteraction = other.iinteraction;
+  elogscale = other.elogscale;
+  tauregeneration = other.tauregeneration;
+  progressbar = other.progressbar;
+  progressbar_count = other.progressbar_count;
+  progressbar_loop = other.progressbar_loop;
+
+  NT = other.NT;
+
+  // initial nusquids object render useless
+  other.inusquids = false;
+
+  return(*this);
+}
 
 //==================================================================
 //==================================================================
