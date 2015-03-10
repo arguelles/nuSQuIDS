@@ -45,18 +45,18 @@ int main()
 
   std::cout << "Begin: setting mixing angles." << std::endl;
   // set mixing angles and masses
-  nus_atm.Set(TH12,0.563942);
-  nus_atm.Set(TH13,0.154085);
-  nus_atm.Set(TH23,0.785398);
+  nus_atm.Set_MixingAngle(0,1,0.563942);
+  nus_atm.Set_MixingAngle(0,2,0.154085);
+  nus_atm.Set_MixingAngle(1,2,0.785398);
 
-  nus_atm.Set(DM21SQ,7.65e-05);
-  nus_atm.Set(DM31SQ,0.00247);
+  nus_atm.Set_SquareMassDifference(1,7.65e-05);
+  nus_atm.Set_SquareMassDifference(2,0.00247);
 
-  nus_atm.Set(DELTA1,0.0);
+  nus_atm.Set_CPPhase(0,2,0);
 
   if( numneu > 3){
-    nus_atm.Set(DM41SQ,1.0);
-    nus_atm.Set(TH24,0.26237);
+    nus_atm.Set_SquareMassDifference(3,1);
+    nus_atm.Set_MixingAngle(1,3,0.26237);
   }
   std::cout << "End: setting mixing angles." << std::endl;
 
@@ -81,7 +81,7 @@ int main()
   }
 
   // set the initial state
-  nus_atm.Set_initial_state(inistate,"flavor");
+  nus_atm.Set_initial_state(inistate,flavor);
   std::cout << "End: setting initial state." << std::endl;
 
   nus_atm.Set_ProgressBar(true);

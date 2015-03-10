@@ -115,9 +115,9 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
        NSI = SU_vector(M);
 
-       Set(TH12,0.563942);
-       Set(TH13,0.154085);
-       Set(TH23,0.785398);
+       Set_MixingAngle(0,1,0.563942);
+       Set_MixingAngle(0,2,0.154085);
+       Set_MixingAngle(1,2,0.785398);
 
        // rotate to mass reprentation
        NSI.RotateToB1(params);
@@ -162,14 +162,12 @@ int main()
   nus.Set_Track(track_atm);
 
   // set mixing angles and masses
-  nus.Set(TH12,0.563942);
-  nus.Set(TH13,0.154085);
-  nus.Set(TH23,0.785398);
+  nus.Set_MixingAngle(0,1,0.563942);
+  nus.Set_MixingAngle(0,2,0.154085);
+  nus.Set_MixingAngle(1,2,0.785398);
 
-  nus.Set(DM21SQ,7.65e-05);
-  nus.Set(DM31SQ,0.00247);
-
-  nus.Set(DELTA1,0.0);
+  nus.Set_SquareMassDifference(1,7.65e-05);
+  nus.Set_SquareMassDifference(2,0.00247);
 
   // setup integration settings
   nus.Set_h_max( 200.0*nus.units.km );
@@ -189,7 +187,7 @@ int main()
   }
 
   // set the initial state
-  nus.Set_initial_state(inistate,"flavor");
+  nus.Set_initial_state(inistate,flavor);
 
   nus.Set_ProgressBar(true);
   nus.EvolveState();

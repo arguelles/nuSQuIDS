@@ -56,12 +56,12 @@ void nuSQUIDS::init(double xini){
   // physics CP sign for aneu    //
   //===============================
   if ( NT == antineutrino ){
-    Set(DELTA1,params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
-    Set(DELTA2,params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
-    Set(DELTA3,params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
+    for(unsigned int i = 0; i < numneu; i++){
+      for(unsigned int j = i+1; j < numneu; j++){
+        Set_CPPhase(i,j,-Get_CPPhase(i,j));
+      }
+    }
   }
-
-
   //===============================
   // init projectors             //
   //===============================
@@ -531,13 +531,6 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   istate = false;
 }
 
-/*
-void nuSQUIDS::Set_Initial_Time(){
-  t = 0;
-  t_ini = 0;
-}
-*/
-
 void nuSQUIDS::EvolveState(){
   // check for BODY and TRACK status
   if ( body == NULL )
@@ -613,13 +606,13 @@ void nuSQUIDS::ConvertTauIntoNuTau(void){
 
 }
 
-void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,1> v, Basis basis){
   if( v.size()== 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != numneu )
     throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
-  if( not (basis == "flavor" || basis == "mass" ))
-    throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
+  if( not (basis == flavor || basis == mass ))
+    throw std::runtime_error("nuSQUIDS::Error::BASIS can be: flavor or mass.");
   if( NT == both )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( ne != 1 )
@@ -635,14 +628,14 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
-      if (basis == "flavor"){
+      if (basis == flavor){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < v.extent(0); j++)
         {
           state[i].rho[r] += v[j]*b1_proj[r][j];
         }
       }
-      else if (basis == "mass"){
+      else if (basis == mass){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(int j = 0; j < v.extent(0); j++)
         {
@@ -655,14 +648,14 @@ void nuSQUIDS::Set_initial_state(marray<double,1> v, std::string basis){
   istate = true;
 };
 
-void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,2> v, Basis basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != ne )
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( v.extent(1) != numneu)
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
-  if( not (basis == "flavor" || basis == "mass" ))
+  if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT == both )
     throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
@@ -673,14 +666,14 @@ void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
-      if (basis == "flavor"){
+      if (basis == flavor){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < numneu; j++)
         {
           state[i].rho[r] += v[i][j]*b1_proj[r][j];
         }
       }
-      else if (basis == "mass"){
+      else if (basis == mass){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < numneu; j++){
           state[i].rho[r] += v[i][j]*b0_proj[j];
@@ -692,7 +685,7 @@ void nuSQUIDS::Set_initial_state(marray<double,2> v, std::string basis){
   istate = true;
 }
 
-void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
+void nuSQUIDS::Set_initial_state(marray<double,3> v, Basis basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != ne )
@@ -701,7 +694,7 @@ void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
   if( v.extent(2) != numneu)
     throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
-  if( not (basis == "flavor" || basis == "mass" ))
+  if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Supplied neutrino and antineutrino initial state, but not set to both.");
@@ -712,14 +705,14 @@ void nuSQUIDS::Set_initial_state(marray<double,3> v, std::string basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
-      if (basis == "flavor"){
+      if (basis == flavor){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < numneu; j++)
         {
           state[i].rho[r] += v[i][r][j]*b1_proj[r][j];
         }
       }
-      else if (basis == "mass"){
+      else if (basis == mass){
         state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < numneu; j++){
           state[i].rho[r] += v[i][r][j]*b0_proj[j];
@@ -828,11 +821,13 @@ void nuSQUIDS::iniH0(){
 }
 
 void nuSQUIDS::AntineutrinoCPFix(unsigned int rho){
-    if(NT == antineutrino or (NT == both and rho == 1)){
-      Set(DELTA1,-params.GetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1]));
-      Set(DELTA2,-params.GetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1]));
-      Set(DELTA3,-params.GetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1]));
+  if(NT == antineutrino or (NT == both and rho == 1)){
+    for(unsigned int i = 0; i < numneu; i++){
+      for(unsigned int j = i+1; j < numneu; j++){
+        Set_CPPhase(i,j,-Get_CPPhase(i,j));
+      }
     }
+  }
 }
 
 void nuSQUIDS::iniProjectors(){
@@ -945,29 +940,28 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
 
   H5LTset_attribute_int(group_id, "basic","numneu",(const int*)&numneu, 1);
-  //H5LTset_attribute_string(group_id, "basic","NT",NT.c_str());
-  int auxint = NT;
+  int auxint = static_cast<int>(NT);
   H5LTset_attribute_int(group_id, "basic","NT",&auxint,1); //TODO: do fancy enum stuff
   H5LTset_attribute_string(group_id, "basic", "interactions", (iinteraction) ? "True":"False");
 
-  for ( int i = 0; i < 15; i++){
-    std::string label = param_label_map[i];
-    double value = params.GetMixingAngle(param_label_index[i][0],param_label_index[i][1]);
-    //gsl_matrix_get(params.th, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(group_id, "mixingangles",label.c_str(),&value, 1);
+  for( unsigned int i = 0; i < numneu; i++ ){
+    for( unsigned int j = i+1; j < numneu; j++ ){
+      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
+      double th_value = params.GetMixingAngle(i,j);
+      H5LTset_attribute_double(group_id, "mixingangles",th_label.c_str(),&th_value, 1);
+
+      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
+      double delta_value = params.GetPhase(i,j);
+      H5LTset_attribute_double(group_id, "CPphases",delta_label.c_str(),&delta_value, 1);
+    }
   }
-  for ( int i = 15; i < 18; i++){
-    std::string label = param_label_map[i];
-    double value = params.GetPhase(param_label_index[i][0],param_label_index[i][1]);
-    //gsl_matrix_get(params.dcp, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(group_id, "CPphases",label.c_str(),&value, 1);
+
+  for ( unsigned int i = 1; i < numneu; i++ ){
+    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
+    double dm2_value = params.GetEnergyDifference(i);
+    H5LTset_attribute_double(group_id, "massdifferences",dm2_label.c_str(),&dm2_value, 1);
   }
-  for ( int i = 18; i < 23; i++){
-    std::string label = param_label_map[i];
-    double value = params.GetEnergyDifference(param_label_index[i][0]);
-    //gsl_matrix_get(params.dmsq, param_label_index[i][0],param_label_index[i][1]);
-    H5LTset_attribute_double(group_id, "massdifferences",label.c_str(),&value, 1);
-  }
+
   //writing state
   const unsigned int numneusq = numneu*numneu;
   hsize_t statedim[2] {E_range.size(),(hsize_t)numneu*numneu};
@@ -1051,7 +1045,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   unsigned int bid = body->GetId();
   H5LTset_attribute_uint(group_id, "body", "ID", &bid,1);
 
-  // writing cross section information 
+  // writing cross section information
   hid_t xs_group_id;
   if ( cross_section_grp_loc == ""){
     xs_group_id = H5Gcreate(group_id, "crosssections", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1181,23 +1175,25 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     iinteraction = false;
 
   // read and set mixing parameters
-  for ( int i = 0 ; i < 15; i++){
-    double value;
-    H5LTget_attribute_double(group_id,"mixingangles", param_label_map[i].c_str(), &value);
-    //Set(param_label_map[i], value);
-    Set(static_cast<MixingParameter>(i), value);
+  for( unsigned int i = 0; i < numneu; i++ ){
+    for( unsigned int j = i+1; j < numneu; j++ ){
+      double th_value;
+      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
+      Set_MixingAngle(i,j,th_value);
+
+      double delta_value;
+      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
+      Set_CPPhase(i,j,delta_value);
+    }
   }
-  for ( int i = 15 ; i < 18; i++){
-    double value;
-    H5LTget_attribute_double(group_id,"CPphases", param_label_map[i].c_str(), &value);
-    //Set(param_label_map[i], value);
-    Set(static_cast<MixingParameter>(i), value);
-  }
-  for ( int i = 18 ; i < 23; i++){
-    double value;
-    H5LTget_attribute_double(group_id,"massdifferences", param_label_map[i].c_str(), &value);
-    //Set(param_label_map[i], value);
-    Set(static_cast<MixingParameter>(i), value);
+
+  for( unsigned int i = 1; i < numneu; i++ ){
+    double dm2_value;
+    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
+    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
+    Set_SquareMassDifference(i, dm2_value);
   }
 
   // reading energy
@@ -1460,102 +1456,58 @@ std::shared_ptr<Body> nuSQUIDS::GetBody() const{
   return body;
 }
 
-void nuSQUIDS::Set(MixingParameter p, double val){
-  switch (p) {
-    case TH12:
-      params.SetMixingAngle(0,1,val);
-      break;
-    case TH13:
-      params.SetMixingAngle(0,2,val);
-      break;
-    case TH23:
-      params.SetMixingAngle(1,2,val);
-      break;
-    case TH14:
-      params.SetMixingAngle(0,3,val);
-      break;
-    case TH24:
-      params.SetMixingAngle(1,3,val);
-      break;
-    case TH34:
-      params.SetMixingAngle(2,3,val);
-      break;
-    case TH15:
-      params.SetMixingAngle(0,4,val);
-      break;
-    case TH25:
-      params.SetMixingAngle(1,4,val);
-      break;
-    case TH35:
-      params.SetMixingAngle(2,4,val);
-      break;
-    case TH45:
-      params.SetMixingAngle(3,4,val);
-      break;
-    case TH16:
-      params.SetMixingAngle(0,5,val);
-      break;
-    case TH26:
-      params.SetMixingAngle(1,5,val);
-      break;
-    case TH36:
-      params.SetMixingAngle(2,5,val);
-      break;
-    case TH46:
-      params.SetMixingAngle(3,5,val);
-      break;
-    case TH56:
-      params.SetMixingAngle(4,5,val);
-      break;
-    case DM21SQ:
-      params.SetEnergyDifference(1,val);
-      break;
-    case DM31SQ:
-      params.SetEnergyDifference(2,val);
-      break;
-    case DM41SQ:
-      params.SetEnergyDifference(3,val);
-      break;
-    case DM51SQ:
-      params.SetEnergyDifference(4,val);
-      break;
-    case DM61SQ:
-      params.SetEnergyDifference(5,val);
-      break;
-    case DELTA1:
-      params.SetPhase(param_label_index[DELTA1][0],param_label_index[DELTA1][1],val);
-      break;
-    case DELTA2:
-      params.SetPhase(param_label_index[DELTA2][0],param_label_index[DELTA2][1],val);
-      break;
-    case DELTA3:
-      params.SetPhase(param_label_index[DELTA3][0],param_label_index[DELTA3][1],val);
-      break;
-  }
+void nuSQUIDS::Set_MixingAngle( unsigned int i, unsigned int j, double val){
+  if ( i > numneu or j > numneu)
+    throw std::invalid_argument("nuSQUIDS::Set_MixingAngle::Error: Mixing angle index greater than number of neutrino flavors.");
+  params.SetMixingAngle(i,j,val);
+}
+
+double nuSQUIDS::Get_MixingAngle( unsigned int i, unsigned int j) const {
+  if ( i > numneu or j > numneu)
+    throw std::invalid_argument("nuSQUIDS::Set_MixingAngle::Error: Mixing angle index greater than number of neutrino flavors.");
+  return params.GetMixingAngle(i,j);
+}
+
+void nuSQUIDS::Set_CPPhase( unsigned int i, unsigned int j, double val){
+  if ( i > numneu or j > numneu)
+    throw std::invalid_argument("nuSQUIDS::Set_CPPhase::Error: CP phase index greater than number of neutrino flavors.");
+  params.SetPhase(i,j,val);
+}
+
+double nuSQUIDS::Get_CPPhase( unsigned int i, unsigned int j) const {
+  if ( i > numneu or j > numneu)
+    throw std::invalid_argument("nuSQUIDS::Set_CPPhase::Error: CP phase index greater than number of neutrino flavors.");
+  return params.GetPhase(i,j);
+}
+
+void nuSQUIDS::Set_SquareMassDifference( unsigned int i, double val){
+  if ( i > numneu )
+    throw std::invalid_argument("nuSQUIDS::Set_SquareMassDifference::Error: Inder greater than number of neutrino flavors.");
+  params.SetEnergyDifference(i,val);
+}
+
+double nuSQUIDS::Get_SquareMassDifference( unsigned int i ) const {
+  if ( i > numneu )
+    throw std::invalid_argument("nuSQUIDS::Set_SquareMassDifference::Error: Inder greater than number of neutrino flavors.");
+  return params.GetEnergyDifference(i);
 }
 
 void nuSQUIDS::Set_MixingParametersToDefault(void){
   // set parameters as in arXiv:1409.5439 NO
   // but with delta_CP = 0.0
-  Set(TH12,0.583996);
-  Set(TH13,0.148190);
-  Set(TH23,0.737324);
+  Set_MixingAngle(0,1,0.583996); // th12
+  Set_MixingAngle(0,2,0.148190); // th13
+  Set_MixingAngle(1,2,0.737324); // th23
 
-  Set(DM21SQ,7.5e-05);
-  Set(DM31SQ,0.00257);
+  Set_SquareMassDifference(1,7.5e-05); // dm^2_21
+  Set_SquareMassDifference(2,0.00257); // dm^2_31
 
-  Set(DELTA1,0.0);
+  Set_CPPhase(0,2,0.0); // delta_13 = diract cp phase
 }
 
-/*
-nuSQUIDS::~nuSQUIDS(void){
-  if (inusquids){
-    free();
-  }
-}
-*/
-
-void nuSQUIDS::Set_Basis(BASIS b){
+void nuSQUIDS::Set_Basis(Basis b){
+  if ( b == flavor )
+    throw std::runtime_error("nuSQUIDS::Set_Basis::Error: solution basis can only be nuSQUIDS::mass or nuSQUIDS::interaction.");
   basis = b;
 }
 
@@ -1754,7 +1706,7 @@ void nuSQUIDSAtm::EvolveState(void){
   }
 }
 
-void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis){
+void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, Basis basis){
   if(ini_flux.extent(0) != costh_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   if(ini_flux.extent(1) != enu_array.extent(0))
@@ -1773,7 +1725,7 @@ void nuSQUIDSAtm::Set_initial_state(marray<double,3> ini_flux, std::string basis
   iinistate = true;
 }
 
-void nuSQUIDSAtm::Set_initial_state(marray<double,4> ini_flux, std::string basis){
+void nuSQUIDSAtm::Set_initial_state(marray<double,4> ini_flux, Basis basis){
   if(ini_flux.extent(0) != costh_array.extent(0))
     throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
   unsigned int i = 0;
@@ -1831,10 +1783,34 @@ void nuSQUIDSAtm::Set_MixingParametersToDefault(){
   }
 }
 
-void nuSQUIDSAtm::Set(MixingParameter p,double v){
+void nuSQUIDSAtm::Set_MixingAngle(unsigned int i, unsigned int j,double v){
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.Set(p,v);
+    nsq.Set_MixingAngle(i,j,v);
   }
+}
+
+void nuSQUIDSAtm::Set_CPPhase(unsigned int i, unsigned int j,double v){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_CPPhase(i,j,v);
+  }
+}
+
+void nuSQUIDSAtm::Set_SquareMassDifference(unsigned int i,double v){
+  for(nuSQUIDS& nsq : nusq_array){
+    nsq.Set_SquareMassDifference(i,v);
+  }
+}
+
+double nuSQUIDSAtm::Get_MixingAngle(unsigned int i, unsigned int j) const{
+  return nusq_array[0].Get_MixingAngle(i,j);
+}
+
+double nuSQUIDSAtm::Get_CPPhase(unsigned int i, unsigned int j) const{
+  return nusq_array[0].Get_CPPhase(i,j);
+}
+
+double nuSQUIDSAtm::Get_SquareMassDifference(unsigned int i) const{
+  return nusq_array[0].Get_SquareMassDifference(i);
 }
 
 void nuSQUIDSAtm::Set_TauRegeneration(bool v){
@@ -1957,6 +1933,7 @@ void nuSQUIDSAtm::Set_abs_error(double er){
 size_t nuSQUIDSAtm::GetNumE() const{
   return enu_array.extent(0);
 }
+
 size_t nuSQUIDSAtm::GetNumCos() const{
   return costh_array.extent(0);
 }

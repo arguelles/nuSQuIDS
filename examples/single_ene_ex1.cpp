@@ -52,17 +52,14 @@ int main()
   // documentation.
 
   // mixing angles
-  nus.Set(TH12,0.563942);
-  //nus.Set("th12",0.);
-  nus.Set(TH13,0.154085);
-  //nus.Set(TH13,0.);
-  nus.Set(TH23,0.785398);
-  //nus.Set(TH23,0.);
+  nus.Set_MixingAngle(0,1,0.563942);
+  nus.Set_MixingAngle(0,2,0.154085);
+  nus.Set_MixingAngle(1,2,0.785398);
   // square mass differences
-  nus.Set(DM21SQ,7.65e-05);
-  nus.Set(DM31SQ,0.00247);
+  nus.Set_SquareMassDifference(1,7.65e-05);
+  nus.Set_SquareMassDifference(2,0.00247);
   // CP phase
-  nus.Set(DELTA1,0.0);
+  nus.Set_CPPhase(0,2,0.0);
 
   // Now we set the neutrino energy which we are interested on.
   // Energies are always given in natural units. To handle
@@ -116,7 +113,7 @@ int main()
 
   // In this case we will start with a pure nu_mu state.
   marray<double,1> ini_state({3},{0,1,0});
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
 
   // Lets print out the initial state
   std::cout << "In state" << std::endl;
@@ -168,7 +165,7 @@ int main()
   nus.Set_Track(earth_atm_track);
 
   // We reset the initial condition
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy
   nus.Set_E(5.0*nus.units.GeV);
 
@@ -210,7 +207,7 @@ int main()
 
   // Lets set the initial state to electron
   ini_state = {1,0,0};
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy some MeV
   nus.Set_E(150.0*nus.units.MeV);
 
@@ -256,15 +253,15 @@ int main()
   // Another thing we can do is change the oscillation parameters
   // lets try the following
 
-  nus.Set(TH13,0.5);
-  nus.Set(TH23,0.5);
-  nus.Set(DM31SQ,0.0247);
+  nus.Set_MixingAngle(0,2,0.5);
+  nus.Set_MixingAngle(1,2,0.5);
+  nus.Set_SquareMassDifference(2,0.0247);
 
   // Lets set the initial state to electron. Note that we have
   // to set the mixing parameters *before* we set the initial state
   // in the flavor basis.
   ini_state = {1,0,0};
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy some MeV
   nus.Set_E(10.0*nus.units.MeV);
 
@@ -320,7 +317,7 @@ int main()
 
   // Lets set the initial state to electron
   ini_state = {0,0,1};
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy some MeV
   nus.Set_E(100.0*nus.units.GeV);
 
@@ -365,7 +362,7 @@ int main()
 
   // Lets set the initial state to electron
   ini_state = {1,0,0};
-  nus.Set_initial_state(ini_state,"flavor");
+  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy some MeV
   nus.Set_E(10.0*nus.units.MeV);
 

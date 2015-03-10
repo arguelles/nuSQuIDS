@@ -54,41 +54,16 @@
 
 namespace nusquids{
 
-enum MixingParameter {
-  TH12 = 0,
-  TH13 = 1, TH23 = 2,
-  TH14 = 3, TH24 = 4, TH34 = 5,
-  TH15 = 6, TH25 = 7, TH35 = 8, TH45 = 9,
-  TH16 = 10, TH26 = 11, TH36 = 12, TH46 = 13, TH56 = 14,
-  DELTA1 = 15, DELTA2 = 16, DELTA3 = 17,
-  DM21SQ = 18, DM31SQ = 19, DM41SQ = 20, DM51SQ = 21, DM61SQ = 22
-                    };
-
-enum BASIS { mass, interaction };
-
-static std::map<int,std::string> param_label_map {
-  {0 , "th12"},
-  {1 , "th13"}, {2 , "th23"},
-  {3 , "th14"}, {4 , "th24"}, {5 , "th34"},
-  {6 , "th15"}, {7 , "th25"}, {8 , "th35"}, {9 , "th45"},
-  {10 , "th16"}, {11 , "th26"}, {12 , "th36"}, {13 , "th46"}, {14 , "th56"},
-  {15 , "delta1"} , {16, "delta2"} , {17, "delta3"},
-  {18, "dm21sq"} , {19 , "dm31sq"}, {20,"dm41sq"} ,{ 21 , "dm51sq"} , {22, "dm61sq"}
-                                     };
-
-static std::map<int,std::vector<int>> param_label_index {
-  {0 , {0,1}},
-  {1 , {0,2}}, {2 , {1,2}},
-  {3 , {0,3}}, {4 , {1,3}}, {5 , {2,3}},
-  {6 , {0,4}}, {7 , {1,4}}, {8 , {2,4}}, {9 , {3,4}},
-  {10 , {0,5}},{11 , {1,5}}, {12 , {2,5}}, {13 , {3,5}}, {14 , {4,5}},
-  {15 , {0,2}} , {16, {0,3}} , {17, {0,4}},
-  {18, {1,0}} , {19 , {2,0}}, {20,{3,0}} ,{ 21 , {4,0}} , {22, {5,0}}
-                                                    };
 enum NeutrinoType {
   neutrino=0b01,
   antineutrino=0b10,
   both=0b11
+};
+
+enum Basis {
+  mass=0b01,
+  flavor=0b10,
+  interaction=0b11
 };
 
 ///\class nuSQUIDS
@@ -103,7 +78,7 @@ class nuSQUIDS: public SQUIDS {
     /// If interaction basis is used the projectors will be evolved at
     /// every time step. On the other hand, if mass basis is used no evolution
     /// is performed.
-    BASIS basis = interaction;
+    Basis basis = interaction;
     /// \brief number of neutrino flavors.
     unsigned int numneu;
     /// \brief number of energy nodes.
@@ -523,7 +498,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,1> ini_state, std::string basis = "flavor");
+    void Set_initial_state(marray<double,1> ini_state, Basis basis = flavor);
 
     /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
     /// @param ini_state Initial neutrino state.
@@ -533,7 +508,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,2> ini_state, std::string basis = "flavor");
+    void Set_initial_state(marray<double,2> ini_state, Basis basis = flavor);
 
     /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
     /// @param ini_state Initial neutrino state.
@@ -543,7 +518,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,3> ini_state, std::string basis = "flavor");
+    void Set_initial_state(marray<double,3> ini_state, Basis basis = flavor);
 
     /// \brief Sets the body where the neutrino will propagate.
     /// @param body Body object.
@@ -644,6 +619,7 @@ class nuSQUIDS: public SQUIDS {
     /// @see AddToWriteHDF5
     /// @see ReadStateHDF5
     void WriteStateHDF5(std::string hdf5_filename,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
+
     /// \brief User function to write user defined properties from an HDF5 file.
     /// @param hdf5_loc_id HDF5 group id
     /// \details This function will be called by WriteStateHDF5() which will provide
@@ -651,6 +627,7 @@ class nuSQUIDS: public SQUIDS {
     /// @see WriteStateHDF5
     /// @see AddToReadHDF5
     virtual void AddToWriteHDF5(hid_t hdf5_loc_id) const;
+
     /// \brief Reads and constructs the object from an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// @param group Path to the group where the nuSQUIDS content will be saved.
@@ -663,6 +640,7 @@ class nuSQUIDS: public SQUIDS {
     /// @see AddToReadHDF5
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::string cross_section_grp_loc = "");
+
     /// \brief User function to read user defined properties from an HDF5 file.
     /// @param hdf5_loc_id HDF5 group id
     /// \details This function will be called by ReadStateHDF5() which will provide
@@ -671,12 +649,48 @@ class nuSQUIDS: public SQUIDS {
     /// @see AddToWriteHDF5
     virtual void AddToReadHDF5(hid_t hdf5_loc_id);
 
-    /// \brief Sets mixing parameter.
-    /// @param mp Mixing parameter
-    /// @param val Value of the parameter
-    /// \details Mixing parameters can correspond to mixing angles, CP phases, or 
-    /// square mass differences.
-    void Set(MixingParameter mp,double val);
+    /// \brief Sets the mixing angle th_ij.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Angle to use in radians.
+    /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle);
+
+    /// \brief Returns the mixing angle th_ij in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    double Get_MixingAngle(unsigned int i, unsigned int j) const;
+
+    /// \brief Sets the CP phase for the ij-rotation.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Phase to use in radians.
+    /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle);
+
+    /// \brief Returns the CP phase of the ij-rotation in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    double Get_CPPhase(unsigned int i, unsigned int j) const;
+
+    /// \brief Sets the square mass difference with respect to first mass eigenstate
+    /// @param i the (zero-based) index of the second state
+    ///              must be larger than \c 0.
+    /// @param sq Square mass difference in eV^2.
+    /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    void Set_SquareMassDifference(unsigned int i, double sq);
+
+    /// \brief Returns the square mass difference between state-i and the first mass eigenstate.
+    /// @param i the (zero-based) index of the first state
+    ///              must be larger than \c i.
+    /// \details Returns square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    double Get_SquareMassDifference(unsigned int i) const;
 
     /// \brief Sets the mixing parameters to default.
     void Set_MixingParametersToDefault();
@@ -688,7 +702,7 @@ class nuSQUIDS: public SQUIDS {
     /// basis when collective effects, defined by new
     /// interactions introduce phases that cannot be cancelled as one goes to the
     /// interaction basis.
-    void Set_Basis(BASIS basis);
+    void Set_Basis(Basis basis);
 };
 
 /**
@@ -773,7 +787,8 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,3> ini_state, std::string basis = "flavor");
+    void Set_initial_state(marray<double,3> ini_state, Basis basis = flavor);
+
     /// \brief Sets the initial state in the multiple energy mode when
     /// considering neutrinos and antineutrinos simultaneously
     /// @param ini_state Initial neutrino state.
@@ -786,7 +801,7 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,4> ini_state, std::string basis = "flavor");
+    void Set_initial_state(marray<double,4> ini_state, Basis basis = flavor);
 
     /// \brief Evolves the system.
     void EvolveState();
@@ -809,6 +824,7 @@ class nuSQUIDSAtm {
     /// \details All contents are saved to the \c root of the HDF5 file.
     /// @see ReadStateHDF5
     void WriteStateHDF5(std::string hdf5_filename) const;
+
     /// \brief Reads the object from an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// \details All contents are assumed to be saved to the \c root of the HDF5 file.
@@ -817,18 +833,58 @@ class nuSQUIDSAtm {
 
     /// \brief Sets the mixing parameters to default.
     void Set_MixingParametersToDefault();
-    /// \brief Sets mixing parameter.
-    /// @param mp Mixing parameter
-    /// @param val Value of the parameter
-    /// \details Mixing parameters can correspond to mixing angles, CP phases, or
-    /// square mass differences.
-    void Set(MixingParameter mp,double val);
+
+    /// \brief Sets the mixing angle th_ij.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Angle to use in radians.
+    /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle);
+
+    /// \brief Returns the mixing angle th_ij in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    double Get_MixingAngle(unsigned int i, unsigned int j) const;
+
+    /// \brief Sets the CP phase for the ij-rotation.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Phase to use in radians.
+    /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle);
+
+    /// \brief Returns the CP phase of the ij-rotation in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    double Get_CPPhase(unsigned int i, unsigned int j) const;
+
+    /// \brief Sets the square mass difference with respect to first mass eigenstate
+    /// @param i the (zero-based) index of the second state
+    ///              must be larger than \c 0.
+    /// @param sq Square mass difference in eV^2.
+    /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    void Set_SquareMassDifference(unsigned int i, double sq);
+
+    /// \brief Returns the square mass difference between state-i and the first mass eigenstate.
+    /// @param i the (zero-based) index of the first state
+    ///              must be larger than \c i.
+    /// \details Returns square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    double Get_SquareMassDifference(unsigned int i) const;
+
     /// \brief Sets the absolute numerical error.
     /// @param eps Error.
     void Set_abs_error(double eps);
+
     /// \brief Sets the relative numerical error.
     /// @param eps Error.
     void Set_rel_error(double eps);
+
     /// \brief Incorporated const object useful to evaluate units.
     const Const units;
 
@@ -838,10 +894,13 @@ class nuSQUIDSAtm {
 
     /// \brief Returns number of energy nodes.
     size_t GetNumE() const;
+
     /// \brief Returns number of zenith nodes.
     size_t GetNumCos() const;
+
     /// \brief Returns the energy nodes values.
     marray<double,1> GetERange() const;
+
     /// \brief Returns the cos(zenith) nodes values.
     marray<double,1> GetCosthRange() const;
 };
