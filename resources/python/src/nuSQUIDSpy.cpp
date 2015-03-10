@@ -164,7 +164,7 @@ static void wrap_ReadStateHDF5(nuSQUIDS* nusq, std::string path){
   nusq->ReadStateHDF5(path);
 }
 
-static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string neutype){
+static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, Basis neutype){
   if (! PyArray_Check(array) )
   {
     throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
@@ -192,7 +192,7 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, std::string
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
-static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, PyObject * array, std::string neutype){
+static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, PyObject * array, Basis neutype){
   if (! PyArray_Check(array) )
   {
     throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
@@ -291,35 +291,10 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
   ;
 
-  enum_<BASIS>("BASIS")
-    .value("MASS",mass)
-    .value("INTERACTION",interaction)
-  ;
-
-  enum_<MixingParameter>("MixingParameter")
-    .value("TH12",TH12)
-    .value("TH13",TH13)
-    .value("TH23",TH23)
-    .value("TH14",TH14)
-    .value("TH24",TH24)
-    .value("TH34",TH34)
-    .value("TH15",TH15)
-    .value("TH25",TH25)
-    .value("TH35",TH35)
-    .value("TH45",TH45)
-    .value("TH16",TH16)
-    .value("TH26",TH26)
-    .value("TH36",TH36)
-    .value("TH46",TH46)
-    .value("TH56",TH56)
-    .value("DELTA1",DELTA1)
-    .value("DELTA2",DELTA2)
-    .value("DELTA3",DELTA3)
-    .value("DM21SQ",DM21SQ)
-    .value("DM31SQ",DM31SQ)
-    .value("DM41SQ",DM41SQ)
-    .value("DM51SQ",DM51SQ)
-    .value("DM61SQ",DM61SQ)
+  enum_<Basis>("Basis")
+    .value("mass",mass)
+    .value("flavor",flavor)
+    .value("interaction",interaction)
   ;
 
   class_<SU_vector, boost::noncopyable,std::shared_ptr<SU_vector> >("SU_vector")
@@ -349,9 +324,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteStateHDF5",wrap_WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5)
     .def("ReadStateHDF5",wrap_ReadStateHDF5)
-//    .def("H0",&nuSQUIDS::H0)
-//    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int,double) const)&nuSQUIDS::HI)
-//    .def("HI",(SU_vector(nuSQUIDS::*)(unsigned int,unsigned int) const)&nuSQUIDS::HI)
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
     .def("EvalMass",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalMass)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalFlavor)
@@ -362,9 +334,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetERange",&nuSQUIDS::GetERange)
     .def("GetHamiltonian",&nuSQUIDS::GetHamiltonian)
     .def("GetState",&nuSQUIDS::GetState)
-//    .def("Set",(void(nuSQUIDS::*)(string,double))&nuSQUIDS::Set)
-//    .def("Set",(void(nuSQUIDS::*)(string,bool))&nuSQUIDS::Set)
-//    .def("Set",(void(nuSQUIDS::*)(string,int))&nuSQUIDS::Set)
     .def("Set_h_min",&nuSQUIDS::Set_h_min)
     .def("Set_h_max",&nuSQUIDS::Set_h_max)
     .def("Set_h",&nuSQUIDS::Set_h)
@@ -376,7 +345,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_ProgressBar",&nuSQUIDS::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDS::Set_MixingParametersToDefault)
     .def("Set_Basis",&nuSQUIDS::Set_Basis)
-    .def("Set",&nuSQUIDS::Set)
+    .def("Set_MixingAngle",&nuSQUIDS::Set_MixingAngle)
+    .def("Set_CPPhase",&nuSQUIDS::Set_CPPhase)
+    .def("Set_SquareMassDifference",&nuSQUIDS::Set_SquareMassDifference)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
@@ -390,7 +361,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvalFlavor",&nuSQUIDSAtm::EvalFlavor)
     .def("WriteStateHDF5",&nuSQUIDSAtm::WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDSAtm::ReadStateHDF5)
-    .def("Set",&nuSQUIDSAtm::Set)
+    .def("Set_MixingAngle",&nuSQUIDSAtm::Set_MixingAngle)
+    .def("Set_CPPhase",&nuSQUIDSAtm::Set_CPPhase)
+    .def("Set_SquareMassDifference",&nuSQUIDSAtm::Set_SquareMassDifference)
     .def("Set_ProgressBar",&nuSQUIDSAtm::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDSAtm::Set_MixingParametersToDefault)
     .def_readonly("units", &nuSQUIDSAtm::units)
