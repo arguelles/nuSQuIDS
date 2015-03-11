@@ -1880,7 +1880,7 @@ double nuSQUIDSAtm::EvalFlavor(unsigned int flv,double costh,double enu,unsigned
   if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
     throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
   if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
-    throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.");
+    throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.(Emin = "+std::to_string(*enu_array.begin())+",Emax = "+std::to_string(*enu_array.rbegin())+", Enu = "+std::to_string(enu)+")");
 
   std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
   // get the evolution generator

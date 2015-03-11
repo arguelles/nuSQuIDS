@@ -204,3 +204,70 @@ class ExtNuSQUIDS(injector,nsq.nuSQUIDS):
 
         return self._PrintSUVector(self.GetState(ie,rho));
 
+class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
+    """ nuSQUIDSAtm class extension """
+    def PlotFlavor(self,flavor,neutype,
+            cosmin = None, cosmax = None, enumin = None, enumax = None,
+            enu_step = 400.0, costh_step = 100.0, contour_divisions = 100, colorscale = "log",
+            fontsize = 16, fontname = "Arial", colormap = "jet" ):
+
+        if colorscale == "log":
+            get_flux = lambda costh,log_enu : np.log10(self.EvalFlavor(flavor,costh,10**log_enu,neutype))
+        else:
+            get_flux = lambda costh,log_enu : self.EvalFlavor(flavor,costh,10**log_enu,neutype)
+        vgfnumu = np.vectorize(get_flux)
+
+        erange = self.GetERange()
+        enu_min = np.log10(erange[0]+0.1)
+        enu_max = np.log10(erange[-1]-0.1)
+
+        cosrange = self.GetCosthRange()
+        costh_min = cosrange[0]
+        costh_max = cosrange[-1]
+
+        if cosmin != None:
+            costh_min = cosmin
+        if cosmax != None:
+            costh_max = cosmax
+        if enumin != None:
+            enu_min = enumin
+        if enumax != None:
+            enu_max = enumax
+
+        step_enu = (enu_max - enu_min)/enu_step
+        step_costh = (costh_max - costh_min)/costh_step
+
+        nenu = np.arange(enu_min,enu_max,step_enu)
+        ncosth = np.arange(costh_min,costh_max,step_costh)
+
+        NCOSTH, NENU = np.meshgrid(ncosth, nenu)
+        PHINUMU = vgfnumu(NCOSTH,NENU)
+
+        fig = plt.figure(figsize = (10,8))
+
+        ax = plt.subplot()
+
+
+        plt.ylim(enu_min,enu_max)
+        plt.xlim(costh_min,costh_max)
+
+        color_map = plt.get_cmap(colormap)
+
+        plt.contourf(NCOSTH,NENU,PHINUMU,contour_divisions, cmap = color_map)
+
+        plt.xlabel(r"$\cos\ \theta_z$", fontsize = fontsize, fontname = fontname)
+        plt.ylabel(r"$\mathrm{log}_{10}(E/\mathrm{GeV})$", fontsize = fontsize, fontname = fontname)
+
+        cbar = plt.colorbar(cmap = color_map)
+        if colorscale == "log":
+            cbar.set_label(r"${\rm log}_{10}({\rm Weight})$",fontsize = fontsize, fontname = fontname)
+        else:
+            cbar.set_label(r"{\rm Weight}", fontsize = fontsize, fontname = fontname)
+
+        for label in (ax.get_xticklabels() + ax.get_yticklabels() + \
+                      cbar.ax.get_yticklabels() + cbar.ax.get_xticklabels()):
+            label.set_fontname(fontname)
+            label.set_fontsize(fontsize)
+        #return fig
+        #plt.close()
+
