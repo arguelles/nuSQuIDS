@@ -33,7 +33,7 @@ double NeutrinoDISCrossSectionsFromTables::LinInter(double x,double xM, double x
 double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
                            NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
-  if (flavor == sterile)
+  if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
   if ( Enu < Emin or Enu > Emax )
@@ -49,7 +49,7 @@ quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(Enu/GeV) + " [
 
 double NeutrinoDISCrossSectionsFromTables::DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
-  if (flavor == sterile )
+  if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
   if ( E1 < Emin or E1 > Emax )
