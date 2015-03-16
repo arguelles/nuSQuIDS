@@ -1623,10 +1623,24 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_di
                          double energy_min,double energy_max,unsigned int energy_div,
                          unsigned int numneu, NeutrinoType NT,
                          bool elogscale,bool iinteraction,
-                         std::shared_ptr<NeutrinoCrossSections> ncs){
+                         std::shared_ptr<NeutrinoCrossSections> ncs):
+nuSQUIDSAtm(linspace(costh_min,costh_max,costh_div-1),
+    energy_min,energy_max,energy_div,
+    numneu,NT,
+    elogscale,iinteraction,
+    ncs)
+{}
 
-  nusq_array = std::vector<nuSQUIDS>(costh_div);
-  costh_array = linspace(costh_min,costh_max,costh_div-1);
+nuSQUIDSAtm::nuSQUIDSAtm(marray<double,1> costh_array,
+                         double energy_min,double energy_max,unsigned int energy_div,
+                         unsigned int numneu, NeutrinoType NT,
+                         bool elogscale,bool iinteraction,
+                         std::shared_ptr<NeutrinoCrossSections> ncs):
+costh_array(costh_array)
+{
+
+  nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
+
   if(elogscale){
     enu_array = logspace(energy_min,energy_max,energy_div-1);
   }

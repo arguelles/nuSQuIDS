@@ -760,6 +760,22 @@ class nuSQUIDSAtm {
                 bool elogscale = true, bool iinteraction = false,
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr);
 
+    /// \brief Basic constructor.
+    /// @param costh_array One dimensional array containing zenith angles to be calculated.
+    /// @param energy_min Minimum neutrino energy value [Gev].
+    /// @param energy_max Maximum neutrino energy value [GeV].
+    /// @param energy_div Number of energy divisions.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    nuSQUIDSAtm(marray<double,1> costh_array,
+                double energy_min,double energy_max,unsigned int energy_div,
+                unsigned int numneu,NeutrinoType NT = both,
+                bool elogscale = true, bool iinteraction = false,
+                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr);
+
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
