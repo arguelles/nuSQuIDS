@@ -652,9 +652,9 @@ void nuSQUIDS::Set_initial_state(marray<double,2> v, Basis basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != ne )
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.("+std::to_string(v.extent(0))+"!="+std::to_string(ne)+")");
   if( v.extent(1) != numneu)
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.("+std::to_string(v.extent(1))+"!="+std::to_string(numneu)+")");
   if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT == both )

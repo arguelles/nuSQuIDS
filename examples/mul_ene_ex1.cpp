@@ -37,7 +37,8 @@ using namespace nusquids;
 
 int main()
 {
-  nuSQUIDS nus(1.,1.e2,200,4,neutrino,true,false);
+  const unsigned int numneu = 4;
+  nuSQUIDS nus(1.,1.e2,200,numneu,neutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -67,10 +68,10 @@ int main()
   // construct the initial state
   marray<double,1> E_range = nus.GetERange();
 
-  marray<double,2> inistate{E_range.size(),3};
+  marray<double,2> inistate{E_range.size(),numneu};
   double N0 = 1.0e18;
   for ( int i = 0 ; i < inistate.extent(0); i++){
-      for ( int k = 0; k < 3; k ++){
+      for ( int k = 0; k < inistate.extent(1); k ++){
         // initialze muon state
         inistate[i][k] = (k == 1) ? N0*pow(E_range[i],-2) : 0.0;
       }
