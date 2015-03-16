@@ -1622,7 +1622,8 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
 nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
                          double energy_min,double energy_max,unsigned int energy_div,
                          unsigned int numneu, NeutrinoType NT,
-                         bool elogscale,bool iinteraction){
+                         bool elogscale,bool iinteraction,
+                         std::shared_ptr<NeutrinoCrossSections> ncs){
 
   nusq_array = std::vector<nuSQUIDS>(costh_div);
   costh_array = linspace(costh_min,costh_max,costh_div-1);
@@ -1638,12 +1639,12 @@ nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_di
   earth_atm = std::make_shared<EarthAtm>();
   for(double costh : costh_array)
     track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
-
-  ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
+  if (ncs == nullptr)
+    ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
 
   unsigned int i = 0;
   for(nuSQUIDS& nsq : nusq_array){
-    nsq.Init(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
+    nsq = nuSQUIDS(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
     nsq.Set_Body(earth_atm);
     nsq.Set_Track(track_array[i]);
     i++;

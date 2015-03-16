@@ -757,7 +757,8 @@ class nuSQUIDSAtm {
     nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
                 double energy_min,double energy_max,unsigned int energy_div,
                 unsigned int numneu,NeutrinoType NT = both,
-                bool elogscale = true, bool iinteraction = false);
+                bool elogscale = true, bool iinteraction = false,
+                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr);
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
