@@ -44,7 +44,7 @@ int main(int argc,  char** argv)
 
   std::string filename = (std::string) argv[1];
 
-  nuSQUIDSAtm nus_atm(filename);
+  nuSQUIDSAtm<> nus_atm(filename);
 
   double costh = -0.9;
   int nu_e = 0;

@@ -1619,6 +1619,8 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
 //==================================================================
 //==================================================================
 //==================================================================
+
+/*
 nuSQUIDSAtm::nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
                          double energy_min,double energy_max,unsigned int energy_div,
                          unsigned int numneu, NeutrinoType NT,
@@ -1967,5 +1969,6 @@ marray<double,1> nuSQUIDSAtm::GetERange() const{
 marray<double,1> nuSQUIDSAtm::GetCosthRange() const{
   return costh_array;
 }
+*/
 
 } // close namespace

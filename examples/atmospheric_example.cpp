@@ -40,7 +40,7 @@ int main()
 {
   unsigned int numneu = 3;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm nus_atm(-1.,0.2,20,5.e2,1.e6,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,0.2,20,5.e2,1.e6,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;

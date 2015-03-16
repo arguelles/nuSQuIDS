@@ -71,6 +71,7 @@ enum Basis {
 class nuSQUIDS: public SQUIDS {
   // nuSQUIDSAtm is a friend class so it can use H0 to evolve operators
   // and thus evaluate expectation values.
+  template<typename,typename>
   friend class nuSQUIDSAtm;
   protected:
     /// \brief Sets the basis in which the problem will be solved.
@@ -711,13 +712,17 @@ class nuSQUIDS: public SQUIDS {
  * where a collection of trayectories is explored.
  */
 
-//template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>>::type >
+template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
 class nuSQUIDSAtm {
+  public:
+    using BaseSQUIDS = BaseType;
   private:
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Bilinear interpolator.
-    double LinInter(double,double,double,double,double) const;
+    double LinInter(double x,double xM, double xP, double yM, double yP) const {
+      return yM + (yP-yM)*(x-xM)/(xP-xM);
+    }
     /// \brief Boolean that signals that an initial state has being set.
     bool iinistate;
     /// \brief Boolean that signals the object correct initialization.
@@ -729,7 +734,7 @@ class nuSQUIDSAtm {
     /// \brief Contains the log of energy nodes.
     marray<double,1> log_enu_array;
     /// \brief Contains the nuSQUIDS objects for each zenith.
-    std::vector<nuSQUIDS> nusq_array;
+    std::vector<BaseSQUIDS> nusq_array;
 
     /// \brief Contains the Earth in atmospheric configuration.
     std::shared_ptr<EarthAtm> earth_atm;
@@ -758,7 +763,13 @@ class nuSQUIDSAtm {
                 double energy_min,double energy_max,unsigned int energy_div,
                 unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false,
-                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr);
+                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    nuSQUIDSAtm(linspace(costh_min,costh_max,costh_div-1),
+        energy_min,energy_max,energy_div,
+        numneu,NT,
+        elogscale,iinteraction,
+        ncs)
+    {}
 
     /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
@@ -774,7 +785,37 @@ class nuSQUIDSAtm {
                 double energy_min,double energy_max,unsigned int energy_div,
                 unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false,
-                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr);
+                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    costh_array(costh_array)
+    {
+
+      nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
+
+      if(elogscale){
+        enu_array = logspace(energy_min,energy_max,energy_div-1);
+      }
+      else{
+        enu_array = linspace(energy_min,energy_max,energy_div-1);
+      }
+      log_enu_array.resize(0,enu_array.size());
+      std::transform(enu_array.begin(),enu_array.end(),log_enu_array.begin(),[](int enu){ return log(enu);});
+
+      earth_atm = std::make_shared<EarthAtm>();
+      for(double costh : costh_array)
+        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
+      if (ncs == nullptr)
+        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
+
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq = nuSQUIDS(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
+        nsq.Set_Body(earth_atm);
+        nsq.Set_Track(track_array[i]);
+        i++;
+      }
+
+      inusquidsatm = true;
+    }
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
@@ -784,12 +825,43 @@ class nuSQUIDSAtm {
     nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);}
 
     /// \brief Move constructor.
-    nuSQUIDSAtm(nuSQUIDSAtm&&);
+    nuSQUIDSAtm(nuSQUIDSAtm&& other):
+    progressbar(other.progressbar),
+    iinistate(other.iinistate),
+    inusquidsatm(other.inusquidsatm),
+    costh_array(std::move(other.costh_array)),
+    enu_array(std::move(other.enu_array)),
+    log_enu_array(std::move(other.log_enu_array)),
+    nusq_array(std::move(other.nusq_array)),
+    earth_atm(std::move(other.earth_atm)),
+    track_array(std::move(other.track_array)),
+    ncs(std::move(other.ncs))
+    {
+      other.inusquidsatm = false;
+    }
 
     //***************************************************************
     ///\brief Move assigns a nuSQUIDSAtm object from an existing object
-    nuSQUIDSAtm& operator=(nuSQUIDSAtm&&);
+    nuSQUIDSAtm& operator=(nuSQUIDSAtm&& other){
+      if(&other==this)
+        return(*this);
 
+      progressbar = other.progressbar;
+      iinistate = other.iinistate;
+      inusquidsatm = other.inusquidsatm;
+      costh_array = std::move(other.costh_array);
+      enu_array = std::move(other.enu_array);
+      log_enu_array = std::move(other.log_enu_array);
+      nusq_array = std::move(other.nusq_array);
+      earth_atm = std::move(other.earth_atm);
+      track_array = std::move(other.track_array);
+      ncs = std::move(other.ncs);
+
+      // initial nusquids object render useless
+      other.inusquidsatm = false;
+
+      return(*this);
+    }
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
     *************************************************************************************/
@@ -804,7 +876,24 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,3> ini_state, Basis basis = flavor);
+    void Set_initial_state(marray<double,3> ini_flux, Basis basis){
+      if(ini_flux.extent(0) != costh_array.extent(0))
+        throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+      if(ini_flux.extent(1) != enu_array.extent(0))
+        throw std::runtime_error("nuSQUIDSAtm::Error::Second dimension of input array is incorrect.");
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+        marray<double,2> slice{ini_flux.extent(1),ini_flux.extent(2)};
+        for(size_t j=0; j<ini_flux.extent(1); j++){
+          for(size_t k=0; k<ini_flux.extent(2); k++)
+            slice[j][k]=ini_flux[i][j][k];
+        }
+        nsq.Set_initial_state(slice,basis);
+        //nsq.Set_initial_state(ini_flux[i],basis);
+        i++;
+      }
+      iinistate = true;
+    }
 
     /// \brief Sets the initial state in the multiple energy mode when
     /// considering neutrinos and antineutrinos simultaneously
@@ -818,13 +907,52 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,4> ini_state, Basis basis = flavor);
+    void Set_initial_state(marray<double,4> ini_flux, Basis basis){
+      if(ini_flux.extent(0) != costh_array.extent(0))
+        throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+        marray<double,3> slice{ini_flux.extent(1),ini_flux.extent(2),ini_flux.extent(3)};
+        for(size_t j=0; j<ini_flux.extent(1); j++){
+          for(size_t k=0; k<ini_flux.extent(2); k++){
+            for(size_t m=0; m<ini_flux.extent(3); m++)
+            slice[j][k][m]=ini_flux[i][j][k][m];
+          }
+        }
+
+        nsq.Set_initial_state(slice,basis);
+        //nsq.Set_initial_state(ini_flux[i],basis);
+        i++;
+      }
+      iinistate = true;
+    }
 
     /// \brief Evolves the system.
-    void EvolveState();
+    void EvolveState(){
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+      if(not inusquidsatm)
+        throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+      if(progressbar){
+        std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
+        i++;
+      }
+      nsq.EvolveState();
+      if(progressbar){
+        std::cout << std::endl;
+      }
+      }
+    }
+
     /// \brief Toggles tau regeneration on and off.
     /// @param opt If \c true tau regeneration will be considered.
-    void Set_TauRegeneration(bool opt);
+    void Set_TauRegeneration(bool opt){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_TauRegeneration(opt);
+      }
+    }
 
     /// \brief Returns the flavor composition at a given energy and zenith.
     /// @param flv Neutrino flavor.
@@ -834,22 +962,145 @@ class nuSQUIDSAtm {
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
     /// is done in the logarithm of the energy and cos(zenith).
-    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0) const;
+    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0) const {
+      // here the energy enters in GeV
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+      if(not inusquidsatm)
+        throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+
+      if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
+      if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.(Emin = "+std::to_string(*enu_array.begin())+",Emax = "+std::to_string(*enu_array.rbegin())+", Enu = "+std::to_string(enu)+")");
+
+      std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
+      // get the evolution generator
+      SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      // get the evolved projector for the right distance and energy
+      SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
+
+      int cth_M = -1;
+      for(int i = 0; i < costh_array.extent(0); i++){
+        if ( costh >= costh_array[i] and costh <= costh_array[i+1] ) {
+          cth_M = i;
+          break;
+        }
+      }
+
+      int loge_M = -1;
+      double logE = log(enu);
+      for(int i = 0; i < log_enu_array.extent(0); i++){
+        if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
+          loge_M = i;
+          break;
+        }
+      }
+
+      //std::cout << cth_M << " " << loge_M << std::endl;
+
+      double phiMM,phiMP,phiPM,phiPP;
+      phiMM = nusq_array[cth_M].GetState(loge_M,rho)*evol_proj;
+      phiMP = nusq_array[cth_M].GetState(loge_M+1,rho)*evol_proj;
+      phiPM = nusq_array[cth_M+1].GetState(loge_M,rho)*evol_proj;
+      phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho)*evol_proj;
+
+      return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
+            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
+            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
+    }
 
     /// \brief Writes the object into an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 into which save the object.
     /// \details All contents are saved to the \c root of the HDF5 file.
     /// @see ReadStateHDF5
-    void WriteStateHDF5(std::string hdf5_filename) const;
+    void WriteStateHDF5(std::string filename) const{
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+      if(not inusquidsatm)
+        throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+
+      hid_t file_id,root_id;
+      hid_t dset_id;
+      // create HDF5 file
+      file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      if (file_id < 0)
+          throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + filename + ".");
+      root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+
+      // write the zenith range
+      hsize_t costhdims[1]={costh_array.extent(0)};
+      dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.get_data());
+      hsize_t energydims[1]={enu_array.extent(0)};
+      dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.get_data());
+
+      H5Gclose (root_id);
+      H5Fclose (file_id);
+
+      unsigned int i = 0;
+      for(const nuSQUIDS& nsq : nusq_array){
+        // use only the first one to write the cross sections on /crosssections
+        nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
+        i++;
+      }
+    }
 
     /// \brief Reads the object from an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// \details All contents are assumed to be saved to the \c root of the HDF5 file.
     /// @see WriteStateHDF5
-    void ReadStateHDF5(std::string hdf5_filename);
+    void ReadStateHDF5(std::string hdf5_filename){
+      hid_t file_id,group_id,root_id;
+      // create HDF5 file
+      file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+      group_id = root_id;
+
+      // read the zenith range dimension
+      hsize_t costhdims[1];
+      H5LTget_dataset_info(group_id, "zenith_angles", costhdims, NULL, NULL);
+
+      double data[costhdims[0]];
+      H5LTread_dataset_double(group_id, "zenith_angles", data);
+      costh_array.resize(std::vector<size_t> {costhdims[0]});
+      for (unsigned int i = 0; i < costhdims[0]; i ++)
+        costh_array[i] = data[i];
+
+      hsize_t energydims[1];
+      H5LTget_dataset_info(group_id, "energy_range", energydims, NULL, NULL);
+
+      double enu_data[energydims[0]];
+      H5LTread_dataset_double(group_id, "energy_range", enu_data);
+      enu_array.resize(std::vector<size_t>{energydims[0]});log_enu_array.resize(std::vector<size_t>{energydims[0]});
+      for (unsigned int i = 0; i < energydims[0]; i ++){
+        enu_array[i] = enu_data[i];
+        log_enu_array[i] = log(enu_data[i]);
+      }
+
+      H5Gclose(root_id);
+      H5Fclose(file_id);
+
+      // resize apropiately the nuSQUIDSAtm container vector
+      nusq_array.clear();
+      nusq_array = std::vector<nuSQUIDS>(costhdims[0]);
+
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+        // read the cross sections stored in /crosssections
+        nsq.ReadStateHDF5(hdf5_filename,"costh_"+std::to_string(costh_array[i]),"crosssections");
+        i++;
+      }
+
+      iinistate = true;
+      inusquidsatm = true;
+    }
 
     /// \brief Sets the mixing parameters to default.
-    void Set_MixingParametersToDefault();
+    void Set_MixingParametersToDefault(){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_MixingParametersToDefault();
+      }
+    }
 
     /// \brief Sets the mixing angle th_ij.
     /// @param i the (zero-based) index of the first state
@@ -857,14 +1108,20 @@ class nuSQUIDSAtm {
     ///              must be larger than \c i.
     /// @param angle Angle to use in radians.
     /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
-    void Set_MixingAngle(unsigned int i, unsigned int j,double angle);
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_MixingAngle(i,j,angle);
+      }
+    }
 
     /// \brief Returns the mixing angle th_ij in radians.
     /// @param i the (zero-based) index of the first state
     /// @param j the (zero-based) index of the second state
     ///              must be larger than \c i.
     /// \details Gets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
-    double Get_MixingAngle(unsigned int i, unsigned int j) const;
+    double Get_MixingAngle(unsigned int i, unsigned int j) const{
+      return nusq_array[0].Get_MixingAngle(i,j);
+    }
 
     /// \brief Sets the CP phase for the ij-rotation.
     /// @param i the (zero-based) index of the first state
@@ -872,54 +1129,86 @@ class nuSQUIDSAtm {
     ///              must be larger than \c i.
     /// @param angle Phase to use in radians.
     /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
-    void Set_CPPhase(unsigned int i, unsigned int j,double angle);
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_CPPhase(i,j,angle);
+      }
+    }
 
     /// \brief Returns the CP phase of the ij-rotation in radians.
     /// @param i the (zero-based) index of the first state
     /// @param j the (zero-based) index of the second state
     ///              must be larger than \c i.
     /// \details Gets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
-    double Get_CPPhase(unsigned int i, unsigned int j) const;
+    double Get_CPPhase(unsigned int i, unsigned int j) const{
+      return nusq_array[0].Get_CPPhase(i,j);
+    }
 
     /// \brief Sets the square mass difference with respect to first mass eigenstate
     /// @param i the (zero-based) index of the second state
     ///              must be larger than \c 0.
     /// @param sq Square mass difference in eV^2.
     /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
-    void Set_SquareMassDifference(unsigned int i, double sq);
+    void Set_SquareMassDifference(unsigned int i,double sq){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_SquareMassDifference(i,sq);
+      }
+    }
 
     /// \brief Returns the square mass difference between state-i and the first mass eigenstate.
     /// @param i the (zero-based) index of the first state
     ///              must be larger than \c i.
     /// \details Returns square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
-    double Get_SquareMassDifference(unsigned int i) const;
+    double Get_SquareMassDifference(unsigned int i) const{
+      return nusq_array[0].Get_SquareMassDifference(i);
+    }
 
     /// \brief Sets the absolute numerical error.
     /// @param eps Error.
-    void Set_abs_error(double eps);
+    void Set_abs_error(double eps){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_abs_error(eps);
+      }
+    }
 
     /// \brief Sets the relative numerical error.
     /// @param eps Error.
-    void Set_rel_error(double eps);
+    void Set_rel_error(double eps){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_rel_error(eps);
+      }
+    }
 
     /// \brief Incorporated const object useful to evaluate units.
     const Const units;
 
     /// \brief Toggles the progress bar printing on and off
     /// @param opt If \c true a progress bar will be printed.
-    void Set_ProgressBar(bool opt);
+    void Set_ProgressBar(bool opt){
+        progressbar = opt;
+        for(nuSQUIDS& nsq : nusq_array){
+          nsq.Set_ProgressBar(opt);
+        }
+    }
 
     /// \brief Returns number of energy nodes.
-    size_t GetNumE() const;
+    size_t GetNumE() const{
+      return enu_array.extent(0);
+    }
 
     /// \brief Returns number of zenith nodes.
-    size_t GetNumCos() const;
+    size_t GetNumCos() const{
+      return costh_array.extent(0);
+    }
 
     /// \brief Returns the energy nodes values.
-    marray<double,1> GetERange() const;
-
+    marray<double,1> GetERange() const{
+      return enu_array;
+    }
     /// \brief Returns the cos(zenith) nodes values.
-    marray<double,1> GetCosthRange() const;
+    marray<double,1> GetCosthRange() const{
+      return costh_array;
+    }
 };
 
 

@@ -192,7 +192,7 @@ static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, Basis neuty
     throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
-static void wrap_Set_initial_state_atm(nuSQUIDSAtm* nusq_atm, PyObject * array, Basis neutype){
+static void wrap_Set_initial_state_atm(nuSQUIDSAtm<>* nusq_atm, PyObject * array, Basis neutype){
   if (! PyArray_Check(array) )
   {
     throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
@@ -354,26 +354,26 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("units", &nuSQUIDS::units)
   ;
 
-  class_<nuSQUIDSAtm, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
+  class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
     .def(init<std::string>())
-    .def("EvolveState",&nuSQUIDSAtm::EvolveState)
-    .def("Set_TauRegeneration",&nuSQUIDSAtm::Set_TauRegeneration)
-    .def("EvalFlavor",&nuSQUIDSAtm::EvalFlavor)
-    .def("WriteStateHDF5",&nuSQUIDSAtm::WriteStateHDF5)
-    .def("ReadStateHDF5",&nuSQUIDSAtm::ReadStateHDF5)
-    .def("Set_MixingAngle",&nuSQUIDSAtm::Set_MixingAngle)
-    .def("Set_CPPhase",&nuSQUIDSAtm::Set_CPPhase)
-    .def("Set_SquareMassDifference",&nuSQUIDSAtm::Set_SquareMassDifference)
-    .def("Set_ProgressBar",&nuSQUIDSAtm::Set_ProgressBar)
-    .def("Set_MixingParametersToDefault",&nuSQUIDSAtm::Set_MixingParametersToDefault)
-    .def_readonly("units", &nuSQUIDSAtm::units)
-    .def("Set_rel_error",&nuSQUIDSAtm::Set_rel_error)
-    .def("Set_abs_error",&nuSQUIDSAtm::Set_abs_error)
-    .def("GetNumE",&nuSQUIDSAtm::GetNumE)
-    .def("GetNumCos",&nuSQUIDSAtm::GetNumCos)
+    .def("EvolveState",&nuSQUIDSAtm<>::EvolveState)
+    .def("Set_TauRegeneration",&nuSQUIDSAtm<>::Set_TauRegeneration)
+    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
+    .def("WriteStateHDF5",&nuSQUIDSAtm<>::WriteStateHDF5)
+    .def("ReadStateHDF5",&nuSQUIDSAtm<>::ReadStateHDF5)
+    .def("Set_MixingAngle",&nuSQUIDSAtm<>::Set_MixingAngle)
+    .def("Set_CPPhase",&nuSQUIDSAtm<>::Set_CPPhase)
+    .def("Set_SquareMassDifference",&nuSQUIDSAtm<>::Set_SquareMassDifference)
+    .def("Set_ProgressBar",&nuSQUIDSAtm<>::Set_ProgressBar)
+    .def("Set_MixingParametersToDefault",&nuSQUIDSAtm<>::Set_MixingParametersToDefault)
+    .def_readonly("units", &nuSQUIDSAtm<>::units)
+    .def("Set_rel_error",&nuSQUIDSAtm<>::Set_rel_error)
+    .def("Set_abs_error",&nuSQUIDSAtm<>::Set_abs_error)
+    .def("GetNumE",&nuSQUIDSAtm<>::GetNumE)
+    .def("GetNumCos",&nuSQUIDSAtm<>::GetNumCos)
     .def("Set_initial_state",wrap_Set_initial_state_atm)
-    .def("GetERange",&nuSQUIDSAtm::GetERange)
-    .def("GetCosthRange",&nuSQUIDSAtm::GetCosthRange)
+    .def("GetERange",&nuSQUIDSAtm<>::GetERange)
+    .def("GetCosthRange",&nuSQUIDSAtm<>::GetCosthRange)
   ;
 
 
