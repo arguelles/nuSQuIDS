@@ -67,18 +67,29 @@ quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(E1/GeV) + " [G
   size_t loge_M1 = static_cast<size_t>((logE1-logE_data_range[0])/dlogE);
   size_t loge_M2 = static_cast<size_t>((logE2-logE_data_range[0])/dlogE);
 
-  if ( (loge_M2 > div +1) or (loge_M1 > div+1))
+  if ( (loge_M2 > div-1) or (loge_M1 > div-1) or (loge_M1 == loge_M2))
     return 0.0;
 
+  std::cout << E1 << " " << E2 << " " << loge_M1 << " " << loge_M2 << " " << div << std::endl;
   double phiMM,phiMP,phiPM,phiPP;
   if (current == CC){
     phiMM = dsde_CC_data[loge_M1][loge_M2][neutype][flavor];
     phiMP = dsde_CC_data[loge_M1][loge_M2+1][neutype][flavor];
+    if ( loge_M1 == div-1 ){
+      // we are at the boundary, cannot bilinearly interpolate
+      return LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],
+          phiMM,phiMP);
+    }
     phiPM = dsde_CC_data[loge_M1+1][loge_M2][neutype][flavor];
     phiPP = dsde_CC_data[loge_M1+1][loge_M2+1][neutype][flavor];
   } else if (current == NC){
     phiMM = dsde_NC_data[loge_M1][loge_M2][neutype][flavor];
     phiMP = dsde_NC_data[loge_M1][loge_M2+1][neutype][flavor];
+    if ( loge_M1 == div-1 ){
+      // we are at the boundary, cannot bilinearly interpolate
+      return LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],
+          phiMM,phiMP);
+    }
     phiPM = dsde_NC_data[loge_M1+1][loge_M2][neutype][flavor];
     phiPP = dsde_NC_data[loge_M1+1][loge_M2+1][neutype][flavor];
   } else
