@@ -1179,6 +1179,14 @@ class nuSQUIDSAtm {
       }
     }
 
+    /// \brief Sets the GSL solver
+    /// @param opt GSL stepper function.
+    void Set_rel_error(gsl_odeiv2_step_type const * opt){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_GSL_step(opt);
+      }
+    }
+
     /// \brief Incorporated const object useful to evaluate units.
     const Const units;
 
@@ -1209,6 +1217,7 @@ class nuSQUIDSAtm {
     marray<double,1> GetCosthRange() const{
       return costh_array;
     }
+
 };
 
 
