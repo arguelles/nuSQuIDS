@@ -70,7 +70,7 @@ quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(E1/GeV) + " [G
   if ( (loge_M2 > div-1) or (loge_M1 > div-1) or (loge_M1 == loge_M2))
     return 0.0;
 
-  std::cout << E1 << " " << E2 << " " << loge_M1 << " " << loge_M2 << " " << div << std::endl;
+  //std::cout << E1 << " " << E2 << " " << loge_M1 << " " << loge_M2 << " " << div << std::endl;
   double phiMM,phiMP,phiPM,phiPP;
   if (current == CC){
     phiMM = dsde_CC_data[loge_M1][loge_M2][neutype][flavor];
