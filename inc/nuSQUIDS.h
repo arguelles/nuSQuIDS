@@ -1181,7 +1181,7 @@ class nuSQUIDSAtm {
 
     /// \brief Sets the GSL solver
     /// @param opt GSL stepper function.
-    void Set_rel_error(gsl_odeiv2_step_type const * opt){
+    void Set_GSL_step(gsl_odeiv2_step_type const * opt){
       for(nuSQUIDS& nsq : nusq_array){
         nsq.Set_GSL_step(opt);
       }
