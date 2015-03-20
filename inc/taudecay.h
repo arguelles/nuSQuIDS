@@ -25,6 +25,7 @@
 #ifndef __TAUDECAY_H
 #define __TAUDECAY_H
 
+#include "version.h"
 #include "tools.h"
 #include <string>
 #include <cmath>

@@ -40,7 +40,14 @@ function find_package(){
 }
 
 PREFIX=/usr/local
-VERSION=1.0.0
+
+VERSION_NUM=100000
+VERSION=`echo $VERSION_NUM | awk '{
+	major = int($1/100000);
+	minor = ($1/100)%1000;
+	patch = $1%100;
+	print major"."minor"."patch;
+}'`
 
 OS_NAME=`uname -s`
 
@@ -135,7 +142,7 @@ if [ "$GSL_INCDIR" -a "$GSL_LIBDIR" ]; then
 	fi
 fi
 
-find_package gsl 1.14
+find_package gsl 1.15
 
 if [ "$HDF5_INCDIR" -a "$HDF5_LIBDIR" ]; then
 	echo "Checking manually specified HDF5..."
@@ -167,7 +174,7 @@ if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
 	fi
 fi
 
-find_package squids 1.0
+find_package squids 1.2
 
 if [ ! -d ./lib/ ]; then
     mkdir lib;
@@ -185,10 +192,15 @@ URL: https://github.com/arguelles/nuSQuIDS' >> nusquids.pc
 echo "Version: $VERSION" >> nusquids.pc
 echo 'Requires: gsl >= 1.15
 Requires: hdf5 >= 1.8
-Requires: squids >= 1.0
+Requires: squids >= 1.2.0
 Libs: -L${libdir} -lnuSQuIDS
 Cflags: -I${includedir}
 ' >> nusquids.pc
+
+echo "Generating version header..."
+sed -e "s|__NUSQUIDS_VERSION__|$VERSION_NUM|g" \
+    -e "s|__NUSQUIDS_VERSION_STR__|$VERSION|g" \
+    < resources/version.h.in > inc/version.h
 
 echo "Generating makefile..."
 echo "# Compiler

@@ -29,6 +29,7 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
+#include "version.h"
 #include <string>
 #include <math.h>
 #include <cmath>

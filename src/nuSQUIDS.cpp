@@ -995,6 +995,16 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   double auxt_ini = Get_t_initial();
   H5LTset_attribute_double(group_id, "basic", "squids_time_initial", &auxt_ini,1);
 
+  // version numbers
+  H5LTset_attribute_string(group_id, "basic", "squids_version", SQUIDS_VERSION_STR);
+  unsigned int squids_version = SQUIDS_VERSION;
+  H5LTset_attribute_uint(group_id, "basic", "squids_version_number", &squids_version,1);
+
+  H5LTset_attribute_string(group_id, "basic", "nusquids_version", NUSQUIDS_VERSION_STR);
+  unsigned int nusquids_version = NUSQUIDS_VERSION;
+  H5LTset_attribute_uint(group_id, "basic", "nusquids_version_number", &nusquids_version,1);
+
+  // set mixing angles
   for( unsigned int i = 0; i < numneu; i++ ){
     for( unsigned int j = i+1; j < numneu; j++ ){
       std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
@@ -1229,6 +1239,20 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
   double squids_time_initial;
   H5LTget_attribute_double(group_id, "basic", "squids_time_initial", &squids_time_initial);
+
+  // check version numbers
+  unsigned int squids_version;
+  H5LTget_attribute_uint(group_id, "basic", "squids_version_number", &squids_version);
+
+  if ( squids_version > SQUIDS_VERSION )
+    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using SQuIDS version " +
+        std::to_string(squids_version) + " current version is " + std::to_string(SQUIDS_VERSION));
+
+  unsigned int nusquids_version;
+  H5LTget_attribute_uint(group_id, "basic", "nusquids_version_number", &nusquids_version);
+  if ( nusquids_version > NUSQUIDS_VERSION )
+    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using nuSQuIDS version " +
+        std::to_string(nusquids_version) + " current version is " + std::to_string(NUSQUIDS_VERSION));
 
   // read and set mixing parameters
   for( unsigned int i = 0; i < numneu; i++ ){

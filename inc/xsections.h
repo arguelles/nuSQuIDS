@@ -25,6 +25,7 @@
 #ifndef __XSECTIONS_H
 #define __XSECTIONS_H
 
+#include "version.h"
 #include "tools.h"
 #include "marray.h"
 #include "global.h"
