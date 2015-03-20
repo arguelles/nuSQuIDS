@@ -263,6 +263,8 @@ class nuSQUIDS: public SQUIDS {
     int progressbar_count = 0;
     /// \brief Number of steps upon which the progress bar will be updated.
     int progressbar_loop = 100;
+    /// \brief Time offset between SQuIDS time and Track(x).
+    double time_offset;
   protected:
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
@@ -375,7 +377,7 @@ class nuSQUIDS: public SQUIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); }
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp);}
 
     //***************************************************************
     virtual ~nuSQUIDS();
@@ -499,7 +501,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,1> ini_state, Basis basis = flavor);
+    void Set_initial_state(const marray<double,1>& ini_state, Basis basis = flavor);
 
     /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
     /// @param ini_state Initial neutrino state.
@@ -509,7 +511,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,2> ini_state, Basis basis = flavor);
+    void Set_initial_state(const marray<double,2>& ini_state, Basis basis = flavor);
 
     /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
     /// @param ini_state Initial neutrino state.
@@ -519,7 +521,7 @@ class nuSQUIDS: public SQUIDS {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,3> ini_state, Basis basis = flavor);
+    void Set_initial_state(const marray<double,3>& ini_state, Basis basis = flavor);
 
     /// \brief Sets the body where the neutrino will propagate.
     /// @param body Body object.
@@ -592,8 +594,8 @@ class nuSQUIDS: public SQUIDS {
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const;
 
-    /// \brief Return the Hamiltonian.
-    SU_vector GetHamiltonian(std::shared_ptr<Track> track, unsigned int ei, unsigned int rho = 0);
+    /// \brief Return the Hamiltonian at the current time
+    SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
     SU_vector GetState(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the flavor projector
@@ -798,7 +800,8 @@ class nuSQUIDSAtm {
         enu_array = linspace(energy_min,energy_max,energy_div-1);
       }
       log_enu_array.resize(0,enu_array.size());
-      std::transform(enu_array.begin(),enu_array.end(),log_enu_array.begin(),[](int enu){ return log(enu);});
+      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
+                     [](int enu) { return log(enu); });
 
       earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
@@ -909,7 +912,8 @@ class nuSQUIDSAtm {
     /// mass eigenstates.
     void Set_initial_state(marray<double,4> ini_flux, Basis basis){
       if(ini_flux.extent(0) != costh_array.extent(0))
-        throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
+        throw std::runtime_error(
+            "nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
         marray<double,3> slice{ini_flux.extent(1),ini_flux.extent(2),ini_flux.extent(3)};
@@ -972,7 +976,11 @@ class nuSQUIDSAtm {
       if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
         throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
       if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
-        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.(Emin = "+std::to_string(*enu_array.begin())+",Emax = "+std::to_string(*enu_array.rbegin())+", Enu = "+std::to_string(enu)+")");
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.(Emin = " +
+                                 std::to_string(*enu_array.begin()) +
+                                 ",Emax = " +
+                                 std::to_string(*enu_array.rbegin()) +
+                                 ", Enu = " + std::to_string(enu) + ")");
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator

@@ -20,14 +20,7 @@ int main(){
   nus.Set_Track(track_atm);
 
   // set mixing angles and masses
-  nus.Set(TH12,0.563942);
-  nus.Set(TH13,0.154085);
-  nus.Set(TH23,0.785398);
-
-  nus.Set(DM21SQ,7.65e-05);
-  nus.Set(DM31SQ,0.00247);
-
-  nus.Set(DELTA1,0.0);
+  nus.Set_MixingParametersToDefault();
 
   // setup integration settings
   nus.Set_h_max( 500.0*nus.units.km );
@@ -47,7 +40,7 @@ int main(){
   }
 
   // set the initial state
-  nus.Set_initial_state(inistate,"flavor");
+  nus.Set_initial_state(inistate,flavor);
 
   nus.EvolveState();
   nus.WriteStateHDF5("./out_muon_test.hdf5");

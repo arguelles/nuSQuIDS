@@ -164,10 +164,11 @@ int main()
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
 
-  // We reset the initial condition
-  nus.Set_initial_state(ini_state,flavor);
   // We can change the energy
   nus.Set_E(5.0*nus.units.GeV);
+
+  // We reset the initial condition
+  nus.Set_initial_state(ini_state,flavor);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
@@ -205,11 +206,12 @@ int main()
   nus.Set_Body(vacuum);
   nus.Set_Track(track_vac);
 
+  // We can change the energy some MeV
+  nus.Set_E(150.0*nus.units.MeV);
+
   // Lets set the initial state to electron
   ini_state = {1,0,0};
   nus.Set_initial_state(ini_state,flavor);
-  // We can change the energy some MeV
-  nus.Set_E(150.0*nus.units.MeV);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
@@ -257,13 +259,14 @@ int main()
   nus.Set_MixingAngle(1,2,0.5);
   nus.Set_SquareMassDifference(2,0.0247);
 
+  // We can change the energy some MeV
+  nus.Set_E(10.0*nus.units.MeV);
+
   // Lets set the initial state to electron. Note that we have
   // to set the mixing parameters *before* we set the initial state
   // in the flavor basis.
   ini_state = {1,0,0};
   nus.Set_initial_state(ini_state,flavor);
-  // We can change the energy some MeV
-  nus.Set_E(10.0*nus.units.MeV);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
@@ -315,11 +318,12 @@ int main()
   nus.Set_Body(vardens);
   nus.Set_Track(track_vardens);
 
+  // We can change the energy some MeV
+  nus.Set_E(100.0*nus.units.GeV);
+
   // Lets set the initial state to electron
   ini_state = {0,0,1};
   nus.Set_initial_state(ini_state,flavor);
-  // We can change the energy some MeV
-  nus.Set_E(100.0*nus.units.GeV);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
@@ -359,12 +363,12 @@ int main()
 
   nus.Set_Body(sun);
   nus.Set_Track(track_sun);
+  // We can change the energy some MeV
+  nus.Set_E(10.0*nus.units.MeV);
 
   // Lets set the initial state to electron
   ini_state = {1,0,0};
   nus.Set_initial_state(ini_state,flavor);
-  // We can change the energy some MeV
-  nus.Set_E(10.0*nus.units.MeV);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
