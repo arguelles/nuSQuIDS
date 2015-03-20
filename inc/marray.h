@@ -762,9 +762,9 @@ public:
 private:
 	void insert(size_type dim, size_type pos, size_t num, value_type val, std::true_type move){
 		const auto mult=std::multiplies<size_type>();
-		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1.0,mult);
+		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1u,mult);
 		const size_type remainder=extents[dim]-pos;
-		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1.0,mult);
+		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1u,mult);
 		
 		const size_type new_total_size=iterations*(extents[dim]+num)*chunk_size;
 		value_type* new_data=allocator_traits::allocate(allocator(),new_total_size); //may throw
@@ -819,9 +819,9 @@ private:
 	
 	void insert(size_type dim, size_type pos, size_t num, value_type val, std::false_type dont_move){
 		const auto mult=std::multiplies<size_type>();
-		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1.0,mult);
+		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1u,mult);
 		const size_type remainder=extents[dim]-pos;
-		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1.0,mult);
+		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1u,mult);
 		
 		const size_type new_total_size=iterations*(extents[dim]+num)*chunk_size;
 		value_type* new_data=allocator_traits::allocate(allocator(),new_total_size); //may throw
@@ -873,9 +873,9 @@ public:
 private:
 	void erase(size_type dim, size_type pos, size_t num, std::true_type move){
 		const auto mult=std::multiplies<size_type>();
-		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1.0,mult);
+		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1u,mult);
 		const size_type remainder=extents[dim]-(pos+num);
-		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1.0,mult);
+		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1u,mult);
 		
 		const size_type new_total_size=iterations*(extents[dim]-num)*chunk_size;
 		value_type* new_data=allocator_traits::allocate(allocator(),new_total_size); //may throw
@@ -899,9 +899,9 @@ private:
 	
 	void erase(size_type dim, size_type pos, size_t num, std::false_type dont_move){
 		const auto mult=std::multiplies<size_type>();
-		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1.0,mult);
+		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1u,mult);
 		const size_type remainder=extents[dim]-(pos+num);
-		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1.0,mult);
+		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1u,mult);
 		
 		const size_type new_total_size=iterations*(extents[dim]-num)*chunk_size;
 		value_type* new_data=allocator_traits::allocate(allocator(),new_total_size); //may throw
@@ -942,9 +942,9 @@ public:
 		assert(pos+num<=extents[dim]);
 		
 		const auto mult=std::multiplies<size_type>();
-		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1.0,mult);
+		const size_type iterations=std::accumulate(extents.begin(),extents.begin()+dim,1u,mult);
 		const size_type remainder=extents[dim]-(pos+num);
-		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1.0,mult);
+		const size_type chunk_size=std::accumulate(extents.begin()+dim+1,extents.end(),1u,mult);
 		
 		const size_type new_total_size=iterations*(extents[dim]-num)*chunk_size;
 		value_type* new_data=allocator_traits::allocate(allocator(),new_total_size); //may throw
@@ -985,7 +985,7 @@ public:
 	void reshape(const Container& new_extents){
 		if(std::distance(std::begin(new_extents),std::end(new_extents))!=Rank)
 			throw std::logic_error("Incorrect number of dimensions when attempting to reshape multidimensional array");
-		size_type new_total_size=std::accumulate(new_extents.begin(),new_extents.end(),1.0,std::multiplies<size_type>());
+		size_type new_total_size=std::accumulate(new_extents.begin(),new_extents.end(),1u,std::multiplies<size_type>());
 		if(new_total_size!=total_size())
 			throw std::logic_error("Inconsistent total size when attempting to reshape multidimensional array");
 		std::copy_n(std::begin(new_extents),Rank,extents.begin());
