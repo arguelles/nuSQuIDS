@@ -483,7 +483,7 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
                 cout << "==" << endl;
             #endif
 
-            TrackParams = {xini,xend, phi_input};
+            TrackParams = {xini,xend,phi_input};
         }
 
 double EarthAtm::density(const GenericTrack& track_input) const

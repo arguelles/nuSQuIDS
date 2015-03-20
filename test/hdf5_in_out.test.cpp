@@ -40,9 +40,10 @@ int main(){
   nus.Set_initial_state(inistate,flavor);
 
   nus.EvolveState();
-  nus.WriteStateHDF5("./out_muon_test.hdf5");
 
-  nuSQUIDS nus_read("./out_muon_test.hdf5");
+  nus.WriteStateHDF5("./hdf5_muon_test.hdf5");
+
+  nuSQUIDS nus_read("./hdf5_muon_test.hdf5");
 
   //===================== TESTS ==========================//
   //===================== TESTS ==========================//
@@ -151,10 +152,17 @@ int main(){
   }
 
   // check that the state is the same
+  for ( int i = 0 ; i < nus_read.GetNumE(); i++){
+    SU_vector state_diff = nus.GetState(i) - nus_read.GetState(i);
+    for (double component : state_diff.GetComponents()){
+      if (component > 1.0e-15)
+        std::cout << "SC" << component << std::endl;
+    }
+  }
 
   // check that the expectation values are the same
   for ( int i = 0 ; i < nus_read.GetNumE(); i++){
-      for ( int k = 0; k < nus_read.GetNumNeu(); k ++){
+      for ( int k = 0; k < nus_read.GetNumNeu(); k++){
         double dif = fabs(nus.EvalFlavorAtNode(k,i) - nus_read.EvalFlavorAtNode(k,i));
         if (dif > 1.0e-15)
           std::cout << i << " " << k << " " << dif << std::endl;

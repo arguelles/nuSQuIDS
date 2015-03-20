@@ -1476,7 +1476,8 @@ void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, 
       case 7:
         {
           body = std::make_shared<EarthAtm>();
-          track = std::make_shared<EarthAtm::Track>(track_params[0]);
+          // track_param[2] corresponds to the zenith angle
+          track = std::make_shared<EarthAtm::Track>(track_params[2]);
           break;
         }
       default:
