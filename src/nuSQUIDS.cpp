@@ -932,6 +932,8 @@ SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
 }
 
 SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
+  if (!ienergy)
+    throw std::runtime_error("nuSQUIDS::Error::Energy not initialized");
   PreDerive(Get_t());
   return H0(E_range[ei],rho)+HI(ei,rho,Get_t());
 }

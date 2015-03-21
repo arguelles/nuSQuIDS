@@ -9,10 +9,10 @@ Prerequisites
 The following packages are required to build and use the client library, and
 can probably be had from your favorite package manager:
 
-* gsl (>= 1.16): http://www.gnu.org/software/gsl/
+* gsl (>= 1.15): http://www.gnu.org/software/gsl/
 * hdf5 with c bindings: http://www.hdfgroup.org/HDF5/
 * C++ compiler with C++11 support
-* SQUIDS (>= 1.00): https://github.com/jsalvado/SQuIDS/
+* SQUIDS (>= 1.2): https://github.com/jsalvado/SQuIDS/
 
 PythonToolBox
 *************
