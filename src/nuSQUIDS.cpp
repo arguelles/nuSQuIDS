@@ -652,6 +652,8 @@ void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
       }
     }
   }
+  if(nscalars)
+    SetScalarsToZero();
 
   istate = true;
 };
@@ -701,6 +703,8 @@ void nuSQUIDS::Set_initial_state(const marray<double,2>& v, Basis basis){
       }
     }
   }
+  if(nscalars)
+    SetScalarsToZero();
 
   istate = true;
 }
@@ -755,6 +759,8 @@ void nuSQUIDS::Set_initial_state(const marray<double,3>& v, Basis basis){
       }
     }
   }
+  if(nscalars)
+    SetScalarsToZero();
   istate = true;
 }
 
