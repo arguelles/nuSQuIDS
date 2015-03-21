@@ -240,10 +240,10 @@ Earth::Earth(std::string filepath):Body(4,"Earth")
         }
 
 Earth::~Earth(){
-  free(inter_density);
-  free(inter_density_accel);
-  free(inter_ye);
-  free(inter_ye_accel);
+  gsl_spline_free(inter_density);
+  gsl_interp_accel_free(inter_density_accel);
+  gsl_spline_free(inter_ye);
+  gsl_interp_accel_free(inter_ye_accel);
 }
 
 /*
@@ -325,10 +325,10 @@ Sun::~Sun(){
   free(sun_xh);
   //free(sun_nele_radius);
   //free(sun_nele);
-  free(inter_density);
-  free(inter_density_accel);
-  free(inter_rxh);
-  free(inter_rxh_accel);
+  gsl_spline_free(inter_density);
+  gsl_interp_accel_free(inter_density_accel);
+  gsl_spline_free(inter_rxh);
+  gsl_interp_accel_free(inter_rxh_accel);
   //free(inter_nele);
   //free(inter_nele_accel);
 }
@@ -423,10 +423,10 @@ SunASnu::~SunASnu(){
   free(sun_radius);
   free(sun_density);
   free(sun_xh);
-  free(inter_density);
-  free(inter_density_accel);
-  free(inter_rxh);
-  free(inter_rxh_accel);
+  gsl_spline_free(inter_density);
+  gsl_interp_accel_free(inter_density_accel);
+  gsl_spline_free(inter_rxh);
+  gsl_interp_accel_free(inter_rxh_accel);
 }
 
 /*
@@ -436,7 +436,7 @@ SunASnu::~SunASnu(){
 */
 
 // constructor
-EarthAtm::EarthAtm():EarthAtm(static_cast<std::string>(EARTH_MODEL_LOCATION))
+EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
         {
         }
 
@@ -572,10 +572,10 @@ EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
 
 EarthAtm::~EarthAtm(void)
         {
-            free(inter_density);
-            free(inter_density_accel);
-            free(inter_ye);
-            free(inter_ye_accel);
+            gsl_spline_free(inter_density);
+            gsl_interp_accel_free(inter_density_accel);
+            gsl_spline_free(inter_ye);
+            gsl_interp_accel_free(inter_ye_accel);
         }
 
 
