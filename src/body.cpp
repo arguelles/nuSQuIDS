@@ -29,7 +29,7 @@
 
 namespace nusquids{
 
-static Const param;
+static squids::Const param;
 
 /*
 ----------------------------------------------------------------------

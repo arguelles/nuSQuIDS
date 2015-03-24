@@ -38,8 +38,8 @@ using namespace nusquids;
 
 class nuSQUIDSNSI: public nuSQUIDS {
   private:
-    SU_vector NSI;
-    std::vector<SU_vector> NSI_evol;
+    squids::SU_vector NSI;
+    std::vector<squids::SU_vector> NSI_evol;
     std::unique_ptr<double[]> hiBuffer;
     double HI_prefactor;
     // nsi parameters
@@ -67,7 +67,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
       H5LTset_attribute_double(hdf5_loc_id, "nsi","mu_tau",&epsilon_mutau, 1);
     }
 
-    SU_vector HI(unsigned int ei,unsigned int index_rho) const{
+    squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
       double ye = body->ye(*track);
       double density = body->density(*track);
 
@@ -82,7 +82,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
       }
 
       // construct potential in flavor basis
-      SU_vector potential(nsun,hiBuffer.get());
+      squids::SU_vector potential(nsun,hiBuffer.get());
       potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
       potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
       potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
@@ -113,7 +113,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
-       NSI = SU_vector(M);
+       NSI = squids::SU_vector(M);
 
        Set_MixingAngle(0,1,0.563942);
        Set_MixingAngle(0,2,0.154085);
@@ -123,7 +123,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
        NSI.RotateToB1(params);
        NSI_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
-         NSI_evol[ei] = SU_vector(nsun);
+         NSI_evol[ei] = squids::SU_vector(nsun);
        }
        gsl_matrix_complex_free(M);
 

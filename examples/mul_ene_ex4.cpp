@@ -37,18 +37,18 @@ using namespace nusquids;
 
 class nuSQUIDSLV: public nuSQUIDS {
   private:
-    SU_vector LVP;
-    std::vector<SU_vector> LVP_evol;
+    squids::SU_vector LVP;
+    std::vector<squids::SU_vector> LVP_evol;
   public:
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
         // asumming same mass hamiltonian for neutrinos/antineutrinos
-        SU_vector h0 = H0(E_range[ei],0);
+        squids::SU_vector h0 = H0(E_range[ei],0);
         LVP_evol[ei] = LVP.Evolve(h0,(x-Get_t_initial()));
       }
     }
 
-    SU_vector HI(unsigned int ei,unsigned int index_rho) const {
+    squids:: SU_vector HI(unsigned int ei,unsigned int index_rho) const {
       return (1.0e-27*E_range[ei])*LVP_evol[ei];
     }
 
@@ -64,12 +64,12 @@ class nuSQUIDSLV: public nuSQUIDS {
        gsl_matrix_complex_set(M,2,1,c);
        gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
 
-       LVP = SU_vector(M);
+       LVP = squids::SU_vector(M);
        // rotate to mass reprentation
        LVP.RotateToB1(params);
        LVP_evol.resize(ne);
        for(int ei = 0; ei < ne; ei++){
-         LVP_evol[ei] = SU_vector(nsun);
+         LVP_evol[ei] = squids::SU_vector(nsun);
        }
        gsl_matrix_complex_free(M);
     }

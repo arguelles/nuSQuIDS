@@ -21,12 +21,11 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-
 #include <boost/python.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
 #include "container_conversions.h"
-#include <SQuIDS/SQUIDS.h>
+#include <SQuIDS/SQuIDS.h>
 #include <nuSQuIDS/nuSQUIDS.h>
 #include <nuSQuIDS/marray.h>
 
@@ -297,12 +296,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("interaction",interaction)
   ;
 
-  class_<SU_vector, boost::noncopyable,std::shared_ptr<SU_vector> >("SU_vector")
+  class_<squids::SU_vector, boost::noncopyable,std::shared_ptr<squids::SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<unsigned int>())
-    .def("Rotate",&SU_vector::Rotate)
-    .def("Dim",&SU_vector::Dim)
-    .def("GetComponents",&SU_vector::GetComponents)
+    .def("Rotate",&squids::SU_vector::Rotate)
+    .def("Dim",&squids::SU_vector::Dim)
+    .def("GetComponents",&squids::SU_vector::GetComponents)
   ;
 
   enum_<NeutrinoType>("NeutrinoType")
@@ -377,27 +376,27 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   ;
 
 
-  class_<Const, boost::noncopyable>("Const")
-    .def_readonly("TeV",&Const::TeV)
-    .def_readonly("GeV",&Const::GeV)
-    .def_readonly("MeV",&Const::MeV)
-    .def_readonly("keV",&Const::keV)
-    .def_readonly("eV",&Const::eV)
-    .def_readonly("kg",&Const::kg)
-    .def_readonly("gr",&Const::gr)
-    .def_readonly("meter",&Const::meter)
-    .def_readonly("cm",&Const::cm)
-    .def_readonly("km",&Const::km)
-    .def_readonly("fermi",&Const::fermi)
-    .def_readonly("angstrom",&Const::angstrom)
-    .def_readonly("AU",&Const::AU)
-    .def_readonly("parsec",&Const::parsec)
-    .def_readonly("pb",&Const::picobarn)
-    .def_readonly("fb",&Const::femtobarn)
-    .def_readonly("sec",&Const::sec)
-    .def_readonly("hour",&Const::hour)
-    .def_readonly("day",&Const::day)
-    .def_readonly("year",&Const::year)
+  class_<squids::Const, boost::noncopyable>("Const")
+    .def_readonly("TeV",&squids::Const::TeV)
+    .def_readonly("GeV",&squids::Const::GeV)
+    .def_readonly("MeV",&squids::Const::MeV)
+    .def_readonly("keV",&squids::Const::keV)
+    .def_readonly("eV",&squids::Const::eV)
+    .def_readonly("kg",&squids::Const::kg)
+    .def_readonly("gr",&squids::Const::gr)
+    .def_readonly("meter",&squids::Const::meter)
+    .def_readonly("cm",&squids::Const::cm)
+    .def_readonly("km",&squids::Const::km)
+    .def_readonly("fermi",&squids::Const::fermi)
+    .def_readonly("angstrom",&squids::Const::angstrom)
+    .def_readonly("AU",&squids::Const::AU)
+    .def_readonly("parsec",&squids::Const::parsec)
+    .def_readonly("pb",&squids::Const::picobarn)
+    .def_readonly("fb",&squids::Const::femtobarn)
+    .def_readonly("sec",&squids::Const::sec)
+    .def_readonly("hour",&squids::Const::hour)
+    .def_readonly("day",&squids::Const::day)
+    .def_readonly("year",&squids::Const::year)
   ;
 
   {

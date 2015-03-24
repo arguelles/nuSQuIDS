@@ -69,7 +69,7 @@ enum Basis {
 
 ///\class nuSQUIDS
 ///\brief nu-SQuIDS main class
-class nuSQUIDS: public SQUIDS {
+class nuSQUIDS: public squids::SQuIDS {
   // nuSQUIDSAtm is a friend class so it can use H0 to evolve operators
   // and thus evaluate expectation values.
   template<typename,typename>
@@ -182,27 +182,27 @@ class nuSQUIDS: public SQUIDS {
 
     /// \brief SU_vector that represents the neutrino square mass difference matrix in the mass basis.
     ///  It is used to construct nuSQUIDS#H0_array and H0()
-    SU_vector DM2;
+    squids::SU_vector DM2;
     /// \brief Stores the time independent hamiltonian corresponding to each energy node.
-    marray<SU_vector,1> H0_array;
+    marray<squids::SU_vector,1> H0_array;
 
     /// \brief Mass basis projectors.
     /// \details The i-entry corresponds to the projector in the ith mass eigenstate.
-    marray<SU_vector,1> b0_proj;
+    marray<squids::SU_vector,1> b0_proj;
     /// \brief Flavor basis projectors.
     /// \details The first dismension corresponds to the neutrino type. When NeutrinoType = both, then
     /// the first dimension equal 0 means neutrinos and 1 antineutrinos. The second dimension corresponds
     /// to the flavor eigenstates where 0 corresponds to nu_e, 1 to nu_mu, 2 to nu_tau, and the others
     /// to sterile neutrinos.
-    marray<SU_vector,2> b1_proj;
+    marray<squids::SU_vector,2> b1_proj;
     /// \brief Mass basis projectors in the interaction picture.
     /// The index meaning are the same as nuSQUIDS#b1_proj but for mass eigenstates,
     /// with an added third dimension that corresponds to the energy node index.
-    marray<SU_vector,3> evol_b0_proj;
+    marray<squids::SU_vector,3> evol_b0_proj;
     /// \brief Flavor basis projectors in the interaction picture.
     /// The index meaning are the same as nuSQUIDS#b1_proj ,
     /// with an added third dimension that corresponds to the energy node index.
-    marray<SU_vector,3> evol_b1_proj;
+    marray<squids::SU_vector,3> evol_b1_proj;
 
     /// \brief Evolves the flavor projectors in the interaction basis to a time t.
     /// \details It uses H0() to evolve SQUIDS#b0_proj and SQUIDS#b1_proj into 
@@ -336,7 +336,7 @@ class nuSQUIDS: public SQUIDS {
     virtual void AddToPreDerive(double x){}
   public:
     /// \brief Incorporated const object useful to evaluate units.
-    const Const units;
+    const squids::Const units;
     /************************************************************************************
      * CONSTRUCTORS
     *************************************************************************************/
@@ -447,19 +447,19 @@ class nuSQUIDS: public SQUIDS {
     /// is used. When not in NeutrinoType == \c both \c irho is only 0, but if 
     /// neutrinos and antineutrinos are solved simultaneously, then 0 is for
     /// neutrinos and 1 for antineutrinos.
-    SU_vector H0(double E, unsigned int irho) const;
+    squids::SU_vector H0(double E, unsigned int irho) const;
 
     /// \brief Returns the time dependent part of the Hamiltonian at an energy node \c ie
     /// @param ie Energy node
     /// @param irho Density matrix equation index.
     /// @see H0 for convention on \c irho.
-    virtual SU_vector HI(unsigned int ie, unsigned int irho) const;
+    virtual squids::SU_vector HI(unsigned int ie, unsigned int irho) const;
 
     /// \brief Returns noncoherent interaction term in the Hamiltonian at node \c ie
     /// @param ie Energy node
     /// @param irho Density matrix equation index.
     /// @see H0 for convention on \c irho.
-    virtual SU_vector GammaRho(unsigned int ie, unsigned int irho) const;
+    virtual squids::SU_vector GammaRho(unsigned int ie, unsigned int irho) const;
 
     /// \brief Returns the scalar quantity decay rate at an energy node \c ie
     /// @param ie Energy node
@@ -472,7 +472,7 @@ class nuSQUIDS: public SQUIDS {
     /// @param ie Energy node
     /// @param irho Density matrix equation index.
     /// @see H0 for convention on \c irho.
-    virtual SU_vector InteractionsRho(unsigned int ie, unsigned int irho) const;
+    virtual squids::SU_vector InteractionsRho(unsigned int ie, unsigned int irho) const;
 
     /// \brief Returns scalar interactions at an energy node \c ie
     /// @param ie Energy node
@@ -481,13 +481,13 @@ class nuSQUIDS: public SQUIDS {
     virtual double InteractionsScalar(unsigned int ie, unsigned int iscalar) const;
   private:
     /// \brief SQuIDS signature of HI
-    SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);}
+    squids::SU_vector HI(unsigned int ie, unsigned int irho, double x) const {return HI(ie,irho);}
     /// \brief SQuIDS signature of GammaRho
-    SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);}
+    squids::SU_vector GammaRho(unsigned int ei, unsigned int irho, double x) const {return GammaRho(ei,irho);}
     /// \brief SQuIDS signature of GammaScalar
     double GammaScalar(unsigned int ei, unsigned int iscalar,double x) const {return GammaScalar(ei,iscalar);}
     /// \brief SQuIDS signature of InteractionsRho
-    SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);}
+    squids::SU_vector InteractionsRho(unsigned int ei, unsigned int irho, double x) const {return InteractionsRho(ei,irho);}
     /// \brief SQuIDS signature of InteractionsScalar
     double InteractionsScalar(unsigned int ei, unsigned int irho, double x) const {return InteractionsScalar(ei,irho);}
   public:
@@ -596,13 +596,13 @@ class nuSQUIDS: public SQUIDS {
     unsigned int GetNumNeu() const;
 
     /// \brief Return the Hamiltonian at the current time
-    SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
+    squids::SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
-    SU_vector GetState(unsigned int,unsigned int rho = 0) const;
+    squids::SU_vector GetState(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the flavor projector
-    SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
+    squids::SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the mass projector
-    SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
+    squids::SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
 
     /// \brief Returns the trajectory object.
     std::shared_ptr<Track> GetTrack() const;
@@ -985,9 +985,9 @@ class nuSQUIDSAtm {
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
-      SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
       // get the evolved projector for the right distance and energy
-      SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
+      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
 
       int cth_M = -1;
       for(int i = 0; i < costh_array.extent(0); i++){
@@ -1197,7 +1197,7 @@ class nuSQUIDSAtm {
     }
 
     /// \brief Incorporated const object useful to evaluate units.
-    const Const units;
+    const squids::Const units;
 
     /// \brief Toggles the progress bar printing on and off
     /// @param opt If \c true a progress bar will be printed.

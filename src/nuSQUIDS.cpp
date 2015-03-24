@@ -74,7 +74,7 @@ void nuSQUIDS::init(double xini){
 
   H0_array.resize(std::vector<size_t>{ne});
   for(unsigned int ie = 0; ie < ne; ie++){
-    H0_array[ie] = SU_vector(nsun);
+    H0_array[ie] = squids::SU_vector(nsun);
   }
 
   iniH0();
@@ -169,7 +169,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
 
   H0_array.resize(std::vector<size_t>{ne});
   for(unsigned int ie = 0; ie < ne; ie++){
-    H0_array[ie] = SU_vector(nsun);
+    H0_array[ie] = squids::SU_vector(nsun);
   }
 
   iniH0();
@@ -262,11 +262,11 @@ void nuSQUIDS::EvolveProjectors(double x){
   }
 }
 
-SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
+squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
   return DM2*(0.5/Enu);
 }
 
-SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
+squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     double ye = body->ye(*track);
     double density = body->density(*track);
 
@@ -284,7 +284,7 @@ SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     //std::cout << CC << " " << NC << std::endl;
     //std::cout << irho << " " << ie << std::endl;
     //std::cout << evol_b1_proj[irho][0][ie] << std::endl;
-    SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
+    squids::SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
     potential += (NC)*(evol_b1_proj[irho][1][ie]);
     potential += (NC)*(evol_b1_proj[irho][2][ie]);
 
@@ -303,8 +303,8 @@ SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     }
 }
 
-SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
-    SU_vector V(nsun);
+squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
+    squids::SU_vector V(nsun);
     if (not iinteraction){
       return V;
     }
@@ -316,8 +316,8 @@ SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
     return V;
 }
 
-SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
-  SU_vector nc_term(nsun);
+squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
+  squids::SU_vector nc_term(nsun);
 
   if (not iinteraction){
     return nc_term;
@@ -325,7 +325,7 @@ SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) cons
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
-  SU_vector temp1, temp2;
+  squids::SU_vector temp1, temp2;
   for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
     // here we assume the cross section to be the same for all flavors
     //std::cout << dNdE_NC[index_rho][0][e2][e1] << " " << invlen_NC[index_rho][0][e2] << std::endl;
@@ -847,7 +847,7 @@ double nuSQUIDS::EvalFlavor(unsigned int flv) const{
 }
 
 void nuSQUIDS::iniH0(){
-  DM2 = SU_vector(nsun);
+  DM2 = squids::SU_vector(nsun);
   for(unsigned int i = 1; i < nsun; i++){
       DM2 += (b0_proj[i])*params.GetEnergyDifference(i);
   }
@@ -875,13 +875,13 @@ void nuSQUIDS::iniProjectors(){
 
   b0_proj.resize(std::vector<size_t>{numneu});
   for(unsigned int flv = 0; flv < numneu; flv++){
-    b0_proj[flv] = SU_vector::Projector(nsun,flv);
+    b0_proj[flv] = squids::SU_vector::Projector(nsun,flv);
   }
 
   b1_proj.resize(std::vector<size_t>{nrhos,numneu});
   for(unsigned int rho = 0; rho < nrhos; rho++){
     for(unsigned int flv = 0; flv < numneu; flv++){
-      b1_proj[rho][flv] = SU_vector::Projector(nsun,flv);
+      b1_proj[rho][flv] = squids::SU_vector::Projector(nsun,flv);
 
       AntineutrinoCPFix(rho);
       b1_proj[rho][flv].RotateToB1(params);
@@ -894,8 +894,8 @@ void nuSQUIDS::iniProjectors(){
   for(unsigned int rho = 0; rho < nrhos; rho++){
     for(unsigned int flv = 0; flv < numneu; flv++){
       for(unsigned int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1] = SU_vector::Projector(nsun,flv);
+        evol_b0_proj[rho][flv][e1] = squids::SU_vector::Projector(nsun,flv);
+        evol_b1_proj[rho][flv][e1] = squids::SU_vector::Projector(nsun,flv);
 
         AntineutrinoCPFix(rho);
         evol_b1_proj[rho][flv][e1].RotateToB1(params);
@@ -925,19 +925,19 @@ void nuSQUIDS::SetIniFlavorProyectors(){
   }
 }
 
-SU_vector nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
+squids::SU_vector nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
   return state[ie].rho[rho];
 }
 
-SU_vector nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
+squids::SU_vector nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
   return b1_proj[rho][flv];
 }
 
-SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
+squids::SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
   return b0_proj[flv];
 }
 
-SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
+squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   if (!ienergy)
     throw std::runtime_error("nuSQUIDS::Error::Energy not initialized");
   PreDerive(Get_t());
@@ -1619,7 +1619,7 @@ void nuSQUIDS::Set_Basis(Basis b){
 nuSQUIDS::~nuSQUIDS(){}
 
 nuSQUIDS::nuSQUIDS(nuSQUIDS&& other):
-SQUIDS(std::move(other)),
+squids::SQuIDS(std::move(other)),
 basis(other.basis),
 numneu(other.numneu),
 ne(other.ne),
@@ -1669,7 +1669,7 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   if(&other==this)
     return(*this);
 
-  SQUIDS::operator=(std::move(other));
+  squids::SQuIDS::operator=(std::move(other));
 
   basis = other.basis;
   numneu = other.numneu;
