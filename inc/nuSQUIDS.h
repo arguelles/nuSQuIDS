@@ -1218,6 +1218,11 @@ class nuSQUIDSAtm {
       return costh_array.extent(0);
     }
 
+    /// \brief Returns the number of neutrino flavors.
+    unsigned int GetNumNeu() const{
+      return nusq_array[0].GetNumNeu();
+    }
+
     /// \brief Returns the energy nodes values.
     marray<double,1> GetERange() const{
       return enu_array;
