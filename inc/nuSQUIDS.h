@@ -36,7 +36,7 @@
 #include "marray.h"
 
 #include <algorithm>
-#include <SQuIDS/SQUIDS.h>
+#include <SQuIDS/SQuIDS.h>
 #include <memory>
 #include <map>
 #include <stdexcept>
