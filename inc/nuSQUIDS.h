@@ -987,7 +987,7 @@ class nuSQUIDSAtm {
       // get the evolution generator
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
       // get the evolved projector for the right distance and energy
-      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX());
+      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX()-track->GetInitialX());
 
       int cth_M = -1;
       for(int i = 0; i < costh_array.extent(0); i++){

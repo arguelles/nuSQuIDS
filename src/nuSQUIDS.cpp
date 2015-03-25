@@ -1059,33 +1059,26 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), static_cast<hsize_t>(numneu)};
   if ( NT == both )
-    pdim[1] *= pdim[1];
+    pdim[1] *= 2;
   std::vector<double> flavor,mass;
 
   for(unsigned int ie = 0; ie < ne; ie++){
     // neutrino
-    for(unsigned int i = 0; i < numneu; i++){
-      if (NT == both or NT == neutrino){
+    if (NT == both or NT == neutrino){
+      for(unsigned int i = 0; i < numneu; i++){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
-        }
-        else if (NT == antineutrino){
-          neustate.push_back(0.0);
-          aneustate.push_back(0.0);
         }
     }
       // antineutrino
-    for(unsigned int i = 0; i < numneu; i++){
-      if (NT == both or NT == antineutrino){
+    if (NT == both or NT == antineutrino){
+      for(unsigned int i = 0; i < numneu; i++){
           flavor.push_back(EvalFlavorAtNode(i,ie,0));
           mass.push_back(EvalMassAtNode(i,ie,0));
-        }
-        else if (NT == neutrino){
-          neustate.push_back(0.0);
-          aneustate.push_back(0.0);
-        }
+      }
     }
   }
+
   dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(flavor.data()));
   dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(mass.data()));
 
