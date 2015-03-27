@@ -1232,7 +1232,7 @@ class nuSQUIDSAtm {
       return costh_array;
     }
     /// \brief Contains the nuSQUIDS objects for each zenith.
-    BaseSQUIDS& GetnuSQuIDS(unsigned int ci) const {
+    BaseSQUIDS& GetnuSQuIDS(unsigned int ci) {
       return nusq_array[ci];
     }
 
