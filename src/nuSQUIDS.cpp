@@ -551,6 +551,14 @@ void nuSQUIDS::PositivizeFlavors(){
   }
 }
 
+void nuSQUIDS::Set_PositivityConstrain(bool opt){
+  positivization = opt;
+}
+
+void nuSQUIDS::Set_PositivityConstrainStep(double step){
+  positivization_scale = step;
+}
+
 void nuSQUIDS::EvolveState(){
   // check for BODY and TRACK status
   if ( body == NULL )
@@ -567,21 +575,35 @@ void nuSQUIDS::EvolveState(){
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
 
   if( not tauregeneration ){
-    Evolve(track->GetFinalX()-track->GetInitialX());
+    if(positivization){
+      int positivization_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/positivization_scale);
+      for (int i = 0; i < positivization_steps; i++){
+        Evolve(positivization_scale);
+        PositivizeFlavors();
+      }
+      Evolve(track->GetFinalX()-positivization_scale*positivization_steps);
+      PositivizeFlavors();
+    } else {
+      Evolve(track->GetFinalX()-track->GetInitialX());
+    }
   }
   else {
-    int tau_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/tau_reg_scale);
-    //std::cout << tau_steps << " " << tau_reg_scale/units.km<< std::endl;
+    double scale;
+    if(positivization)
+      scale = std::min(tau_reg_scale,positivization_scale);
+    else
+      scale = tau_reg_scale;
+    int tau_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/scale);
     for (int i = 0; i < tau_steps; i++){
-      //double x_inter = track->GetInitialX() + static_cast<double>(i)*tau_reg_scale;
-      //std::cout << x_inter/units.km << std::endl;
-      Evolve(tau_reg_scale);
+      Evolve(scale);
       ConvertTauIntoNuTau();
-      PositivizeFlavors();
+      if(positivization)
+        PositivizeFlavors();
     }
-    Evolve(track->GetFinalX()-tau_reg_scale*tau_steps);
+    Evolve(track->GetFinalX()-scale*tau_steps);
     ConvertTauIntoNuTau();
-    PositivizeFlavors();
+    if(positivization)
+      PositivizeFlavors();
   }
 }
 

@@ -173,6 +173,9 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @see ConvertTauIntoNuTau()
     double tau_reg_scale;
 
+    /// \brief Length upon which the neutrino fluxes will be positivized.
+    double positivization_scale;
+
     /// \brief Body where the neutrino propagation takes place.
     std::shared_ptr<Body> body;
     /// \brief Trayectory within the body.
@@ -258,6 +261,8 @@ class nuSQUIDS: public squids::SQuIDS {
     bool elogscale = true;
     /// \brief Boolean that signals that tau regeneration is being used.
     bool tauregeneration = false;
+    /// \brief Boolean that signals that positivization will be enforced.
+    bool positivization = false;
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Integer to keep track of the progress bar evolution.
@@ -583,6 +588,14 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Toggles tau regeneration on and off.
     /// @param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt);
+
+    /// \brief Toggles positivization of the flux.
+    /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
+    void Set_PositivityConstrain(bool opt);
+
+    /// \brief Sets the positivization step.
+    /// @param step Sets the positivization step.
+    void Set_PositivityConstrainStep(double step);
 
     /// \brief Toggles the progress bar printing on and off
     /// @param opt If \c true a progress bar will be printed.
