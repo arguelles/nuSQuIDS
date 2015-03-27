@@ -182,6 +182,7 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   tau_lifetime = 2.906e-13*params.sec;
   tau_mass = 1776.82*params.MeV;
   tau_reg_scale = 100.0*params.km;
+  positivization_scale = 100.0*params.km;
 
   if(iinteraction and initialize_intereractions){
     //===============================
@@ -1674,6 +1675,7 @@ taubr_lep(other.taubr_lep),
 tau_lifetime(other.tau_lifetime),
 tau_mass(other.tau_mass),
 tau_reg_scale(other.tau_reg_scale),
+positivization_scale(other.positivization_scale),
 body(other.body),
 track(other.track),
 DM2(other.DM2),
@@ -1690,6 +1692,7 @@ istate(other.istate),
 iinteraction(other.iinteraction),
 elogscale(other.elogscale),
 tauregeneration(other.tauregeneration),
+positivization(other.positivization),
 progressbar(other.progressbar),
 progressbar_count(other.progressbar_count),
 progressbar_loop(other.progressbar_loop),
@@ -1725,6 +1728,7 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   tau_lifetime = other.tau_lifetime;
   tau_mass = other.tau_mass;
   tau_reg_scale = other.tau_reg_scale;
+  positivization_scale = other.positivization_scale;
   body = other.body;
   track = other.track;
   DM2 = other.DM2;
@@ -1742,6 +1746,7 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   iinteraction = other.iinteraction;
   elogscale = other.elogscale;
   tauregeneration = other.tauregeneration;
+  positivization = other.positivization;
   progressbar = other.progressbar;
   progressbar_count = other.progressbar_count;
   progressbar_loop = other.progressbar_loop;
