@@ -247,6 +247,19 @@ void nuSQUIDS::PreDerive(double x){
     ProgressBar();
   }
   progressbar_count++;
+
+  // advance positivity correction
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int ie = 0; ie < ne; ne++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+        double quantity = EvalFlavorAtNode(flv,ie,rho);
+        if( quantity < 0){
+          state[ie].rho[rho] -= evol_b1_proj[rho][flv][ie]*quantity;
+        }
+      }
+    }
+  }
+
   AddToPreDerive(x);
 }
 

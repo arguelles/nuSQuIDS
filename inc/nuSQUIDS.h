@@ -1231,6 +1231,10 @@ class nuSQUIDSAtm {
     marray<double,1> GetCosthRange() const{
       return costh_array;
     }
+    /// \brief Contains the nuSQUIDS objects for each zenith.
+    BaseSQUIDS& GetnuSQuIDS(unsigned int ci) const {
+      return nusq_array[ci];
+    }
 
 };
 
