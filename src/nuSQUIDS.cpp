@@ -248,17 +248,6 @@ void nuSQUIDS::PreDerive(double x){
   }
   progressbar_count++;
 
-  // advance positivity correction
-  for(unsigned int rho = 0; rho < nrhos; rho++){
-    for(unsigned int ie = 0; ie < ne; ne++){
-      for(unsigned int flv = 0; flv < numneu; flv++){
-        double quantity = EvalFlavorAtNode(flv,ie,rho);
-        if( quantity < 0){
-          state[ie].rho[rho] -= evol_b1_proj[rho][flv][ie]*quantity;
-        }
-      }
-    }
-  }
 
   AddToPreDerive(x);
 }
@@ -548,6 +537,20 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   itrack = true;
 }
 
+void nuSQUIDS::PositivizeFlavors(){
+  // advance positivity correction
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int ie = 0; ie < ne; ne++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+        double quantity = EvalFlavorAtNode(flv,ie,rho);
+        if( quantity < 0){
+          state[ie].rho[rho] -= evol_b1_proj[rho][flv][ie]*quantity;
+        }
+      }
+    }
+  }
+}
+
 void nuSQUIDS::EvolveState(){
   // check for BODY and TRACK status
   if ( body == NULL )
@@ -574,9 +577,11 @@ void nuSQUIDS::EvolveState(){
       //std::cout << x_inter/units.km << std::endl;
       Evolve(tau_reg_scale);
       ConvertTauIntoNuTau();
+      PositivizeFlavors();
     }
     Evolve(track->GetFinalX()-tau_reg_scale*tau_steps);
     ConvertTauIntoNuTau();
+    PositivizeFlavors();
   }
 }
 

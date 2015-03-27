@@ -266,6 +266,8 @@ class nuSQUIDS: public squids::SQuIDS {
     int progressbar_loop = 100;
     /// \brief Time offset between SQuIDS time and Track(x).
     double time_offset;
+    /// \brief Force flavor projections to be positive.
+    void PositivizeFlavors();
   protected:
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
