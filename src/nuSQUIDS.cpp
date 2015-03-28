@@ -541,7 +541,7 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
 void nuSQUIDS::PositivizeFlavors(){
   // advance positivity correction
   for(unsigned int rho = 0; rho < nrhos; rho++){
-    for(unsigned int ie = 0; ie < ne; ne++){
+    for(unsigned int ie = 0; ie < ne; ie++){
       for(unsigned int flv = 0; flv < numneu; flv++){
         double quantity = EvalFlavorAtNode(flv,ie,rho);
         if( quantity < 0){
@@ -597,14 +597,14 @@ void nuSQUIDS::EvolveState(){
     int tau_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/scale);
     for (int i = 0; i < tau_steps; i++){
       Evolve(scale);
-      ConvertTauIntoNuTau();
       if(positivization)
         PositivizeFlavors();
+      ConvertTauIntoNuTau();
     }
     Evolve(track->GetFinalX()-scale*tau_steps);
-    ConvertTauIntoNuTau();
     if(positivization)
       PositivizeFlavors();
+    ConvertTauIntoNuTau();
   }
 }
 
