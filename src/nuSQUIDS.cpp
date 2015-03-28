@@ -181,8 +181,8 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   taubr_lep = 0.14;
   tau_lifetime = 2.906e-13*params.sec;
   tau_mass = 1776.82*params.MeV;
-  tau_reg_scale = 100.0*params.km;
-  positivization_scale = 100.0*params.km;
+  tau_reg_scale = 300.0*params.km;
+  positivization_scale = 300.0*params.km;
 
   if(iinteraction and initialize_intereractions){
     //===============================
