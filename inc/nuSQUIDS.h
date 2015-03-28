@@ -1258,6 +1258,13 @@ class nuSQUIDSAtm {
         nsq.Set_PositivityConstrain(opt);
       }
     }
+    /// \brief Stes the step upon which the positivity correction would be apply.
+    /// @param step The step upon which the positivization will take place.
+    void Set_PositivityConstrainStep(double step){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_PositivityConstrainStep(step);
+      }
+    }
 };
 
 
