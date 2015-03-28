@@ -966,14 +966,6 @@ class nuSQUIDSAtm {
       }
     }
 
-    /// \brief Toggles tau regeneration on and off.
-    /// @param opt If \c true tau regeneration will be considered.
-    void Set_TauRegeneration(bool opt){
-      for(nuSQUIDS& nsq : nusq_array){
-        nsq.Set_TauRegeneration(opt);
-      }
-    }
-
     /// \brief Returns the flavor composition at a given energy and zenith.
     /// @param flv Neutrino flavor.
     /// @param costh Cosine of the zenith.
@@ -1251,6 +1243,21 @@ class nuSQUIDSAtm {
       return nusq_array[ci];
     }
 
+    /// \brief Toggles tau regeneration on and off.
+    /// @param opt If \c true tau regeneration will be considered.
+    void Set_TauRegeneration(bool opt){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_TauRegeneration(opt);
+      }
+    }
+
+    /// \brief Toggles positivization of the flux.
+    /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
+    void Set_PositivityConstrain(bool opt){
+      for(nuSQUIDS& nsq : nusq_array){
+        nsq.Set_PositivityConstrain(opt);
+      }
+    }
 };
 
 
