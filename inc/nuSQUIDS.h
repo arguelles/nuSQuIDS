@@ -1012,6 +1012,7 @@ class nuSQUIDSAtm {
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
       double delta_t_final = track->GetFinalX()-track->GetInitialX();
 
+      // assuming offsets are zero
       double delta_t_1 = nusq_array[cth_M].Get_t() - nusq_array[cth_M].Get_t_initial();
       double delta_t_2 = nusq_array[cth_M+1].Get_t() - nusq_array[cth_M+1].Get_t_initial();
       double delta_t_final_1 = nusq_array[cth_M].GetTrack()->GetFinalX() - nusq_array[cth_M].GetTrack()->GetInitialX();
@@ -1021,10 +1022,10 @@ class nuSQUIDSAtm {
       squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
       double phiMM,phiMP,phiPM,phiPP;
-      phiMM = nusq_array[cth_M].GetState(loge_M,rho)*evol_proj;
-      phiMP = nusq_array[cth_M].GetState(loge_M+1,rho)*evol_proj;
-      phiPM = nusq_array[cth_M+1].GetState(loge_M,rho)*evol_proj;
-      phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho)*evol_proj;
+      phiMM = nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t())*evol_proj;
+      phiMP = nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t())*evol_proj;
+      phiPM = nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t())*evol_proj;
+      phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t())*evol_proj;
 
       return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
             LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
