@@ -248,8 +248,6 @@ void nuSQUIDS::PreDerive(double x){
     ProgressBar();
   }
   progressbar_count++;
-
-
   AddToPreDerive(x);
 }
 
@@ -1010,7 +1008,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // create HDF5 file
   //std::cout << "writing to hdf5 file" << std::endl;
   // H5F_ACC_TRUNC : overwrittes file
-  // H5F_ACC_EXCL  : files if file existsi 
+  // H5F_ACC_EXCL  : files if file exists
   file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
   if (file_id < 0 ) {// file already exists
     file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1079,20 +1077,20 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   for(unsigned int ie = 0; ie < ne; ie++){
     for(unsigned int i = 0; i < numneu*numneu; i ++){
-        if (NT == both){
-          neustate[ie*numneusq + i] = state[ie].rho[0][i];
-          aneustate[ie*numneusq + i] = state[ie].rho[1][i];
-        }
-        else if (NT == neutrino){
-          neustate[ie*numneusq + i] = state[ie].rho[0][i];
-          aneustate[ie*numneusq + i] = 0.0;
-        }
-        else if (NT == antineutrino){
-          neustate[ie*numneusq + i] = 0.0;
-          aneustate[ie*numneusq + i] = state[ie].rho[0][i];
-        }
+      if (NT == both){
+        neustate[ie*numneusq + i] = state[ie].rho[0][i];
+        aneustate[ie*numneusq + i] = state[ie].rho[1][i];
+      }
+      else if (NT == neutrino){
+        neustate[ie*numneusq + i] = state[ie].rho[0][i];
+        aneustate[ie*numneusq + i] = 0.0;
+      }
+      else if (NT == antineutrino){
+        neustate[ie*numneusq + i] = 0.0;
+        aneustate[ie*numneusq + i] = state[ie].rho[0][i];
       }
     }
+  }
 
   dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(neustate.data()));
   dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(aneustate.data()));

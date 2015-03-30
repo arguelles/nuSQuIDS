@@ -990,12 +990,6 @@ class nuSQUIDSAtm {
                                  std::to_string(*enu_array.rbegin()) +
                                  ", Enu = " + std::to_string(enu) + ")");
 
-      std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
-      // get the evolution generator
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
-      // get the evolved projector for the right distance and energy
-      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,track->GetFinalX()-track->GetInitialX());
-
       int cth_M = -1;
       for(int i = 0; i < costh_array.extent(0); i++){
         if ( costh >= costh_array[i] and costh <= costh_array[i+1] ) {
@@ -1013,7 +1007,18 @@ class nuSQUIDSAtm {
         }
       }
 
-      //std::cout << cth_M << " " << loge_M << std::endl;
+      std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
+      // get the evolution generator
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      double delta_t_final = track->GetFinalX()-track->GetInitialX();
+
+      double delta_t_1 = nusq_array[cth_M].Get_t() - nusq_array[cth_M].Get_t_initial();
+      double delta_t_2 = nusq_array[cth_M+1].Get_t() - nusq_array[cth_M+1].Get_t_initial();
+      double delta_t_final_1 = nusq_array[cth_M].GetTrack()->GetFinalX() - nusq_array[cth_M].GetTrack()->GetInitialX();
+      double delta_t_final_2 = nusq_array[cth_M+1].GetTrack()->GetFinalX() - nusq_array[cth_M+1].GetTrack()->GetInitialX();
+      double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
+      // get the evolved projector for the right distance and energy
+      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
       double phiMM,phiMP,phiPM,phiPP;
       phiMM = nusq_array[cth_M].GetState(loge_M,rho)*evol_proj;
