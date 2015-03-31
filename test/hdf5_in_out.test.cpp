@@ -1,6 +1,6 @@
 #include <nuSQuIDS/nuSQUIDS.h>
 #include <iostream>
-#include <iomanip> 
+#include <iomanip>
 #include <vector>
 
 using namespace nusquids;
@@ -94,12 +94,12 @@ int main(){
 
   // check that the projectors are the same
   for ( int i = 0 ; i < nus_read.GetNumNeu(); i++){
-    SU_vector fproj_diff = nus.GetFlavorProj(i) - nus_read.GetFlavorProj(i);
+    squids::SU_vector fproj_diff = nus.GetFlavorProj(i) - nus_read.GetFlavorProj(i);
     for ( double component : fproj_diff.GetComponents()){
       if (component > 1.0e-15)
         std::cout << "FP" << component << std::endl;
     }
-    SU_vector mproj_diff = nus.GetMassProj(i) - nus_read.GetMassProj(i);
+    squids::SU_vector mproj_diff = nus.GetMassProj(i) - nus_read.GetMassProj(i);
     for ( double component : mproj_diff.GetComponents()){
       if (component > 1.0e-15)
         std::cout << "MP" << component << std::endl;
@@ -144,7 +144,7 @@ int main(){
 
   // checking that hamiltonian is the same
   for ( int i = 0 ; i < nus_read.GetNumE(); i++){
-    SU_vector hamiltonian_diff = nus.GetHamiltonian(i) - nus_read.GetHamiltonian(i);
+    squids::SU_vector hamiltonian_diff = nus.GetHamiltonian(i) - nus_read.GetHamiltonian(i);
     for (double component : hamiltonian_diff.GetComponents()){
       if (component > 1.0e-15)
         std::cout << "HC" << component << std::endl;
@@ -153,7 +153,7 @@ int main(){
 
   // check that the state is the same
   for ( int i = 0 ; i < nus_read.GetNumE(); i++){
-    SU_vector state_diff = nus.GetState(i) - nus_read.GetState(i);
+    squids::SU_vector state_diff = nus.GetState(i) - nus_read.GetState(i);
     for (double component : state_diff.GetComponents()){
       if (component > 1.0e-15)
         std::cout << "SC" << component << std::endl;

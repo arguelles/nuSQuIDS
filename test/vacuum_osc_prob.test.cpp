@@ -34,26 +34,26 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
 
   switch (numneu){
     case 3:
-      nus.Set(TH12,0.583996);
-      nus.Set(TH13,0.148190);
-      nus.Set(TH23,0.737324);
-      nus.Set(DM21SQ,7.5e-05);
-      nus.Set(DM31SQ,0.00257);
-      nus.Set(DELTA1,1.);
+      nus.Set_MixingAngle(0,1,0.583996);
+      nus.Set_MixingAngle(0,2,0.148190);
+      nus.Set_MixingAngle(1,2,0.737324);
+      nus.Set_SquareMassDifference(1,7.5e-05);
+      nus.Set_SquareMassDifference(2,0.00257);
+      nus.Set_CPPhase(0,2,1.);
       break;
     case 4:
       // random values for non standart parameters
-      nus.Set(TH12,0.583996);
-      nus.Set(TH13,0.148190);
-      nus.Set(TH23,0.737324);
-      nus.Set(TH14,0.1245);
-      nus.Set(TH24,0.5454);
-      nus.Set(TH34,0.32974);
-      nus.Set(DM21SQ,7.5e-05);
-      nus.Set(DM31SQ,0.00257);
-      nus.Set(DM41SQ,1.9234);
-      nus.Set(DELTA1,1.);
-      nus.Set(DELTA2,0.135);
+      nus.Set_MixingAngle(0,1,0.583996);
+      nus.Set_MixingAngle(0,2,0.148190);
+      nus.Set_MixingAngle(1,2,0.737324);
+      nus.Set_MixingAngle(0,3,0.1245);
+      nus.Set_MixingAngle(1,3,0.5454);
+      nus.Set_MixingAngle(2,3,0.32974);
+      nus.Set_SquareMassDifference(1,7.5e-05);
+      nus.Set_SquareMassDifference(2,0.00257);
+      nus.Set_SquareMassDifference(3,1.9234);
+      nus.Set_CPPhase(0,2,1.);
+      nus.Set_CPPhase(0,3,0.135);
       break;
   }
 
@@ -73,8 +73,8 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
       std::shared_ptr<Vacuum::Track> track_vac = std::make_shared<Vacuum::Track>(0.0,baseline*nus.units.km);
       nus.Set_Track(track_vac);
       for(double Enu : test_energies){
-        nus.Set_initial_state(ini_state,"flavor");
         nus.Set_E(Enu*nus.units.GeV);
+        nus.Set_initial_state(ini_state,flavor);
         nus.EvolveState();
         std::cout << flv << " [flv] " << Enu << " [GeV] " << baseline << " [km] ";
         for (int i = 0; i < numneu; i++){

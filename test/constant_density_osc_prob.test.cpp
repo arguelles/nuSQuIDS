@@ -36,7 +36,7 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
       nus.Set_SquareMassDifference(2,0.00257);
       nus.Set_SquareMassDifference(3,1.9234);
       nus.Set_CPPhase(0,2,1.);
-      nus.Set(DELTA2,0.135);
+      nus.Set_CPPhase(0,3,0.135);
       break;
   }
 
@@ -50,8 +50,8 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
       for(double Enu : test_energies){
-        nus.Set_initial_state(ini_state,"flavor");
         nus.Set_E(Enu*nus.units.GeV);
+        nus.Set_initial_state(ini_state,flavor);
         nus.EvolveState();
         std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
         for (int i = 0; i < numneu; i++){
@@ -72,7 +72,7 @@ int main(){
   // and the single and multiple energy modes
 
   // units
-  Const units;
+  squids::Const units;
 
   // constant density
   double density = 5.0; // gr/cm^3

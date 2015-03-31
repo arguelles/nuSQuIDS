@@ -47,7 +47,7 @@ int main(){
       }
   }
   // set the initial state
-  nus.Set_initial_state(inistate,"flavor");
+  nus.Set_initial_state(inistate,flavor);
 
   nuSQUIDS new_object(std::move(nus));
 
