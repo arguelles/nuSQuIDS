@@ -322,7 +322,8 @@ PYTHON_VERSION = ${PYTHONVERSION}
 LDFLAGS+= -L${PYTHONLIBPATH}
 LDFLAGS+= -lpython${PYTHON_VERSION} -lboost_python
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
-INCCFLAGS+= -I${PYTHONINCPATH}  -I../inc/
+INCCFLAGS+= -I${PYTHONINCPATH} -I../inc/
+INCCFLAGS+= -I${PYTHONLIBPATH}/site-packages/numpy/core/include/
 " > resources/python/src/Makefile
 
 echo '
