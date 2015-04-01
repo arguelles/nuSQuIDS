@@ -126,6 +126,9 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--with-squids-libdir=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then SQUIDS_LIBDIR="$TMP"; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--with-python/true/p'`
+	if [ "$TMP" ]; then PYTHON_BINDINGS=true; continue; fi
 done
 
 if [ "$GSL_INCDIR" -a "$GSL_LIBDIR" ]; then
@@ -179,6 +182,7 @@ find_package squids 1.2
 if [ ! -d ./lib/ ]; then
     mkdir lib;
 fi
+
 
 echo "Generating config file..."
 echo "prefix=$PREFIX" > nusquids.pc
@@ -298,6 +302,85 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@mkdir -p $(PREFIX)/lib/pkgconfig
 	@cp nusquids.pc $(PREFIX)/lib/pkgconfig
 ' >> ./Makefile
+
+if [ $PYTHON_BINDINGS ]; then
+  echo "Generating Python bindings makefile..."
+  PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
+  PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
+  PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
+  echo "
+# Compiler
+CC=$CC
+CXX=$CXX
+AR=$AR
+LD=$LD
+
+DYN_SUFFIX=.so
+DYN_OPT=$DYN_OPT
+
+PYTHON_VERSION = ${PYTHONVERSION}
+LDFLAGS+= -L${PYTHONLIBPATH}
+LDFLAGS+= -lpython${PYTHON_VERSION} -lboost_python
+LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
+INCCFLAGS+= -I${PYTHONINCPATH}  -I../inc/
+" > resources/python/src/Makefile
+
+echo '
+PATH_nuSQUIDS= $(shell pwd)/../../../
+PATH_nuSQUIDSpy= $(shell pwd)/../
+
+SOURCES = $(wildcard *.cpp)
+OBJECTS = $(SOURCES:.cpp=.o)
+
+# Directories
+LIBDIR=$(PATH_nuSQUIDS)/lib
+INCDIR=$(PATH_nuSQUIDS)/inc
+LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
+INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
+
+LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQuIDS
+INCCFLAGS+= -I$(INCnuSQUIDS)
+CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
+' >> resources/python/src/Makefile
+
+echo '
+
+# Project files
+NAME=nuSQUIDSpy
+STAT_PRODUCT=$(NAME).a
+DYN_PRODUCT=$(NAME)$(DYN_SUFFIX)
+
+OS_NAME=$(shell uname -s)
+ifeq ($(OS_NAME),Linux)
+	DYN_SUFFIX=.so
+	DYN_OPT=-shared -Wl,-soname,$(DYN_PRODUCT)
+endif
+ifeq ($(OS_NAME),Darwin)
+	DYN_SUFFIX=.so
+	DYN_OPT=-dynamiclib -install_name $(PATH_nuSQUIDSpy)/bindings/$(DYN_PRODUCT)
+endif
+
+# Compilation rules
+all: $(STAT_PRODUCT) $(DYN_PRODUCT)
+
+$(DYN_PRODUCT) : $(OBJECTS)
+	@echo Linking $(DYN_PRODUCT)
+	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS)
+	mv $(DYN_PRODUCT) $(PATH_nuSQUIDSpy)/bindings/$(DYN_PRODUCT)
+
+$(STAT_PRODUCT) : $(OBJECTS)
+	@echo Linking $(STAT_PRODUCT)
+	@$(AR) -rcs $(STAT_PRODUCT) $(OBJECTS)
+	mv $(STAT_PRODUCT) $(PATH_nuSQUIDSpy)/bindings/$(STAT_PRODUCT)
+
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+.PHONY: clean
+clean:
+	rm -f *.o ../lib/*.so ../lib/*.a
+' >> resources/python/src/Makefile
+fi
 
 nusqpath=`pwd`
 

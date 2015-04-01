@@ -165,7 +165,7 @@ int main(){
       for ( int k = 0; k < nus_read.GetNumNeu(); k++){
         double dif = fabs(nus.EvalFlavorAtNode(k,i) - nus_read.EvalFlavorAtNode(k,i));
         if (dif > 1.0e-15)
-          std::cout << i << " " << k << " " << dif << std::endl;
+          std::cout << "DIF" << i << " " << k << " " << dif << std::endl;
       }
   }
 
