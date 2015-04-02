@@ -21,7 +21,9 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-
+#define H5Gopen_vers 2
+#define H5Gcreate_vers 2
+#define H5Eset_auto_vers 2
 
 #include "nuSQUIDS.h"
 
