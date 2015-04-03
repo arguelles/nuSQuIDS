@@ -308,6 +308,12 @@ if [ $PYTHON_BINDINGS ]; then
   PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
   PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
   PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
+  PYTHONNUMPYCHECK=`python ./resources/check_numpy.py` 
+  if [ -z "$PYTHONNUMPYCHECK" ]; then
+    echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."  
+    exit 0
+  fi
+  PYTHONNUMPYINC=$PYTHONNUMPYCHECK/core/include
   echo "
 # Compiler
 CC=$CC
@@ -323,7 +329,7 @@ LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
 LDFLAGS+= -lpython${PYTHONVERSION} -lboost_python
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
 INCCFLAGS+= -I${PYTHONINCPATH} -I../inc/
-INCCFLAGS+= -I${PYTHONLIBPATH}/site-packages/numpy/core/include/
+INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
 
 echo '
