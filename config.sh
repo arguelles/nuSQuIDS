@@ -127,7 +127,7 @@ do
 	TMP=`echo "$var" | sed -n 's/^--with-squids-libdir=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then SQUIDS_LIBDIR="$TMP"; continue; fi
 
-	TMP=`echo "$var" | sed -n 's/^--with-python/true/p'`
+	TMP=`echo "$var" | sed -n 's/^--with-python-bindings/true/p'`
 	if [ "$TMP" ]; then PYTHON_BINDINGS=true; continue; fi
 done
 

@@ -24,6 +24,7 @@
 #include <boost/python.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
+#include <boost/python/overloads.hpp>
 #include "container_conversions.h"
 #include <SQuIDS/SQuIDS.h>
 #include <nuSQuIDS/nuSQUIDS.h>
@@ -264,6 +265,11 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
       break;
   }
 }
+
+// overloaded function magic //
+
+//BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
+//BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
 
 // nuSQUIDSpy module definitions
 
