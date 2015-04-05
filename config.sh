@@ -427,6 +427,7 @@ else:
                     '${SQUIDS_INCDIR}',
                     '${GSL_INCDIR}',
                     '${HDF5_INCDIR}',
+                    '${BOOST_INCDIR}',
                     '../inc/',
                     '/usr/local/include']
     libraries = ['python${PYTHONVERSION}','boost_python',
@@ -438,6 +439,7 @@ else:
                     '${SQUIDS_LIBDIR}',
                     '${GSL_LIBDIR}',
                     '${HDF5_LIBDIR}',
+                    '${BOOST_LIBDIR}',
                     '/usr/local/lib']
 
 files = ['nuSQUIDSpy.cpp']
