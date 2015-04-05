@@ -313,7 +313,7 @@ if [ $PYTHON_BINDINGS ]; then
     echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."  
     exit 0
   fi
-  PYTHONNUMPYINC=$PYTHONNUMPYCHECK/core/include
+  PYTHONNUMPYINC=$PYTHONNUMPYCHECK
   echo "
 # Compiler
 CC=$CC
