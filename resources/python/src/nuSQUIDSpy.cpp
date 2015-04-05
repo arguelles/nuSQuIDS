@@ -21,6 +21,10 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
+#define H5Gopen_vers 2
+#define H5Gcreate_vers 2
+#define H5Eset_auto_vers 2
+
 #include <boost/python.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
@@ -33,7 +37,6 @@
 #include <numpy/ndarrayobject.h>
 #include <numpy/ndarraytypes.h>
 #include <numpy/ufuncobject.h>
-
 
 using namespace boost::python;
 using namespace nusquids;
