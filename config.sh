@@ -305,6 +305,28 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 
 if [ $PYTHON_BINDINGS ]; then
   echo "Generating Python bindings makefile..."
+for var in "$@"
+do
+  TMP=`echo "$var" | sed -n 's/^--with-boost-libdir=\(.*\)$/\1/p'`
+  if [ "$TMP" ]; then BOOST_LIBDIR="$TMP"; continue; fi
+  TMP=`echo "$var" | sed -n 's/^--with-boost-incdir=\(.*\)$/\1/p'`
+  if [ "$TMP" ]; then BOOST_INCDIR="$TMP"; continue; fi
+done
+
+  if [ -z $BOOST_LIBDIR -a  -z $BOOST_INCDIR ]; then
+    echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."  
+    exit 0
+  fi
+  if [ -z $BOOST_LIBDIR ]; then
+    echo "Error: Specify BOOST library path using  --with-boost-libdir."  
+    exit 0
+  fi
+  if [ -z $BOOST_INCDIR ]; then
+    echo "Error: Specify BOOST include path using  --with-boost-incdir."  
+    exit 0
+  fi
+  BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python" 
+
   PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
   PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
   PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
@@ -326,9 +348,11 @@ DYN_OPT=$DYN_OPT
 
 PYTHON_VERSION = ${PYTHONVERSION}
 LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
-LDFLAGS+= -lpython${PYTHONVERSION} -lboost_python
+LDFLAGS+= -lpython${PYTHONVERSION}
+LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
 INCCFLAGS+= -I${PYTHONINCPATH} -I../inc/
+INCCFLAGS+= -I${BOOST_INCDIR}
 INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
 

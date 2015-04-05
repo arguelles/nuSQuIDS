@@ -24,6 +24,7 @@
 #define H5Gopen_vers 2
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
+//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <boost/python.hpp>
 #include <boost/python/scope.hpp>
