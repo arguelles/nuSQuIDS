@@ -1,5 +1,5 @@
 try:
 	import numpy
-	print numpy.__path__[0]
+	print numpy.get_include()
 except:
 	print "" 
