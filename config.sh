@@ -387,6 +387,48 @@ $(STAT_PRODUCT) : $(OBJECTS)
 clean:
 	rm -f *.o ../lib/*.so ../lib/*.a
 ' >> resources/python/src/Makefile
+
+  echo "
+from distutils.core import setup
+from distutils.extension import Extension
+import os.path
+import sys
+
+if sys.platform == 'win32' or sys.platform == 'win64':
+    print 'Windows is not a supported platform.'
+    quit()
+else:
+    include_dirs = ['${PYTHONINCPATH}',
+                    '${PYTHONNUMPYINC}',
+                    '${SQUIDS_INCDIR}',
+                    '${GSL_INCDIR}',
+                    '${HDF5_INCDIR}',
+                    '../inc/',
+                    '/usr/local/include']
+    libraries = ['python${PYTHONVERSION}','boost_python',
+                 'SQuIDS','nuSQuIDS',
+                 'gsl','gslcblas','m',
+                 'hdf5','hdf5_hl']
+    library_dirs = ['${PYTHONLIBPATH}',
+                    '${PYTHONLIBPATH}/../',
+                    '${SQUIDS_LIBDIR}',
+                    '${GSL_LIBDIR}',
+                    '${HDF5_LIBDIR}',
+                    '/usr/local/lib']
+
+files = ['nuSQUIDSpy.cpp']
+
+setup(name = 'nuSQUIDSpy',
+      ext_modules = [
+          Extension('nuSQUIDSpy',files,
+              library_dirs=library_dirs,
+              libraries=libraries,
+              include_dirs=include_dirs,
+              extra_compile_args=['-O3','-fPIC','-std=c++11'],
+              depends=[]),
+          ]
+      )
+" >> resources/python/src/setup.py
 fi
 
 nusqpath=`pwd`
