@@ -1018,6 +1018,11 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
         throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + str + ".");
   }
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+  if (strncmp(grp.c_str(),"/",1)!=0){
+    std::cout << "nuSQUIDS::WriteStateHDF5::Warning::group location name did not start with '/'. '/' was prepend to " + grp << std::endl;
+    grp = "/"+grp;
+  }
+
   if ( grp != "/" )
     group_id = H5Gcreate(root_id, grp.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   else
@@ -1257,6 +1262,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   if (file_id < 0)
       throw std::runtime_error("nuSQUIDS::Error::file not found : " + str + ".");
   root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
+  if (strncmp(grp.c_str(),"/",1)!=0){
+    std::cout << "nuSQUIDS::ReadStateHDF5::Warning::group location name did not start with '/'. '/' was prepend to " + grp << std::endl;
+    grp = "/"+grp;
+  }
   group_id = H5Gopen(root_id, grp.c_str(), H5P_DEFAULT);
   if ( group_id < 0 )
       throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");

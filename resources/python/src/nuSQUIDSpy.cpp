@@ -160,6 +160,7 @@ static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num)
 }
 
 // nuSQUIDS wrap functions
+/*
 static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){
   nusq->WriteStateHDF5(path);
 }
@@ -167,6 +168,7 @@ static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){
 static void wrap_ReadStateHDF5(nuSQUIDS* nusq, std::string path){
   nusq->ReadStateHDF5(path);
 }
+*/
 
 static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, Basis neutype){
   if (! PyArray_Check(array) )
@@ -272,8 +274,8 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
 
 // overloaded function magic //
 
-//BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
-//BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
 
 // nuSQUIDSpy module definitions
 
@@ -329,10 +331,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_E",&nuSQUIDS::Set_E, bp::arg("NeutrinoEnergy"))
     .def("EvolveState",&nuSQUIDS::EvolveState)
     .def("GetERange",&nuSQUIDS::GetERange)
-    .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5)
-    .def("WriteStateHDF5",wrap_WriteStateHDF5)
-    .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5)
-    .def("ReadStateHDF5",wrap_ReadStateHDF5)
+    .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5,
+        nuSQUIDS_HDF5Write_overload(args("hdf5_filename","group"," save_cross_sections","cross_section_grp_loc"),
+          "Writs the current nuSQUIDS object into an HDF5 file."))
+    .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5,
+        nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
+          "Reads an HDF5 file and loads the contents into the current object."))
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
     .def("EvalMass",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalMass)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalFlavor)
