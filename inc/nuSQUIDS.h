@@ -1064,7 +1064,7 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(const nuSQUIDS& nsq : nusq_array){
         // use only the first one to write the cross sections on /crosssections
-        nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
+        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
         i++;
       }
     }
@@ -1111,7 +1111,7 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
         // read the cross sections stored in /crosssections
-        nsq.ReadStateHDF5(hdf5_filename,"costh_"+std::to_string(costh_array[i]),"crosssections");
+        nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
         i++;
       }
 
