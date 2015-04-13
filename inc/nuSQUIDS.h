@@ -36,6 +36,7 @@
 #include "marray.h"
 
 #include <algorithm>
+#include <cstring>
 #include <SQuIDS/SQuIDS.h>
 #include <memory>
 #include <map>
@@ -47,6 +48,7 @@
 #include "hdf5_hl.h"
 #include "H5Gpublic.h"
 #include "H5Fpublic.h"
+
 
 #define ManualTauReinjection
 #define FixCrossSections
