@@ -45,7 +45,7 @@ namespace nusquids{
 class NeutrinoCrossSections{
   public:
     /// \brief Neutrino flavors.
-    enum NeutrinoFlavor {electron = 0, muon = 1, tau = 2, sterile = 4};
+    enum NeutrinoFlavor {electron = 0, muon = 1, tau = 2, sterile = 3};
     /// \brief Neutrino types.
     enum NeutrinoType {neutrino = 0, antineutrino = 1};
     /// \brief Interaction current type

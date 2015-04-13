@@ -305,13 +305,25 @@ class nuSQUIDS: public squids::SQuIDS {
     /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
     /// are called.
     void init(double Emin,double Emax,unsigned int Esize,bool initialize_intereractions = true, double xini = 0.0);
+
+    /// \brief General initilizer for the multi energy mode
+    /// @param E_vector Energy nodes [eV].
+    /// @param initialize_intereractions Togles interaction arrays initialization.
+    /// @param xini The initial position of the system.
+    /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
+    /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions
+    /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
+    void init(marray<double,1> E_vector, bool initialize_intereractions = true, double xini = 0.0);
+
     /// \brief Initilizer for the single energy mode
     /// @param xini The initial position of the system. By default is set to 0.
     void init(double xini = 0.0);
+
     /// \brief Initilizes auxiliary cross section arrays.
     /// \details The arrays are initialize, but not filled with contented. To fill the arrays
     /// call InitializeInteractions().
     void InitializeInteractionVectors();
+
     /// \brief Fills in auxiliary cross section arrays.
     /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
     /// nuSQUIDS#dNdE_CC , nuSQUIDS#dNdE_NC , nuSQUIDS#sigma_CC , nuSQUIDS#sigma_NC ,
@@ -350,8 +362,10 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Default void constructor.
     nuSQUIDS(){}
+
     /// \brief Move constructor.
     nuSQUIDS(nuSQUIDS&&);
+
     /// \brief Multiple energy mode constructor.
     /// @param Emin Minimum neutrino energy [GeV].
     /// @param Emax Maximum neutirno energy [GeV].
@@ -368,6 +382,21 @@ class nuSQUIDS: public squids::SQuIDS {
        bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
     numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
     {init(Emin,Emax,Esize);}
+
+    /// \brief Multiple energy mode constructor.
+    /// @param E_vector Energy nodes [eV].
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By default the energy scale is logarithmic and interactions are turn off.
+    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
+    /// cross section which make take considertable time depending on the energy grid.
+    /// @see init
+    nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
+       bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT)
+    {init(E_vector);}
 
     /// \brief Single energy mode constructor.
     /// @param numneu Number of neutrino flavors.
@@ -451,7 +480,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @param E Neutrino energy [eV]
     /// @param irho Density matrix equation index.
     /// \details \c irho is the index of the equation on which the Hamiltonian
-    /// is used. When not in NeutrinoType == \c both \c irho is only 0, but if 
+    /// is used. When not in NeutrinoType == \c both \c irho is only 0, but if
     /// neutrinos and antineutrinos are solved simultaneously, then 0 is for
     /// neutrinos and 1 for antineutrinos.
     squids::SU_vector H0(double E, unsigned int irho) const;
@@ -556,6 +585,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalMassAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
+
     /// \brief Returns the flavor composition at a given node.
     /// @param flv Neutrino flavor.
     /// @param ie Energy node index.
@@ -571,6 +601,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalMass(unsigned int flv,double enu,unsigned int rho = 0) const;
+
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
     /// @param flv Neutrino flavor.
     /// @param enu Neutrino energy in natural units [eV].
@@ -578,9 +609,11 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalFlavor(unsigned int flv,double enu,unsigned int rho = 0) const;
+
     /// \brief Returns the mass composition in the single energy mode.
     /// @param flv Neutrino flavor.
     double EvalMass(unsigned int flv) const;
+
     /// \brief Returns the flavor composition in the single energy mode.
     /// @param flv Neutrino flavor.
     double EvalFlavor(unsigned int flv) const;
@@ -1062,7 +1095,7 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(const nuSQUIDS& nsq : nusq_array){
         // use only the first one to write the cross sections on /crosssections
-        nsq.WriteStateHDF5(filename,"costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
+        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
         i++;
       }
     }
@@ -1109,7 +1142,7 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
         // read the cross sections stored in /crosssections
-        nsq.ReadStateHDF5(hdf5_filename,"costh_"+std::to_string(costh_array[i]),"crosssections");
+        nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
         i++;
       }
 

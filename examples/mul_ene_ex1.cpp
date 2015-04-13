@@ -65,6 +65,8 @@ int main()
   nus.Set_rel_error(1.0e-9);
   nus.Set_abs_error(1.0e-9);
 
+  nus.Set_ProgressBar(true);
+
   // construct the initial state
   marray<double,1> E_range = nus.GetERange();
 

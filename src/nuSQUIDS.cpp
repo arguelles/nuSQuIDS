@@ -100,9 +100,19 @@ void nuSQUIDS::Set_E(double Enu){
   istate = false;
 }
 
-void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini)
-{
+void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini){
+  // here the energies come in GeV
+  ne = Esize;
+  if(elogscale){
+    init(logspace(Emin*params.GeV,Emax*params.GeV,ne-1),initialize_intereractions,xini);
+  }
+  else{
+    init(linspace(Emin*params.GeV,Emax*params.GeV,ne-1),initialize_intereractions,xini);
+  }
+}
 
+void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, double xini){
+  // here the energies come in natural units
   if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
   else if (NT == both)
@@ -114,12 +124,8 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   if ( numneu > SQUIDS_MAX_HILBERT_DIM )
     throw std::runtime_error("nuSQUIDS::Error::Maximum number of neutrinos exceded");
   nsun = numneu;
-  if ( Emax < Emin )
-    throw std::runtime_error("nuSQUIDS::Error::Emax < Emin.");
 
-  ne = Esize;
-  if ( Esize <= 0 )
-    throw std::runtime_error("nuSQUIDS::Error::Esize must be at greater than zero.");
+  ne = E_vector.size();
 
   //===============================
   // BEGIN                       //
@@ -139,14 +145,9 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   //===============================
   // initialize energy arrays    //
   //===============================
-  if(elogscale){
-    E_range = logspace(Emin*params.GeV,Emax*params.GeV,ne-1);
-    Set_xrange(E_range[0],E_range[Esize-1],"log");
-  }
-  else{
-    E_range = linspace(Emin*params.GeV,Emax*params.GeV,ne-1);
-    Set_xrange(E_range[0],E_range[Esize-1],"lin");
-  }
+  E_range = E_vector;
+  Set_xrange(std::vector<double>(E_range.begin(),E_range.end()));
+
   delE.resize(std::vector<size_t>{ne-1});
   for(unsigned int ei = 0; ei < ne -1; ei++)
     delE[ei] = E_range[ei+1] - E_range[ei];
@@ -216,8 +217,6 @@ void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_
   //===============================
   // END                         //
   //===============================
-
-  inusquids = true;
 }
 
 void nuSQUIDS::InitializeInteractionVectors(){
@@ -1331,11 +1330,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   hsize_t dims[2];
   H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
 
-  double data[dims[0]];
+  double energy_data[dims[0]];
   ne = static_cast<unsigned int>(dims[0]);
-  H5LTread_dataset_double(group_id, "energies", data);
-  //for (int i = 0; i < dims[0]; i ++ )
-  //  std::cout << data[i] << std::endl;
+  H5LTread_dataset_double(group_id, "energies", energy_data);
+  E_range = marray<double,1>{ne};
+  for (unsigned int ie = 0; ie < ne; ie++)
+    E_range[ie] = energy_data[ie];
 
   H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
   aux = auxchar;
@@ -1371,10 +1371,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   if (ne == 1){
     if(not inusquids)
       init(squids_time_initial);
-    Set_E(data[0]);
+    Set_E(energy_data[0]);
   }
   else {
-    init(data[0]/units.GeV,data[ne-1]/units.GeV,ne,false,squids_time_initial);
+    init(E_range,false,squids_time_initial);
   }
   // reset current squids time
   Set_t(squids_time);
@@ -1404,7 +1404,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
       }
     }
   }
-
 
   if(iinteraction){
     // if intereactions will be used then reading cross section information

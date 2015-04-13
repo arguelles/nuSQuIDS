@@ -91,6 +91,10 @@ locations of dependencies:
   --with-hdf5-libdir=DIR   use the copy of HDF5 in DIR
   --with-squids-incdir=DIR        use the copy of SQuIDS in DIR
   --with-squids-libdir=DIR        use the copy of SQuIDS in DIR
+For the python bindings the following flags are used:
+  --with-python-bindings         enable python binding compilation
+  --with-boost-incdir=DIR        use the copy of Boost in DIR
+  --with-boost-libdir=DIR        use the copy of Boost in DIR
 
 Some influential environment variables:
 CC          C compiler command
