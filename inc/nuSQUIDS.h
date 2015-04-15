@@ -69,6 +69,7 @@ enum Basis {
   interaction=0b11
 };
 
+
 ///\class nuSQUIDS
 ///\brief nu-SQuIDS main class
 class nuSQUIDS: public squids::SQuIDS {
@@ -102,6 +103,7 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Contains the energy nodes.
     marray<double,1> E_range;
+
     /// \brief Contains the spaces between nodes.
     ///
     /// It has length len(E_range)-1.
@@ -109,61 +111,59 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Interface that calculate and interpolates neutrino cross sections.
     std::shared_ptr<NeutrinoCrossSections> ncs;
-    /// \brief Neutrino charge current differential cross section with respect to
-    /// the outgoing lepton energy.
-    ///
-    /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
-    /// its initialized when InitializeInteractions() is called. The first dimension
-    /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-    /// and the last two the initial and final energy node respectively.
-    marray<double,4> dNdE_CC;
-    /// \brief Neutrino neutral current differential cross section with respect to
-    /// the outgoing lepton energy.
-    ///
-    /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
-    /// its initialized when InitializeInteractions() is called. The first dimension
-    /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-    /// and the last two the initial and final energy node respectively.
-    marray<double,4> dNdE_NC;
-    /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
-    /// \details The array contents are in natural units (i.e. eV) and is update when
-    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
-    /// the second to the flavor, and the last one to the energy.
-    marray<double,3> invlen_NC;
-    /// \brief Array that contains the inverse of the neutrino charge current mean free path.
-    /// \details The array contents are in natural units (i.e. eV) and is update when
-    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
-    /// the second to the flavor, and the last one to the energy.
-    marray<double,3> invlen_CC;
-    /// \brief Array that contains the inverse of the neutrino total mean free path.
-    /// \details The array contents are in natural units (i.e. eV) and is update when
-    /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
-    /// added together.
-    marray<double,3> invlen_INT;
-    /// \brief Array that contains the neutrino charge current cross section.
-    /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-    /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
-    /// initialized by InitializeInteractions() .
-    marray<double,3> sigma_CC;
-    /// \brief Array that contains the neutrino neutral current cross section.
-    /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-    /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
-    /// initialized by InitializeInteractions() .
-    marray<double,3> sigma_NC;
 
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
-    /// \brief Array that contains the inverse of the tau decay length for each energy node.
-    marray<double,1> invlen_tau;
-    /// \brief Array that contains the tau decay spectrum to all particles.
-    /// \details The first dimension corresponds to initial tau energy and the
-    /// second one to the outgoing lepton.
-    marray<double,2> dNdE_tau_all;
-    /// \brief Array that contains the tau decay spectrum to leptons.
-    /// \brief Array that contains the tau decay spectrum to all particles.
-    /// \details The first dimension corresponds to initial tau energy and the
-    /// second one to the outgoing lepton.
-    marray<double,2> dNdE_tau_lep;
+
+    /// \brief Struct that contains all cross section information.
+    struct InteractionStructure {
+        marray<double,4> dNdE_CC;
+        /// \brief Neutrino neutral current differential cross section with respect to
+        /// the outgoing lepton energy.
+        ///
+        /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
+        /// its initialized when InitializeInteractions() is called. The first dimension
+        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
+        /// and the last two the initial and final energy node respectively.
+        marray<double,4> dNdE_NC;
+        /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
+        /// \details The array contents are in natural units (i.e. eV) and is update when
+        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+        /// the second to the flavor, and the last one to the energy.
+        marray<double,3> invlen_NC;
+        /// \brief Array that contains the inverse of the neutrino charge current mean free path.
+        /// \details The array contents are in natural units (i.e. eV) and is update when
+        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+        /// the second to the flavor, and the last one to the energy.
+        marray<double,3> invlen_CC;
+        /// \brief Array that contains the inverse of the neutrino total mean free path.
+        /// \details The array contents are in natural units (i.e. eV) and is update when
+        /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
+        /// added together.
+        marray<double,3> invlen_INT;
+        /// \brief Array that contains the neutrino charge current cross section.
+        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
+        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// initialized by InitializeInteractions() .
+        marray<double,3> sigma_CC;
+        /// \brief Array that contains the neutrino neutral current cross section.
+        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
+        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// initialized by InitializeInteractions() .
+        marray<double,3> sigma_NC;
+        /// \brief Array that contains the inverse of the tau decay length for each energy node.
+        marray<double,1> invlen_tau;
+        /// \brief Array that contains the tau decay spectrum to all particles.
+        /// \details The first dimension corresponds to initial tau energy and the
+        /// second one to the outgoing lepton.
+        marray<double,2> dNdE_tau_all;
+        /// \brief Array that contains the tau decay spectrum to leptons.
+        /// \brief Array that contains the tau decay spectrum to all particles.
+        /// \details The first dimension corresponds to initial tau energy and the
+        /// second one to the outgoing lepton.
+        marray<double,2> dNdE_tau_lep;
+    };
+    std::shared_ptr<InteractionStructure> int_struct;
     /// \brief Tau branching ratio to leptons.
     double taubr_lep;
     /// \brief Tau lifetime in natural units.
@@ -331,6 +331,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// nuSQUIDS#dNdE_CC , nuSQUIDS#dNdE_NC , nuSQUIDS#sigma_CC , nuSQUIDS#sigma_NC ,
     /// nuSQUIDS#invlen_CC , nuSQUIDS#invlen_NC , nuSQUIDS#invlen_INT ,
     /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep , nuSQUIDS#invlen_tau
+    /// in int_struct.
     /// @see InitializeInteractionVectors
     void InitializeInteractions();
   private:
@@ -355,8 +356,49 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @param x Position of the system.
     /// @see PreDerive
     virtual void AddToPreDerive(double x){}
+
+    /// \brief Multiple energy mode constructor.
+    /// @param Emin Minimum neutrino energy [GeV].
+    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Esize Number of energy nodes.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param int_struct Structure that contains cross section information.
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By default the energy scale is logarithmic and interactions are turn off.
+    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
+    /// cross section which make take considertable time depending on the energy grid.
+    /// @see init
+    /// \todo put asserts here to ensure some minimal safety
+    nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu, NeutrinoType NT,std::shared_ptr<InteractionStructure> int_struct,
+             bool elogscale = true,bool iinteraction = true):
+    numneu(numneu),iinteraction(iinteraction),elogscale(elogscale),NT(NT),int_struct(int_struct)
+    {
+      init(Emin,Emax,Esize,false);
+    }
+
+    /// \brief Multiple energy mode constructor using precalculated cross section information.
+    /// @param E_vector Energy nodes [eV].
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param int_struct Structure that contains cross section information.
+    /// @warning The user should assure that the cross section struct has the same range as the provided energy range
+    /// @see init
+    /// \todo put asserts here to ensure some minimal safety 
+    nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT,std::shared_ptr<InteractionStructure> int_struct,
+             bool iinteraction = true):
+    numneu(numneu),iinteraction(iinteraction),elogscale(false),NT(NT),int_struct(int_struct)
+    {
+     // assert(int_struct.
+      init(E_vector,false);
+    }
+
   public:
     /// \brief Incorporated const object useful to evaluate units.
+    ///\todo remove this
     const squids::Const units;
     /************************************************************************************
      * CONSTRUCTORS
@@ -382,7 +424,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @see init
     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
        bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT),int_struct(new InteractionStructure)
     {init(Emin,Emax,Esize);}
 
     /// \brief Multiple energy mode constructor.
@@ -391,13 +433,14 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
     /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param ncs Cross section object.
     /// \details By default the energy scale is logarithmic and interactions are turn off.
     /// \warning When interactions are present interpolation is performed to precalculate the neutrino
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
        bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT),int_struct(new InteractionStructure)
     {init(E_vector);}
 
     /// \brief Single energy mode constructor.
@@ -416,7 +459,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp);}
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/"){ ReadStateHDF5(hdf5_filename, grp);}
 
     //***************************************************************
     virtual ~nuSQUIDS();
@@ -645,6 +688,11 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const;
 
+    /// \brief Returns the interaction structure.
+    std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
+      return int_struct;
+    }
+
     /// \brief Return the Hamiltonian at the current time
     squids::SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
@@ -795,6 +843,8 @@ class nuSQUIDSAtm {
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
     /// \brief Contains the neutrino cross section object
     std::shared_ptr<NeutrinoCrossSections> ncs;
+    /// \brief Contains the interaction information structure.
+    std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
   public:
     /************************************************************************************
      * CONSTRUCTORS
@@ -871,6 +921,25 @@ class nuSQUIDSAtm {
       inusquidsatm = true;
     }
 
+    /// \brief Basic constructor.
+    /// @param costh_array One dimensional array containing zenith angles to be calculated.
+    /// @param energy_array One dimensioanl array containing the energies to be calculated  [GeV].
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
+    /// @param elogscale Sets the energy scale to be logarithmic
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    nuSQUIDSAtm(marray<double,1> costh_array,
+                marray<double,1> enu_array,
+                unsigned int numneu,NeutrinoType NT = both,
+                bool iinteraction = false,
+                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    costh_array(costh_array),enu_array(enu_array)
+    {
+
+    }
+
+
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
@@ -889,7 +958,8 @@ class nuSQUIDSAtm {
     nusq_array(std::move(other.nusq_array)),
     earth_atm(std::move(other.earth_atm)),
     track_array(std::move(other.track_array)),
-    ncs(std::move(other.ncs))
+    ncs(std::move(other.ncs)),
+    int_struct(std::move(other.int_struct))
     {
       other.inusquidsatm = false;
     }
@@ -910,6 +980,7 @@ class nuSQUIDSAtm {
       earth_atm = std::move(other.earth_atm);
       track_array = std::move(other.track_array);
       ncs = std::move(other.ncs);
+      int_struct = std::move(other.int_struct);
 
       // initial nusquids object render useless
       other.inusquidsatm = false;
@@ -1256,6 +1327,11 @@ class nuSQUIDSAtm {
         }
     }
 
+    /// \brief Returns the interaction structure.
+    std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
+      return int_struct;
+    }
+
     /// \brief Returns number of energy nodes.
     size_t GetNumE() const{
       return enu_array.extent(0);
@@ -1275,6 +1351,7 @@ class nuSQUIDSAtm {
     marray<double,1> GetERange() const{
       return enu_array;
     }
+
     /// \brief Returns the cos(zenith) nodes values.
     marray<double,1> GetCosthRange() const{
       return costh_array;

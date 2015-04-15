@@ -222,19 +222,19 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
 void nuSQUIDS::InitializeInteractionVectors(){
 
     // initialize cross section and interaction arrays
-    dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
-    dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
+    int_struct->dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
+    int_struct->dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
     // inverse interaction lenghts
-    invlen_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    invlen_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    invlen_INT.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->invlen_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->invlen_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->invlen_INT.resize(std::vector<size_t>{nrhos,numneu,ne});
     // initialize cross section arrays
-    sigma_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    sigma_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->sigma_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
     // initialize the tau decay and interaction array
-    invlen_tau.resize(std::vector<size_t>{ne});
-    dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
-    dNdE_tau_lep.resize(std::vector<size_t>{ne,ne});
+    int_struct->invlen_tau.resize(std::vector<size_t>{ne});
+    int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
+    int_struct->dNdE_tau_lep.resize(std::vector<size_t>{ne,ne});
 }
 
 void nuSQUIDS::PreDerive(double x){
@@ -311,9 +311,9 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
       return V;
     }
 
-    V = evol_b1_proj[index_rho][0][ei]*(0.5*invlen_INT[index_rho][0][ei]);
-    V += evol_b1_proj[index_rho][1][ei]*(0.5*invlen_INT[index_rho][1][ei]);
-    V += evol_b1_proj[index_rho][2][ei]*(0.5*invlen_INT[index_rho][2][ei]);
+    V = evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_INT[index_rho][0][ei]);
+    V += evol_b1_proj[index_rho][1][ei]*(0.5*int_struct->invlen_INT[index_rho][1][ei]);
+    V += evol_b1_proj[index_rho][2][ei]*(0.5*int_struct->invlen_INT[index_rho][2][ei]);
 
     return V;
 }
@@ -334,7 +334,7 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     temp1 = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
     temp1 += evol_b1_proj[index_rho][2][e1];
     temp2 = ACommutator(temp1,state[e2].rho[index_rho]);
-    nc_term += temp2*(0.5*dNdE_NC[index_rho][0][e2][e1]*invlen_NC[index_rho][0][e2]);
+    nc_term += temp2*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2]);
   }
 
   return nc_term;
@@ -353,7 +353,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   double nutautoleptau = 0.0;
   for(unsigned int e2 = ei + 1; e2 < ne; e2++)
     nutautoleptau += (evol_b1_proj[iscalar][2][e2]*state[e2].rho[iscalar])*
-                     (invlen_CC[iscalar][2][e2])*(dNdE_CC[iscalar][2][e2][ei])*delE[e2];
+                     (int_struct->invlen_CC[iscalar][2][e2])*(int_struct->dNdE_CC[iscalar][2][e2][ei])*delE[e2];
   return nutautoleptau;
 }
 
@@ -387,9 +387,9 @@ void nuSQUIDS::UpdateInteractions(){
                   cout << "CC : " << sigma_CC[rho][flv][e1]*num_nuc << " NC : " << sigma_NC[rho][flv][e1]*num_nuc << endl;
                   cout << "==" << endl;
               #endif
-              invlen_NC[rho][flv][e1] = sigma_NC[rho][flv][e1]*num_nuc;
-              invlen_CC[rho][flv][e1] = sigma_CC[rho][flv][e1]*num_nuc;
-              invlen_INT[rho][flv][e1] = invlen_NC[rho][flv][e1] + invlen_CC[rho][flv][e1];
+              int_struct->invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
+              int_struct->invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
+              int_struct->invlen_INT[rho][flv][e1] = int_struct->invlen_NC[rho][flv][e1] + int_struct->invlen_CC[rho][flv][e1];
           }
       }
     }
@@ -427,8 +427,8 @@ void nuSQUIDS::InitializeInteractions(){
                   dsignudE_CC[neutype][flv][e1][e2] = ncs->DifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
               }
               // total cross sections
-              sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-              sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+              int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+              int_struct->sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
           }
       }
     }
@@ -438,8 +438,8 @@ void nuSQUIDS::InitializeInteractions(){
     for(unsigned int neutype = 0; neutype < nrhos; neutype++){
       double XCC_MIN,XNC_MIN,XCC_int,XNC_int,CC_rescale,NC_rescale;
       for(unsigned int flv = 0; flv < numneu; flv++){
-          XCC_MIN = sigma_CC[neutype][flv][0];
-          XNC_MIN = sigma_CC[neutype][flv][0];
+          XCC_MIN = int_struct->sigma_CC[neutype][flv][0];
+          XNC_MIN = int_struct->sigma_CC[neutype][flv][0];
           for(unsigned int e1 = 0; e1 < ne; e1++){
               XCC_int = 0.0;
               XNC_int = 0.0;
@@ -449,8 +449,8 @@ void nuSQUIDS::InitializeInteractions(){
               }
 
               if(e1 != 0 ){
-                  CC_rescale = (sigma_CC[neutype][flv][e1] - XCC_MIN)/XCC_int;
-                  NC_rescale = (sigma_NC[neutype][flv][e1] - XNC_MIN)/XNC_int;
+                  CC_rescale = (int_struct->sigma_CC[neutype][flv][e1] - XCC_MIN)/XCC_int;
+                  NC_rescale = (int_struct->sigma_NC[neutype][flv][e1] - XNC_MIN)/XNC_int;
 
                   for(unsigned int e2 = 0; e2 < e1; e2++){
                       dsignudE_CC[neutype][flv][e1][e2] = dsignudE_CC[neutype][flv][e1][e2]*CC_rescale;
@@ -468,14 +468,14 @@ void nuSQUIDS::InitializeInteractions(){
           for(unsigned int e1 = 0; e1 < ne; e1++){
               for(unsigned int e2 = 0; e2 < e1; e2++){
                   if (dsignudE_NC[rho][flv][e1][e2] < 1.0e-50 or (dsignudE_NC[rho][flv][e1][e2] != dsignudE_NC[rho][flv][e1][e2])){
-                      dNdE_NC[rho][flv][e1][e2] = 0.0;
+                      int_struct->dNdE_NC[rho][flv][e1][e2] = 0.0;
                   } else {
-                      dNdE_NC[rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(sigma_NC[rho][flv][e1]);
+                      int_struct->dNdE_NC[rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[rho][flv][e1]);
                   }
                   if (dsignudE_CC[rho][flv][e1][e2] < 1.0e-50 or (dsignudE_CC[rho][flv][e1][e2] != dsignudE_CC[rho][flv][e1][e2])){
-                      dNdE_CC[rho][flv][e1][e2] = 0.0;
+                      int_struct->dNdE_CC[rho][flv][e1][e2] = 0.0;
                   } else {
-                      dNdE_CC[rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(sigma_CC[rho][flv][e1]);
+                      int_struct->dNdE_CC[rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[rho][flv][e1]);
                   }
               }
           }
@@ -485,7 +485,7 @@ void nuSQUIDS::InitializeInteractions(){
     // initialize interaction lenghts to zero
     // tau decay length array
     for(unsigned int e1 = 0; e1 < ne; e1++){
-        invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
+        int_struct->invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
     }
 
     // load tau decay spectra
@@ -493,8 +493,8 @@ void nuSQUIDS::InitializeInteractions(){
     // constructing dNdE_tau_lep/dNdE_tau_all
     for(unsigned int e1 = 0; e1 < ne; e1++){
         for(unsigned int e2 = 0; e2 < e1; e2++){
-            dNdE_tau_all[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1;
-            dNdE_tau_lep[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
+            int_struct->dNdE_tau_all[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1;
+            int_struct->dNdE_tau_lep[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
         }
     }
 
@@ -505,17 +505,17 @@ void nuSQUIDS::InitializeInteractions(){
         tau_all_int = 0.0;
         tau_lep_int = 0.0;
         for(unsigned int e2 = 0; e2 < e1; e2++){
-             tau_all_int += dNdE_tau_all[e1][e2]*delE[e2];
-             tau_lep_int += dNdE_tau_lep[e1][e2]*delE[e2];
+             tau_all_int += int_struct->dNdE_tau_all[e1][e2]*delE[e2];
+             tau_lep_int += int_struct->dNdE_tau_lep[e1][e2]*delE[e2];
         }
 
-        if( dNdE_tau_all[e1][0]*E_range[0] < 0.25 ) {
-            tau_all_rescale = (1.0 - dNdE_tau_all[e1][0]*E_range[0])/tau_all_int;
-            tau_lep_rescale = (taubr_lep - dNdE_tau_lep[e1][0]*E_range[0])/tau_lep_int;
+        if( int_struct->dNdE_tau_all[e1][0]*E_range[0] < 0.25 ) {
+            tau_all_rescale = (1.0 - int_struct->dNdE_tau_all[e1][0]*E_range[0])/tau_all_int;
+            tau_lep_rescale = (taubr_lep - int_struct->dNdE_tau_lep[e1][0]*E_range[0])/tau_lep_int;
 
             for(unsigned int e2 = 0; e2 < e1; e2++){
-                dNdE_tau_all[e1][e2] = dNdE_tau_all[e1][e2]*tau_all_rescale;
-                dNdE_tau_lep[e1][e2] = dNdE_tau_lep[e1][e2]*tau_lep_rescale;
+                int_struct->dNdE_tau_all[e1][e2] = int_struct->dNdE_tau_all[e1][e2]*tau_all_rescale;
+                int_struct->dNdE_tau_lep[e1][e2] = int_struct->dNdE_tau_lep[e1][e2]*tau_lep_rescale;
             }
         }
     }
@@ -625,10 +625,10 @@ void nuSQUIDS::ConvertTauIntoNuTau(){
 
       for(unsigned int e2 = e1 +1; e2 < ne; e2++){
           //std::cout << dNdE_tau_all[e2][e1] << " " << delE[e2] << " " << state[e2].scalar[0] << std::endl;
-          tau_neu_all  += dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[0];
-          tau_neu_lep  += dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[0];
-          tau_aneu_all += dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[1];
-          tau_aneu_lep += dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[1];
+          tau_neu_all  += int_struct->dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[0];
+          tau_neu_lep  += int_struct->dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[0];
+          tau_aneu_all += int_struct->dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[1];
+          tau_aneu_lep += int_struct->dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[1];
       }
       // note that the br_lepton is already included in dNdE_tau_lep
       // adding new fluxes
@@ -1169,8 +1169,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     for ( unsigned int rho = 0; rho < nrhos; rho ++){
       for ( unsigned int flv = 0; flv < numneu; flv ++){
           for ( unsigned int ie = 0; ie < ne; ie ++){
-            xsCC[rho*(numneu*ne) +  flv*ne + ie] = sigma_CC[rho][flv][ie];
-            xsNC[rho*(numneu*ne) +  flv*ne + ie] = sigma_NC[rho][flv][ie];
+            xsCC[rho*(numneu*ne) +  flv*ne + ie] = int_struct->sigma_CC[rho][flv][ie];
+            xsNC[rho*(numneu*ne) +  flv*ne + ie] = int_struct->sigma_NC[rho][flv][ie];
           }
       }
     }
@@ -1189,8 +1189,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           for(unsigned int e1 = 0; e1 < ne; e1++){
               for(unsigned int e2 = 0; e2 < ne; e2++){
                 if (e2 < e1) {
-                  dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_CC[rho][flv][e1][e2];
-                  dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = dNdE_NC[rho][flv][e1][e2];
+                  dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = int_struct->dNdE_CC[rho][flv][e1][e2];
+                  dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = int_struct->dNdE_NC[rho][flv][e1][e2];
                 } else {
                   dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = 0.0;
                   dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2] = 0.0;
@@ -1204,7 +1204,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
     // invlen_tau
     hsize_t iltdim[1] {static_cast<hsize_t>(ne)};
-    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<void*>(invlen_tau.get_data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<void*>(int_struct->invlen_tau.get_data()));
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2] {static_cast<hsize_t>(ne),
@@ -1213,8 +1213,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     for(unsigned int e1 = 0; e1 < ne; e1++){
         for(unsigned int e2 = 0; e2 < ne; e2++){
           if ( e2 < e1 ) {
-            dNdEtauall[e1*ne + e2] = dNdE_tau_all[e1][e2];
-            dNdEtaulep[e1*ne + e2] = dNdE_tau_lep[e1][e2];
+            dNdEtauall[e1*ne + e2] = int_struct->dNdE_tau_all[e1][e2];
+            dNdEtaulep[e1*ne + e2] = int_struct->dNdE_tau_lep[e1][e2];
           } else  {
             dNdEtauall[e1*ne + e2] = 0.0;
             dNdEtaulep[e1*ne + e2] = 0.0;
@@ -1415,6 +1415,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     }
 
     // initialize vectors
+    int_struct = std::make_shared<InteractionStructure>();
     InitializeInteractionVectors();
 
     // sigma_CC and sigma_NC
@@ -1430,8 +1431,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     for ( unsigned int rho = 0; rho < nrhos; rho ++){
       for ( unsigned int flv = 0; flv < numneu; flv ++){
           for ( unsigned int ie = 0; ie < ne; ie ++){
-            sigma_CC[rho][flv][ie] = xsCC[rho*(numneu*ne) +  flv*ne + ie];
-            sigma_NC[rho][flv][ie] = xsNC[rho*(numneu*ne) +  flv*ne + ie];
+            int_struct->sigma_CC[rho][flv][ie] = xsCC[rho*(numneu*ne) +  flv*ne + ie];
+            int_struct->sigma_NC[rho][flv][ie] = xsNC[rho*(numneu*ne) +  flv*ne + ie];
           }
       }
     }
@@ -1449,8 +1450,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
       for( unsigned int flv = 0; flv < numneu; flv++){
           for( unsigned int e1 = 0; e1 < ne; e1++){
               for( unsigned int e2 = 0; e2 < e1; e2++){
-                dNdE_CC[rho][flv][e1][e2] = dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
-                dNdE_NC[rho][flv][e1][e2] = dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
+                int_struct->dNdE_CC[rho][flv][e1][e2] = dxsCC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
+                int_struct->dNdE_NC[rho][flv][e1][e2] = dxsNC[rho*(numneu*ne*ne) +  flv*ne*ne + e1*ne + e2];
               }
           }
       }
@@ -1462,7 +1463,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     double invlentau[iltdim[0]];
     H5LTread_dataset_double(xs_grp,"invlentau", invlentau);
     for(unsigned int ie = 0; ie < ne; ie ++)
-      invlen_tau[ie] = invlentau[ie];
+      int_struct->invlen_tau[ie] = invlentau[ie];
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2];
@@ -1473,8 +1474,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
     for( unsigned int e1 = 0; e1 < ne; e1++){
         for( unsigned int e2 = 0; e2 < e1; e2++){
-          dNdE_tau_all[e1][e2] = dNdEtauall[e1*ne + e2];
-          dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
+          int_struct->dNdE_tau_all[e1][e2] = dNdEtauall[e1*ne + e2];
+          int_struct->dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
         }
     }
   }
@@ -1668,17 +1669,8 @@ ne(other.ne),
 E_range(std::move(other.E_range)),
 delE(std::move(other.delE)),
 ncs(std::move(other.ncs)),
-dNdE_CC(std::move(other.dNdE_CC)),
-dNdE_NC(std::move(other.dNdE_NC)),
-invlen_NC(std::move(other.invlen_NC)),
-invlen_CC(std::move(other.invlen_CC)),
-invlen_INT(std::move(other.invlen_INT)),
-sigma_CC(std::move(other.sigma_CC)),
-sigma_NC(std::move(other.sigma_NC)),
 tdc(std::move(other.tdc)),
-invlen_tau(std::move(other.invlen_tau)),
-dNdE_tau_all(std::move(other.dNdE_tau_all)),
-dNdE_tau_lep(std::move(other.dNdE_tau_lep)),
+int_struct(std::move(other.int_struct)),
 taubr_lep(other.taubr_lep),
 tau_lifetime(other.tau_lifetime),
 tau_mass(other.tau_mass),
@@ -1721,17 +1713,8 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   E_range = std::move(other.E_range);
   delE = std::move(other.delE);
   ncs = other.ncs;
-  dNdE_CC = std::move(other.dNdE_CC);
-  dNdE_NC = std::move(other.dNdE_NC);
-  invlen_CC = std::move(other.invlen_CC);
-  invlen_NC = std::move(other.invlen_NC);
-  invlen_INT = std::move(other.invlen_INT);
-  sigma_CC = std::move(other.sigma_CC);
-  sigma_NC = std::move(other.sigma_NC);
   tdc = other.tdc;
-  invlen_tau = std::move(other.invlen_tau);
-  dNdE_tau_all = std::move(other.dNdE_tau_all);
-  dNdE_tau_lep = std::move(other.dNdE_tau_lep);
+  int_struct = std::move(other.int_struct);
   taubr_lep = other.taubr_lep;
   tau_lifetime = other.tau_lifetime;
   tau_mass = other.tau_mass;
