@@ -743,7 +743,14 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const;
 
+  protected:
     /// \brief Returns the interaction structure.
+    std::shared_ptr<nuSQUIDS::InteractionStructure> GetInteractionStructure() {
+      return int_struct;
+    }
+
+  public:
+    /// \brief Returns the interaction structure with constness.
     std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
       return int_struct;
     }
