@@ -199,6 +199,45 @@ class nuSQUIDS: public squids::SQuIDS {
           dNdE_tau_lep=std::move(other.dNdE_tau_lep);
           return(*this);
         }
+        /// \brief Equality operator
+        bool operator==(const InteractionStructure& other) const{
+          if (
+               dNdE_CC.size() != other.dNdE_CC.size() or
+               dNdE_NC.size() != other.dNdE_NC.size() or
+               invlen_CC.size() != other.invlen_CC.size() or
+               invlen_NC.size() != other.invlen_NC.size() or
+               invlen_INT.size() != other.invlen_INT.size() or
+               sigma_CC.size() != other.sigma_CC.size() or
+               sigma_NC.size() != other.sigma_NC.size() or
+               invlen_tau.size() != other.invlen_tau.size() or
+               dNdE_tau_all.size() != other.dNdE_tau_all.size() or
+               dNdE_tau_lep.size() != other.dNdE_tau_lep.size()
+             )
+          {
+            return false;
+          }
+          if ( not (
+               std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) and
+               std::equal(dNdE_NC.begin(),dNdE_NC.end(),other.dNdE_NC.begin()) and
+               std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) and
+               std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) and
+               std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) and
+               std::equal(sigma_CC.begin(),sigma_CC.end(),other.sigma_CC.begin()) and
+               std::equal(sigma_NC.begin(),sigma_NC.end(),other.sigma_NC.begin()) and
+               std::equal(invlen_tau.begin(),invlen_tau.end(),other.invlen_tau.begin()) and
+               std::equal(dNdE_tau_all.begin(),dNdE_tau_all.end(),other.dNdE_tau_all.begin()) and
+               std::equal(dNdE_tau_lep.begin(),dNdE_tau_lep.end(),other.dNdE_tau_lep.begin())
+               )
+             )
+          {
+            return false;
+          }
+          return true;
+        }
+        /// \brief Inequality operator
+        bool operator!=(const InteractionStructure& other) const {
+          return not (*this==other);
+        }
         /// \brief Copy constructor operator
         InteractionStructure(InteractionStructure& other):
           dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),
@@ -743,13 +782,11 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const;
 
-  protected:
     /// \brief Returns the interaction structure.
     std::shared_ptr<nuSQUIDS::InteractionStructure> GetInteractionStructure() {
       return int_struct;
     }
 
-  public:
     /// \brief Returns the interaction structure with constness.
     std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
       return int_struct;
