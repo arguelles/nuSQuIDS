@@ -117,6 +117,13 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Struct that contains all cross section information.
     struct InteractionStructure {
+        /// \brief Neutrino charge current differential cross section with respect to
+        /// the outgoing lepton energy.
+        ///
+        /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
+        /// its initialized when InitializeInteractions() is called. The first dimension
+        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
+        /// and the last two the initial and final energy node respectively.
         marray<double,4> dNdE_CC;
         /// \brief Neutrino neutral current differential cross section with respect to
         /// the outgoing lepton energy.
@@ -162,6 +169,54 @@ class nuSQUIDS: public squids::SQuIDS {
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
         marray<double,2> dNdE_tau_lep;
+        /// \brief Default constructor
+        InteractionStructure(){}
+        /// \brief Assignment operator
+        InteractionStructure& operator=(const InteractionStructure& other){
+          dNdE_CC=other.dNdE_CC;
+          dNdE_NC=other.dNdE_NC;
+          invlen_NC=other.invlen_NC;
+          invlen_CC=other.invlen_CC;
+          invlen_INT=other.invlen_INT;
+          sigma_CC=other.sigma_CC;
+          sigma_NC=other.sigma_NC;
+          invlen_tau=other.invlen_tau;
+          dNdE_tau_all=other.dNdE_tau_all;
+          dNdE_tau_lep=other.dNdE_tau_lep;
+          return(*this);
+        }
+        /// \brief Move assignment operator
+        InteractionStructure& operator=(InteractionStructure&& other){
+          dNdE_CC=std::move(other.dNdE_CC);
+          dNdE_NC=std::move(other.dNdE_NC);
+          invlen_NC=std::move(other.invlen_NC);
+          invlen_CC=std::move(other.invlen_CC);
+          invlen_INT=std::move(other.invlen_INT);
+          sigma_CC=std::move(other.sigma_CC);
+          sigma_NC=std::move(other.sigma_NC);
+          invlen_tau=std::move(other.invlen_tau);
+          dNdE_tau_all=std::move(other.dNdE_tau_all);
+          dNdE_tau_lep=std::move(other.dNdE_tau_lep);
+          return(*this);
+        }
+        /// \brief Copy constructor operator
+        InteractionStructure(InteractionStructure& other):
+          dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),
+          invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),invlen_INT(other.invlen_INT),
+          sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),
+          invlen_tau(other.invlen_tau),
+          dNdE_tau_all(other.dNdE_tau_all),
+          dNdE_tau_lep(other.dNdE_tau_lep)
+        {}
+        /// \brief Move constructor operator
+        InteractionStructure(InteractionStructure&& other):
+          dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),
+          invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),invlen_INT(std::move(other.invlen_INT)),
+          sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),
+          invlen_tau(std::move(other.invlen_tau)),
+          dNdE_tau_all(std::move(other.dNdE_tau_all)),
+          dNdE_tau_lep(std::move(other.dNdE_tau_lep))
+        {}
     };
     std::shared_ptr<InteractionStructure> int_struct;
     /// \brief Tau branching ratio to leptons.
@@ -889,37 +944,9 @@ class nuSQUIDSAtm {
                 unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false,
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    costh_array(costh_array)
-    {
-
-      nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
-
-      if(elogscale){
-        enu_array = logspace(energy_min,energy_max,energy_div-1);
-      }
-      else{
-        enu_array = linspace(energy_min,energy_max,energy_div-1);
-      }
-      log_enu_array.resize(0,enu_array.size());
-      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
-                     [](int enu) { return log(enu); });
-
-      earth_atm = std::make_shared<EarthAtm>();
-      for(double costh : costh_array)
-        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
-      if (ncs == nullptr)
-        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
-
-      unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
-        nsq = nuSQUIDS(energy_min,energy_max,energy_div,numneu,NT,elogscale,interaction,ncs);
-        nsq.Set_Body(earth_atm);
-        nsq.Set_Track(track_array[i]);
-        i++;
-      }
-
-      inusquidsatm = true;
-    }
+    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min,energy_max,energy_div-1):linspace(energy_min,energy_max,energy_div-1),
+        numneu,NT,iinteraction,ncs)
+    {}
 
     /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
@@ -936,9 +963,30 @@ class nuSQUIDSAtm {
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
     costh_array(costh_array),enu_array(enu_array)
     {
+      log_enu_array.resize(0,enu_array.size());
+      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
+                     [](int enu) { return log(enu); });
 
+      earth_atm = std::make_shared<EarthAtm>();
+      for(double costh : costh_array)
+        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
+      if (ncs == nullptr)
+        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
+
+      unsigned int i = 0;
+      for(nuSQUIDS& nsq : nusq_array){
+        if(i==0){
+          nsq = nuSQUIDS(enu_array,numneu,NT,interaction,ncs);
+          int_struct = nsq.GetInteractionStructure();
+        } else {
+          nsq = nuSQUIDS(enu_array,numneu,NT,int_struct,interaction);
+        }
+        nsq.Set_Body(earth_atm);
+        nsq.Set_Track(track_array[i]);
+        i++;
+      }
+      inusquidsatm = true;
     }
-
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
