@@ -17,10 +17,6 @@ int main(){
   marray<double,3> sigmacc_1 = nusatm.GetInteractionStructure()->sigma_CC;
   marray<double,3> sigmacc_2 = int_struct->sigma_CC;
 
-  for(unsigned int i = 0; i < sigmacc_1.extent(2); i++){
-    std::cout << sigmacc_1[0][0][i] << " " << sigmacc_2[0][0][i] << std::endl;
-  }
-
   if(nusatm.GetInteractionStructure() != int_struct){
     std::cout << "Fail" << std::endl;
   }

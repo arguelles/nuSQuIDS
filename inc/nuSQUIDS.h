@@ -1007,6 +1007,8 @@ class nuSQUIDSAtm {
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
     costh_array(costh_array),enu_array(enu_array)
     {
+      nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
+
       log_enu_array.resize(0,enu_array.size());
       std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
                      [](int enu) { return log(enu); });
@@ -1019,7 +1021,7 @@ class nuSQUIDSAtm {
 
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
-        if(i==0){
+        if(i == 0){
           nsq = nuSQUIDS(enu_array,numneu,NT,interaction,ncs);
           int_struct = nsq.GetInteractionStructure();
         } else {
