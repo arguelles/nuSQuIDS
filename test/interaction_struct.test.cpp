@@ -17,7 +17,7 @@ int main(){
   marray<double,3> sigmacc_1 = nusatm.GetInteractionStructure()->sigma_CC;
   marray<double,3> sigmacc_2 = int_struct->sigma_CC;
 
-  if(nusatm.GetInteractionStructure() != int_struct){
+  if(*(nusatm.GetInteractionStructure)() != (*int_struct)){
     std::cout << "Fail" << std::endl;
   }
 

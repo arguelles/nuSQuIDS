@@ -201,6 +201,7 @@ class nuSQUIDS: public squids::SQuIDS {
         }
         /// \brief Equality operator
         bool operator==(const InteractionStructure& other) const{
+
           if (
                dNdE_CC.size() != other.dNdE_CC.size() or
                dNdE_NC.size() != other.dNdE_NC.size() or
@@ -216,22 +217,40 @@ class nuSQUIDS: public squids::SQuIDS {
           {
             return false;
           }
-          if ( not (
-               std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) and
-               std::equal(dNdE_NC.begin(),dNdE_NC.end(),other.dNdE_NC.begin()) and
-               std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) and
-               std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) and
-               std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) and
-               std::equal(sigma_CC.begin(),sigma_CC.end(),other.sigma_CC.begin()) and
-               std::equal(sigma_NC.begin(),sigma_NC.end(),other.sigma_NC.begin()) and
-               std::equal(invlen_tau.begin(),invlen_tau.end(),other.invlen_tau.begin()) and
-               std::equal(dNdE_tau_all.begin(),dNdE_tau_all.end(),other.dNdE_tau_all.begin()) and
-               std::equal(dNdE_tau_lep.begin(),dNdE_tau_lep.end(),other.dNdE_tau_lep.begin())
-               )
-             )
-          {
+
+          if ( not std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) )
             return false;
-          }
+
+          if ( not std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) )
+            return false;
+
+          if ( not std::equal(dNdE_NC.begin(),dNdE_NC.end(),other.dNdE_NC.begin()) )
+            return false;
+
+          if ( not std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) )
+            return false;
+
+          if ( not std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) )
+            return false;
+
+          if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
+            return false;
+
+          if ( not std::equal(sigma_CC.begin(),sigma_CC.end(),other.sigma_CC.begin()) )
+            return false;
+
+          if ( not std::equal(sigma_NC.begin(),sigma_NC.end(),other.sigma_NC.begin()) )
+            return false;
+
+          if ( not std::equal(invlen_tau.begin(),invlen_tau.end(),other.invlen_tau.begin()) )
+            return false;
+
+          if ( not std::equal(dNdE_tau_all.begin(),dNdE_tau_all.end(),other.dNdE_tau_all.begin()) )
+            return false;
+
+          if ( not std::equal(dNdE_tau_lep.begin(),dNdE_tau_lep.end(),other.dNdE_tau_lep.begin()) )
+            return false;
+          // all is good - lets roll
           return true;
         }
         /// \brief Inequality operator
