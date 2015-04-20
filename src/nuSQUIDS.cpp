@@ -965,15 +965,15 @@ void nuSQUIDS::SetIniFlavorProyectors(){
   }
 }
 
-squids::SU_vector nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
+const squids::SU_vector& nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
   return state[ie].rho[rho];
 }
 
-squids::SU_vector nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
+const squids::SU_vector& nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
   return b1_proj[rho][flv];
 }
 
-squids::SU_vector nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
+const squids::SU_vector& nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
   return b0_proj[flv];
 }
 

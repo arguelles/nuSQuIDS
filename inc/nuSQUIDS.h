@@ -842,11 +842,11 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Return the Hamiltonian at the current time
     squids::SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
-    squids::SU_vector GetState(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetState(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the flavor projector
-    squids::SU_vector GetFlavorProj(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetFlavorProj(unsigned int,unsigned int rho = 0) const;
     /// \brief Returns the mass projector
-    squids::SU_vector GetMassProj(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetMassProj(unsigned int,unsigned int rho = 0) const;
 
     /// \brief Returns the trajectory object.
     std::shared_ptr<Track> GetTrack() const;
