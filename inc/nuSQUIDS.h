@@ -201,7 +201,6 @@ class nuSQUIDS: public squids::SQuIDS {
         }
         /// \brief Equality operator
         bool operator==(const InteractionStructure& other) const{
-
           if (
                dNdE_CC.size() != other.dNdE_CC.size() or
                dNdE_NC.size() != other.dNdE_NC.size() or
@@ -826,6 +825,9 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const;
+
+    /// \brief Returns the number of rho equations.
+    unsigned int GetNumRho() const;
 
     /// \brief Returns the interaction structure.
     std::shared_ptr<nuSQUIDS::InteractionStructure> GetInteractionStructure() {
@@ -1491,6 +1493,11 @@ class nuSQUIDSAtm {
     /// \brief Returns the number of neutrino flavors.
     unsigned int GetNumNeu() const{
       return nusq_array[0].GetNumNeu();
+    }
+
+    /// \brief Returns the number of rho equations.
+    unsigned int GetNumRho() const{
+      return nusq_array[0].GetNumRho();
     }
 
     /// \brief Returns the energy nodes values.

@@ -702,9 +702,9 @@ void nuSQUIDS::Set_initial_state(const marray<double,2>& v, Basis basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != ne )
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.("+std::to_string(v.extent(0))+"!="+std::to_string(ne)+")");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.(ne:"+std::to_string(v.extent(0))+"!="+std::to_string(ne)+")");
   if( v.extent(1) != numneu)
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.("+std::to_string(v.extent(1))+"!="+std::to_string(numneu)+")");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.(numneu:"+std::to_string(v.extent(1))+"!="+std::to_string(numneu)+")");
   if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT == both )
@@ -753,11 +753,11 @@ void nuSQUIDS::Set_initial_state(const marray<double,3>& v, Basis basis){
   if( v.size() == 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
   if( v.extent(0) != ne )
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.(ne:"+std::to_string(v.extent(0))+"!="+std::to_string(ne)+")");
   if( v.extent(1) != nrhos)
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.(nrhos:"+std::to_string(v.extent(1))+"!="+std::to_string(nrhos)+")");
   if( v.extent(2) != numneu)
-    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.");
+    throw std::runtime_error("nuSQUIDS::Error:Input vector with wrong dimensions.(numneu"+std::to_string(v.extent(2))+"!="+std::to_string(numneu)+")");
   if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be : flavor or mass.");
   if( NT != both )
@@ -1648,7 +1648,9 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,NULL,NULL);
 
     double dNdEtauall[dNdEtaudim[0]*dNdEtaudim[1]];
+    H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall);
     double dNdEtaulep[dNdEtaudim[0]*dNdEtaudim[1]];
+    H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep);
 
     for( unsigned int e1 = 0; e1 < ne; e1++){
         for( unsigned int e2 = 0; e2 < e1; e2++){
@@ -1744,6 +1746,10 @@ void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, 
 
 unsigned int nuSQUIDS::GetNumNeu() const{
   return numneu;
+}
+
+unsigned int nuSQUIDS::GetNumRho() const{
+  return nrhos;
 }
 
 void nuSQUIDS::ProgressBar() const{
