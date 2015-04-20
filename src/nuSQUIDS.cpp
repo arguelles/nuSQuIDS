@@ -1135,16 +1135,12 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     H5LTmake_dataset(group_id,"track",1,trackparamdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(track->GetTrackParams().data()));
   }
 
-  std::cout << "0" << std::endl;
-
   double xi = track->GetInitialX();
   H5LTset_attribute_double(group_id, "track","XINI",&xi, 1);
   double xf = track->GetFinalX();
   H5LTset_attribute_double(group_id, "track","XEND",&xf, 1);
   double xx = track->GetX();
   H5LTset_attribute_double(group_id, "track","X",&xx, 1);
-
-  std::cout << "1" << std::endl;
 
   hsize_t bodyparamdim[1] {body->GetBodyParams().size()};
   if ( bodyparamdim[0] == 0 ){
@@ -1156,8 +1152,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   unsigned int bid = body->GetId();
   H5LTset_attribute_uint(group_id, "body", "ID", &bid,1);
 
-  std::cout << "2" << std::endl;
-
   // writing cross section information
   hid_t xs_group_id;
   if ( cross_section_grp_loc == ""){
@@ -1165,8 +1159,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   } else {
     xs_group_id = H5Gcreate(root_id, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   }
-
-  std::cout << "3" << std::endl;
 
   if (iinteraction and save_cross_section) {
     // sigma_CC and sigma_NC
@@ -1236,8 +1228,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   // close cross section group
   H5Gclose(xs_group_id);
-
-  std::cout << "4" << std::endl;
 
   // write user parameters
   hid_t user_parameters_id = H5Gcreate(group_id, "user_parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

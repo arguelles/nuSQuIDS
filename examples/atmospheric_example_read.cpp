@@ -24,7 +24,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include "nuSQUIDS.h"
+#include "nuSQuIDS.h"
 
 /*
  * This file demostrate the use of nuSQUIDSAtm class
@@ -34,6 +34,7 @@
  */
 
 using namespace nusquids;
+volatile double dummy;
 
 int main(int argc,  char** argv)
 {
@@ -44,6 +45,7 @@ int main(int argc,  char** argv)
 
   std::string filename = (std::string) argv[1];
 
+  squids::Const units;
   nuSQUIDSAtm<> nus_atm(filename);
 
   double costh = -0.9;
@@ -53,15 +55,20 @@ int main(int argc,  char** argv)
   int neutrino = 0;
 
   std::ofstream output("outputfile.dat");
-
-  for(double log10E = 3.0; log10E < 6.0; log10E +=  0.1 ){
-    double enu = pow(10.0,log10E);
-    output << enu << " ";
-    output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
-    output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
-    output << nus_atm.EvalFlavor(nu_tau,costh,enu,neutrino) << " ";
-    output << std::endl;
+  for(int i = 0; i < 1000; i++){
+    for(double log10E = 3.0; log10E < 6.0; log10E +=  0.001 ){
+     const double enu = pow(10.0,log10E);
+     /*
+        output << enu << " ";
+        output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
+        output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
+        output << nus_atm.EvalFlavor(nu_tau,costh,enu,neutrino) << " ";
+        output << std::endl;
+      */
+     dummy += nus_atm.EvalFlavor(nu_e,costh,enu*units.GeV,neutrino);
+    }
   }
 
+  std::cout << dummy << std::endl;
   return 0;
 }

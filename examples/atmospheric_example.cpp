@@ -38,9 +38,10 @@ using namespace nusquids;
 
 int main()
 {
+  squids::Const units;
   unsigned int numneu = 3;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,0.2,20,5.e2,1.e6,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,0.2,10,5.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;
@@ -61,8 +62,8 @@ int main()
   std::cout << "End: setting mixing angles." << std::endl;
 
   // setup integration settings
-  nus_atm.Set_rel_error(1.0e-11);
-  nus_atm.Set_abs_error(1.0e-11);
+  nus_atm.Set_rel_error(1.0e-8);
+  nus_atm.Set_abs_error(1.0e-8);
 
   std::cout << "Begin: setting initial state." << std::endl;
   // construct the initial state

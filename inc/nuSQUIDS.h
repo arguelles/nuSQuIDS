@@ -1270,10 +1270,11 @@ class nuSQUIDSAtm {
       squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
       double phiMM,phiMP,phiPM,phiPP;
-      phiMM = nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t())*evol_proj;
-      phiMP = nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t())*evol_proj;
-      phiPM = nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t())*evol_proj;
-      phiPP = nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t())*evol_proj;
+      squids::SU_vector temp(evol_proj.Dim());
+      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
 
       return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
             LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
