@@ -1253,6 +1253,184 @@ void nuSQUIDS::AddToReadHDF5(hid_t hdf5_loc_id){
 
 }
 
+void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<InteractionStructure> iis){
+  hid_t file_id,group_id,root_id;
+  // open HDF5 file
+  //std::cout << "reading from hdf5 file" << std::endl;
+  file_id = H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0)
+      throw std::runtime_error("nuSQUIDS::Error::file not found : " + str + ".");
+  root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
+  if (strncmp(grp.c_str(),"/",1)!=0){
+    std::cout << "nuSQUIDS::ReadStateHDF5::Warning::group location name did not start with '/'. '/' was prepend to " + grp << std::endl;
+    grp = "/"+grp;
+  }
+  group_id = H5Gopen(root_id, grp.c_str(), H5P_DEFAULT);
+  if ( group_id < 0 )
+      throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");
+
+  // read number of neutrinos
+  H5LTget_attribute_uint(group_id, "basic", "numneu", static_cast<unsigned int*>(&numneu));
+  // neutrino/antineutrino/both
+  int auxint;
+  char auxchar[20];
+  H5LTget_attribute_int(group_id, "basic", "NT", &auxint);
+  NT = static_cast<NeutrinoType>(auxint);
+  // interactions
+  H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
+  std::string aux = auxchar;
+  if ( aux == "True")
+    iinteraction = true;
+  else
+    iinteraction = false;
+
+  double squids_time;
+  H5LTget_attribute_double(group_id, "basic", "squids_time", &squids_time);
+
+  double squids_time_initial;
+  H5LTget_attribute_double(group_id, "basic", "squids_time_initial", &squids_time_initial);
+
+  // check version numbers
+  unsigned int squids_version;
+  H5LTget_attribute_uint(group_id, "basic", "squids_version_number", &squids_version);
+
+  if ( squids_version > SQUIDS_VERSION )
+    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using SQuIDS version " +
+        std::to_string(squids_version) + " current version is " + std::to_string(SQUIDS_VERSION));
+
+  unsigned int nusquids_version;
+  H5LTget_attribute_uint(group_id, "basic", "nusquids_version_number", &nusquids_version);
+  if ( nusquids_version > NUSQUIDS_VERSION )
+    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using nuSQuIDS version " +
+        std::to_string(nusquids_version) + " current version is " + std::to_string(NUSQUIDS_VERSION));
+
+  // read and set mixing parameters
+  for( unsigned int i = 0; i < numneu; i++ ){
+    for( unsigned int j = i+1; j < numneu; j++ ){
+      double th_value;
+      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
+      Set_MixingAngle(i,j,th_value);
+
+      double delta_value;
+      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
+      Set_CPPhase(i,j,delta_value);
+    }
+  }
+
+  for( unsigned int i = 1; i < numneu; i++ ){
+    double dm2_value;
+    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
+    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
+    Set_SquareMassDifference(i, dm2_value);
+  }
+
+  // reading energy
+  hsize_t dims[2];
+  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
+
+  double energy_data[dims[0]];
+  ne = static_cast<unsigned int>(dims[0]);
+  H5LTread_dataset_double(group_id, "energies", energy_data);
+  E_range = marray<double,1>{ne};
+  for (unsigned int ie = 0; ie < ne; ie++)
+    E_range[ie] = energy_data[ie];
+
+  H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
+  aux = auxchar;
+  if ( aux == "True")
+    elogscale = true;
+  else
+    elogscale = false;
+
+  // reading body and track
+  unsigned int body_id;
+  hsize_t dimbody[1];
+  H5LTget_attribute_uint(group_id,"body","ID",&body_id);
+
+  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+  double body_params[dimbody[0]];
+  H5LTread_dataset_double(group_id,"body", body_params);
+
+  hsize_t dimtrack[1];
+  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+  double track_params[dimtrack[0]];
+  H5LTread_dataset_double(group_id,"track", track_params);
+
+  double x_current;
+  H5LTget_attribute_double(group_id,"track","X",&x_current);
+
+  // setting body and track
+  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params);
+
+  // set trayectory to current time
+  track->SetX(x_current);
+
+  // initializing nuSQUIDS
+  if (ne == 1){
+    if(not inusquids)
+      init(squids_time_initial);
+    Set_E(energy_data[0]);
+  }
+  else {
+    init(E_range,false,squids_time_initial);
+  }
+  // reset current squids time
+  Set_t(squids_time);
+  // set time offset
+  time_offset = squids_time - track->GetX();
+
+  // evolve projectors to current time
+  EvolveProjectors(squids_time);
+  // reading state
+  H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
+  double neudata[dims[0]*dims[1]];
+  H5LTread_dataset_double(group_id,"neustate", neudata);
+
+  H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
+  double aneudata[dims[0]*dims[1]];
+  H5LTread_dataset_double(group_id,"aneustate", aneudata);
+
+  for(unsigned int ie = 0; ie < dims[0]; ie++){
+    for (unsigned int j = 0; j < dims[1]; j ++){
+      if (NT == neutrino)
+        state[ie].rho[0][j] = neudata[ie*dims[1]+j];
+      else if ( NT == antineutrino)
+        state[ie].rho[0][j] = aneudata[ie*dims[1]+j];
+      else if ( NT == both ){
+        state[ie].rho[0][j] = neudata[ie*dims[1]+j];
+        state[ie].rho[1][j] = aneudata[ie*dims[1]+j];
+      }
+    }
+  }
+
+  if ( iis == nullptr ){
+    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
+  }
+
+  // read from user parameters
+  hid_t user_parameters_id = H5Gopen(group_id, "user_parameters", H5P_DEFAULT);
+  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
+  AddToReadHDF5(user_parameters_id);
+  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  H5Gclose(user_parameters_id);
+
+  // close HDF5 file
+  H5Gclose ( group_id );
+  // close root and file
+  H5Gclose ( root_id );
+  H5Fclose (file_id);
+
+  // we assume that this was created with the writer and got to this point!
+  istate = true;
+  ienergy = true;
+  itrack = true;
+  ibody = true;
+  // initialize H0
+  iniH0();
+}
+
 void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_section_grp_loc){
   hid_t file_id,group_id,root_id;
   // open HDF5 file

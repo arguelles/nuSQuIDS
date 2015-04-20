@@ -14,9 +14,6 @@ int main(){
   marray<double,1> costh_range {{10},{-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1,}};
   nuSQUIDSAtm<> nusatm(costh_range,e_range,3,neutrino,true,nullptr);
 
-  marray<double,3> sigmacc_1 = nusatm.GetInteractionStructure()->sigma_CC;
-  marray<double,3> sigmacc_2 = int_struct->sigma_CC;
-
   if(*(nusatm.GetInteractionStructure)() != (*int_struct)){
     std::cout << "Fail" << std::endl;
   }

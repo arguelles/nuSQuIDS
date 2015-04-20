@@ -509,6 +509,30 @@ class nuSQUIDS: public squids::SQuIDS {
       init(E_vector,false);
     }
 
+    /// \brief Reads and constructs the object from an HDF5 file.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param group Path to the group where the nuSQUIDS content will be saved.
+    /// @param iis InteractionStructure that contains valid cross sections.
+    /// \details By default all contents are assumed to be in the \c root of the HDF5 file
+    /// if the user wants a different location it can use \c group and \c save_cross_sections to
+    /// change the nuSQUIDS location and the cross section information location.
+    /// Finally, it calls AddToReadHDF5() to enable user defined parameters
+    /// to be read.
+    /// @see AddToReadHDF5
+    /// @see WriteStateHDF5
+    void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::shared_ptr<InteractionStructure> iis = nullptr);
+
+    /// \brief Constructor from a HDF5 filepath with a valid interaction structure.
+    /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
+    /// @param int_struct Interaction Structure to be used in object construction.
+    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
+    /// restoring all properties as well as the state.
+    /// @see ReadStateHDF5
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/", std::shared_ptr<InteractionStructure> int_struct = nullptr):
+      int_struct(int_struct)
+    { ReadStateHDF5(hdf5_filename,grp,int_struct); }
+
   public:
     /// \brief Incorporated const object useful to evaluate units.
     ///\todo remove this
@@ -572,7 +596,8 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/"){ ReadStateHDF5(hdf5_filename, grp);}
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/")
+    { ReadStateHDF5(hdf5_filename, grp, ""); }
 
     //***************************************************************
     virtual ~nuSQUIDS();
@@ -625,10 +650,11 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Initializer from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// @param grp HDF5 file group path where the nuSQUIDS object is save.
+    /// @param cross_section_grp_loc HDF5 file group path where the nuSQUIDS cross sections are saved.
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    void Init(std::string hdf5_filename, std::string grp = "/") { ReadStateHDF5(hdf5_filename, grp); }
+    void Init(std::string hdf5_filename, std::string grp = "/", std::string cross_section_grp_loc = "" ) { ReadStateHDF5(hdf5_filename, grp, cross_section_grp_loc); }
   protected:
     /************************************************************************************
      * PHYSICS FUNCTIONS - SUPER IMPORTANT
@@ -860,6 +886,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @see AddToReadHDF5
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::string cross_section_grp_loc = "");
+
 
     /// \brief User function to read user defined properties from an HDF5 file.
     /// @param hdf5_loc_id HDF5 group id
@@ -1327,8 +1354,14 @@ class nuSQUIDSAtm {
 
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
-        // read the cross sections stored in /crosssections
-        nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
+        if(i==0){
+          // read the cross sections stored in /crosssections
+          nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
+          int_struct = nsq.GetInteractionStructure();
+        } else {
+          // read the cross sections stored in /crosssections
+          nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
+        }
         i++;
       }
 
