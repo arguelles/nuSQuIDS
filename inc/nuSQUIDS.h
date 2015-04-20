@@ -528,7 +528,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/", std::shared_ptr<InteractionStructure> int_struct = nullptr):
+    nuSQUIDS(std::string hdf5_filename, std::string grp, std::shared_ptr<InteractionStructure> int_struct = nullptr):
       int_struct(int_struct)
     { ReadStateHDF5(hdf5_filename,grp,int_struct); }
 
