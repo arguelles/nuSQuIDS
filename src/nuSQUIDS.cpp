@@ -1098,8 +1098,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     }
   }
 
-  dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(neustate.data()));
-  dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<void*>(aneustate.data()));
+  dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(neustate.data()));
+  dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(aneustate.data()));
 
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), static_cast<hsize_t>(numneu)};
@@ -1124,16 +1124,18 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     }
   }
 
-  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(flavor.data()));
-  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<void*>(mass.data()));
+  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(flavor.data()));
+  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(mass.data()));
 
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};
   if ( trackparamdim[0] == 0 ) {
     H5LTmake_dataset(group_id,"track",1,dim,H5T_NATIVE_DOUBLE,0);
   } else {
-    H5LTmake_dataset(group_id,"track",1,trackparamdim,H5T_NATIVE_DOUBLE,track->GetTrackParams().data());
+    H5LTmake_dataset(group_id,"track",1,trackparamdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(track->GetTrackParams().data()));
   }
+
+  std::cout << "0" << std::endl;
 
   double xi = track->GetInitialX();
   H5LTset_attribute_double(group_id, "track","XINI",&xi, 1);
@@ -1142,15 +1144,19 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   double xx = track->GetX();
   H5LTset_attribute_double(group_id, "track","X",&xx, 1);
 
+  std::cout << "1" << std::endl;
+
   hsize_t bodyparamdim[1] {body->GetBodyParams().size()};
   if ( bodyparamdim[0] == 0 ){
     H5LTmake_dataset(group_id,"body",1,dim,H5T_NATIVE_DOUBLE,0);
   } else {
-    H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,body->GetBodyParams().data());
+    H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(body->GetBodyParams().data()));
   }
   H5LTset_attribute_string(group_id, "body", "NAME", body->GetName().c_str());
   unsigned int bid = body->GetId();
   H5LTset_attribute_uint(group_id, "body", "ID", &bid,1);
+
+  std::cout << "2" << std::endl;
 
   // writing cross section information
   hid_t xs_group_id;
@@ -1159,6 +1165,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   } else {
     xs_group_id = H5Gcreate(root_id, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   }
+
+  std::cout << "3" << std::endl;
 
   if (iinteraction and save_cross_section) {
     // sigma_CC and sigma_NC
@@ -1174,8 +1182,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
-    dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(xsCC.data()));
-    dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(xsNC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsCC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsNC.data()));
 
     // dNdE_CC and dNdE_NC
     hsize_t dXSdim[4] {static_cast<hsize_t>(nrhos),
@@ -1199,12 +1207,12 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(dxsCC.data()));
-    dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<void*>(dxsNC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsCC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsNC.data()));
 
     // invlen_tau
     hsize_t iltdim[1] {static_cast<hsize_t>(ne)};
-    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<void*>(int_struct->invlen_tau.get_data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(int_struct->invlen_tau.get_data()));
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2] {static_cast<hsize_t>(ne),
@@ -1229,6 +1237,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // close cross section group
   H5Gclose(xs_group_id);
 
+  std::cout << "4" << std::endl;
 
   // write user parameters
   hid_t user_parameters_id = H5Gcreate(group_id, "user_parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
