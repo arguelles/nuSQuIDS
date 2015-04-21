@@ -1045,7 +1045,7 @@ class nuSQUIDSAtm {
 
     /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
-    /// @param energy_array One dimensioanl array containing the energies to be calculated  [eV].
+    /// @param energy_array One dimensioanl array containing the energies to be calculated  [GeV].
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
     /// @param elogscale Sets the energy scale to be logarithmic
