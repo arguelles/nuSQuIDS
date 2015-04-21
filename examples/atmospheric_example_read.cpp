@@ -34,7 +34,6 @@
  */
 
 using namespace nusquids;
-volatile double dummy;
 
 int main(int argc,  char** argv)
 {
@@ -55,20 +54,14 @@ int main(int argc,  char** argv)
   int neutrino = 0;
 
   std::ofstream output("outputfile.dat");
-  for(int i = 0; i < 1000; i++){
-    for(double log10E = 3.0; log10E < 6.0; log10E +=  0.001 ){
-     const double enu = pow(10.0,log10E);
-     /*
-        output << enu << " ";
-        output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
-        output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
-        output << nus_atm.EvalFlavor(nu_tau,costh,enu,neutrino) << " ";
-        output << std::endl;
-      */
-     dummy += nus_atm.EvalFlavor(nu_e,costh,enu*units.GeV,neutrino);
-    }
+  for(double log10E = 3.0; log10E < 6.0; log10E +=  0.001 ){
+   const double enu = pow(10.0,log10E)*units.GeV;
+      output << enu << " ";
+      output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
+      output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
+      output << nus_atm.EvalFlavor(nu_tau,costh,enu,neutrino) << " ";
+      output << std::endl;
   }
 
-  std::cout << dummy << std::endl;
   return 0;
 }

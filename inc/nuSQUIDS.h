@@ -965,6 +965,8 @@ class nuSQUIDSAtm {
   public:
     using BaseSQUIDS = BaseType;
   private:
+    /// \brief Internal units
+    const squids::Const units;
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Bilinear interpolator.
@@ -977,9 +979,9 @@ class nuSQUIDSAtm {
     bool inusquidsatm;
     /// \brief Contains the cos(zenith) nodes.
     marray<double,1> costh_array;
-    /// \brief Contains the energy nodes.
+    /// \brief Contains the energy nodes in natural units.
     marray<double,1> enu_array;
-    /// \brief Contains the log of energy nodes.
+    /// \brief Contains the log of energy nodes (in natural units).
     marray<double,1> log_enu_array;
     /// \brief Contains the nuSQUIDS objects for each zenith.
     std::vector<BaseSQUIDS> nusq_array;
@@ -1031,18 +1033,19 @@ class nuSQUIDSAtm {
     /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    /// \todo fix the 1.0e9 so they come from units
     nuSQUIDSAtm(marray<double,1> costh_array,
                 double energy_min,double energy_max,unsigned int energy_div,
                 unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false,
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min,energy_max,energy_div-1):linspace(energy_min,energy_max,energy_div-1),
+    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min*1.0e9,energy_max*1.0e9,energy_div-1):linspace(energy_min*1.0e9,energy_max*1.0e9,energy_div-1),
         numneu,NT,iinteraction,ncs)
     {}
 
     /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
-    /// @param energy_array One dimensioanl array containing the energies to be calculated  [GeV].
+    /// @param energy_array One dimensioanl array containing the energies to be calculated  [eV].
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
     /// @param elogscale Sets the energy scale to be logarithmic
@@ -1257,7 +1260,7 @@ class nuSQUIDSAtm {
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
       double delta_t_final = track->GetFinalX()-track->GetInitialX();
 
       // assuming offsets are zero
@@ -1463,9 +1466,6 @@ class nuSQUIDSAtm {
         nsq.Set_GSL_step(opt);
       }
     }
-
-    /// \brief Incorporated const object useful to evaluate units.
-    const squids::Const units;
 
     /// \brief Toggles the progress bar printing on and off
     /// @param opt If \c true a progress bar will be printed.
