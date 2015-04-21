@@ -979,9 +979,9 @@ class nuSQUIDSAtm {
     bool inusquidsatm;
     /// \brief Contains the cos(zenith) nodes.
     marray<double,1> costh_array;
-    /// \brief Contains the energy nodes in natural units.
+    /// \brief Contains the energy nodes [GeV].
     marray<double,1> enu_array;
-    /// \brief Contains the log of energy nodes (in natural units).
+    /// \brief Contains the log of energy nodes (in log of GeV).
     marray<double,1> log_enu_array;
     /// \brief Contains the nuSQUIDS objects for each zenith.
     std::vector<BaseSQUIDS> nusq_array;
@@ -1039,7 +1039,7 @@ class nuSQUIDSAtm {
                 unsigned int numneu,NeutrinoType NT = both,
                 bool elogscale = true, bool iinteraction = false,
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min*1.0e9,energy_max*1.0e9,energy_div-1):linspace(energy_min*1.0e9,energy_max*1.0e9,energy_div-1),
+    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min,energy_max,energy_div-1):linspace(energy_min,energy_max,energy_div-1),
         numneu,NT,iinteraction,ncs)
     {}
 
@@ -1073,10 +1073,10 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(nuSQUIDS& nsq : nusq_array){
         if(i == 0){
-          nsq = nuSQUIDS(enu_array,numneu,NT,interaction,ncs);
+          nsq = nuSQUIDS(enu_array*units.GeV,numneu,NT,interaction,ncs);
           int_struct = nsq.GetInteractionStructure();
         } else {
-          nsq = nuSQUIDS(enu_array,numneu,NT,int_struct,interaction);
+          nsq = nuSQUIDS(enu_array*units.GeV,numneu,NT,int_struct,interaction);
         }
         nsq.Set_Body(earth_atm);
         nsq.Set_Track(track_array[i]);
@@ -1220,7 +1220,7 @@ class nuSQUIDSAtm {
     /// \brief Returns the flavor composition at a given energy and zenith.
     /// @param flv Neutrino flavor.
     /// @param costh Cosine of the zenith.
-    /// @param enu Neutrino energy in natural units [eV].
+    /// @param enu Neutrino energy [GeV].
     /// @param rho Index of the equation, see details.
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
@@ -1260,7 +1260,7 @@ class nuSQUIDSAtm {
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
       double delta_t_final = track->GetFinalX()-track->GetInitialX();
 
       // assuming offsets are zero

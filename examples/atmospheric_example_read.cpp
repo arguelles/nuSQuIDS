@@ -55,7 +55,7 @@ int main(int argc,  char** argv)
 
   std::ofstream output("outputfile.dat");
   for(double log10E = 3.0; log10E < 6.0; log10E +=  0.001 ){
-   const double enu = pow(10.0,log10E)*units.GeV;
+   const double enu = pow(10.0,log10E);
       output << enu << " ";
       output << nus_atm.EvalFlavor(nu_e,costh,enu,neutrino) << " ";
       output << nus_atm.EvalFlavor(nu_mu,costh,enu,neutrino) << " ";
