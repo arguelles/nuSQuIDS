@@ -238,6 +238,7 @@ void nuSQUIDS::InitializeInteractionVectors(){
 }
 
 void nuSQUIDS::PreDerive(double x){
+  std::cout << x << std::endl;
   track->SetX(x-time_offset);
   if( basis != mass){
     EvolveProjectors(x);
@@ -361,13 +362,17 @@ double nuSQUIDS::GetNucleonNumber() const{
     double density = body->density(*track);
     double num_nuc = (params.gr*pow(params.cm,-3))*density*2.0/(params.proton_mass+params.neutron_mass);
 
-    #ifdef UpdateInteractions_DEBUG
-        cout << "Density " << density << endl;
-        cout << "Nucleon Number " << num_nuc << endl;
-    #endif
+    //#ifdef UpdateInteractions_DEBUG
+    if(debug){
+      std::cout << "============ BEGIN GetNucleonNumber ============" << std::endl;
+      std::cout << "Density " << density << std::endl;
+      std::cout << "Nucleon Number " << num_nuc << std::endl;
+      std::cout << "============ END GetNucleonNumber ============" << std::endl;
+    }
+    //#endif
 
     if(num_nuc < 1.0e-10 ){
-        num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
+      num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
     }
 
     return num_nuc;
@@ -375,24 +380,32 @@ double nuSQUIDS::GetNucleonNumber() const{
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
+    if(debug)
+      std::cout << "============ BEGIN UpdateInteractions ============" << std::endl;
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
-              #ifdef UpdateInteractions_DEBUG
-              cout << "============" << flv << "============" << endl;
-              #endif
+          //#ifdef UpdateInteractions_DEBUG
+          if(debug){
+            std::cout << "============" << flv << "============" << std::endl;
+          }
+          //#endif
           for(unsigned int e1 = 0; e1 < ne; e1++){
-              #ifdef UpdateInteractions_DEBUG
-                  cout << "== CC NC Terms x = " << track->x/params.km << " [km] ";
-                  cout << "E = " << x[e1] << " [eV] ==" << endl;
-                  cout << "CC : " << sigma_CC[rho][flv][e1]*num_nuc << " NC : " << sigma_NC[rho][flv][e1]*num_nuc << endl;
-                  cout << "==" << endl;
-              #endif
+              //#ifdef UpdateInteractions_DEBUG
+              if(debug){
+                  std::cout << "== CC NC Terms x = " << track->GetX()/params.km << " [km] ";
+                  std::cout << "E = " << E_range[e1] << " [eV] ==" << std::endl;
+                  std::cout << "CC : " << int_struct->sigma_CC[rho][flv][e1]*num_nuc << " NC : " << int_struct->sigma_NC[rho][flv][e1]*num_nuc << std::endl;
+                  std::cout << "==" << std::endl;
+              }
+              //#endif
               int_struct->invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
               int_struct->invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
               int_struct->invlen_INT[rho][flv][e1] = int_struct->invlen_NC[rho][flv][e1] + int_struct->invlen_CC[rho][flv][e1];
           }
       }
     }
+    if(debug)
+      std::cout << "============ END UpdateInteractions ============" << std::endl;
 }
 
 void nuSQUIDS::InitializeInteractions(){

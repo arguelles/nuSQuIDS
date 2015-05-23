@@ -359,6 +359,8 @@ class nuSQUIDS: public squids::SQuIDS {
 
     // bool requirements
   private:
+    /// \brief Boolean that toggles debug information to be printed
+    bool debug = false;
     /// \brief Boolean that signals the object correct initialization.
     bool inusquids = false;
     /// \brief Boolean that signals that a Body object has being set.
@@ -952,6 +954,12 @@ class nuSQUIDS: public squids::SQuIDS {
     /// interactions introduce phases that cannot be cancelled as one goes to the
     /// interaction basis.
     void Set_Basis(Basis basis);
+
+    /// \brief Sets the debug information on/off
+    /// @param debug_ Boolean that toggles debuging on and off.
+    void Set_Debug(bool debug_){
+      debug = debug_;
+    }
 };
 
 /**
@@ -965,6 +973,8 @@ class nuSQUIDSAtm {
   public:
     using BaseSQUIDS = BaseType;
   private:
+    /// \brief Mixing matrix
+    std::unique_ptr<gsl_matrix_complex> U;
     /// \brief Internal units
     const squids::Const units;
     /// \brief Boolean that signals that a progress bar will be printed.
@@ -1082,6 +1092,7 @@ class nuSQUIDSAtm {
         nsq.Set_Track(track_array[i]);
         i++;
       }
+      U = nusq_array[0].params.GetTransformationMatrix(GetNumNeu());
       inusquidsatm = true;
     }
 
@@ -1090,7 +1101,10 @@ class nuSQUIDSAtm {
     /// \details Reads the HDF5 file and construct the associated nuSQUIDSAtm object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDSAtm(std::string hdf5_filename) {ReadStateHDF5(hdf5_filename);}
+    nuSQUIDSAtm(std::string hdf5_filename) {
+      ReadStateHDF5(hdf5_filename);
+      U = nusq_array[0].params.GetTransformationMatrix(GetNumNeu());
+    }
 
     /// \brief Move constructor.
     nuSQUIDSAtm(nuSQUIDSAtm&& other):
@@ -1263,25 +1277,54 @@ class nuSQUIDSAtm {
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
       double delta_t_final = track->GetFinalX()-track->GetInitialX();
 
+      double oscillation_scale = std::numeric_limits<double>::max();
+      for(unsigned int i=1; i< GetNumNeu(); i++){
+        double l = enu*units.GeV/Get_SquareMassDifference(i);
+        if(l < oscillation_scale)
+          oscillation_scale = l;
+      }
+
       // assuming offsets are zero
       double delta_t_1 = nusq_array[cth_M].Get_t() - nusq_array[cth_M].Get_t_initial();
       double delta_t_2 = nusq_array[cth_M+1].Get_t() - nusq_array[cth_M+1].Get_t_initial();
       double delta_t_final_1 = nusq_array[cth_M].GetTrack()->GetFinalX() - nusq_array[cth_M].GetTrack()->GetInitialX();
       double delta_t_final_2 = nusq_array[cth_M+1].GetTrack()->GetFinalX() - nusq_array[cth_M+1].GetTrack()->GetInitialX();
       double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
-      // get the evolved projector for the right distance and energy
-      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
-      double phiMM,phiMP,phiPM,phiPP;
-      squids::SU_vector temp(evol_proj.Dim());
-      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      if(oscillation_scale/t_inter <  5.0e-2){
+        double flux = 0;
+        for(unsigned int i = 0; i < GetNumNeu(); i++){
+          squids::SU_vector evol_proj = nusq_array[0].GetMassProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
-      return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
-            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
-            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
+          double phiMM,phiMP,phiPM,phiPP;
+          squids::SU_vector temp(evol_proj.Dim());
+
+          phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+          phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+          phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+          phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+
+          double matrix_element = gsl_complex_abs2(gsl_matrix_complex_get(U.get(),flv,i));
+          flux += matrix_element*LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
+                LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
+                LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
+        }
+        return flux;
+      } else {
+        // get the evolved projector for the right distance and energy
+        squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
+
+        double phiMM,phiMP,phiPM,phiPP;
+        squids::SU_vector temp(evol_proj.Dim());
+        phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+        phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+        phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+        phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+
+        return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
+              LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
+              LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
+      }
     }
 
     /// \brief Writes the object into an HDF5 file.

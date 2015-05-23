@@ -334,9 +334,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5,
         nuSQUIDS_HDF5Write_overload(args("hdf5_filename","group"," save_cross_sections","cross_section_grp_loc"),
           "Writs the current nuSQUIDS object into an HDF5 file."))
-    .def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5,
-        nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
-          "Reads an HDF5 file and loads the contents into the current object."))
+    //.def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5,
+    //    nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
+    //      "Reads an HDF5 file and loads the contents into the current object."))
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
     .def("EvalMass",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalMass)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalFlavor)
@@ -346,7 +346,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvalFlavorAtNode",(double(nuSQUIDS::*)(unsigned int,unsigned int,unsigned int) const)&nuSQUIDS::EvalFlavorAtNode)
     .def("GetERange",&nuSQUIDS::GetERange)
     .def("GetHamiltonian",&nuSQUIDS::GetHamiltonian)
-    .def("GetState",&nuSQUIDS::GetState)
+    //.def("GetState",&nuSQUIDS::GetState)
     .def("Set_h_min",&nuSQUIDS::Set_h_min)
     .def("Set_h_max",&nuSQUIDS::Set_h_max)
     .def("Set_h",&nuSQUIDS::Set_h)
@@ -364,7 +364,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
-    .def_readonly("units", &nuSQUIDS::units)
+    //.def_readonly("units", &nuSQUIDS::units)
   ;
 
   class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
@@ -379,7 +379,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_SquareMassDifference",&nuSQUIDSAtm<>::Set_SquareMassDifference)
     .def("Set_ProgressBar",&nuSQUIDSAtm<>::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDSAtm<>::Set_MixingParametersToDefault)
-    .def_readonly("units", &nuSQUIDSAtm<>::units)
+    //.def_readonly("units", &nuSQUIDSAtm<>::units)
     .def("Set_rel_error",&nuSQUIDSAtm<>::Set_rel_error)
     .def("Set_abs_error",&nuSQUIDSAtm<>::Set_abs_error)
     .def("GetNumE",&nuSQUIDSAtm<>::GetNumE)
