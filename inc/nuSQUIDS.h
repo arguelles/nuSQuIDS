@@ -49,6 +49,8 @@
 #include "H5Gpublic.h"
 #include "H5Fpublic.h"
 
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 
 #define ManualTauReinjection
 #define FixCrossSections
@@ -973,8 +975,10 @@ class nuSQUIDSAtm {
   public:
     using BaseSQUIDS = BaseType;
   private:
+    /// \brief Random number generator
+    gsl_rng * r_gsl;
     /// \brief Mixing matrix
-    std::unique_ptr<gsl_matrix_complex> U;
+    std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> U{nullptr,[](gsl_matrix_complex*m){delete m;}};
     /// \brief Internal units
     const squids::Const units;
     /// \brief Boolean that signals that a progress bar will be printed.
@@ -1068,6 +1072,10 @@ class nuSQUIDSAtm {
                 std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
     costh_array(costh_array),enu_array(enu_array)
     {
+      gsl_rng_env_setup();
+      const gsl_rng_type * T_gsl = gsl_rng_default;
+      r_gsl = gsl_rng_alloc (T_gsl);
+
       nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
 
       log_enu_array.resize(0,enu_array.size());
@@ -1102,6 +1110,9 @@ class nuSQUIDSAtm {
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
     nuSQUIDSAtm(std::string hdf5_filename) {
+      gsl_rng_env_setup();
+      const gsl_rng_type * T_gsl = gsl_rng_default;
+      r_gsl = gsl_rng_alloc (T_gsl);
       ReadStateHDF5(hdf5_filename);
       U = nusq_array[0].params.GetTransformationMatrix(GetNumNeu());
     }
@@ -1275,7 +1286,8 @@ class nuSQUIDSAtm {
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
-      double delta_t_final = track->GetFinalX()-track->GetInitialX();
+      double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
+      double delta_t_final = track->GetFinalX()-track->GetInitialX() + production_height;
 
       double oscillation_scale = std::numeric_limits<double>::max();
       for(unsigned int i=1; i< GetNumNeu(); i++){
@@ -1291,10 +1303,10 @@ class nuSQUIDSAtm {
       double delta_t_final_2 = nusq_array[cth_M+1].GetTrack()->GetFinalX() - nusq_array[cth_M+1].GetTrack()->GetInitialX();
       double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
 
-      if(oscillation_scale/t_inter <  5.0e-2){
+      if(oscillation_scale/t_inter <  1.0e-2){
         double flux = 0;
         for(unsigned int i = 0; i < GetNumNeu(); i++){
-          squids::SU_vector evol_proj = nusq_array[0].GetMassProj(flv,rho).Evolve(H0_at_enu,t_inter);
+          squids::SU_vector evol_proj = nusq_array[0].GetMassProj(i,rho).Evolve(H0_at_enu,t_inter);
 
           double phiMM,phiMP,phiPM,phiPP;
           squids::SU_vector temp(evol_proj.Dim());
@@ -1320,7 +1332,6 @@ class nuSQUIDSAtm {
         phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
         phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
         phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-
         return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
               LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
               LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
