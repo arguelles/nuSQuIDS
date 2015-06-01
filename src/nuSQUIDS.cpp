@@ -131,13 +131,21 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   // BEGIN                       //
   //===============================
 
-  // initialize SQUIDS
-  if (iinteraction)
-    ini(ne,numneu,nrhos,nrhos,xini);
-  else
-    ini(ne,numneu,nrhos,0,xini);
+  try {
+    // initialize SQUIDS
+    if (iinteraction)
+      ini(ne,numneu,nrhos,nrhos,xini);
+    else
+      ini(ne,numneu,nrhos,0,xini);
+  } catch (...){
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
+  }
 
-  SetScalarsToZero();
+  try{
+    SetScalarsToZero();
+  } catch (...) {
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to set scalar arrays to zero [SetScalarsToZero].");
+  }
 
   Set_CoherentRhoTerms(true);
   Set_h_max(std::numeric_limits<double>::max());
@@ -145,37 +153,52 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   //===============================
   // initialize energy arrays    //
   //===============================
-  E_range = E_vector;
-  Set_xrange(std::vector<double>(E_range.begin(),E_range.end()));
+  try{
+    E_range = E_vector;
+    Set_xrange(std::vector<double>(E_range.begin(),E_range.end()));
 
-  delE.resize(std::vector<size_t>{ne-1});
-  for(unsigned int ei = 0; ei < ne -1; ei++)
-    delE[ei] = E_range[ei+1] - E_range[ei];
+    delE.resize(std::vector<size_t>{ne-1});
+    for(unsigned int ei = 0; ei < ne -1; ei++)
+      delE[ei] = E_range[ei+1] - E_range[ei];
 
-  ienergy = true;
+    ienergy = true;
+  } catch (...){
+    throw std::runtime_error("nuSQUIDS::init : Failed while constructing energy and energy difference arrays.");
+  }
 
   //===============================
   // set parameters to default   //
   //===============================
 
-  Set_MixingParametersToDefault();
+  try{
+    Set_MixingParametersToDefault();
+  } catch (...) {
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to set default mixing parameters [Set_MixingParametersToDetaul]");
+  }
 
   //===============================
   // init projectors             //
   //===============================
 
-  iniProjectors();
+  try{
+    iniProjectors();
+  } catch (...) {
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize projectors [iniProjectors]");
+  }
 
   //===============================
   // init square mass difference //
   //===============================
 
-  H0_array.resize(std::vector<size_t>{ne});
-  for(unsigned int ie = 0; ie < ne; ie++){
-    H0_array[ie] = squids::SU_vector(nsun);
+  try{
+    H0_array.resize(std::vector<size_t>{ne});
+    for(unsigned int ie = 0; ie < ne; ie++){
+      H0_array[ie] = squids::SU_vector(nsun);
+    }
+    iniH0();
+  } catch (...) {
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize vaccum Hamiltonian [iniH0]");
   }
-
-  iniH0();
 
   //===============================
   // Tau properties              //
@@ -187,24 +210,37 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   tau_reg_scale = 300.0*params.km;
   positivization_scale = 300.0*params.km;
 
+  std::cout << "i am now going to initialize interactions" << std::endl;
   if(iinteraction and initialize_intereractions){
-    //===============================
-    // init XS and TDecay objects  //
-    //===============================
+      //===============================
+      // init XS and TDecay objects  //
+      //===============================
 
-    // initialize cross section object
-    if ( ncs == nullptr) {
-      ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
-    } // else we assume the user has already inintialized the object if not throw error.
+      // initialize cross section object
+      if ( ncs == nullptr) {
+        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
+      } // else we assume the user has already inintialized the object if not throw error.
 
-    // initialize tau decay spectra object
-    tdc.Init(E_range[0],E_range[ne-1],ne-1);
-    // initialize cross section and interaction arrays
-    InitializeInteractionVectors();
-    //===============================
-    // Fill in arrays              //
-    //===============================
-    InitializeInteractions();
+      try{
+      // initialize tau decay spectra object
+        tdc.Init(E_range[0],E_range[ne-1],ne-1);
+      } catch (...) {
+        throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
+      }
+      // initialize cross section and interaction arrays
+      try {
+        InitializeInteractionVectors();
+      } catch (...) {
+        throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize interaction vectors [InitializeInteractionVectors]");
+      }
+      //===============================
+      // Fill in arrays              //
+      //===============================
+      try {
+        InitializeInteractions();
+      } catch (...) {
+        throw std::runtime_error("nuSQUIDS::init : Failed while trying to fill in interaction vectors [InitializeInteractions]");
+      }
   }
 
   if(iinteraction){
@@ -213,6 +249,7 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
     Set_GammaScalarTerms(true);
     Set_OtherScalarTerms(true);
   }
+  std::cout << "done" << std::endl;
 
   //===============================
   // END                         //
@@ -1114,6 +1151,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(neustate.data()));
   dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(aneustate.data()));
 
+/*
   // writing state flavor and mass composition
   hsize_t pdim[2] {E_range.size(), static_cast<hsize_t>(numneu)};
   if ( NT == both )
@@ -1138,7 +1176,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   }
 
   dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(flavor.data()));
-  dset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(mass.data()));
+  idset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(mass.data()));
+*/
 
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};

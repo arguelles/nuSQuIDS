@@ -771,8 +771,8 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @param rho Index of the equation, see details.
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
-    double EvalMassAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
 
+    double EvalMassAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
     /// \brief Returns the flavor composition at a given node.
     /// @param flv Neutrino flavor.
     /// @param ie Energy node index.
@@ -962,6 +962,11 @@ class nuSQUIDS: public squids::SQuIDS {
     void Set_Debug(bool debug_){
       debug = debug_;
     }
+
+    /// \brief Returns lepton mixing matrix
+    std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> GetTransformationMatrix() const {
+      return params.GetTransformationMatrix(GetNumNeu());
+    }
 };
 
 /**
@@ -1025,16 +1030,10 @@ class nuSQUIDSAtm {
     /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
-    nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
-                double energy_min,double energy_max,unsigned int energy_div,
-                unsigned int numneu,NeutrinoType NT = both,
-                bool elogscale = true, bool iinteraction = false,
-                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+    template<typename... ArgTypes> nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
+                ArgTypes&&... args):
     nuSQUIDSAtm(linspace(costh_min,costh_max,costh_div-1),
-        energy_min,energy_max,energy_div,
-        numneu,NT,
-        elogscale,iinteraction,
-        ncs)
+        std::forward<ArgTypes>(args)...)
     {}
 
     /// \brief Basic constructor.
@@ -1047,60 +1046,33 @@ class nuSQUIDSAtm {
     /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
-    /// \todo fix the 1.0e9 so they come from units
-    nuSQUIDSAtm(marray<double,1> costh_array,
-                double energy_min,double energy_max,unsigned int energy_div,
-                unsigned int numneu,NeutrinoType NT = both,
-                bool elogscale = true, bool iinteraction = false,
-                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    nuSQUIDSAtm(costh_array,elogscale ? logspace(energy_min,energy_max,energy_div-1):linspace(energy_min,energy_max,energy_div-1),
-        numneu,NT,iinteraction,ncs)
-    {}
-
-    /// \brief Basic constructor.
-    /// @param costh_array One dimensional array containing zenith angles to be calculated.
-    /// @param energy_array One dimensioanl array containing the energies to be calculated  [GeV].
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
-    /// @param elogscale Sets the energy scale to be logarithmic
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
-    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
-    nuSQUIDSAtm(marray<double,1> costh_array,
-                marray<double,1> enu_array,
-                unsigned int numneu,NeutrinoType NT = both,
-                bool iinteraction = false,
-                std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    costh_array(costh_array),enu_array(enu_array)
+    template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array,
+                ArgTypes&&... args):
+    costh_array(costh_array), ncs(std::make_shared<NeutrinoDISCrossSectionsFromTables>())
     {
       gsl_rng_env_setup();
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
 
-      nusq_array = std::vector<nuSQUIDS>(costh_array.extent(0));
-
-      log_enu_array.resize(0,enu_array.size());
-      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
-                     [](int enu) { return log(enu); });
+      nusq_array = std::vector<BaseSQUIDS>(costh_array.extent(0));
 
       earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
-      if (ncs == nullptr)
-        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
 
       unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
-        if(i == 0){
-          nsq = nuSQUIDS(enu_array*units.GeV,numneu,NT,interaction,ncs);
-          int_struct = nsq.GetInteractionStructure();
-        } else {
-          nsq = nuSQUIDS(enu_array*units.GeV,numneu,NT,int_struct,interaction);
-        }
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq = BaseSQUIDS(std::forward<ArgTypes>(args)...,ncs);
         nsq.Set_Body(earth_atm);
         nsq.Set_Track(track_array[i]);
         i++;
       }
-      U = nusq_array[0].params.GetTransformationMatrix(GetNumNeu());
+
+      enu_array = nusq_array.front().GetERange();
+      log_enu_array.resize(0,enu_array.size());
+      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
+                     [](int enu) { return log(enu); });
+
       inusquidsatm = true;
     }
 
@@ -1114,7 +1086,7 @@ class nuSQUIDSAtm {
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
       ReadStateHDF5(hdf5_filename);
-      U = nusq_array[0].params.GetTransformationMatrix(GetNumNeu());
+      U = nusq_array[0].GetTransformationMatrix();
     }
 
     /// \brief Move constructor.
@@ -1177,7 +1149,7 @@ class nuSQUIDSAtm {
       if(ini_flux.extent(1) != enu_array.extent(0))
         throw std::runtime_error("nuSQUIDSAtm::Error::Second dimension of input array is incorrect.");
       unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         marray<double,2> slice{ini_flux.extent(1),ini_flux.extent(2)};
         for(size_t j=0; j<ini_flux.extent(1); j++){
           for(size_t k=0; k<ini_flux.extent(2); k++)
@@ -1207,7 +1179,7 @@ class nuSQUIDSAtm {
         throw std::runtime_error(
             "nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
       unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         marray<double,3> slice{ini_flux.extent(1),ini_flux.extent(2),ini_flux.extent(3)};
         for(size_t j=0; j<ini_flux.extent(1); j++){
           for(size_t k=0; k<ini_flux.extent(2); k++){
@@ -1230,7 +1202,7 @@ class nuSQUIDSAtm {
       if(not inusquidsatm)
         throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
       unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
       if(progressbar){
         std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
         i++;
@@ -1275,7 +1247,7 @@ class nuSQUIDSAtm {
       }
 
       int loge_M = -1;
-      double logE = log(enu);
+      double logE = log(enu*units.GeV);
       for(int i = 0; i < log_enu_array.extent(0); i++){
         if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
           loge_M = i;
@@ -1303,39 +1275,22 @@ class nuSQUIDSAtm {
       double delta_t_final_2 = nusq_array[cth_M+1].GetTrack()->GetFinalX() - nusq_array[cth_M+1].GetTrack()->GetInitialX();
       double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
 
-      if(oscillation_scale/t_inter <  1.0e-2){
-        double flux = 0;
-        for(unsigned int i = 0; i < GetNumNeu(); i++){
-          squids::SU_vector evol_proj = nusq_array[0].GetMassProj(i,rho).Evolve(H0_at_enu,t_inter);
+      double flux = 0;
+      //H0_at_enu = nusq_array[0].H0(enu*(1+gsl_ran_gaussian(r_gsl,0.35))*units.GeV,rho);
+      H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
-          double phiMM,phiMP,phiPM,phiPP;
-          squids::SU_vector temp(evol_proj.Dim());
+      double phiMM,phiMP,phiPM,phiPP;
+      squids::SU_vector temp(evol_proj.Dim());
+      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      flux += LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
+            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
+            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
 
-          phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-          phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-          phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-          phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-
-          double matrix_element = gsl_complex_abs2(gsl_matrix_complex_get(U.get(),flv,i));
-          flux += matrix_element*LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
-                LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
-                LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
-        }
-        return flux;
-      } else {
-        // get the evolved projector for the right distance and energy
-        squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
-
-        double phiMM,phiMP,phiPM,phiPP;
-        squids::SU_vector temp(evol_proj.Dim());
-        phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-        phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-        phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-        phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-        return LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
-              LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
-              LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
-      }
+      return flux;
     }
 
     /// \brief Writes the object into an HDF5 file.
@@ -1366,7 +1321,7 @@ class nuSQUIDSAtm {
       H5Fclose (file_id);
 
       unsigned int i = 0;
-      for(const nuSQUIDS& nsq : nusq_array){
+      for(const BaseSQUIDS& nsq : nusq_array){
         // use only the first one to write the cross sections on /crosssections
         nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
         i++;
@@ -1410,10 +1365,10 @@ class nuSQUIDSAtm {
 
       // resize apropiately the nuSQUIDSAtm container vector
       nusq_array.clear();
-      nusq_array = std::vector<nuSQUIDS>(costhdims[0]);
+      nusq_array = std::vector<BaseSQUIDS>(costhdims[0]);
 
       unsigned int i = 0;
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         if(i==0){
           // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
@@ -1431,7 +1386,7 @@ class nuSQUIDSAtm {
 
     /// \brief Sets the mixing parameters to default.
     void Set_MixingParametersToDefault(){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_MixingParametersToDefault();
       }
     }
@@ -1443,7 +1398,7 @@ class nuSQUIDSAtm {
     /// @param angle Angle to use in radians.
     /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
     void Set_MixingAngle(unsigned int i, unsigned int j,double angle){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_MixingAngle(i,j,angle);
       }
     }
@@ -1464,7 +1419,7 @@ class nuSQUIDSAtm {
     /// @param angle Phase to use in radians.
     /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
     void Set_CPPhase(unsigned int i, unsigned int j,double angle){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_CPPhase(i,j,angle);
       }
     }
@@ -1484,7 +1439,7 @@ class nuSQUIDSAtm {
     /// @param sq Square mass difference in eV^2.
     /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
     void Set_SquareMassDifference(unsigned int i,double sq){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_SquareMassDifference(i,sq);
       }
     }
@@ -1500,7 +1455,7 @@ class nuSQUIDSAtm {
     /// \brief Sets the absolute numerical error.
     /// @param eps Error.
     void Set_abs_error(double eps){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_abs_error(eps);
       }
     }
@@ -1508,7 +1463,7 @@ class nuSQUIDSAtm {
     /// \brief Sets the relative numerical error.
     /// @param eps Error.
     void Set_rel_error(double eps){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_rel_error(eps);
       }
     }
@@ -1516,7 +1471,7 @@ class nuSQUIDSAtm {
     /// \brief Sets the GSL solver
     /// @param opt GSL stepper function.
     void Set_GSL_step(gsl_odeiv2_step_type const * opt){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_GSL_step(opt);
       }
     }
@@ -1525,7 +1480,7 @@ class nuSQUIDSAtm {
     /// @param opt If \c true a progress bar will be printed.
     void Set_ProgressBar(bool opt){
         progressbar = opt;
-        for(nuSQUIDS& nsq : nusq_array){
+        for(BaseSQUIDS& nsq : nusq_array){
           nsq.Set_ProgressBar(opt);
         }
     }
@@ -1572,7 +1527,7 @@ class nuSQUIDSAtm {
     /// \brief Toggles tau regeneration on and off.
     /// @param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_TauRegeneration(opt);
       }
     }
@@ -1580,14 +1535,14 @@ class nuSQUIDSAtm {
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
     void Set_PositivityConstrain(bool opt){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_PositivityConstrain(opt);
       }
     }
     /// \brief Stes the step upon which the positivity correction would be apply.
     /// @param step The step upon which the positivization will take place.
     void Set_PositivityConstrainStep(double step){
-      for(nuSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_PositivityConstrainStep(step);
       }
     }
