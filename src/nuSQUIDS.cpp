@@ -137,13 +137,15 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
       ini(ne,numneu,nrhos,nrhos,xini);
     else
       ini(ne,numneu,nrhos,0,xini);
-  } catch (...){
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
   }
 
   try{
     SetScalarsToZero();
-  } catch (...) {
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying to set scalar arrays to zero [SetScalarsToZero].");
   }
 
@@ -162,7 +164,8 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
       delE[ei] = E_range[ei+1] - E_range[ei];
 
     ienergy = true;
-  } catch (...){
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while constructing energy and energy difference arrays.");
   }
 
@@ -172,7 +175,8 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
 
   try{
     Set_MixingParametersToDefault();
-  } catch (...) {
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying to set default mixing parameters [Set_MixingParametersToDetaul]");
   }
 
@@ -182,7 +186,8 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
 
   try{
     iniProjectors();
-  } catch (...) {
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize projectors [iniProjectors]");
   }
 
@@ -196,7 +201,8 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
       H0_array[ie] = squids::SU_vector(nsun);
     }
     iniH0();
-  } catch (...) {
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize vaccum Hamiltonian [iniH0]");
   }
 
@@ -210,7 +216,6 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   tau_reg_scale = 300.0*params.km;
   positivization_scale = 300.0*params.km;
 
-  std::cout << "i am now going to initialize interactions" << std::endl;
   if(iinteraction and initialize_intereractions){
       //===============================
       // init XS and TDecay objects  //
@@ -224,13 +229,15 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
       try{
       // initialize tau decay spectra object
         tdc.Init(E_range[0],E_range[ne-1],ne-1);
-      } catch (...) {
+      } catch (std::exception& ex) {
+        std::cerr << ex.what() << std::endl;
         throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
       }
       // initialize cross section and interaction arrays
       try {
         InitializeInteractionVectors();
-      } catch (...) {
+      } catch (std::exception& ex) {
+        std::cerr << ex.what() << std::endl;
         throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize interaction vectors [InitializeInteractionVectors]");
       }
       //===============================
@@ -238,7 +245,8 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
       //===============================
       try {
         InitializeInteractions();
-      } catch (...) {
+      } catch (std::exception& ex) {
+        std::cerr << ex.what() << std::endl;
         throw std::runtime_error("nuSQUIDS::init : Failed while trying to fill in interaction vectors [InitializeInteractions]");
       }
   }
@@ -272,6 +280,7 @@ void nuSQUIDS::InitializeInteractionVectors(){
     int_struct->invlen_tau.resize(std::vector<size_t>{ne});
     int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
     int_struct->dNdE_tau_lep.resize(std::vector<size_t>{ne,ne});
+
 }
 
 void nuSQUIDS::PreDerive(double x){

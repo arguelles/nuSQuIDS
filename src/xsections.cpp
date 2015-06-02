@@ -38,7 +38,7 @@ double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, Neutrin
 
   if ( Enu < Emin or Enu > Emax )
     throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
-quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
+quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
 
   // convert to GeV
   Enu /= GeV;
@@ -54,7 +54,7 @@ double NeutrinoDISCrossSectionsFromTables::DifferentialCrossSection(double E1, d
 
   if ( E1 < Emin or E1 > Emax )
     throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
-quested below 10 GeV or above 10^9 GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
+quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
 
   // convert to GeV
   E1 /= GeV;
