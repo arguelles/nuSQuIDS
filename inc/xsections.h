@@ -105,7 +105,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \details Used by DifferentialCrossSectionl() to interpolate the differential cross section.
       double LinInter(double,double,double,double,double) const;
       /// \brief Null Double Differential Cross section
-      double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override
+      virtual double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override
       {
         return 0.;
       }

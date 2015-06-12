@@ -284,7 +284,6 @@ void nuSQUIDS::InitializeInteractionVectors(){
 }
 
 void nuSQUIDS::PreDerive(double x){
-  std::cout << x << std::endl;
   track->SetX(x-time_offset);
   if( basis != mass){
     EvolveProjectors(x);
