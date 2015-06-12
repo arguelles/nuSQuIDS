@@ -47,7 +47,7 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   return gsl_spline_eval(xs_inter[current][neutype][flavor],logE,xs_acc[current][neutype][flavor]);
 }
 
-double NeutrinoDISCrossSectionsFromTables::DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;

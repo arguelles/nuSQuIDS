@@ -482,8 +482,8 @@ void nuSQUIDS::InitializeInteractions(){
           for(unsigned int e1 = 0; e1 < ne; e1++){
               // differential cross sections
               for(unsigned int e2 = 0; e2 < e1; e2++){
-                  dsignudE_NC[neutype][flv][e1][e2] = ncs->DifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
-                  dsignudE_CC[neutype][flv][e1][e2] = ncs->DifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+                  dsignudE_NC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+                  dsignudE_CC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
               }
               // total cross sections
               int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;

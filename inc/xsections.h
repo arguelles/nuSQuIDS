@@ -60,7 +60,16 @@ class NeutrinoCrossSections{
     /// @param flavor Flavor index.
     /// @param neutype Can be either neutrino or antineutrino.
     /// @param current Can be either CC or NC.
-    virtual double DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
+    virtual double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
+    /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+    /// \details The cross section will be returned in cm^2 GeV^-1.
+    /// @param E Incident lepton energy.
+    /// @param x bjorken-x.
+    /// @param y bjorken-y.
+    /// @param flavor Flavor index.
+    /// @param neutype Can be either neutrino or antineutrino.
+    /// @param current Can be either CC or NC.
+    virtual double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
 };
 
 /// \class NeutrinoDISCrossSectionsFromTables
@@ -80,17 +89,6 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \brief GeV in eV
       const double GeV = 1.0e9;
 
-      /*
-      /// \brief Stores the neutrino charge current differential cross section evaluated at the nodes.
-      marray<double,4> dsde_CC_tbl;
-      /// \brief Stores the neutrino neutral current differential cross section evaluated at the nodes.
-      marray<double,4> dsde_NC_tbl;
-      /// \brief Stores the total neutrino charge current cross section evaluated at the nodes.
-      marray<double,3> sigma_CC_tbl;
-      /// \brief Stores the total neutrino neutral current cross section evaluated at the nodes.
-      marray<double,3> sigma_NC_tbl;
-      */
-
       /// \brief Stores the neutrino charge current differential cross section.
       marray<double,4> dsde_CC_data;
       /// \brief Stores the neutrino neutral current differential cross section.
@@ -106,6 +104,11 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \brief Bilinear interpolator
       /// \details Used by DifferentialCrossSectionl() to interpolate the differential cross section.
       double LinInter(double,double,double,double,double) const;
+      /// \brief Null Double Differential Cross section
+      double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override
+      {
+        return 0.;
+      }
     public :
       /// \brief Default constructor
       // NeutrinoCrossSections(){};
@@ -120,7 +123,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
 
       /// \brief Returns the total neutrino cross section
       /// \details Used to interpolate the total cross sections.
-      double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
+      double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
       /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
       /// \details The cross section will be returned in cm^2 GeV^-1.
       /// @param E1 Incident lepton energy.
@@ -128,33 +131,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// @param flavor Flavor index.
       /// @param neutype Can be either neutrino or antineutrino.
       /// @param current Can be either CC or NC.
-      double DifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
-
-      /*
-      /// \brief Returns the diferencial charge current cross section.
-      /// @param i_enu Index of the incoming neutrino energy node.
-      /// @param i_ele Index of the outgoing lepton energy node.
-      /// @param flv Flavor of the neutrino: 0:electron, 1:muon, 2: tau.
-      /// @param neutype 0:neutrino, 1:antineutrino.
-      double dsde_CC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const;
-      /// \brief Returns the diferencial neutral cross section.
-      /// @param i_enu Index of the incoming neutrino energy node.
-      /// @param i_ele Index of the outgoing lepton energy node.
-      /// @param flv Flavor of the neutrino: 0:electron, 1:muon, 2: tau.
-      /// @param neutype 0:neutrino, 1:antineutrino.
-      double dsde_NC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const;
-      /// \brief Returns the total charge cross section.
-      /// @param i_enu Index of the incoming neutrino energy node.
-      /// @param flv Flavor of the neutrino: 0:electron, 1:muon, 2: tau.
-      /// @param neutype 0:neutrino, 1:antineutrino.
-      double sigma_CC(unsigned int i_enu,NeutrinoFlavor flv,NeutrinoType neutype) const;
-      /// \brief Returns the total neutral cross section.
-      /// @param i_enu Index of the incoming neutrino energy node.
-      /// @param flv Flavor of the neutrino: 0:electron, 1:muon, 2: tau.
-      /// @param neutype 0:neutrino, 1:antineutrino.
-      double sigma_NC(unsigned int i_enu,NeutrinoFlavor flv,NeutrinoType neutype) const;
-      */
-
+      double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
       /// \brief Returns the number of energy nodes.
       unsigned int GetNumE() const {return div;}
       /// \brief Returns the minimum energy in [eV]
