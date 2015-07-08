@@ -232,7 +232,8 @@ SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
 EXAMPLES_SRC=$(wildcard examples/*.cpp)
-EXAMPLES=$(EXAMPLES_SRC:.cpp=.exe)
+EXAMPLES=$(patsubst examples/%.cpp,bin/%.exe,$(EXAMPLES_SRC))
+#$(EXAMPLES_SRC:.cpp=.exe)
 
 CXXFLAGS= -std=c++11
 
@@ -258,34 +259,31 @@ LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
 
 # Project files
 NAME=nuSQuIDS
-STAT_PRODUCT=lib$(NAME).a
-DYN_PRODUCT=lib$(NAME)$(DYN_SUFFIX)
+STAT_PRODUCT=$(PATH_nuSQUIDS)/lib/lib$(NAME).a
+DYN_PRODUCT=$(PATH_nuSQUIDS)/lib/lib$(NAME)$(DYN_SUFFIX)
 
 # Compilation rules
 all: $(STAT_PRODUCT) $(DYN_PRODUCT)
 
 examples : $(EXAMPLES)
 
-%.exe : %.cpp
+bin/%.exe : examples/%.cpp
 	$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -o $@
-	mv $@ bin/
 
 $(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
 	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS)
-	mv $(DYN_PRODUCT) $(PATH_nuSQUIDS)/lib/$(DYN_PRODUCT)
 
 $(STAT_PRODUCT) : $(OBJECTS)
 	@echo Linking $(STAT_PRODUCT)
 	@$(AR) -rcs $(STAT_PRODUCT) $(OBJECTS)
-	mv $(STAT_PRODUCT) $(PATH_nuSQUIDS)/lib/$(STAT_PRODUCT)
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -c $(CFLAGS) $< -o $@
 
 .PHONY: clean
 clean:
-	rm -f src/*.o examples/*.exe lib/* bin/*
+	rm -rf $(PATH_nuSQUIDS)/src/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/lib/* $(PATH_nuSQUIDS)/bin/*
 
 doxygen:
 	@doxygen src/doxyfile
@@ -382,8 +380,8 @@ echo '
 
 # Project files
 NAME=nuSQUIDSpy
-STAT_PRODUCT=$(NAME).a
-DYN_PRODUCT=$(NAME)$(DYN_SUFFIX)
+STAT_PRODUCT=$(PATH_nuSQUIDSpy)/bindings/$(NAME).a
+DYN_PRODUCT=$(PATH_nuSQUIDSpy)/bindings/$(NAME)$(DYN_SUFFIX)
 
 OS_NAME=$(shell uname -s)
 ifeq ($(OS_NAME),Linux)
@@ -401,12 +399,10 @@ all: $(STAT_PRODUCT) $(DYN_PRODUCT)
 $(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
 	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS)
-	mv $(DYN_PRODUCT) $(PATH_nuSQUIDSpy)/bindings/$(DYN_PRODUCT)
 
 $(STAT_PRODUCT) : $(OBJECTS)
 	@echo Linking $(STAT_PRODUCT)
 	@$(AR) -rcs $(STAT_PRODUCT) $(OBJECTS)
-	mv $(STAT_PRODUCT) $(PATH_nuSQUIDSpy)/bindings/$(STAT_PRODUCT)
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
