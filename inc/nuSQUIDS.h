@@ -1528,7 +1528,7 @@ class nuSQUIDSAtm {
     }
 
     /// \brief Returns the vector of nuSQUIDSBase objects.
-    std::vector<BaseSQUIDS&> GetnuSQuIDS() {
+    std::vector<BaseSQUIDS>& GetnuSQuIDS() {
       return nusq_array;
     }
 
