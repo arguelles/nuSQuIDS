@@ -111,7 +111,7 @@ int main(){
     std::cout << "DiffBody " << nus.GetBody()->GetId() << " " << nus_read.GetBody()->GetId() << std::endl;
 
   // check that the body parameters are the same
-  if ( nus.GetBody()->GetBodyParams().size() != nus.GetBody()->GetBodyParams().size())
+  if ( nus.GetBody()->GetBodyParams().size() != nus_read.GetBody()->GetBodyParams().size())
     std::cout << "BodyParamsSize " << nus.GetBody()->GetBodyParams().size() << " " << nus_read.GetBody()->GetBodyParams().size() << std::endl;
 
   for ( int i = 0 ; i < nus.GetBody()->GetBodyParams().size(); i++){
@@ -121,7 +121,7 @@ int main(){
   }
 
   // check that track parameters are the same
-  if ( nus.GetTrack()->GetTrackParams().size() != nus.GetTrack()->GetTrackParams().size())
+  if ( nus.GetTrack()->GetTrackParams().size() != nus_read.GetTrack()->GetTrackParams().size())
     std::cout << "TrackParamsSize " << nus.GetTrack()->GetTrackParams().size() << " " << nus_read.GetTrack()->GetTrackParams().size() << std::endl;
 
   for ( int i = 0 ; i < nus.GetTrack()->GetTrackParams().size(); i++){

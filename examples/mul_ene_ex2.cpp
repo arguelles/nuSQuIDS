@@ -37,6 +37,7 @@ using namespace nusquids;
 
 int main()
 {
+  squids::Const units;
   // We must first create a nuSQUIDS object. In order to do this
   // we must specify :
   // 1) Emin : minimum energy in GeV
@@ -47,7 +48,7 @@ int main()
   // 6) Energy log scale : true (log) or false (linear).
   // 7) Interactions : true or false.
   // We do this in the following declaration.
-  nuSQUIDS nus(1.e2,1.e6,60,3,neutrino,true,true);
+  nuSQUIDS nus(1.e2*units.GeV,1.e6*units.GeV,60,3,neutrino,true,true);
 
   // now we need to specify a medium where this neutrinos propagate.
   // a classical scenario where this is relevant is high energy

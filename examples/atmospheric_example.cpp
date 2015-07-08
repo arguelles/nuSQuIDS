@@ -41,7 +41,7 @@ int main()
   squids::Const units;
   unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,0.2,40,2.e2,1.e6,150,numneu,both,true,false);
+  nuSQUIDSAtm<> nus_atm(-1.,0.2,40,2.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,false);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;
@@ -79,6 +79,8 @@ int main()
       }
     }
   }
+
+  nus_atm.Set_ProgressBar(true);
 
   // set the initial state
   nus_atm.Set_initial_state(inistate,flavor);

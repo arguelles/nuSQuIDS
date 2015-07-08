@@ -77,7 +77,8 @@ class nuSQUIDSLV: public nuSQUIDS {
 
 int main()
 {
-  nuSQUIDSLV nus(1.e4,1.e6,150,3,neutrino,true,false);
+  squids::Const units;
+  nuSQUIDSLV nus(1.e4*units.GeV,1.e6*units.GeV,150,3,neutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();

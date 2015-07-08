@@ -37,8 +37,9 @@ using namespace nusquids;
 
 int main()
 {
+  squids::Const units;
   const unsigned int numneu = 4;
-  nuSQUIDS nus(1.,1.e2,200,numneu,neutrino,true,false);
+  nuSQUIDS nus(1.*units.GeV,1.e2*units.GeV,200,numneu,neutrino,true,false);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -60,7 +61,7 @@ int main()
   nus.Set_MixingAngle(1,3,0.7);
 
   // setup integration settings
-  nus.Set_h_max( 500.0*nus.units.km );
+  nus.Set_h_max( 500.0*units.km );
   //nus.Set_h_min( 1.0*nus.units.meter );
   nus.Set_rel_error(1.0e-9);
   nus.Set_abs_error(1.0e-9);

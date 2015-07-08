@@ -1449,6 +1449,14 @@ class nuSQUIDSAtm {
 
     /// \brief Sets the absolute numerical error.
     /// @param eps Error.
+    void Set_h_max(double eps){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_h_max(eps);
+      }
+    }
+
+    /// \brief Sets the absolute numerical error.
+    /// @param eps Error.
     void Set_abs_error(double eps){
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_abs_error(eps);
@@ -1514,9 +1522,14 @@ class nuSQUIDSAtm {
     marray<double,1> GetCosthRange() const{
       return costh_array;
     }
-    /// \brief Contains the nuSQUIDS objects for each zenith.
+    /// \brief Returns the nuSQUIDSBase object for ci-th zenith.
     BaseSQUIDS& GetnuSQuIDS(unsigned int ci) {
       return nusq_array[ci];
+    }
+
+    /// \brief Returns the vector of nuSQUIDSBase objects.
+    std::vector<BaseSQUIDS&> GetnuSQuIDS() {
+      return nusq_array;
     }
 
     /// \brief Toggles tau regeneration on and off.
