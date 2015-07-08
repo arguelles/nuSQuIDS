@@ -1255,6 +1255,10 @@ class nuSQUIDSAtm {
         }
       }
 
+      if (loge_M < 0 or cth_M < 0)
+        throw std::runtime_error("nuSQUIDSAtm::Error::While trying to evaluate flavor coult not find grid position.\
+                                 ["+ std::to_string(loge_M) + "," + std::to_string(cth_M) +"]");
+
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
