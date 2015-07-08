@@ -25,7 +25,7 @@
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
 
-#include "nuSQUIDS.h"
+#include "nuSQuIDS.h"
 
 namespace nusquids{
 
@@ -101,13 +101,13 @@ void nuSQUIDS::Set_E(double Enu){
 }
 
 void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini){
-  // here the energies come in GeV
+  // here the energies come in eV
   ne = Esize;
   if(elogscale){
-    init(logspace(Emin*params.GeV,Emax*params.GeV,ne-1),initialize_intereractions,xini);
+    init(logspace(Emin,Emax,ne-1),initialize_intereractions,xini);
   }
   else{
-    init(linspace(Emin*params.GeV,Emax*params.GeV,ne-1),initialize_intereractions,xini);
+    init(linspace(Emin,Emax,ne-1),initialize_intereractions,xini);
   }
 }
 
@@ -257,7 +257,6 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
     Set_GammaScalarTerms(true);
     Set_OtherScalarTerms(true);
   }
-  std::cout << "done" << std::endl;
 
   //===============================
   // END                         //
@@ -1823,7 +1822,6 @@ void nuSQUIDS::ProgressBar() const{
   }
   std::cout << "] " << int(progress * 100.0) << " %\r";
   std::cout.flush();
-
 }
 
 void nuSQUIDS::Set_TauRegeneration(bool opt){

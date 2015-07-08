@@ -413,8 +413,8 @@ class nuSQUIDS: public squids::SQuIDS {
     void SetBodyTrack(unsigned int,unsigned int,double*,unsigned int,double*);
 
     /// \brief General initilizer for the multi energy mode
-    /// @param Emin Minimum neutrino energy [GeV].
-    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Emin Minimum neutrino energy [eV].
+    /// @param Emax Maximum neutirno energy [eV].
     /// @param Esize Number of energy nodes.
     /// @param initialize_intereractions Togles interaction arrays initialization.
     /// @param xini The initial position of the system.
@@ -474,8 +474,8 @@ class nuSQUIDS: public squids::SQuIDS {
     virtual void AddToPreDerive(double x){}
 
     /// \brief Multiple energy mode constructor.
-    /// @param Emin Minimum neutrino energy [GeV].
-    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Emin Minimum neutrino energy [eV].
+    /// @param Emax Maximum neutirno energy [eV].
     /// @param Esize Number of energy nodes.
     /// @param numneu Number of neutrino flavors.
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
@@ -551,8 +551,8 @@ class nuSQUIDS: public squids::SQuIDS {
     nuSQUIDS(nuSQUIDS&&);
 
     /// \brief Multiple energy mode constructor.
-    /// @param Emin Minimum neutrino energy [GeV].
-    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Emin Minimum neutrino energy [eV].
+    /// @param Emax Maximum neutirno energy [eV].
     /// @param Esize Number of energy nodes.
     /// @param numneu Number of neutrino flavors.
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
@@ -615,8 +615,8 @@ class nuSQUIDS: public squids::SQuIDS {
      * INITIALIZERS
     *************************************************************************************/
     /// \brief Multiple energy mode initializer.
-    /// @param Emin Minimum neutrino energy [GeV].
-    /// @param Emax Maximum neutirno energy [GeV].
+    /// @param Emin Minimum neutrino energy [eV].
+    /// @param Emax Maximum neutirno energy [eV].
     /// @param Esize Number of energy nodes.
     /// @param numneu_ Number of neutrino flavors.
     /// @param NT_ NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
@@ -982,8 +982,8 @@ class nuSQUIDSAtm {
   private:
     /// \brief Random number generator
     gsl_rng * r_gsl;
-    /// \brief Mixing matrix
-    std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> U{nullptr,[](gsl_matrix_complex*m){delete m;}};
+    // /// \brief Mixing matrix
+    // std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> U{nullptr,[](gsl_matrix_complex*m){delete m;}};
     /// \brief Internal units
     const squids::Const units;
     /// \brief Boolean that signals that a progress bar will be printed.
@@ -998,9 +998,9 @@ class nuSQUIDSAtm {
     bool inusquidsatm;
     /// \brief Contains the cos(zenith) nodes.
     marray<double,1> costh_array;
-    /// \brief Contains the energy nodes [GeV].
+    /// \brief Contains the energy nodes [eV].
     marray<double,1> enu_array;
-    /// \brief Contains the log of energy nodes (in log of GeV).
+    /// \brief Contains the log of energy nodes (in log of eV).
     marray<double,1> log_enu_array;
     /// \brief Contains the nuSQUIDS objects for each zenith.
     std::vector<BaseSQUIDS> nusq_array;
@@ -1022,8 +1022,8 @@ class nuSQUIDSAtm {
     /// @param costh_min Minimum cos(th) value.
     /// @param costh_max Maximum cos(th) value.
     /// @param costh_div Number of divisions in cos(th).
-    /// @param energy_min Minimum neutrino energy value [Gev].
-    /// @param energy_max Maximum neutrino energy value [GeV].
+    /// @param energy_min Minimum neutrino energy value [ev].
+    /// @param energy_max Maximum neutrino energy value [eV].
     /// @param energy_div Number of energy divisions.
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
@@ -1038,8 +1038,8 @@ class nuSQUIDSAtm {
 
     /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
-    /// @param energy_min Minimum neutrino energy value [Gev].
-    /// @param energy_max Maximum neutrino energy value [GeV].
+    /// @param energy_min Minimum neutrino energy value [ev].
+    /// @param energy_max Maximum neutrino energy value [eV].
     /// @param energy_div Number of energy divisions.
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
@@ -1086,7 +1086,7 @@ class nuSQUIDSAtm {
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
       ReadStateHDF5(hdf5_filename);
-      U = nusq_array[0].GetTransformationMatrix();
+      //U = nusq_array[0].GetTransformationMatrix();
     }
 
     /// \brief Move constructor.
@@ -1217,13 +1217,13 @@ class nuSQUIDSAtm {
     /// \brief Returns the flavor composition at a given energy and zenith.
     /// @param flv Neutrino flavor.
     /// @param costh Cosine of the zenith.
-    /// @param enu Neutrino energy [GeV].
+    /// @param enu Neutrino energy [eV].
     /// @param rho Index of the equation, see details.
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
     /// is done in the logarithm of the energy and cos(zenith).
-    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0) const {
-      // here the energy enters in GeV
+    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho = 0, bool randomize_production_height = false) const {
+      // here the energy enters in eV
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
       if(not inusquidsatm)
@@ -1247,7 +1247,7 @@ class nuSQUIDSAtm {
       }
 
       int loge_M = -1;
-      double logE = log(enu*units.GeV);
+      double logE = log(enu);
       for(int i = 0; i < log_enu_array.extent(0); i++){
         if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
           loge_M = i;
@@ -1257,15 +1257,11 @@ class nuSQUIDSAtm {
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
-      double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
-      double delta_t_final = track->GetFinalX()-track->GetInitialX() + production_height;
-
-      double oscillation_scale = std::numeric_limits<double>::max();
-      for(unsigned int i=1; i< GetNumNeu(); i++){
-        double l = enu*units.GeV/Get_SquareMassDifference(i);
-        if(l < oscillation_scale)
-          oscillation_scale = l;
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
+      double delta_t_final = track->GetFinalX()-track->GetInitialX();
+      if (randomize_production_height){
+        double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
+        delta_t_final += production_height;
       }
 
       // assuming offsets are zero
@@ -1276,16 +1272,15 @@ class nuSQUIDSAtm {
       double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
 
       double flux = 0;
-      //H0_at_enu = nusq_array[0].H0(enu*(1+gsl_ran_gaussian(r_gsl,0.35))*units.GeV,rho);
-      H0_at_enu = nusq_array[0].H0(enu*units.GeV,rho);
+      H0_at_enu = nusq_array[0].H0(enu,rho);
       squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
 
       double phiMM,phiMP,phiPM,phiPP;
       squids::SU_vector temp(evol_proj.Dim());
-      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1]*units.GeV,rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M],rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1],rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
+      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M],rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
+      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1],rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
       flux += LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
             LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
             LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));

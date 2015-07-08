@@ -39,9 +39,9 @@ using namespace nusquids;
 int main()
 {
   squids::Const units;
-  unsigned int numneu = 3;
+  unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,0.2,10,5.e2,1.e6,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,0.2,40,2.e2,1.e6,150,numneu,both,true,false);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;
@@ -54,16 +54,15 @@ int main()
   nus_atm.Set_SquareMassDifference(2,0.00247);
 
   nus_atm.Set_CPPhase(0,2,0);
-
-  if( numneu > 3){
-    nus_atm.Set_SquareMassDifference(3,1);
-    nus_atm.Set_MixingAngle(1,3,0.26237);
+  if(numneu > 3){
+    nus_atm.Set_SquareMassDifference(3,1.);
+    nus_atm.Set_MixingAngle(1,3,0.181357);
   }
   std::cout << "End: setting mixing angles." << std::endl;
 
   // setup integration settings
-  nus_atm.Set_rel_error(1.0e-8);
-  nus_atm.Set_abs_error(1.0e-8);
+  nus_atm.Set_rel_error(1.0e-20);
+  nus_atm.Set_abs_error(1.0e-20);
 
   std::cout << "Begin: setting initial state." << std::endl;
   // construct the initial state
@@ -85,8 +84,10 @@ int main()
   nus_atm.Set_initial_state(inistate,flavor);
   std::cout << "End: setting initial state." << std::endl;
 
-  nus_atm.Set_ProgressBar(true);
+  //nus_atm.Set_ProgressBar(true);
+  std::cout << "Begin: Evolution" << std::endl;
   nus_atm.EvolveState();
+  std::cout << "End: Evolution" << std::endl;
   // we can save the current state in HDF5 format
   // for future use.
   nus_atm.WriteStateHDF5("./atmospheric_example_numneu_"+std::to_string(numneu)+".hdf5");
