@@ -1069,9 +1069,11 @@ class nuSQUIDSAtm {
       }
 
       enu_array = nusq_array.front().GetERange();
-      log_enu_array.resize(0,enu_array.size());
-      std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
-                     [](int enu) { return log(enu); });
+      log_enu_array.resize(std::vector<size_t>{enu_array.size()});
+      //std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
+      //               [](int enu) { return log(enu); });
+      for(unsigned int ie = 0 ; ie < enu_array.size(); ie++)
+        log_enu_array[ie] = log(enu_array[ie]);
 
       inusquidsatm = true;
     }
@@ -1256,8 +1258,7 @@ class nuSQUIDSAtm {
       }
 
       if (loge_M < 0 or cth_M < 0)
-        throw std::runtime_error("nuSQUIDSAtm::Error::While trying to evaluate flavor coult not find grid position.\
-                                 ["+ std::to_string(loge_M) + "," + std::to_string(cth_M) +"]");
+        throw std::runtime_error("nuSQUIDSAtm::Error::While trying to evaluate flavor coult not find grid position.["+ std::to_string(loge_M) + "," + std::to_string(cth_M) +"]");
 
       std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
       // get the evolution generator
