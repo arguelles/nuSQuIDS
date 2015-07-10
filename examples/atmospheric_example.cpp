@@ -25,7 +25,7 @@
 
 #include <vector>
 #include <iostream>
-#include "nuSQUIDS.h"
+#include "nuSQuIDS.h"
 
 /*
  * This file demostrate the use of nuSQUIDSAtm class

@@ -21,11 +21,9 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-
-
 #include <vector>
 #include <iostream>
-#include "nuSQUIDS.h"
+#include "nuSQuIDS.h"
 
 /*
  * This file demonstrates how to calculate neutrino oscillation
