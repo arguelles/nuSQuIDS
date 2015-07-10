@@ -254,7 +254,7 @@ LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
 CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
-LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS) -lnuSQuIDS
+LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS)
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
 
 # Project files
@@ -268,7 +268,7 @@ all: $(STAT_PRODUCT) $(DYN_PRODUCT)
 examples : $(EXAMPLES)
 
 bin/%.exe : examples/%.cpp
-	$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -lnuSQuIDS -o $@
 
 $(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
