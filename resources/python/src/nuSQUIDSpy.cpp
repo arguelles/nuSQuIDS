@@ -32,7 +32,7 @@
 #include <boost/python/overloads.hpp>
 #include "container_conversions.h"
 #include <SQuIDS/SQuIDS.h>
-#include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/marray.h>
 
 #include <numpy/ndarrayobject.h>
