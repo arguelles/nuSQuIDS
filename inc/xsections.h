@@ -93,7 +93,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       marray<double,4> dsde_CC_data;
       /// \brief Stores the neutrino neutral current differential cross section.
       marray<double,4> dsde_NC_data;
-      /// \brief Stores the array of the log energyes of the data tables.
+      /// \brief Stores the array of the log energies of the data tables.
       std::vector<double> logE_data_range;
 
       /// \brief GSL interpolator for the total cross section.
