@@ -444,7 +444,7 @@ EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
 EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
         {
             radius_nu = 6371.0*param.km;
-            radius_nu = 6369.0*param.km;
+            //radius_nu = 6369.0*param.km;
             //atmheight = 100.0*param.km;
             atmheight = 22.*param.km;
 
@@ -540,7 +540,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
 EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
         {
             radius = 6371.0; // km
-            atm_height = 100; // km
+            atm_height = 20; // km
             earth_with_atm_radius = radius + atm_height;
 
             marray<double,2> earth_model = quickread(filepath);
