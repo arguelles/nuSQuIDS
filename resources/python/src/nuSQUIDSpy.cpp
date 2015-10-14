@@ -277,9 +277,8 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
 // for nusquids atm
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(EvalFlavor_overload,EvalFlavor,3,5)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
 
-    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
 // nuSQUIDSpy module definitions
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
@@ -336,8 +335,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetERange",&nuSQUIDS::GetERange)
     .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5,
         nuSQUIDS_HDF5Write_overload(args("hdf5_filename","group"," save_cross_sections","cross_section_grp_loc"),
-          "Writs the current nuSQUIDS object into an HDF5 file."))
-    //.def("ReadStateHDF5",&nuSQUIDS::ReadStateHDF5,
+          "Writes the current nuSQUIDS object into an HDF5 file."))
+    //.def("ReadStateHDF5",(void(nuSQUIDS::*)(std::string,std::string,std::string))&nuSQUIDS::ReadStateHDF5,
     //    nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
     //      "Reads an HDF5 file and loads the contents into the current object."))
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
@@ -375,7 +374,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvolveState",&nuSQUIDSAtm<>::EvolveState)
     .def("Set_TauRegeneration",&nuSQUIDSAtm<>::Set_TauRegeneration)
     //.def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
-    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor_overload)
+    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor,
+        nuSQUIDSAtm_EvalFlavor_overload(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
+          "Reads an HDF5 file and loads the contents into the current object."))
     .def("WriteStateHDF5",&nuSQUIDSAtm<>::WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDSAtm<>::ReadStateHDF5)
     .def("Set_MixingAngle",&nuSQUIDSAtm<>::Set_MixingAngle)
