@@ -32,7 +32,7 @@
 #include <boost/python/overloads.hpp>
 #include "container_conversions.h"
 #include <SQuIDS/SQuIDS.h>
-#include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/marray.h>
 
 #include <numpy/ndarrayobject.h>
@@ -273,10 +273,13 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
 }
 
 // overloaded function magic //
-
+// for nusquids
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
+// for nusquids atm
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(EvalFlavor_overload,EvalFlavor,3,5)
 
+    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
 // nuSQUIDSpy module definitions
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
@@ -371,7 +374,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def(init<std::string>())
     .def("EvolveState",&nuSQUIDSAtm<>::EvolveState)
     .def("Set_TauRegeneration",&nuSQUIDSAtm<>::Set_TauRegeneration)
-    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
+    //.def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
+    .def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor_overload)
     .def("WriteStateHDF5",&nuSQUIDSAtm<>::WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDSAtm<>::ReadStateHDF5)
     .def("Set_MixingAngle",&nuSQUIDSAtm<>::Set_MixingAngle)

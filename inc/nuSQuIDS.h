@@ -967,6 +967,11 @@ class nuSQUIDS: public squids::SQuIDS {
     std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> GetTransformationMatrix() const {
       return params.GetTransformationMatrix(GetNumNeu());
     }
+  
+    /// \brief Returns the neutrino interaction cross sections
+    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections() {
+      return(ncs);
+    }
 };
 
 /**
@@ -1048,7 +1053,7 @@ class nuSQUIDSAtm {
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array,
                 ArgTypes&&... args):
-    costh_array(costh_array), ncs(std::make_shared<NeutrinoDISCrossSectionsFromTables>())
+    costh_array(costh_array)
     {
       gsl_rng_env_setup();
       const gsl_rng_type * T_gsl = gsl_rng_default;
@@ -1062,7 +1067,9 @@ class nuSQUIDSAtm {
 
       unsigned int i = 0;
       for(BaseSQUIDS& nsq : nusq_array){
-        nsq = BaseSQUIDS(std::forward<ArgTypes>(args)...,ncs);
+        nsq = BaseSQUIDS(std::forward<ArgTypes>(args)...);
+        if(!ncs)
+          ncs=nsq.GetNeutrinoCrossSections();
         nsq.Set_Body(earth_atm);
         nsq.Set_Track(track_array[i]);
         i++;
