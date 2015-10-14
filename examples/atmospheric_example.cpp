@@ -36,12 +36,17 @@
 
 using namespace nusquids;
 
+double flux_function(double enu){
+  return 1.;
+}
+
 int main()
 {
   squids::Const units;
-  unsigned int numneu = 3;
+  unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,0.2,40,2.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,false);
+  //nuSQUIDSAtm<> nus_atm(-1.,0.2,40,1.e3*units.GeV,1.e7*units.GeV,150,numneu,both,true,false);
+  nuSQUIDSAtm<> nus_atm(-1.,0.2,50,1.e2*units.GeV,4.e4*units.GeV,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;
@@ -64,9 +69,10 @@ int main()
   nus_atm.Set_rel_error(1.0e-20);
   nus_atm.Set_abs_error(1.0e-20);
 
+  auto e_range = nus_atm.GetERange();
+
   std::cout << "Begin: setting initial state." << std::endl;
   // construct the initial state
-  double N0 = 1.0;
   marray<double,4> inistate{nus_atm.GetNumCos(),nus_atm.GetNumE(),2,numneu};
   std::fill(inistate.begin(),inistate.end(),0);
   for ( int ci = 0 ; ci < nus_atm.GetNumCos(); ci++){
@@ -74,7 +80,7 @@ int main()
       for ( int rho = 0; rho < 2; rho ++ ){
         for (int flv = 0; flv < numneu; flv++){
           // initialze muon state
-          inistate[ci][ei][rho][flv] = (flv == 1) ? N0 : 0.0;
+          inistate[ci][ei][rho][flv] = (flv == 1) ? flux_function(e_range[ei]) : 0.0;
         }
       }
     }

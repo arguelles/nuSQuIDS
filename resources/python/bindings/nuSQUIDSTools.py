@@ -207,7 +207,7 @@ class ExtNuSQUIDS(injector,nsq.nuSQUIDS):
 def PlotFlavorRatio(atmo_1,atmo_2,flavor,neutype,
             cosmin = None, cosmax = None, enumin = None, enumax = None,
             enu_step = 400.0, costh_step = 100.0, contour_divisions = 100, colorscale = "lin",
-            fontsize = 16, fontname = "Arial", colormap = "jet", clim = None):
+            fontsize = 16, fontname = "Arial", colormap = "jet", clim = None, colorbarlabel = ""):
     if colorscale == "log":
         get_ratio = lambda costh,log_enu : np.log10(atmo_1.EvalFlavor(flavor,costh,10**log_enu,neutype)/atmo_2.EvalFlavor(flavor,costh,10**log_enu,neutype))
     else:
@@ -259,15 +259,19 @@ def PlotFlavorRatio(atmo_1,atmo_2,flavor,neutype,
     plt.ylabel(r"$\mathrm{log}_{10}(E/\mathrm{GeV})$", fontsize = fontsize, fontname = fontname)
 
     cbar = plt.colorbar(cmap = color_map, boundaries = clim)
-    if colorscale == "log":
-        cbar.set_label(r"${\rm log}_{10}({\rm WeightRatio})$",fontsize = fontsize, fontname = fontname)
+    if colorbarlabel == "":
+        if colorscale == "log":
+            cbar.set_label(r"${\rm log}_{10}({\rm WeightRatio})$",fontsize = fontsize, fontname = fontname)
+        else:
+            cbar.set_label(r"${\rm WeightRatio}$", fontsize = fontsize, fontname = fontname)
     else:
-        cbar.set_label(r"${\rm WeightRatio}$", fontsize = fontsize, fontname = fontname)
+        cbar.set_label(colorbarlabel,fontsize = fontsize, fontname = fontname)
 
     for label in (ax.get_xticklabels() + ax.get_yticklabels() + \
                   cbar.ax.get_yticklabels() + cbar.ax.get_xticklabels()):
         label.set_fontname(fontname)
         label.set_fontsize(fontsize)
+    return fig
 
 class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
     """ nuSQUIDSAtm class extension """
@@ -333,6 +337,6 @@ class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
                       cbar.ax.get_yticklabels() + cbar.ax.get_xticklabels()):
             label.set_fontname(fontname)
             label.set_fontsize(fontsize)
-        #return fig
+        return fig
         #plt.close()
 

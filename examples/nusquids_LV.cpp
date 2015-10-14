@@ -78,7 +78,7 @@ class nuSQUIDSLV: public nuSQUIDS {
 int main()
 {
   squids::Const units;
-  nuSQUIDSLV nus(1.e4*units.GeV,1.e6*units.GeV,150,3,neutrino,true,false);
+  nuSQUIDSLV nus(1.e4*units.GeV,1.e6*units.GeV,150,3,both,true,true);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -97,18 +97,21 @@ int main()
 
   // setup integration settings
   nus.Set_h_max( 100.0*nus.units.km );
-  nus.Set_rel_error(1.0e-19);
-  nus.Set_abs_error(1.0e-19);
+  nus.Set_rel_error(1.0e-20);
+  nus.Set_abs_error(1.0e-20);
 
   marray<double,1> E_range = nus.GetERange();
 
   // construct the initial state
-  marray<double,2> inistate({150,3});
+  marray<double,3> inistate({150,2,3});
   double N0 = 1.0e18;
   for ( int i = 0 ; i < inistate.extent(0); i++){
-      for ( int k = 0; k < inistate.extent(1); k ++){
-        // initialze muon state
-        inistate[i][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
+      for ( int j = 0; j < inistate.extent(1); j++){
+        for ( int k = 0; k < inistate.extent(2); k++){
+          // initialze muon state
+          //inistate[i][j][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
+          inistate[i][j][k] = (k == 1) ? 1. : 0.0;
+        }
       }
   }
 
@@ -119,7 +122,7 @@ int main()
   nus.EvolveState();
   // we can save the current state in HDF5 format
   // for future use.
-  nus.WriteStateHDF5("./nusquids_LV.hdf5");
+  nus.WriteStateHDF5("./nusquids_LV_both.hdf5");
 
   return 0;
 }

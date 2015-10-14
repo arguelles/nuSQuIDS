@@ -444,7 +444,9 @@ EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
 EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
         {
             radius_nu = 6371.0*param.km;
+            radius_nu = 6369.0*param.km;
             atmheight = 100.0*param.km;
+            atmheight = 22.;
 
             phi = phi_input;
             cosphi = cos(phi);

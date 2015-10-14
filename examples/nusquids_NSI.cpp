@@ -88,7 +88,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
       potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
       // plus sign so that the NSI potential has the same sign as the VCC potential
       // and the factor of 3 comes from average n_n/n_e at Earth.
-      potential += (3.0*CC)*NSI_evol[ei];
+      //potential += (3.0*CC)*NSI_evol[ei];
 
       if ((index_rho == 0 and NT==both) or NT==neutrino){
           // neutrino potential
@@ -195,7 +195,7 @@ int main()
   std::cout << std::endl;
   // we can save the current state in HDF5 format
   // for future use.
-  nus.WriteStateHDF5("./mul_ene_ex5.hdf5");
+  nus.WriteStateHDF5("./nusquids_std_antineutrino.hdf5");
   nus.dump_state();
 
   return 0;
