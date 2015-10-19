@@ -165,10 +165,10 @@ static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){
   nusq->WriteStateHDF5(path);
 }
 
-static void wrap_ReadStateHDF5(nuSQUIDS* nusq, std::string path){
-  nusq->ReadStateHDF5(path);
-}
 */
+static void wrap_ReadStateHDF5(nuSQUIDS* nusq,std::string hdf5_filename,std::string group = "/", std::string cross_section_grp_loc = ""){
+  nusq->ReadStateHDF5(hdf5_filename,group,cross_section_grp_loc);
+}
 
 static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, Basis neutype){
   if (! PyArray_Check(array) )
@@ -275,7 +275,8 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
 // overloaded function magic //
 // for nusquids
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
-BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
+BOOST_PYTHON_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,wrap_ReadStateHDF5,2,4)
+//BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,ReadStateHDF5,1,3)
 // for nusquids atm
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
 
@@ -336,9 +337,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteStateHDF5",&nuSQUIDS::WriteStateHDF5,
         nuSQUIDS_HDF5Write_overload(args("hdf5_filename","group"," save_cross_sections","cross_section_grp_loc"),
           "Writes the current nuSQUIDS object into an HDF5 file."))
-    //.def("ReadStateHDF5",(void(nuSQUIDS::*)(std::string,std::string,std::string))&nuSQUIDS::ReadStateHDF5,
-    //    nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
-    //      "Reads an HDF5 file and loads the contents into the current object."))
+    .def("ReadStateHDF5",wrap_ReadStateHDF5,
+        nuSQUIDS_HDF5Read_overload(args("hdf5_filename","group","cross_section_grp_loc"),
+          "Reads an HDF5 file and loads the contents into the current object."))
     .def("GetNumNeu",&nuSQUIDS::GetNumNeu)
     .def("EvalMass",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalMass)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int) const)&nuSQUIDS::EvalFlavor)
@@ -361,12 +362,14 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_MixingParametersToDefault",&nuSQUIDS::Set_MixingParametersToDefault)
     .def("Set_Basis",&nuSQUIDS::Set_Basis)
     .def("Set_MixingAngle",&nuSQUIDS::Set_MixingAngle)
+    .def("Get_MixingAngle",&nuSQUIDS::Get_MixingAngle)
     .def("Set_CPPhase",&nuSQUIDS::Set_CPPhase)
+    .def("Get_CPPhase",&nuSQUIDS::Get_CPPhase)
     .def("Set_SquareMassDifference",&nuSQUIDS::Set_SquareMassDifference)
+    .def("Get_SquareMassDifference",&nuSQUIDS::Get_SquareMassDifference)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
-    //.def_readonly("units", &nuSQUIDS::units)
   ;
 
   class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
@@ -384,7 +387,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_SquareMassDifference",&nuSQUIDSAtm<>::Set_SquareMassDifference)
     .def("Set_ProgressBar",&nuSQUIDSAtm<>::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDSAtm<>::Set_MixingParametersToDefault)
-    //.def_readonly("units", &nuSQUIDSAtm<>::units)
     .def("Set_rel_error",&nuSQUIDSAtm<>::Set_rel_error)
     .def("Set_abs_error",&nuSQUIDSAtm<>::Set_abs_error)
     .def("GetNumE",&nuSQUIDSAtm<>::GetNumE)
