@@ -1534,8 +1534,11 @@ class nuSQUIDSAtm {
     marray<double,1> GetCosthRange() const{
       return costh_array;
     }
+
     /// \brief Returns the nuSQUIDSBase object for ci-th zenith.
     BaseSQUIDS& GetnuSQuIDS(unsigned int ci) {
+      if(ci >= nusq_array.size())
+        throw std::runtime_error("nuSQUIDSAtm::GetnuSQuIDS: input index out of range.");
       return nusq_array[ci];
     }
 

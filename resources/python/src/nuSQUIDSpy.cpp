@@ -272,6 +272,45 @@ static void wrap_Set_GSL_STEP(nuSQUIDS* nusq, GSL_STEP_FUNCTIONS step_enum){
   }
 }
 
+static void wrap_nusqatm_Set_GSL_STEP(nuSQUIDSAtm<>* nusq, GSL_STEP_FUNCTIONS step_enum){
+  switch(step_enum){
+    case GSL_STEP_RK2:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk2);
+      break;
+    case GSL_STEP_RK4:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk4);
+      break;
+    case GSL_STEP_RKF45:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkf45);
+      break;
+    case GSL_STEP_RKCK:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkck);
+      break;
+    case GSL_STEP_RK8PD:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk8pd);
+      break;
+      /*
+    case GSL_STEP_RK1IMP:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk1imp);
+      break;
+    case GSL_STEP_RK2IMP:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk2imp);
+      break;
+    case GSL_STEP_RK4IMP:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk4imp);
+      break;
+    case GSL_STEP_BSIMP:
+      nusq->Set_GSL_step(gsl_odeiv2_step_bsimp);
+      break;
+    case GSL_STEP_MSBDF:
+      nusq->Set_GSL_step(gsl_odeiv2_step_msbdf);
+      break;
+      */
+    case GSL_STEP_MSADAMS:
+      nusq->Set_GSL_step(gsl_odeiv2_step_msadams);
+      break;
+  }
+}
 // overloaded function magic //
 // for nusquids
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Write_overload,WriteStateHDF5,1,4)
@@ -370,6 +409,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetTrack",&nuSQUIDS::GetTrack)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
+    .def("GetNumRho",&nuSQUIDS::GetNumRho)
   ;
 
   class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
@@ -387,10 +427,15 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_SquareMassDifference",&nuSQUIDSAtm<>::Set_SquareMassDifference)
     .def("Set_ProgressBar",&nuSQUIDSAtm<>::Set_ProgressBar)
     .def("Set_MixingParametersToDefault",&nuSQUIDSAtm<>::Set_MixingParametersToDefault)
+    .def("Set_GSL_step",wrap_nusqatm_Set_GSL_STEP)
     .def("Set_rel_error",&nuSQUIDSAtm<>::Set_rel_error)
     .def("Set_abs_error",&nuSQUIDSAtm<>::Set_abs_error)
     .def("GetNumE",&nuSQUIDSAtm<>::GetNumE)
     .def("GetNumCos",&nuSQUIDSAtm<>::GetNumCos)
+    .def("GetNumNeu",&nuSQUIDSAtm<>::GetNumNeu)
+    .def("GetNumRho",&nuSQUIDSAtm<>::GetNumRho)
+    //.def("EvalMass",(double(nuSQUIDS::*)(unsigned int,double,unsigned int) const)&nuSQUIDS::EvalMass)
+    .def("GetnuSQuIDS",(nuSQUIDS&(nuSQUIDSAtm<>::*)(unsigned int))&nuSQUIDSAtm<>::GetnuSQuIDS,boost::python::return_internal_reference<>())
     .def("Set_initial_state",wrap_Set_initial_state_atm)
     .def("GetERange",&nuSQUIDSAtm<>::GetERange)
     .def("GetCosthRange",&nuSQUIDSAtm<>::GetCosthRange)
