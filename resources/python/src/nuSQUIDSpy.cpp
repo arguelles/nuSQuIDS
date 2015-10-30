@@ -353,7 +353,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   class_<squids::SU_vector, boost::noncopyable,std::shared_ptr<squids::SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<unsigned int>())
-    .def("Rotate",&squids::SU_vector::Rotate)
+    //.def("Rotate",&squids::SU_vector::Rotate)
     .def("Dim",&squids::SU_vector::Dim)
     .def("GetComponents",&squids::SU_vector::GetComponents)
   ;
