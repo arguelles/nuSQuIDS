@@ -37,6 +37,8 @@ function find_package(){
 	eval ${VAR_PREFIX}_FOUND=1
 	eval ${VAR_PREFIX}_CFLAGS=\"`pkg-config --cflags $PKG`\"
 	eval ${VAR_PREFIX}_LDFLAGS=\"`pkg-config --libs $PKG`\"
+	eval ${VAR_PREFIX}_INCDIR=\"`pkg-config --variable=includedir $PKG`\"
+	eval ${VAR_PREFIX}_LIBDIR=\"`pkg-config --variable=libdir $PKG`\"
 }
 
 PREFIX=/usr/local
@@ -214,7 +216,6 @@ if [ ! -d ./lib/ ]; then
     mkdir lib;
 fi
 
-
 echo "Generating config file..."
 
 # Somewhat evil: HDF5 does not register with pkg-config, which causes the latter
@@ -306,6 +307,8 @@ echo "HDF5_LDFLAGS=$HDF5_LDFLAGS" >> ./Makefile
 
 echo "SQUIDS_CFLAGS=$SQUIDS_CFLAGS" >> ./Makefile
 echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
+
+
 echo '
 
 INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
@@ -475,6 +478,7 @@ clean:
 	rm -f *.o ../lib/*.so ../lib/*.a
 ' >> resources/python/src/Makefile
 
+
   echo "
 from distutils.core import setup
 from distutils.extension import Extension
@@ -487,7 +491,8 @@ if sys.platform == 'win32' or sys.platform == 'win64':
 else:
     include_dirs = ['${PYTHONINCPATH}',
                     '${PYTHONNUMPYINC}',
-                    '${SQUIDS_INCDIR}',
+                    '${SQUIDS_INCDIR}'
+                    '${PREFIX}/include',
                     '${GSL_INCDIR}',
                     '${HDF5_INCDIR}',
                     '${BOOST_INCDIR}',
@@ -495,11 +500,12 @@ else:
                     '/usr/local/include']
     libraries = ['python${PYTHONVERSION}','boost_python',
                  'SQuIDS','nuSQuIDS',
-                 'gsl','gslcblas','m',
+                 'gsl','gslcblas','m','cxxrt','rt',
                  'hdf5','hdf5_hl']
     library_dirs = ['${PYTHONLIBPATH}',
                     '${PYTHONLIBPATH}/../',
                     '${SQUIDS_LIBDIR}',
+                    '${PREFIX}/lib',
                     '${GSL_LIBDIR}',
                     '${HDF5_LIBDIR}',
                     '${BOOST_LIBDIR}',
@@ -517,7 +523,7 @@ setup(name = 'nuSQUIDSpy',
               depends=[]),
           ]
       )
-" >> resources/python/src/setup.py
+" > resources/python/src/setup.py
 fi
 
 nusqpath=`pwd`
