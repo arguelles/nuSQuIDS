@@ -491,7 +491,7 @@ if sys.platform == 'win32' or sys.platform == 'win64':
 else:
     include_dirs = ['${PYTHONINCPATH}',
                     '${PYTHONNUMPYINC}',
-                    '${SQUIDS_INCDIR}'
+                    '${SQUIDS_INCDIR}',
                     '${PREFIX}/include',
                     '${GSL_INCDIR}',
                     '${HDF5_INCDIR}',
