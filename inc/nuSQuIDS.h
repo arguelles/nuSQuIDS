@@ -117,6 +117,9 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
 
+    /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
+    NeutrinoType NT = both;
+
     /// \brief Struct that contains all cross section information.
     struct InteractionStructure {
         /// \brief Neutrino charge current differential cross section with respect to
@@ -135,16 +138,16 @@ class nuSQUIDS: public squids::SQuIDS {
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
         marray<double,4> dNdE_NC;
-        /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
-        /// \details The array contents are in natural units (i.e. eV) and is update when
-        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
-        /// the second to the flavor, and the last one to the energy.
-        marray<double,3> invlen_NC;
         /// \brief Array that contains the inverse of the neutrino charge current mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
         /// the second to the flavor, and the last one to the energy.
         marray<double,3> invlen_CC;
+        /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
+        /// \details The array contents are in natural units (i.e. eV) and is update when
+        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+        /// the second to the flavor, and the last one to the energy.
+        marray<double,3> invlen_NC;
         /// \brief Array that contains the inverse of the neutrino total mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
@@ -392,8 +395,6 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Force flavor projections to be positive.
     void PositivizeFlavors();
   protected:
-    /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
-    NeutrinoType NT = both;
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
     /// which temporary flips the CP phase.

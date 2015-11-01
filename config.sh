@@ -488,6 +488,7 @@ import sys
 if sys.platform == 'win32' or sys.platform == 'win64':
     print 'Windows is not a supported platform.'
     quit()
+
 else:
     include_dirs = ['${PYTHONINCPATH}',
                     '${PYTHONNUMPYINC}',
@@ -500,8 +501,12 @@ else:
                     '/usr/local/include']
     libraries = ['python${PYTHONVERSION}','boost_python',
                  'SQuIDS','nuSQuIDS',
-                 'gsl','gslcblas','m','cxxrt','rt',
+                 'gsl','gslcblas','m',
                  'hdf5','hdf5_hl']
+
+    if sys.platform.startswith('linux'):
+      libraries.append('cxxrt')
+
     library_dirs = ['${PYTHONLIBPATH}',
                     '${PYTHONLIBPATH}/../',
                     '${SQUIDS_LIBDIR}',
@@ -519,7 +524,7 @@ setup(name = 'nuSQUIDSpy',
               library_dirs=library_dirs,
               libraries=libraries,
               include_dirs=include_dirs,
-              extra_compile_args=['-O3','-fPIC','-std=c++11'],
+              extra_compile_args=['-O3','-fPIC','-std=c++11','-Wno-unused-local-typedef'],
               depends=[]),
           ]
       )
