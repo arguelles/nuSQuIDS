@@ -378,6 +378,8 @@ class nuSQUIDS: public squids::SQuIDS {
     bool istate = false;
     /// \brief Boolean that signals that interactions will be taken into account.
     bool iinteraction = false;
+    /// \brief Boolean that signals that neutrino oscillations will be taken into account.
+    bool ioscillations = true;
     /// \brief When multienergy mode is used, it signals that the neutrino energies is in logarithmic scale.
     bool elogscale = true;
     /// \brief Boolean that signals that tau regeneration is being used.
@@ -809,6 +811,10 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief Toggles tau regeneration on and off.
     /// @param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt);
+
+    /// \brief Toggles neutrino oscillations on and off.
+    /// @param opt If \c true neutrino oscillations will be considered.
+    void Set_IncludeOscillations(bool opt);
 
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
@@ -1553,6 +1559,14 @@ class nuSQUIDSAtm {
     void Set_TauRegeneration(bool opt){
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_TauRegeneration(opt);
+      }
+    }
+
+    /// \brief Toggles neutrino oscillations on and off.
+    /// @param opt If \c true neutrino oscillations will be considered.
+    void Set_IncludeOscillations(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_IncludeOscillations(opt);
       }
     }
 

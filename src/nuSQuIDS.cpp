@@ -284,7 +284,7 @@ void nuSQUIDS::InitializeInteractionVectors(){
 
 void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
-  if( basis != mass){
+  if( basis != mass and ioscillations){
     EvolveProjectors(x);
   }
   if(iinteraction){
@@ -1827,13 +1827,20 @@ void nuSQUIDS::ProgressBar() const{
 }
 
 void nuSQUIDS::Set_TauRegeneration(bool opt){
-    if ( NT != both and opt )
-      throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
-    tauregeneration = opt;
+  if ( NT != both and opt )
+    throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
+  tauregeneration = opt;
 }
 
 void nuSQUIDS::Set_ProgressBar(bool opt){
-    progressbar = opt;
+  Set_CoherentRhoTerms(opt);
+  progressbar = opt;
+}
+
+
+void nuSQUIDS::Set_IncludeOscillations(bool opt){
+
+  ioscillations = opt;
 }
 
 std::shared_ptr<Track> nuSQUIDS::GetTrack() const{
