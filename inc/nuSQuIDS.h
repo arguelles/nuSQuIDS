@@ -1350,6 +1350,8 @@ class nuSQUIDSAtm {
       hid_t file_id,group_id,root_id;
       // create HDF5 file
       file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      if (file_id < 0)
+        throw std::runtime_error("nuSQUIDSAtm::ReadStateHDF5: Unable to open file: " + hdf5_filename + ". No such file or directory");
       root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
       group_id = root_id;
 
