@@ -418,6 +418,12 @@ if [ $PYTHON_BINDINGS ]; then
   echo "Generating Python bindings makefile..."
 for var in "$@"
 do
+	TMP=`echo "$var" | sed -n 's/^--with-boost=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then
+		BOOST_INCDIR="${TMP}/include";
+		BOOST_LIBDIR="${TMP}/lib";
+	continue; fi
+
   TMP=`echo "$var" | sed -n 's/^--with-boost-libdir=\(.*\)$/\1/p'`
   if [ "$TMP" ]; then BOOST_LIBDIR="$TMP"; continue; fi
   TMP=`echo "$var" | sed -n 's/^--with-boost-incdir=\(.*\)$/\1/p'`

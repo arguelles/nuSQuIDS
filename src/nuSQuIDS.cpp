@@ -303,7 +303,10 @@ void nuSQUIDS::EvolveProjectors(double x){
       for(unsigned int ei = 0; ei < ne; ei++){
         // will only evolve the flavor projectors
         //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
-        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
+        if ( not use_full_hamiltonian_for_projector_evolution )
+          evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
+        else
+          evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].UTransform((H0_array[ei]+HI(ei,rho))*(x-Get_t_initial()));
       }
     }
   }
@@ -630,6 +633,18 @@ void nuSQUIDS::EvolveState(){
     throw std::runtime_error("nuSQUIDS::Error::Initial state not initialized");
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
+
+  if ( body->IsConstantDensity() and not iinteraction ){
+    // when only oscillations are considered and the density is constant
+    // we can ju st rotate the system to the propagation eigenstates
+    use_full_hamiltonian_for_projector_evolution = true;
+    // turn off squids numerics
+    Set_AnyNumerics(false);
+    // go go go
+    // in this case it only calls prederive and exits
+    Evolve(track->GetFinalX()-track->GetInitialX());
+    return;
+  }
 
   if( not tauregeneration ){
     if(positivization){

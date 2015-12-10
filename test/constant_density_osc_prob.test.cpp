@@ -4,6 +4,10 @@
 
 using namespace nusquids;
 
+double ConstantDensityOscillationFormulae(unsigned int a, unsigned int b, double E, double L, gsl_complex_matrix * U){
+  return p;
+}
+
 void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);

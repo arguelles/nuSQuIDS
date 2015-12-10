@@ -364,6 +364,9 @@ class nuSQUIDS: public squids::SQuIDS {
 
     // bool requirements
   private:
+    /// \brief Boolean that signals that the full hamiltonian including extra potentials should be used for 
+    /// the projector evolution
+    bool use_full_hamiltonian_for_projector_evolution = false;
     /// \brief Boolean that toggles debug information to be printed
     bool debug = false;
     /// \brief Boolean that signals the object correct initialization.
@@ -974,7 +977,7 @@ class nuSQUIDS: public squids::SQuIDS {
     std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> GetTransformationMatrix() const {
       return params.GetTransformationMatrix(GetNumNeu());
     }
-  
+
     /// \brief Returns the neutrino interaction cross sections
     std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections() {
       return(ncs);
@@ -1088,6 +1091,9 @@ class nuSQUIDSAtm {
       //               [](int enu) { return log(enu); });
       for(unsigned int ie = 0 ; ie < enu_array.size(); ie++)
         log_enu_array[ie] = log(enu_array[ie]);
+
+      // setting the interaction structure also on the  main object
+      int_struct = nusq_array.front().GetInteractionStructure();
 
       inusquidsatm = true;
     }

@@ -100,6 +100,8 @@ class Body{
     unsigned int GetId() const {return id;}
     /// \brief Returns the name of the body.
     std::string GetName() const {return name;}
+    /// \brief Retursn true if the body is a constant density.
+    virtual bool IsConstantDensity() const {return false;}
 };
 
 // type defining
@@ -166,6 +168,7 @@ class ConstantDensity: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
+    bool IsConstantDensity() const;
 };
 
 /// \class VariableDensity

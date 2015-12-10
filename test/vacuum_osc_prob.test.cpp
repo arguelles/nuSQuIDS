@@ -28,6 +28,17 @@
 
 using namespace nusquids;
 
+double VacuumOscillationFormulae(unsigned int a, unsigned int b, double E, double L, gsl_complex_matrix * U, gsl_vector * dm2){
+  double p = 0;
+  for(unsigned int j = 0; j < U->size1; j++){
+    for(unsigned int i = j +1; i < U->size1; i++){
+      gsl_complex U_product = ;
+      p += 2.*GSL_IMAG(U_product)*sin(gsl_matrix_get(dm2_matrix,i,j)*L/(2.*E))
+      p -= 4.*GSL_REAL(U_product)*SQ(sin(gsl_matrix_get(dm2_matrix,i,j)*L/(4.*E)))
+    }
+  }
+  return p;
+}
 
 void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
   nuSQUIDS nus(numneu,NT);

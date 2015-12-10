@@ -83,6 +83,8 @@ double ConstantDensity::ye(const GenericTrack& track_input) const
             return constant_ye;
         }
 
+bool ConstantDensity::IsConstantDensity() const { return true;}
+
 /*
 ----------------------------------------------------------------------
          VariableDensity CLASS DEFINITIONS

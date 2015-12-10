@@ -1,3 +1,4 @@
+#include <SQuIDS/Const.h>
 #include <nuSQuIDS/nuSQUIDS.h>
 #include <iostream>
 #include <iomanip>
@@ -6,13 +7,14 @@
 using namespace nusquids;
 
 int main(){
+  squids::Const units;
 
-  nuSQUIDS nus1(1.e2,1.e6,60,3,both,true,true);
+  nuSQUIDS nus1(1.e2*units.GeV,1.e6*units.GeV,60,3,both,true,true);
   auto e_range = nus1.GetERange();
   auto int_struct = nus1.GetInteractionStructure();
 
   marray<double,1> costh_range {{10},{-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1}};
-  nuSQUIDSAtm<> nusatm(costh_range,e_range,3,both,true,nullptr);
+  nuSQUIDSAtm<> nusatm(costh_range,e_range,3,both,int_struct);
 
   if(*(nusatm.GetInteractionStructure)() != (*int_struct)){
     std::cout << "Fail 1" << std::endl;
