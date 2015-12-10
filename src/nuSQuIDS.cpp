@@ -298,15 +298,25 @@ void nuSQUIDS::PreDerive(double x){
 }
 
 void nuSQUIDS::EvolveProjectors(double x){
-  for(unsigned int rho = 0; rho < nrhos; rho++){
-    for(unsigned int flv = 0; flv < numneu; flv++){
-      for(unsigned int ei = 0; ei < ne; ei++){
-        // will only evolve the flavor projectors
-        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
-        if ( not use_full_hamiltonian_for_projector_evolution )
+  if ( not use_full_hamiltonian_for_projector_evolution ){
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int flv = 0; flv < numneu; flv++){
+        for(unsigned int ei = 0; ei < ne; ei++){
+          // will only evolve the flavor projectors
+          //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
           evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
-        else
-          evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].UTransform((H0_array[ei]+HI(ei,rho))*(x-Get_t_initial()));
+        }
+      }
+    }
+  } else {
+    squids::SU_vector temp(nsun);
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int ei = 0; ei < ne; ei++){
+        temp = (H0_array[ei]+HI(ei,rho));
+        temp *= (x-Get_t_initial());
+        for(unsigned int flv = 0; flv < numneu; flv++){
+          evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].UTransform(temp);
+        }
       }
     }
   }
