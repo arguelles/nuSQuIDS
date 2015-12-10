@@ -52,6 +52,8 @@ double Vacuum::ye(const GenericTrack& track_input) const{
             return 1.0;
         }
 
+bool Vacuum::IsConstantDensity() const { return true;}
+
 /*
 ----------------------------------------------------------------------
          ConstantDensity CLASS DEFINITIONS

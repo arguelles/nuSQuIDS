@@ -133,6 +133,8 @@ class Vacuum: public Body {
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
+    /// \brief Returns true as this body has constant density by definition
+    bool IsConstantDensity() const;
 };
 
 /// \class ConstantDensity
@@ -168,6 +170,7 @@ class ConstantDensity: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
+    /// \brief Returns true as this body has constant density by definition
     bool IsConstantDensity() const;
 };
 
