@@ -26,21 +26,51 @@
 #include <iomanip>
 #include <nuSQuIDS/nuSQUIDS.h>
 
+#define SQ(x) ((x)*(x))
+
 using namespace nusquids;
 
-double VacuumOscillationFormulae(unsigned int a, unsigned int b, double E, double L, gsl_complex_matrix * U, gsl_vector * dm2){
-  double p = 0;
+double VacuumOscillationFormulae(NeutrinoType NT, unsigned int a, unsigned int b, double E, double L, gsl_matrix_complex * U, gsl_vector * dm2){
+  double p = 0; double dm2_ij;
+  gsl_complex U_product;
+
+  if(a == b)
+    p++;
+
   for(unsigned int j = 0; j < U->size1; j++){
-    for(unsigned int i = j +1; i < U->size1; i++){
-      gsl_complex U_product = ;
-      p += 2.*GSL_IMAG(U_product)*sin(gsl_matrix_get(dm2_matrix,i,j)*L/(2.*E))
-      p -= 4.*GSL_REAL(U_product)*SQ(sin(gsl_matrix_get(dm2_matrix,i,j)*L/(4.*E)))
+    for(unsigned int i = j+1; i < U->size1; i++){
+      if (j == 0)
+        dm2_ij = gsl_vector_get(dm2,i-1);
+      else
+        dm2_ij = gsl_vector_get(dm2,i-1) - gsl_vector_get(dm2,j-1);
+
+      if ( NT == neutrino) {
+        U_product = gsl_complex_mul(
+                                    gsl_complex_mul(gsl_complex_conjugate(gsl_matrix_complex_get(U,a,i)),
+                                                    gsl_matrix_complex_get(U,b,i)),
+                                    gsl_complex_mul(gsl_matrix_complex_get(U,a,j),
+                                                    gsl_complex_conjugate(gsl_matrix_complex_get(U,b,j)))
+                                   );
+      } else {
+        // for antineutrinos U -> U^\dagger
+        U_product = gsl_complex_mul(
+                                    gsl_complex_mul(gsl_complex_conjugate(gsl_matrix_complex_get(U,b,i)),
+                                                    gsl_matrix_complex_get(U,a,i)),
+                                    gsl_complex_mul(gsl_matrix_complex_get(U,b,j),
+                                                    gsl_complex_conjugate(gsl_matrix_complex_get(U,a,j)))
+                                   );
+      }
+
+
+      p += 2.*GSL_IMAG(U_product)*sin(dm2_ij*L/(2.*E));
+      p -= 4.*GSL_REAL(U_product)*SQ(sin(dm2_ij*L/(4.*E)));
     }
   }
   return p;
 }
 
-void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
+void exercise_se_mode(unsigned int numneu, NeutrinoType NT){
+  squids::Const units;
   nuSQUIDS nus(numneu,NT);
 
   switch (numneu){
@@ -74,28 +104,36 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT){
   std::vector<double> test_baseline {1.0e-4,1.0e-3,1.0e-2,1.0e-1,1.0e0,1.0e1,1.0e2,1.0e3,1.0e4};
   std::vector<double> test_energies {1.0e-6,1.0e-5,1.0e-4,1.0e-3,1.0e-2,1.0e-1,1.0e0,1.0e1,1.0e2,1.0e3,1.0e4,1.0e5,1.0e6};
 
+  // set up simple formulae parameters
+  auto U = nus.GetTransformationMatrix();
+  gsl_vector * dm2 = gsl_vector_alloc(numneu-1);
+  for(unsigned int ii = 1; ii < numneu; ii++){
+    gsl_vector_set(dm2,ii-1,nus.Get_SquareMassDifference(ii));
+  }
+
   std::cout << std::setprecision(3);
   std::cout << std::scientific;
-  for(int flv = 0; flv < numneu; flv++){
-    marray<double,1> ini_state{numneu};
-    for (int iflv = 0; iflv < numneu; iflv++)
-      ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
-    for(double baseline :test_baseline){
-      std::shared_ptr<Vacuum::Track> track_vac = std::make_shared<Vacuum::Track>(0.0,baseline*nus.units.km);
+  marray<double,1> ini_state{numneu};
+
+  for(unsigned int iflv = 0; iflv < numneu; iflv++){
+    // setting up the initial state
+    for (unsigned int ii = 0; ii < numneu; ii++)
+      ini_state[ii] = ( ii==iflv ? 1.0 : 0.0 );
+
+    // checking each baseline and energy
+    for(double baseline : test_baseline){
+      std::shared_ptr<Vacuum::Track> track_vac = std::make_shared<Vacuum::Track>(baseline*units.km);
       nus.Set_Track(track_vac);
       for(double Enu : test_energies){
-        nus.Set_E(Enu*nus.units.GeV);
+        nus.Set_E(Enu*units.GeV);
         nus.Set_initial_state(ini_state,flavor);
         nus.EvolveState();
-        std::cout << flv << " [flv] " << Enu << " [GeV] " << baseline << " [km] ";
-        for (int i = 0; i < numneu; i++){
-          double p = nus.EvalFlavor(i);
-          if ( p < 1.0e-8)
-            std::cout << 0.0 << " ";
-          else
-            std::cout << p << " ";
+        for (unsigned int fflv = 0; fflv < numneu; fflv++){
+          double p_nsq = nus.EvalFlavor(fflv);
+          double p_for = VacuumOscillationFormulae(NT,iflv,fflv,Enu*units.GeV,baseline*units.km,U.get(),dm2);
+          if ( std::abs(p_nsq - p_for) > 1.0e-4 )
+            std::cout << NT << " " <<  iflv << " " << fflv << " " << Enu << " " << baseline << " "<< p_nsq << " " << p_for << std::endl;
         }
-        std::cout << std::endl;
       }
     }
   }
