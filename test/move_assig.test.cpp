@@ -13,15 +13,15 @@ double DC(double x){
 }
 
 int main(){
+  squids::Const units;
 
   std::cout << std::setprecision(3);
   std::cout << std::fixed;
 
-  nuSQUIDS nus(1.,1.e2,200,3,neutrino,true,false);
+  nuSQUIDS nus(1.*units.GeV,1.e2*units.GeV,200,3,neutrino,true,false);
 
-  double phi = acos(-1.);
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
-  std::shared_ptr<Earth::Track> track = std::make_shared<Earth::Track>(500.0*nus.units.km);
+  std::shared_ptr<Earth::Track> track = std::make_shared<Earth::Track>(500.0*units.km);
 
   nus.Set_Body(earth);
   nus.Set_Track(track);
@@ -34,7 +34,7 @@ int main(){
   nus.Set_SquareMassDifference(2,0.00247);
 
   // setup integration settings
-  nus.Set_h_max( 500.0*nus.units.km );
+  nus.Set_h_max( 500.0*units.km );
   nus.Set_rel_error(1.0e-9);
   nus.Set_abs_error(1.0e-9);
 
