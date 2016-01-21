@@ -162,8 +162,12 @@ int main()
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
 
+  // setup integration settings
+  nus.Set_rel_error(1.0e-20);
+  nus.Set_abs_error(1.0e-20);
+
   // We can change the energy
-  nus.Set_E(5.0*nus.units.GeV);
+  nus.Set_E(100.0*nus.units.GeV);
 
   // We reset the initial condition
   nus.Set_initial_state(ini_state,flavor);

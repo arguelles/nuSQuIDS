@@ -298,6 +298,17 @@ void nuSQUIDS::PreDerive(double x){
 }
 
 void nuSQUIDS::EvolveProjectors(double x){
+  for(unsigned int rho = 0; rho < nrhos; rho++){
+    for(unsigned int flv = 0; flv < numneu; flv++){
+      for(unsigned int ei = 0; ei < ne; ei++){
+        // will only evolve the flavor projectors
+        //evol_b0_proj[rho][flv][ei] = b0_proj[flv].Evolve(h0,(x-t_ini));
+        evol_b1_proj[rho][flv][ei] = b1_proj[rho][flv].Evolve(H0_array[ei],(x-Get_t_initial()));
+      }
+    }
+  }
+  return;
+  /*
   if ( not use_full_hamiltonian_for_projector_evolution ){
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
@@ -320,6 +331,7 @@ void nuSQUIDS::EvolveProjectors(double x){
       }
     }
   }
+  */
 }
 
 squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
@@ -348,10 +360,17 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     potential += (NC)*(evol_b1_proj[irho][1][ie]);
     potential += (NC)*(evol_b1_proj[irho][2][ie]);
 
+    if ((irho == 1 and NT==both) or NT==antineutrino){
+        // antineutrino matter potential flips sign
+        potential *= (-1.0);
+    }
+
     if (basis == mass){
       potential += H0_array[ie];
     }
 
+    return potential;
+    /*
     if ((irho == 0 and NT==both) or NT==neutrino){
         // neutrino potential
         return potential;
@@ -361,6 +380,7 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     } else{
         throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
     }
+    */
 }
 
 squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
@@ -650,9 +670,24 @@ void nuSQUIDS::EvolveState(){
     use_full_hamiltonian_for_projector_evolution = true;
     // turn off squids numerics
     Set_AnyNumerics(false);
+    // disable interaction basis and go to mass basis
+    Set_Basis(mass);
     // go go go
     // in this case it only calls prederive and exits
     Evolve(track->GetFinalX()-track->GetInitialX());
+
+    // We will now evolve each of the states manually
+    squids::SU_vector tmp1(nsun);
+    squids::SU_vector tmp2(nsun);
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      for(unsigned int ie = 0; ie < ne; ie++){
+        tmp1 = HI(ie,rho);
+        //tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(Get_t()-Get_t_initial())));
+        tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(-1.)*(Get_t()-Get_t_initial())));
+        state[ie].rho[rho] = tmp2;
+      }
+    }
+
     return;
   }
 
@@ -965,6 +1000,8 @@ double nuSQUIDS::EvalFlavor(unsigned int flv) const{
 
   if(basis == mass)
     return b1_proj[0][flv]*state[0].rho[0];
+  if(use_full_hamiltonian_for_projector_evolution)
+    return evol_b1_proj[0][flv][0]*state[0].rho[0];
   return GetExpectationValue(b1_proj[0][flv], 0, 0);
 }
 

@@ -37,7 +37,8 @@ class nuSQUIDSLV: public nuSQUIDS {
   private:
     squids::SU_vector LVP;
     std::vector<squids::SU_vector> LVP_evol;
-  public:
+    double c_mutau;
+
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
         // asumming same mass hamiltonian for neutrinos/antineutrinos
@@ -46,15 +47,29 @@ class nuSQUIDSLV: public nuSQUIDS {
       }
     }
 
-    squids:: SU_vector HI(unsigned int ei,unsigned int index_rho) const {
-      return (1.0e-27*E_range[ei])*LVP_evol[ei];
+    void AddToReadHDF5(hid_t hdf5_loc_id){
+      // here we read the new parameters now saved in the HDF5 file
+      hid_t nsi = H5Gopen(hdf5_loc_id, "c_valules", H5P_DEFAULT);
+      H5LTget_attribute_double(hdf5_loc_id,"c_values","c_mu_tau" ,&c_mutau);
+      H5Gclose(nsi);
     }
 
-    nuSQUIDSLV(double Emin_,double Emax_,int Esize_,int numneu_,NeutrinoType NT_,
-         bool elogscale_,bool iinteraction_)
+    void AddToWriteHDF5(hid_t hdf5_loc_id) const {
+      // here we write the new parameters to be saved in the HDF5 file
+      H5Gcreate(hdf5_loc_id, "c_values", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5LTset_attribute_double(hdf5_loc_id, "c_mu_tau","c_mu_tau",&c_mutau, 1);
+    }
+
+  public:
+    squids:: SU_vector HI(unsigned int ei,unsigned int index_rho) const {
+      return (c_mutau*E_range[ei])*LVP_evol[ei];
+    }
+
+    nuSQUIDSLV(double c_mutau, double Emin_,double Emax_,int Esize_,int numneu_,NeutrinoType NT_,
+         bool elogscale_,bool iinteraction_):
+          nuSQUIDS(Emin_,Emax_,Esize_,numneu_,NT_,elogscale_,iinteraction_),
+         c_mutau(c_mutau)
     {
-       Init(Emin_,Emax_,Esize_,numneu_,NT_,
-           elogscale_,iinteraction_);
        // defining a complex matrix M which will contain our flavor
        // violating flavor structure.
        gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
@@ -71,12 +86,33 @@ class nuSQUIDSLV: public nuSQUIDS {
        }
        gsl_matrix_complex_free(M);
     }
+
+    void dump_state() const {
+      for (int ie = 0; ie < ne; ie++){
+        for (int i = 0; i < numneu*numneu; i++){
+          if (NT == both){
+            std::cout << state[ie].rho[0][i] << '\n';
+            std::cout << state[ie].rho[1][i] << '\n';
+          }
+          else if ( NT == neutrino){
+            std::cout << state[ie].rho[0][i] << '\n';
+            std::cout << 0.0 << '\n';
+          }
+          else if ( NT == neutrino){
+            std::cout << 0.0 << '\n';
+            std::cout << state[ie].rho[1][i] << '\n';
+          }
+        }
+      }
+    }
+
 };
 
 int main()
 {
   squids::Const units;
-  nuSQUIDSLV nus(1.e4*units.GeV,1.e6*units.GeV,150,3,both,true,true);
+  double c_mutau = 1.0e-27;
+  nuSQUIDSLV nus(c_mutau,1.e4*units.GeV,1.e6*units.GeV,150,3,both,true,true);
 
   double phi = acos(-1.);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -107,7 +143,6 @@ int main()
       for ( int j = 0; j < inistate.extent(1); j++){
         for ( int k = 0; k < inistate.extent(2); k++){
           // initialze muon state
-          //inistate[i][j][k] = (k == 1) ? N0*pow(E_range[i],-1.0) : 0.0;
           inistate[i][j][k] = (k == 1) ? 1. : 0.0;
         }
       }
@@ -118,9 +153,12 @@ int main()
 
   nus.Set_ProgressBar(true);
   nus.EvolveState();
+  std::cout << std::endl;
+
   // we can save the current state in HDF5 format
   // for future use.
   nus.WriteStateHDF5("./nusquids_LV_both.hdf5");
+  nus.dump_state();
 
   return 0;
 }
