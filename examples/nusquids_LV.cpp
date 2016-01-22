@@ -87,22 +87,23 @@ class nuSQUIDSLV: public nuSQUIDS {
        gsl_matrix_complex_free(M);
     }
 
-    void dump_state() const {
+    void dump_probabilities() const {
       for (int ie = 0; ie < ne; ie++){
-        for (int i = 0; i < numneu*numneu; i++){
+        for (int flv = 0; flv < numneu; flv++){
           if (NT == both){
-            std::cout << state[ie].rho[0][i] << '\n';
-            std::cout << state[ie].rho[1][i] << '\n';
+            std::cout << EvalFlavorAtNode(flv,ie,0) << ' ';
+            std::cout << EvalFlavorAtNode(flv,ie,1) << ' ';
           }
           else if ( NT == neutrino){
-            std::cout << state[ie].rho[0][i] << '\n';
-            std::cout << 0.0 << '\n';
+            std::cout << EvalFlavorAtNode(flv,ie,0) << ' ';
+            std::cout << 0.0 << ' ';
           }
           else if ( NT == neutrino){
-            std::cout << 0.0 << '\n';
-            std::cout << state[ie].rho[1][i] << '\n';
+            std::cout << 0.0 << ' ';
+            std::cout << EvalFlavorAtNode(flv,ie,1) << ' ';
           }
         }
+        std::cout << '\n';
       }
     }
 
@@ -158,7 +159,7 @@ int main()
   // we can save the current state in HDF5 format
   // for future use.
   nus.WriteStateHDF5("./nusquids_LV_both.hdf5");
-  nus.dump_state();
+  nus.dump_probabilities();
 
   return 0;
 }
