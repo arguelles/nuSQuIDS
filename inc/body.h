@@ -74,8 +74,6 @@ class Body{
           double xini;
           /// \brief Final position.
           double xend;
-          /// \brief Trajetory parameters.
-          std::vector<double> TrackParams;
         public:
           /// \brief Default constructor.
           Track(double xini, double xend): xini(xini),xend(xend) {}
@@ -88,11 +86,18 @@ class Body{
           /// \brief Returns the final position measured along the trajectory.
           double GetFinalX() const { return xend; }
           /// \brief Returns parameters that define the trajectory.
-          std::vector<double> GetTrackParams() const { return TrackParams; }
+          std::vector<double> GetTrackParams() const {
+            std::vector<double> TrackParams{xini,xend};
+            FillDerivedParams(TrackParams);
+            return TrackParams;
+          }
+          /// Should be implemented by derived classes to append their
+          /// additional parameters to TrackParams
+          virtual void FillDerivedParams(std::vector<double>& TrackParams) const{};
     };
-    /// \brief Retursn the density at a given trajectory object.
+    /// \brief Return the density at a given trajectory object.
     virtual double density(const Track&) const {return 0.0;}
-    /// \brief Retursn the electron fraction at a given trajectory object.
+    /// \brief Return the electron fraction at a given trajectory object.
     virtual double ye(const Track&) const {return 1.0;}
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
@@ -100,7 +105,7 @@ class Body{
     unsigned int GetId() const {return id;}
     /// \brief Returns the name of the body.
     std::string GetName() const {return name;}
-    /// \brief Retursn true if the body is a constant density.
+    /// \brief Return true if the body is a constant density.
     virtual bool IsConstantDensity() const {return false;}
 };
 
@@ -292,6 +297,7 @@ class Earth: public Body{
         Track(double baseline):Track(0.,baseline,baseline){}
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return baseline;}
+        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
     };
 
     /// \brief Returns the density in g/cm^3
@@ -440,6 +446,7 @@ class SunASnu: public Body{
         /// \details The trajectory baseline is determined by the impact parameter and starts
         /// at \c xini = 0, and ends when the neutrino exits the sun.
         Track(double b_impact_):Track(0.0,b_impact_){}
+        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
     };
 
     /// \brief Returns the density in g/cm^3
@@ -517,6 +524,7 @@ class EarthAtm: public Body{
         Track(double phi);
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
+        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
     };
 
     /// \brief Returns the density in g/cm^3

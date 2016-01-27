@@ -41,7 +41,6 @@ static squids::Const param;
 Vacuum::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
             x = xini;
-            TrackParams = {xini,xend};
         }
 
 double Vacuum::density(const GenericTrack& track_input) const{
@@ -72,7 +71,6 @@ ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Bod
 ConstantDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
             x = xini;
-            TrackParams = {xini,xend};
         }
 
 double ConstantDensity::density(const GenericTrack& track_input) const
@@ -132,7 +130,6 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
 VariableDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
             x = xini;
-            TrackParams = {xini,xend};
         }
 
 double VariableDensity::density(const GenericTrack& track_input) const
@@ -169,8 +166,11 @@ Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION))
 Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,xend),baseline(baseline)
         {
             x = xini;
-            TrackParams = {xini,xend,baseline};
         }
+	
+void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
+    TrackParams.push_back(baseline);
+}
 
 double Earth::density(const GenericTrack& track_input) const
         {
@@ -287,7 +287,6 @@ Sun::Sun():Body(5,"Sun")
 Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
             x = xini;
-            TrackParams = {xini,xend};
         }
 
 double Sun::rdensity(double x) const{
@@ -376,8 +375,11 @@ SunASnu::Track::Track(double xini, double b_impact):
         {
             x = xini;
             xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));
-            TrackParams = {xini,xend,b_impact};
         }
+	
+void SunASnu::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
+	TrackParams.push_back(b_impact);
+}
 
 double SunASnu::rdensity(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
@@ -482,15 +484,17 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
             xend = L;
 
             #ifdef EarthAtm_DEBUG
-                cout << "== Init Track ==" << endl;
-                cout << " phi = " << phi <<
+                std::cout << "== Init Track ==" << std::endl;
+                std::cout << " phi = " << phi <<
                 ", cos(phi) = " << cosphi <<
-                ", L = " << radius_nu/param.km << endl;
-                cout << "==" << endl;
+                ", L = " << radius_nu/param.km << std::endl;
+                std::cout << "==" << std::endl;
             #endif
-
-            TrackParams = {xini,xend,phi_input};
         }
+	
+void EarthAtm::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
+	TrackParams.push_back(phi);
+}
 
 double EarthAtm::density(const GenericTrack& track_input) const
         {
