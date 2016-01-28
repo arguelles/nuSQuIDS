@@ -375,7 +375,7 @@ all: $(STAT_PRODUCT) $(DYN_PRODUCT)
 
 examples : $(EXAMPLES)
 
-bin/%.exe : examples/%.cpp
+bin/%.exe : examples/%.cpp $(STAT_PRODUCT) $(DYN_PRODUCT) 
 	@echo Compiling $@
 	@$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -lnuSQuIDS -o $@
 
