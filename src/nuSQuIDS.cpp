@@ -397,11 +397,13 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
 }
 
 squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
+  if(iinteraction && !ioscillations) //can use precomputed result
+    return(interaction_cache[index_rho][0][e1]);
+  
   squids::SU_vector nc_term(nsun);
 
-  if (not iinteraction){
+  if (not iinteraction)
     return nc_term;
-  }
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
@@ -424,9 +426,10 @@ double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
 }
 
 double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
-  if (not iinteraction){
+  if (not iinteraction)
     return 0.0;
-  }
+  if(not ioscillations) //can use precomputed result
+    return scalar_interaction_cache[iscalar][ei];
 
   double nutautoleptau = 0.0;
   for(unsigned int e2 = ei + 1; e2 < ne; e2++)
@@ -481,6 +484,55 @@ void nuSQUIDS::UpdateInteractions(){
           }
       }
     }
+  
+  //Without oscillations, the entries in evol_b1_proj do not depend on energy.
+  //We can exploit this to precalculate the information needed by InteractionsRho
+  //computing the summed projector a number of times proportional to the number
+  //of energies, rather than proportinal to the square.
+  if(!ioscillations){
+    interaction_cache.resize(std::initializer_list<size_t>{nrhos,numneu,ne});
+    squids::SU_vector projector_sum(numneu), temp(numneu);
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      //this will be the same for all energies, so we may as well use the first
+      projector_sum = evol_b1_proj[rho][0][0] + evol_b1_proj[rho][1][0];
+      projector_sum += evol_b1_proj[rho][2][0];
+      
+      //assume all flavors are the same, so compute for first flavor, then copy to others
+      //first initialize to zero
+      for(unsigned int e1=0; e1<ne; e1++){
+        if(interaction_cache[rho][0][e1].Dim()!=numneu)
+          interaction_cache[rho][0][e1]=squids::SU_vector(numneu);
+        else
+          interaction_cache[rho][0][e1].SetAllComponents(0);
+      }
+      //then sum contributions from higher energies cascading to lower
+      for(unsigned int e2=0; e2<ne; e2++){
+        temp = ACommutator(projector_sum,state[e2].rho[rho]);
+        for(unsigned int e1=0; e1<e2; e1++)
+          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]);
+      }
+      //duplicate result to other flavors
+      for(unsigned int flv = 1; flv < numneu; flv++){
+        for(unsigned int e1=0; e1<ne; e1++)
+          interaction_cache[rho][flv][e1]=interaction_cache[rho][0][e1];
+      }
+    }
+    //TODO: include GR for nu_e bar if present
+    
+    //scalar interactions for nu_tau
+    scalar_interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      //first initialize to zero
+      for(unsigned int e1=0; e1<ne; e1++)
+        scalar_interaction_cache[rho][e1]=0;
+      for(unsigned int e2=0; e2<ne; e2++){
+        double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho]);
+        for(unsigned int e1=0; e1<e2; e1++)
+          scalar_interaction_cache[rho][e1]+=temp*(int_struct->invlen_CC[rho][2][e2])*(int_struct->dNdE_CC[rho][2][e2][e1])*delE[e2];
+      }
+    }
+  }
+  
     if(debug)
       std::cout << "============ END UpdateInteractions ============" << std::endl;
 }

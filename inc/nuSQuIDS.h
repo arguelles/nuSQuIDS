@@ -326,6 +326,13 @@ class nuSQUIDS: public squids::SQuIDS {
     /// with an added third dimension that corresponds to the energy node index.
     marray<squids::SU_vector,3> evol_b1_proj;
 
+    ///Cache of precalculated results for InteractionsRho.
+    ///Used only when interactions are on and oscillations are off.
+    marray<squids::SU_vector,3> interaction_cache;
+    ///Cache of precalculated results for InteractionsScalar.
+    ///Used only when interactions are on and oscillations are off.
+    marray<double,2> scalar_interaction_cache;
+
     /// \brief Evolves the flavor projectors in the interaction basis to a time t.
     /// \details It uses H0() to evolve SQUIDS#b0_proj and SQUIDS#b1_proj into 
     /// SQUIDS#evol_b0_proj and SQUIDS#evol_b1_proj.
