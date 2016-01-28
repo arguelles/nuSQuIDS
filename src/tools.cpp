@@ -26,20 +26,6 @@
 
 namespace nusquids{
 
-/*
-std::string toString(double value) {
-   std::stringstream ss;
-   ss << value;
-   return ss.str();
-}
-
-std::string toString(int value) {
-   std::stringstream ss;
-   ss << value;
-   return ss.str();
-}
-*/
-
 bool fexists(std::string filepath)
 {
   std::ifstream ifile(filepath.c_str());
@@ -117,34 +103,26 @@ marray<double,1> linspace(double Emin,double Emax,unsigned int div){
     double step_lin = (Emax - Emin)/double(div);
 
     double EE = Emin;
-    unsigned int i = 0;
-    while (EE <= Emax+0.001){
+    for(unsigned int i=0; i<div; i++, EE+=step_lin)
         linpoints[i] = EE;
-        EE = EE + step_lin;
-        i++;
-    }
+    linpoints[div] = Emax;
+	
     return linpoints;
 }
 
 marray<double,1> logspace(double Emin,double Emax,unsigned int div){
     marray<double,1> logpoints{div+1};
     double Emin_log,Emax_log;
-    if (Emin < 1.0e-5 ) {
-        Emin_log = 0.0;
-    } else {
-        Emin_log = log(Emin);
-    }
+    Emin_log = log(Emin);
     Emax_log = log(Emax);
 
     double step_log = (Emax_log - Emin_log)/double(div);
 
-    double EE = Emin_log;
-    unsigned int i = 0;
-    while (EE <= Emax_log+0.001){
+	logpoints[0]=Emin;
+	double EE = Emin_log+step_log;
+	for(unsigned int i=1; i<div; i++, EE+=step_log)
         logpoints[i] = exp(EE);
-        EE = EE + step_log;
-        i++;
-    }
+	logpoints[div]=Emax;
     return logpoints;
 }
 
