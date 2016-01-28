@@ -682,9 +682,11 @@ void nuSQUIDS::EvolveState(){
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int ie = 0; ie < ne; ie++){
         tmp1 = HI(ie,rho);
-        //tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(Get_t()-Get_t_initial())));
-        tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(-1.)*(Get_t()-Get_t_initial())));
+        //std::cout << "antes " << E_range[ie] << " " << state[ie].rho[rho] << std::endl;
+        //std::cout << "hamiltonian " << tmp1 << std::endl;
+        tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(Get_t()-Get_t_initial())));
         state[ie].rho[rho] = tmp2;
+        //std::cout << "despues " << E_range[ie] << " " << tmp2 << std::endl;
       }
     }
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/tools.h>
 #include <gsl/gsl_complex_math.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_blas.h>
@@ -25,21 +26,14 @@ double ConstantDensityOscillationFormulae(NeutrinoType NT, unsigned int a, unsig
   gsl_matrix_complex * H = gsl_matrix_complex_alloc(numneu,numneu);
   gsl_matrix_complex * T1 = gsl_matrix_complex_alloc(numneu,numneu);
 
-  if (NT == neutrino){
-    gsl_blas_zgemm(CblasNoTrans,CblasConjTrans,gsl_complex_rect(1.0,0.0),M2,U,gsl_complex_rect(0.0,0.0),T1);
-    gsl_blas_zgemm(CblasNoTrans,CblasNoTrans,gsl_complex_rect(1.0,0.0),U,T1,gsl_complex_rect(0.0,0.0),H);
-  } else if ( NT == antineutrino) {
-    gsl_blas_zgemm(CblasNoTrans,CblasNoTrans,gsl_complex_rect(1.0,0.0),M2,U,gsl_complex_rect(0.0,0.0),T1);
-    gsl_blas_zgemm(CblasConjTrans,CblasNoTrans,gsl_complex_rect(1.0,0.0),U,T1,gsl_complex_rect(0.0,0.0),H);
-  } else {
-    throw std::runtime_error("No valid neutrino type");
-  }
+  gsl_blas_zgemm(CblasNoTrans,CblasConjTrans,gsl_complex_rect(1.0,0.0),M2,U,gsl_complex_rect(0.0,0.0),T1);
+  gsl_blas_zgemm(CblasNoTrans,CblasNoTrans,gsl_complex_rect(1.0,0.0),U,T1,gsl_complex_rect(0.0,0.0),H);
   gsl_matrix_complex_scale(H,gsl_complex_rect(1./(2.*E),0));
 
   gsl_matrix_complex * V = gsl_matrix_complex_calloc(numneu,numneu);
   double CC = g_units.sqrt2*g_units.GF*g_units.Na*pow(g_units.cm,-3.)*density_*ye_;
   double NC = CC*(-0.5*(1.0-ye_)/ye_);
-  for(unsigned int k=0;k<numneu;k++){
+  for(unsigned int k=0;k<3;k++){
     if (k == 0)
       gsl_matrix_complex_set(V,k,k,gsl_complex_rect(CC+NC,0.));
     else
@@ -96,7 +90,7 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
       nus.Set_MixingAngle(1,2,0.737324);
       nus.Set_SquareMassDifference(1,7.5e-05);
       nus.Set_SquareMassDifference(2,0.00257);
-  //    nus.Set_CPPhase(0,2,1.);
+      nus.Set_CPPhase(0,2,1.);
       break;
     case 4:
       // random values for non standart parameters
@@ -109,8 +103,8 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
       nus.Set_SquareMassDifference(1,7.5e-05);
       nus.Set_SquareMassDifference(2,0.00257);
       nus.Set_SquareMassDifference(3,1.9234);
- //     nus.Set_CPPhase(0,2,1.);
- //     nus.Set_CPPhase(0,3,0.135);
+      nus.Set_CPPhase(0,2,1.);
+      nus.Set_CPPhase(0,3,0.135);
       break;
   }
 
@@ -120,6 +114,9 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
 
   // set up simple formulae parameters
   auto U = nus.GetTransformationMatrix();
+  if(NT==antineutrino){
+    gsl_matrix_complex_conjugate(U.get());
+  }
   gsl_vector * dm2 = gsl_vector_alloc(numneu-1);
   for(unsigned int ii = 1; ii < numneu; ii++){
     gsl_vector_set(dm2,ii-1,nus.Get_SquareMassDifference(ii));
@@ -160,8 +157,8 @@ int main(){
 
   exercise_se_mode(3,neutrino,constdens,track_constdens);
   exercise_se_mode(3,antineutrino,constdens,track_constdens);
-  //exercise_se_mode(4,neutrino,constdens,track_constdens);
-  //exercise_se_mode(4,antineutrino,constdens,track_constdens);
+  exercise_se_mode(4,neutrino,constdens,track_constdens);
+  exercise_se_mode(4,antineutrino,constdens,track_constdens);
 
   return 0;
 }
