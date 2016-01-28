@@ -1579,10 +1579,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     }
   }
 
-  if ( iis == nullptr ){
-    throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
-  } else {
-    int_struct = iis;
+  if(iinteraction) {
+    if ( iis == nullptr ){
+      throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
+    } else {
+      int_struct = iis;
+    }
   }
 
   // read from user parameters
