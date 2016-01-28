@@ -391,7 +391,7 @@ build/%.o : src/%.cpp
 	@echo Compiling $< to $@
 	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) $< -o $@
 
-.PHONY: clean
+.PHONY: clean test
 clean:
 	rm -rf $(PATH_nuSQUIDS)/build/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/lib/* $(PATH_nuSQUIDS)/bin/*
 
