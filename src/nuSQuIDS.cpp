@@ -724,9 +724,10 @@ void nuSQUIDS::EvolveState(){
     Set_AnyNumerics(false);
     // disable interaction basis and go to mass basis
     Set_Basis(mass);
+    double evolution_time = track->GetFinalX()-track->GetInitialX();
     // go go go
     // in this case it only calls prederive and exits
-    Evolve(track->GetFinalX()-track->GetInitialX());
+    Evolve(evolution_time);
 
     // We will now evolve each of the states manually
     squids::SU_vector tmp1(nsun);
@@ -736,7 +737,7 @@ void nuSQUIDS::EvolveState(){
         tmp1 = HI(ie,rho);
         //std::cout << "antes " << E_range[ie] << " " << state[ie].rho[rho] << std::endl;
         //std::cout << "hamiltonian " << tmp1 << std::endl;
-        tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,(Get_t()-Get_t_initial())));
+        tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,evolution_time));
         state[ie].rho[rho] = tmp2;
         //std::cout << "despues " << E_range[ie] << " " << tmp2 << std::endl;
       }
