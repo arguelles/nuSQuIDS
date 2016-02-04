@@ -407,16 +407,15 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
-  squids::SU_vector temp1, temp2;
+  // here we assume the cross section to be the same for all flavors
+  squids::SU_vector projector_sum = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
+  projector_sum += evol_b1_proj[index_rho][2][e1];
+  squids::SU_vector temp;
   for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
-    // here we assume the cross section to be the same for all flavors
-    //std::cout << dNdE_NC[index_rho][0][e2][e1] << " " << invlen_NC[index_rho][0][e2] << std::endl;
-    temp1 = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
-    temp1 += evol_b1_proj[index_rho][2][e1];
-    temp2 = ACommutator(temp1,state[e2].rho[index_rho]);
-    nc_term += temp2*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2]);
+    temp = ACommutator(projector_sum,state[e2].rho[index_rho]);
+    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2]);
   }
-
+  
   return nc_term;
 }
 
