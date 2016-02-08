@@ -63,7 +63,7 @@ int main(){
         // initialze muon state
         double exp_analytic = exp(-column_density*(int_structure->sigma_CC[rho][flv][ei]+int_structure->sigma_NC[rho][flv][ei]));
         double exp_nusquids = nus.EvalFlavorAtNode(flv,ei,rho);
-        if( abs(exp_nusquids - exp_analytic)/exp_analytic > 1.0e-3 )
+        if( std::abs(exp_nusquids - exp_analytic)/exp_analytic > 5.0e-3 )
           std::cout << exp_nusquids << " " << exp_analytic <<" " << exp_nusquids/exp_analytic << std::endl;
       }
     }
