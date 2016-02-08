@@ -49,8 +49,10 @@ int main(){
   nus.Set_abs_error(1.0e-20);
 
   nus.Set_initial_state(inistate,flavor);
-  nus.Set_IncludeOscillations(false);
-  nus.Set_OtherRhoTerms(false);
+  //nus.Set_IncludeOscillations(false);
+  nus.Set_IncludeOscillations(true);
+  //nus.Set_OtherRhoTerms(false);
+  nus.Set_OtherRhoTerms(true);
   nus.EvolveState();
 
   auto int_structure = nus.GetInteractionStructure();

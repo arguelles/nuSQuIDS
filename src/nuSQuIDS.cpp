@@ -399,7 +399,7 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
 squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
   if(iinteraction && !ioscillations) //can use precomputed result
     return(interaction_cache[index_rho][0][e1]);
-  
+
   squids::SU_vector nc_term(nsun);
 
   if (not iinteraction)
@@ -413,9 +413,8 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   squids::SU_vector temp;
   for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
     temp = ACommutator(projector_sum,state[e2].rho[index_rho]);
-    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2]);
+    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2])*delE[e2];
   }
-  
   return nc_term;
 }
 
