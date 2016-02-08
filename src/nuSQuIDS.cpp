@@ -507,7 +507,7 @@ void nuSQUIDS::UpdateInteractions(){
       for(unsigned int e2=0; e2<ne; e2++){
         temp = ACommutator(projector_sum,state[e2].rho[rho]);
         for(unsigned int e1=0; e1<e2; e1++)
-          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]);
+          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]*delE[e2]);
       }
       //duplicate result to other flavors
       for(unsigned int flv = 1; flv < numneu; flv++){
