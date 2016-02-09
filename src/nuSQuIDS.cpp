@@ -1950,7 +1950,6 @@ void nuSQUIDS::Set_TauRegeneration(bool opt){
 }
 
 void nuSQUIDS::Set_ProgressBar(bool opt){
-  Set_CoherentRhoTerms(opt);
   progressbar = opt;
 }
 
