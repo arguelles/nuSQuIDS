@@ -1503,9 +1503,9 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   hsize_t dims[2];
   H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
 
-  double energy_data[dims[0]];
   ne = static_cast<unsigned int>(dims[0]);
-  H5LTread_dataset_double(group_id, "energies", energy_data);
+  std::unique_ptr<double[]> energy_data(new double[ne]);
+  H5LTread_dataset_double(group_id, "energies", energy_data.get());
   E_range = marray<double,1>{ne};
   for (unsigned int ie = 0; ie < ne; ie++)
     E_range[ie] = energy_data[ie];
@@ -1528,14 +1528,14 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
 
   hsize_t dimtrack[1];
   H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
-  double track_params[dimtrack[0]];
-  H5LTread_dataset_double(group_id,"track", track_params);
+  std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
+  H5LTread_dataset_double(group_id,"track", track_params.get());
 
   double x_current;
   H5LTget_attribute_double(group_id,"track","X",&x_current);
 
   // setting body and track
-  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params);
+  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
 
   // set trayectory to current time
   track->SetX(x_current);
@@ -1558,12 +1558,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   EvolveProjectors(squids_time);
   // reading state
   H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
-  double neudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(group_id,"neustate", neudata);
+  std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
+  H5LTread_dataset_double(group_id,"neustate", neudata.get());
 
   H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
-  double aneudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(group_id,"aneustate", aneudata);
+  std::unique_ptr<double[]> aneudata(new double[dims[0]*dims[1]]);
+  H5LTread_dataset_double(group_id,"aneustate", aneudata.get());
 
   for(unsigned int ie = 0; ie < dims[0]; ie++){
     for (unsigned int j = 0; j < dims[1]; j ++){
@@ -1685,9 +1685,9 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   hsize_t dims[2];
   H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
 
-  double energy_data[dims[0]];
   ne = static_cast<unsigned int>(dims[0]);
-  H5LTread_dataset_double(group_id, "energies", energy_data);
+  std::unique_ptr<double[]> energy_data(new double[ne]);
+  H5LTread_dataset_double(group_id, "energies", energy_data.get());
   E_range = marray<double,1>{ne};
   for (unsigned int ie = 0; ie < ne; ie++)
     E_range[ie] = energy_data[ie];
@@ -1710,14 +1710,14 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
   hsize_t dimtrack[1];
   H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
-  double track_params[dimtrack[0]];
-  H5LTread_dataset_double(group_id,"track", track_params);
+  std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
+  H5LTread_dataset_double(group_id,"track", track_params.get());
 
   double x_current;
   H5LTget_attribute_double(group_id,"track","X",&x_current);
 
   // setting body and track
-  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params);
+  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
 
   // set trayectory to current time
   track->SetX(x_current);
@@ -1740,12 +1740,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   EvolveProjectors(squids_time);
   // reading state
   H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
-  double neudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(group_id,"neustate", neudata);
+  std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
+  H5LTread_dataset_double(group_id,"neustate", neudata.get());
 
   H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
-  double aneudata[dims[0]*dims[1]];
-  H5LTread_dataset_double(group_id,"aneustate", aneudata);
+  std::unique_ptr<double[]> aneudata(new double[dims[0]*dims[1]]);
+  H5LTread_dataset_double(group_id,"aneustate", aneudata.get());
 
   for(unsigned int ie = 0; ie < dims[0]; ie++){
     for (unsigned int j = 0; j < dims[1]; j ++){
@@ -1778,10 +1778,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     hsize_t XSdim[3];
     H5LTget_dataset_info(xs_grp,"sigmacc", XSdim,NULL,NULL);
 
-    double xsCC[XSdim[0]*XSdim[1]*XSdim[2]];
-    H5LTread_dataset_double(xs_grp,"sigmacc", xsCC);
-    double xsNC[XSdim[0]*XSdim[1]*XSdim[2]];
-    H5LTread_dataset_double(xs_grp,"sigmanc", xsNC);
+    std::unique_ptr<double[]> xsCC(new double[XSdim[0]*XSdim[1]*XSdim[2]]);
+    H5LTread_dataset_double(xs_grp,"sigmacc", xsCC.get());
+    std::unique_ptr<double[]> xsNC(new double[XSdim[0]*XSdim[1]*XSdim[2]]);
+    H5LTread_dataset_double(xs_grp,"sigmanc", xsNC.get());
 
     for ( unsigned int rho = 0; rho < nrhos; rho ++){
       for ( unsigned int flv = 0; flv < numneu; flv ++){
@@ -1796,10 +1796,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     hsize_t dXSdim[4];
     H5LTget_dataset_info(xs_grp,"dNdEcc", dXSdim,NULL,NULL);
 
-    double dxsCC[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]];
-    H5LTread_dataset_double(xs_grp,"dNdEcc", dxsCC);
-    double dxsNC[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]];
-    H5LTread_dataset_double(xs_grp,"dNdEnc", dxsNC);
+    std::unique_ptr<double[]> dxsCC(new double[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]]);
+    H5LTread_dataset_double(xs_grp,"dNdEcc", dxsCC.get());
+    std::unique_ptr<double[]> dxsNC(new double[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]]);
+    H5LTread_dataset_double(xs_grp,"dNdEnc", dxsNC.get());
 
     for( unsigned int rho = 0; rho < nrhos; rho++){
       for( unsigned int flv = 0; flv < numneu; flv++){
@@ -1815,19 +1815,19 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     // invlen_tau
     hsize_t iltdim[1];
     H5LTget_dataset_info(xs_grp,"invlentau", iltdim,NULL,NULL);
-    double invlentau[iltdim[0]];
-    H5LTread_dataset_double(xs_grp,"invlentau", invlentau);
+    std::unique_ptr<double[]> invlentau(new double[iltdim[0]]);
+    H5LTread_dataset_double(xs_grp,"invlentau", invlentau.get());
     for(unsigned int ie = 0; ie < ne; ie ++)
       int_struct->invlen_tau[ie] = invlentau[ie];
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2];
     H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,NULL,NULL);
-
-    double dNdEtauall[dNdEtaudim[0]*dNdEtaudim[1]];
-    H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall);
-    double dNdEtaulep[dNdEtaudim[0]*dNdEtaudim[1]];
-    H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep);
+    
+    std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+    H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
+    std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+    H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
 
     for( unsigned int e1 = 0; e1 < ne; e1++){
         for( unsigned int e2 = 0; e2 < e1; e2++){
