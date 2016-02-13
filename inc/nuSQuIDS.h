@@ -1481,28 +1481,74 @@ class nuSQUIDSAtm {
       return nusq_array[0].Get_SquareMassDifference(i);
     }
 
-    /// \brief Sets the absolute numerical error.
-    /// @param eps Error.
-    void Set_h_max(double eps){
-      for(BaseSQUIDS& nsq : nusq_array){
-        nsq.Set_h_max(eps);
-      }
+    /// \brief Set the initial integration step size
+    /// \param h initial step size
+    void Set_h(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h(h);
+    }
+    
+    /// \brief Set the initial integration step size for a single energy node
+    /// \param h initial step size
+    /// \param idx energy node index
+    void Set_h(double h, unsigned int idx){
+      nusq_array[idx].Set_h(h);
+    }
+  
+    /// \brief Set the maximum integration step size
+    /// \param h maximum step size
+    void Set_h_max(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h_max(h);
+    }
+  
+    /// \brief Set the maximum integration step size for a single energy node
+    /// \param h maximum step size
+    /// \param idx energy node index
+    void Set_h_max(double h, unsigned int idx){
+      nusq_array[idx].Set_h_max(h);
+    }
+  
+    /// \brief Set the minimum integration step size
+    /// \param h minimum step size
+    void Set_h_min(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h_min(h);
+    }
+    
+    /// \brief Set the minimum integration step size for a single energy node
+    /// \param h minimum step size
+    /// \param idx energy node index
+    void Set_h_min(double h, unsigned int idx){
+      nusq_array[idx].Set_h_min(h);
     }
 
-    /// \brief Sets the absolute numerical error.
-    /// @param eps Error.
+    /// \brief Set the allowed absolute numerical error
+    /// \param eps maximum allowed error
     void Set_abs_error(double eps){
-      for(BaseSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array)
         nsq.Set_abs_error(eps);
-      }
+    }
+  
+    /// \brief Set the allowed absolute numerical error for a single energy node
+    /// \param eps maximum allowed error
+    /// \param idx energy node index
+    void Set_abs_error(double eps, unsigned int idx){
+      nusq_array[idx].Set_abs_error(eps);
     }
 
-    /// \brief Sets the relative numerical error.
-    /// @param eps Error.
+    /// \brief Set the allowed relative numerical error
+    /// \param eps maximum allowed error
     void Set_rel_error(double eps){
-      for(BaseSQUIDS& nsq : nusq_array){
+      for(BaseSQUIDS& nsq : nusq_array)
         nsq.Set_rel_error(eps);
-      }
+    }
+  
+    /// \brief Set the allowed relative numerical error for a single energy node
+    /// \param eps maximum allowed error
+    /// \param idx energy node index
+    void Set_rel_error(double eps, unsigned int idx){
+      nusq_array[idx].Set_rel_error(eps);
     }
 
     /// \brief Sets the GSL solver
