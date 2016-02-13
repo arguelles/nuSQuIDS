@@ -56,7 +56,7 @@ int main(){
       for ( int k = 0; k < nus.GetNumNeu(); k ++){
        // std::cout << outstate_1[i][k] << " ";
        double dif = fabs(nus.EvalFlavorAtNode(k,i) - outstate_1[i][k]);
-       if (dif > 1.0e-15)
+       if (dif > 1.0e-5)
         std::cout << i << " " << k << " " << dif << std::endl;
       }
   }

@@ -41,21 +41,21 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
   switch (numneu){
     case 3:
       nus.Set_MixingAngle(0,1,0.583996);
-      nus.Set_MixingAngle(0,2, 0.148190);
+      nus.Set_MixingAngle(0,2,0.148190);
       nus.Set_MixingAngle(1,2,0.737324);
-      nus.Set_SquareMassDifference(1, 7.5e-05);
+      nus.Set_SquareMassDifference(1,7.5e-05);
       nus.Set_SquareMassDifference(2,0.00257);
       nus.Set_CPPhase(0,2,1.);
       break;
     case 4:
       // random values for non standart parameters
       nus.Set_MixingAngle(0,1,0.583996);
-      nus.Set_MixingAngle(0,2, 0.148190);
+      nus.Set_MixingAngle(0,2,0.148190);
       nus.Set_MixingAngle(1,2,0.737324);
-      nus.Set_MixingAngle(0,3, 0.1245);
+      nus.Set_MixingAngle(0,3,0.1245);
       nus.Set_MixingAngle(1,3,0.5454);
       nus.Set_MixingAngle(2,3,0.32974);
-      nus.Set_SquareMassDifference(1, 7.5e-05);
+      nus.Set_SquareMassDifference(1,7.5e-05);
       nus.Set_SquareMassDifference(2,0.00257);
       nus.Set_SquareMassDifference(3,1.9234);
       nus.Set_CPPhase(0,2,1.);
@@ -99,7 +99,8 @@ int main(){
 
   // earth
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
-  std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(0.0,1000.0*units.km,1000.0*units.km);
+  //std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(1000.0*units.km);
+  std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(4000.0*units.km);
 
   exercise_se_mode(3,neutrino,earth,earth_track);
   exercise_se_mode(3,antineutrino,earth,earth_track);
