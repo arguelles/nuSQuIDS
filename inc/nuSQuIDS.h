@@ -120,6 +120,7 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
 
+  public:
     /// \brief Struct that contains all cross section information.
     struct InteractionStructure {
         /// \brief Neutrino charge current differential cross section with respect to
@@ -280,6 +281,7 @@ class nuSQUIDS: public squids::SQuIDS {
           dNdE_tau_lep(std::move(other.dNdE_tau_lep))
         {}
     };
+  protected:
     std::shared_ptr<InteractionStructure> int_struct;
     /// \brief Tau branching ratio to leptons.
     double taubr_lep;

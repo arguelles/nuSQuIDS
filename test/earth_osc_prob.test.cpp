@@ -27,6 +27,7 @@
 
 using namespace nusquids;
 
+
 void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body> body, std::shared_ptr<Track> track){
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);
@@ -99,8 +100,8 @@ int main(){
 
   // earth
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
-  //std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(1000.0*units.km);
-  std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(4000.0*units.km);
+  std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(1000.0*units.km);
+  //std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(4000.0*units.km);
 
   exercise_se_mode(3,neutrino,earth,earth_track);
   exercise_se_mode(3,antineutrino,earth,earth_track);
