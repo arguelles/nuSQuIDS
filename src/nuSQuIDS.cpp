@@ -408,12 +408,12 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
   // here we assume the cross section to be the same for all flavors
-  squids::SU_vector projector_sum = evol_b1_proj[index_rho][0][e1] + evol_b1_proj[index_rho][1][e1];
-  projector_sum += evol_b1_proj[index_rho][2][e1];
-  squids::SU_vector temp;
+  squids::SU_vector projector_sum, temp;
   for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
+    projector_sum = evol_b1_proj[index_rho][0][e2] + evol_b1_proj[index_rho][1][e2];
+    projector_sum += evol_b1_proj[index_rho][2][e2];
     temp = ACommutator(projector_sum,state[e2].rho[index_rho]);
-    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2])*delE[e2];
+    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2])*delE[e2-1];
   }
   return nc_term;
 }
@@ -432,7 +432,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   double nutautoleptau = 0.0;
   for(unsigned int e2 = ei + 1; e2 < ne; e2++)
     nutautoleptau += (evol_b1_proj[iscalar][2][e2]*state[e2].rho[iscalar])*
-                     (int_struct->invlen_CC[iscalar][2][e2])*(int_struct->dNdE_CC[iscalar][2][e2][ei])*delE[e2];
+                     (int_struct->invlen_CC[iscalar][2][e2])*(int_struct->dNdE_CC[iscalar][2][e2][ei])*delE[e2-1];
   return nutautoleptau;
 }
 
@@ -504,10 +504,10 @@ void nuSQUIDS::UpdateInteractions(){
           interaction_cache[rho][0][e1].SetAllComponents(0);
       }
       //then sum contributions from higher energies cascading to lower
-      for(unsigned int e2=0; e2<ne; e2++){
+      for(unsigned int e2=1; e2<ne; e2++){
         temp = ACommutator(projector_sum,state[e2].rho[rho]);
         for(unsigned int e1=0; e1<e2; e1++)
-          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]*delE[e2]);
+          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]*delE[e2-1]);
       }
       //duplicate result to other flavors
       for(unsigned int flv = 1; flv < numneu; flv++){
@@ -526,7 +526,7 @@ void nuSQUIDS::UpdateInteractions(){
       for(unsigned int e2=0; e2<ne; e2++){
         double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho]);
         for(unsigned int e1=0; e1<e2; e1++)
-          scalar_interaction_cache[rho][e1]+=temp*(int_struct->invlen_CC[rho][2][e2])*(int_struct->dNdE_CC[rho][2][e2][e1])*delE[e2];
+          scalar_interaction_cache[rho][e1]+=temp*(int_struct->invlen_CC[rho][2][e2])*(int_struct->dNdE_CC[rho][2][e2][e1])*delE[e2-1];
       }
     }
   }
