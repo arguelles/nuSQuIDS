@@ -455,6 +455,106 @@ double nuSQUIDS::GetNucleonNumber() const{
 
     return num_nuc;
 }
+  
+void nuSQUIDS::SetUpInteractionCache(){
+  //check whether initialization has already been done
+  if(interaction_cache.extent(0)==nrhos &&
+     interaction_cache.extent(1)==numneu &&
+     interaction_cache.extent(2)==ne &&
+     interaction_cache_store)
+    return;
+  const size_t nvectors=nrhos*numneu*ne;
+  const size_t vector_size=numneu*numneu;
+  //std::cout << "N Vectors: " << nvectors << std::endl;
+  //std::cout << "Vector size: " << vector_size << std::endl;
+  
+  //Both of these variables have units of sizeof(double), not bytes!
+  size_t headroom=0;
+  size_t padding=0;
+  
+  //If doubles are already at least 32 byte aligned, we don't need to do
+  //anything, and in the SU(1) case we don't care about alignment.
+  if(alignof(double)<32 && numneu>1){
+    assert(sizeof(double)<32); //we're going to assume this throughout
+  //We want a very particular alignment: if our vectors have more than one
+  //component (SU(2) or greater) we want (1) the components to be 32 byte
+  //aligned if the number of components is even, or (2) if the number of
+  //components is odd we want the _second_ component to be 32 byte aligned.
+  //We assume that operator new[] will return a block which is aligned to
+  //sizeof(double), but not necessarily moreso.
+  //In both cases we may need to skip up to 32-sizeof(double) bytes at the
+  //start of the block.
+  //Next, we may need padding between the vectors' individual chunks. In case
+  //(1) this will be just
+  //((vector_size*sizeof(double))%32 ? 32-((vector_size*sizeof(double))%32) : 0)
+  //bytes and in case
+  //(2) this will be 32-sizeof(double)-((vector_size-1)*sizeof(double))%32,
+  //plus 32 if negative.
+  
+  headroom = (32-sizeof(double))/sizeof(double);
+  if(vector_size%2){ //odd number of elements; case (2)
+    size_t overhang=((vector_size-1)*sizeof(double))%32;
+    size_t gap=32-overhang;
+    //std::cout << " overhang: " << overhang << std::endl;
+    //std::cout << " gap: " << gap << std::endl;
+    if(gap==sizeof(double)) //the first component of the vector will exactly fit
+      padding=0;
+    else if(gap<sizeof(double)){ //need to make room for first
+      overhang=sizeof(double)-gap;
+      padding=(32-overhang)/sizeof(double);
+    }
+    else if(gap>sizeof(double)){
+      padding=(gap-sizeof(double))/sizeof(double);
+    }
+  }
+  else{ //even number; case (1)
+    size_t overhang=(vector_size*sizeof(double))%32;
+    if(overhang)
+      padding=(32-overhang)/sizeof(double);
+  }
+  }
+  
+  //std::cout << "headroom needed: " << headroom << std::endl;
+  //std::cout << "padding needed: " << padding << std::endl;
+  
+  //headroom at the front, and room for nvectors vectors, with (nvectors-1)
+  //sections of padding between them.
+  size_t interaction_cache_store_size=headroom + nvectors*vector_size + (nvectors-1)*padding;
+  //std::cout << "Allocating " << interaction_cache_store_size*sizeof(double) << " bytes" << std::endl;
+  //std::cout << " space wasted achieving alignment: " << (headroom + (nvectors-1)*padding)*sizeof(double) << " bytes" << std::endl;
+  interaction_cache_store.reset(new double[interaction_cache_store_size]);
+  
+  interaction_cache.resize(std::initializer_list<size_t>{nrhos,numneu,ne});
+  //std::cout << "Initial pointer is " << interaction_cache_store.get() << std::endl;
+  double* ptr=interaction_cache_store.get();
+  if(alignof(double)<32 && numneu>1){
+    if(vector_size%2){ //odd number of elements; case (2)
+      if((intptr_t)(ptr+1)%32)
+        ptr+=(32-((intptr_t)(ptr+1)%32))/sizeof(double);
+    }
+    else if((intptr_t)ptr%32) //even number of elements; case (1)
+      ptr+=(32-((intptr_t)ptr%32))/sizeof(double);
+  }
+  //std::cout << "Pointer after adjustment is " << ptr << std::endl;
+  for(size_t i=0; i<nrhos; i++){
+    for(size_t j=0; j<numneu; j++){
+      for(size_t k=0; k<ne; k++){
+        if(alignof(double)<32 && numneu>1){
+          size_t alignment=(intptr_t)ptr%32;
+          if((numneu%2==1 && alignment!=32-sizeof(double)) || (numneu%2==0 && alignment!=0)){
+            //std::cout << "Pointer is " << ptr << ", alignment is " << alignment << std::endl;
+            throw std::logic_error("Fatal error: Logic in nuSQUIDS::SetUpInteractionCache has failed to ensure 32 byte aligned pointers");
+          }
+        }
+        interaction_cache[i][j][k]=squids::SU_vector(numneu,ptr);
+        ptr+=vector_size+padding;
+      }
+    }
+  }
+  
+  //also set the correct size for the scalar cache
+  scalar_interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
+}
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
@@ -488,8 +588,23 @@ void nuSQUIDS::UpdateInteractions(){
   //computing the summed projector a number of times proportional to the number
   //of energies, rather than proportinal to the square.
   if(!ioscillations){
-    interaction_cache.resize(std::initializer_list<size_t>{nrhos,numneu,ne});
-    squids::SU_vector projector_sum(numneu), temp(numneu);
+    //helper function to select a suitably aligned block of size `size` within
+    //the block pointed to by ptr. Requires at least 32 bytes of deliberate
+    //overallocation.
+    auto align=[](double* ptr, unsigned int size){
+      size_t before=size%2; //number of preceding, unaligned entries
+      size_t offset=(intptr_t)(ptr+before)%32;
+      if(offset)
+        ptr+=(32-offset)/sizeof(double);
+      return(ptr);
+    };
+    std::unique_ptr<double[]> proj_store(new double[numneu*numneu+32/sizeof(double)]);
+    std::unique_ptr<double[]> temp_store(new double[numneu*numneu+32/sizeof(double)]);
+    squids::SU_vector projector_sum(numneu, align(proj_store.get(),numneu*numneu));
+    squids::SU_vector temp(numneu, align(temp_store.get(),numneu*numneu));
+    
+    //clear the cache
+    //refill
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //this will be the same for all energies, so we may as well use the first
       projector_sum = evol_b1_proj[rho][0][0] + evol_b1_proj[rho][1][0];
@@ -497,17 +612,20 @@ void nuSQUIDS::UpdateInteractions(){
       
       //assume all flavors are the same, so compute for first flavor, then copy to others
       //first initialize to zero
-      for(unsigned int e1=0; e1<ne; e1++){
-        if(interaction_cache[rho][0][e1].Dim()!=numneu)
-          interaction_cache[rho][0][e1]=squids::SU_vector(numneu);
-        else
-          interaction_cache[rho][0][e1].SetAllComponents(0);
-      }
+      memset(&interaction_cache[rho][0][0][0],0,(&interaction_cache[rho][0][ne-1][numneu*numneu-1]-&interaction_cache[rho][0][0][0])*sizeof(double));
       //then sum contributions from higher energies cascading to lower
       for(unsigned int e2=1; e2<ne; e2++){
-        temp = ACommutator(projector_sum,state[e2].rho[rho]);
-        for(unsigned int e1=0; e1<e2; e1++)
-          interaction_cache[rho][0][e1] += temp*(0.5*int_struct->dNdE_NC[rho][0][e2][e1]*int_struct->invlen_NC[rho][0][e2]*delE[e2-1]);
+        temp = squids::detail::guarantee<
+                squids::detail::NoAlias | squids::detail::EqualSizes
+                >(ACommutator(projector_sum,state[e2].rho[rho]));
+        double factor=0.5*int_struct->invlen_NC[rho][0][e2]*delE[e2-1];
+        squids::SU_vector* cache_entry=&interaction_cache[rho][0][0];
+        double* dNdE_ptr=&int_struct->dNdE_NC[rho][0][e2][0];
+        for(unsigned int e1=0; e1<e2; e1++, cache_entry++, dNdE_ptr++){
+          *cache_entry += squids::detail::guarantee<
+                           squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage
+                          >(temp*(factor**dNdE_ptr));
+        }
       }
       //duplicate result to other flavors
       for(unsigned int flv = 1; flv < numneu; flv++){
@@ -518,12 +636,11 @@ void nuSQUIDS::UpdateInteractions(){
     //TODO: include GR for nu_e bar if present
     
     //scalar interactions for nu_tau
-    scalar_interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //first initialize to zero
       for(unsigned int e1=0; e1<ne; e1++)
         scalar_interaction_cache[rho][e1]=0;
-      for(unsigned int e2=0; e2<ne; e2++){
+      for(unsigned int e2=1; e2<ne; e2++){
         double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho]);
         for(unsigned int e1=0; e1<e2; e1++)
           scalar_interaction_cache[rho][e1]+=temp*(int_struct->invlen_CC[rho][2][e2])*(int_struct->dNdE_CC[rho][2][e2][e1])*delE[e2-1];
@@ -713,6 +830,9 @@ void nuSQUIDS::EvolveState(){
     throw std::runtime_error("nuSQUIDS::Error::Initial state not initialized");
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
+  
+  if( !ioscillations && iinteraction)
+    SetUpInteractionCache();
 
   if ( body->IsConstantDensity() and not iinteraction ){
     // when only oscillations are considered and the density is constant

@@ -331,9 +331,17 @@ class nuSQUIDS: public squids::SQuIDS {
     ///Cache of precalculated results for InteractionsRho.
     ///Used only when interactions are on and oscillations are off.
     marray<squids::SU_vector,3> interaction_cache;
+    ///Backing storage for the SU_vectors in interaction_cache so that each can
+    ///be ensured to be correctly aligned for best performance.
+    std::unique_ptr<double[]> interaction_cache_store;
     ///Cache of precalculated results for InteractionsScalar.
     ///Used only when interactions are on and oscillations are off.
     marray<double,2> scalar_interaction_cache;
+  
+    ///Initialize the interaction cahce data structures to the corretc sizes for
+    ///the current problem.
+    ///Should be invoked only when interactions are on and oscillations are off.
+    void SetUpInteractionCache();
 
     /// \brief Evolves the flavor projectors in the interaction basis to a time t.
     /// \details It uses H0() to evolve SQUIDS#b0_proj and SQUIDS#b1_proj into 
