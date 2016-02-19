@@ -713,7 +713,7 @@ void nuSQUIDS::InitializeInteractions(){
       double XCC_MIN,XNC_MIN,XCC_int,XNC_int,CC_rescale,NC_rescale;
       for(unsigned int flv = 0; flv < numneu; flv++){
           XCC_MIN = int_struct->sigma_CC[neutype][flv][0];
-          XNC_MIN = int_struct->sigma_CC[neutype][flv][0];
+          XNC_MIN = int_struct->sigma_NC[neutype][flv][0];
           for(unsigned int e1 = 0; e1 < ne; e1++){
               XCC_int = 0.0;
               XNC_int = 0.0;
