@@ -330,10 +330,12 @@ class nuSQUIDS: public squids::SQuIDS {
 
     ///Cache of precalculated results for InteractionsRho.
     ///Used only when interactions are on and oscillations are off.
-    marray<squids::SU_vector,3> interaction_cache;
+    marray<squids::SU_vector,2> interaction_cache;
     ///Backing storage for the SU_vectors in interaction_cache so that each can
     ///be ensured to be correctly aligned for best performance.
     std::unique_ptr<double[]> interaction_cache_store;
+    ///Total size of interaction_cache_store
+    size_t interaction_cache_store_size;
     ///Cache of precalculated results for InteractionsScalar.
     ///Used only when interactions are on and oscillations are off.
     marray<double,2> scalar_interaction_cache;

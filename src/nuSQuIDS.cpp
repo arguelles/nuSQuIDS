@@ -398,7 +398,7 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
 
 squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
   if(iinteraction && !ioscillations) //can use precomputed result
-    return(interaction_cache[index_rho][0][e1]);
+    return(interaction_cache[index_rho][e1]);
 
   squids::SU_vector nc_term(nsun);
 
@@ -459,11 +459,10 @@ double nuSQUIDS::GetNucleonNumber() const{
 void nuSQUIDS::SetUpInteractionCache(){
   //check whether initialization has already been done
   if(interaction_cache.extent(0)==nrhos &&
-     interaction_cache.extent(1)==numneu &&
-     interaction_cache.extent(2)==ne &&
+     interaction_cache.extent(1)==ne &&
      interaction_cache_store)
     return;
-  const size_t nvectors=nrhos*numneu*ne;
+  const size_t nvectors=nrhos*ne;
   const size_t vector_size=numneu*numneu;
   //std::cout << "N Vectors: " << nvectors << std::endl;
   //std::cout << "Vector size: " << vector_size << std::endl;
@@ -519,12 +518,12 @@ void nuSQUIDS::SetUpInteractionCache(){
   
   //headroom at the front, and room for nvectors vectors, with (nvectors-1)
   //sections of padding between them.
-  size_t interaction_cache_store_size=headroom + nvectors*vector_size + (nvectors-1)*padding;
+  interaction_cache_store_size=headroom + nvectors*vector_size + (nvectors-1)*padding;
   //std::cout << "Allocating " << interaction_cache_store_size*sizeof(double) << " bytes" << std::endl;
   //std::cout << " space wasted achieving alignment: " << (headroom + (nvectors-1)*padding)*sizeof(double) << " bytes" << std::endl;
   interaction_cache_store.reset(new double[interaction_cache_store_size]);
   
-  interaction_cache.resize(std::initializer_list<size_t>{nrhos,numneu,ne});
+  interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
   //std::cout << "Initial pointer is " << interaction_cache_store.get() << std::endl;
   double* ptr=interaction_cache_store.get();
   if(alignof(double)<32 && numneu>1){
@@ -537,18 +536,16 @@ void nuSQUIDS::SetUpInteractionCache(){
   }
   //std::cout << "Pointer after adjustment is " << ptr << std::endl;
   for(size_t i=0; i<nrhos; i++){
-    for(size_t j=0; j<numneu; j++){
-      for(size_t k=0; k<ne; k++){
-        if(alignof(double)<32 && numneu>1){
-          size_t alignment=(intptr_t)ptr%32;
-          if((numneu%2==1 && alignment!=32-sizeof(double)) || (numneu%2==0 && alignment!=0)){
-            //std::cout << "Pointer is " << ptr << ", alignment is " << alignment << std::endl;
-            throw std::logic_error("Fatal error: Logic in nuSQUIDS::SetUpInteractionCache has failed to ensure 32 byte aligned pointers");
-          }
+    for(size_t j=0; j<ne; j++){
+      if(alignof(double)<32 && numneu>1){
+        size_t alignment=(intptr_t)ptr%32;
+        if((numneu%2==1 && alignment!=32-sizeof(double)) || (numneu%2==0 && alignment!=0)){
+          //std::cout << "Pointer is " << ptr << ", alignment is " << alignment << std::endl;
+          throw std::logic_error("Fatal error: Logic in nuSQUIDS::SetUpInteractionCache has failed to ensure 32 byte aligned pointers");
         }
-        interaction_cache[i][j][k]=squids::SU_vector(numneu,ptr);
-        ptr+=vector_size+padding;
       }
+      interaction_cache[i][j]=squids::SU_vector(numneu,ptr);
+      ptr+=vector_size+padding;
     }
   }
   
@@ -603,34 +600,26 @@ void nuSQUIDS::UpdateInteractions(){
     squids::SU_vector projector_sum(numneu, align(proj_store.get(),numneu*numneu));
     squids::SU_vector temp(numneu, align(temp_store.get(),numneu*numneu));
     
-    //clear the cache
-    //refill
+    //first initialize to zero
+    memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //this will be the same for all energies, so we may as well use the first
       projector_sum = evol_b1_proj[rho][0][0] + evol_b1_proj[rho][1][0];
       projector_sum += evol_b1_proj[rho][2][0];
       
-      //assume all flavors are the same, so compute for first flavor, then copy to others
-      //first initialize to zero
-      memset(&interaction_cache[rho][0][0][0],0,(&interaction_cache[rho][0][ne-1][numneu*numneu-1]-&interaction_cache[rho][0][0][0])*sizeof(double));
       //then sum contributions from higher energies cascading to lower
       for(unsigned int e2=1; e2<ne; e2++){
         temp = squids::detail::guarantee<
                 squids::detail::NoAlias | squids::detail::EqualSizes
                 >(ACommutator(projector_sum,state[e2].rho[rho]));
         double factor=0.5*int_struct->invlen_NC[rho][0][e2]*delE[e2-1];
-        squids::SU_vector* cache_entry=&interaction_cache[rho][0][0];
+        squids::SU_vector* cache_entry=&interaction_cache[rho][0];
         double* dNdE_ptr=&int_struct->dNdE_NC[rho][0][e2][0];
         for(unsigned int e1=0; e1<e2; e1++, cache_entry++, dNdE_ptr++){
           *cache_entry += squids::detail::guarantee<
                            squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage
                           >(temp*(factor**dNdE_ptr));
         }
-      }
-      //duplicate result to other flavors
-      for(unsigned int flv = 1; flv < numneu; flv++){
-        for(unsigned int e1=0; e1<ne; e1++)
-          interaction_cache[rho][flv][e1]=interaction_cache[rho][0][e1];
       }
     }
     //TODO: include GR for nu_e bar if present
