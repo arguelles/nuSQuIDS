@@ -79,7 +79,7 @@ int main(){
   const unsigned int numneu = 3;
   double Emin = 1.0e3*units.GeV;
   double Emax = 1.0e6*units.GeV;
-  unsigned int Esize = 40;
+  unsigned int Esize = 100;
   nuSQUIDS nus(Emin,Emax,Esize,numneu,both,true,true);
 
   // constant density
@@ -120,10 +120,11 @@ int main(){
     double phi_mu = nus.EvalFlavorAtNode(1,ei,0);
     double phi_tau = nus.EvalFlavorAtNode(2,ei,0);
 
-    if( std::abs(phi_e - phi[ei])/phi[ei] > 1.0e-4 or
-        std::abs(phi_mu - phi[ei])/phi[ei] > 1.0e-4 or
-        std::abs(phi_tau - phi[ei])/phi[ei] > 1.0e-4){
-      std::cout << e_range[ei] << " " <<  phi_e << " " << phi_mu << " " << phi_tau << " " << phi[ei] << std::endl;
+    if( std::abs(phi_e - phi[ei])/phi[ei] > 5.0e-2 or
+        std::abs(phi_mu - phi[ei])/phi[ei] > 5.0e-2 or
+        std::abs(phi_tau - phi[ei])/phi[ei] > 5.0e-2){
+      if(!(std::abs(phi_e - phi[ei])<1.0e-2))
+        std::cout << e_range[ei] << " " <<  phi_e << " " << phi_mu << " " << phi_tau << " " << phi[ei] << std::endl;
     }
   }
 
