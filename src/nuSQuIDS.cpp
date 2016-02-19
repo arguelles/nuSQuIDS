@@ -674,6 +674,19 @@ void nuSQUIDS::InitializeInteractions(){
       // in this case NT is both
       neutype_xs_dict = (std::map<unsigned int,NeutrinoCrossSections::NeutrinoType>){{0, NeutrinoCrossSections::neutrino},{1,NeutrinoCrossSections::antineutrino}};
     }
+  
+    auto validateCrossSection=[this](double value, double unit, const char* interaction, bool singleDiff, double neuE, double leptE, int flavor){
+      if(value<=0.0 || std::isnan(value)){
+        std::ostringstream ss;
+        ss << "Invalid " << interaction << (singleDiff ? " singly-differential" : " total")
+        << " cross section value: " << value/unit << '\n';
+        ss << " for flavor " << flavor << ",\n";
+        ss << " neutrino energy " << neuE/this->params.GeV << " GeV";
+        if(singleDiff)
+          ss << ",\n outgoing lepton energy " << leptE/this->params.GeV << " GeV";
+        throw std::runtime_error(ss.str());
+      }
+    };
 
     for(unsigned int neutype = 0; neutype < nrhos; neutype++){
       for(unsigned int flv = 0; flv < numneu; flv++){
@@ -681,11 +694,15 @@ void nuSQUIDS::InitializeInteractions(){
               // differential cross sections
               for(unsigned int e2 = 0; e2 < e1; e2++){
                   dsignudE_NC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+                  validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
                   dsignudE_CC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+                  validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
               }
               // total cross sections
               int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+              validateCrossSection(int_struct->sigma_CC[neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
               int_struct->sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+              validateCrossSection(int_struct->sigma_NC[neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
           }
       }
     }
@@ -724,16 +741,8 @@ void nuSQUIDS::InitializeInteractions(){
       for(unsigned int flv = 0; flv < numneu; flv++){
           for(unsigned int e1 = 0; e1 < ne; e1++){
               for(unsigned int e2 = 0; e2 < e1; e2++){
-                  if (dsignudE_NC[rho][flv][e1][e2] < 1.0e-50 or (dsignudE_NC[rho][flv][e1][e2] != dsignudE_NC[rho][flv][e1][e2])){
-                      int_struct->dNdE_NC[rho][flv][e1][e2] = 0.0;
-                  } else {
-                      int_struct->dNdE_NC[rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[rho][flv][e1]);
-                  }
-                  if (dsignudE_CC[rho][flv][e1][e2] < 1.0e-50 or (dsignudE_CC[rho][flv][e1][e2] != dsignudE_CC[rho][flv][e1][e2])){
-                      int_struct->dNdE_CC[rho][flv][e1][e2] = 0.0;
-                  } else {
-                      int_struct->dNdE_CC[rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[rho][flv][e1]);
-                  }
+                int_struct->dNdE_NC[rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[rho][flv][e1]);
+                int_struct->dNdE_CC[rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[rho][flv][e1]);
               }
           }
       }
