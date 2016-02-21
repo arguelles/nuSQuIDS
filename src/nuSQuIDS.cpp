@@ -1628,6 +1628,11 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
 
   // set trayectory to current time
   track->SetX(x_current);
+  
+  // fetch material properties
+  current_ye = body->ye(*track);
+  current_density = body->density(*track);
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // initializing nuSQUIDS
   if (ne == 1){
@@ -1810,6 +1815,11 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
   // set trayectory to current time
   track->SetX(x_current);
+  
+  // fetch material properties
+  current_ye = body->ye(*track);
+  current_density = body->density(*track);
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // initializing nuSQUIDS
   if (ne == 1){
@@ -2135,6 +2145,9 @@ body(other.body),
 track(other.track),
 DM2(other.DM2),
 H0_array(std::move(other.H0_array)),
+HI_constants(other.HI_constants),
+current_density(other.current_density),
+current_ye(other.current_ye),
 b0_proj(std::move(other.b0_proj)),
 b1_proj(std::move(other.b1_proj)),
 evol_b0_proj(std::move(other.evol_b0_proj)),
@@ -2179,6 +2192,9 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   track = other.track;
   DM2 = other.DM2;
   H0_array = std::move(other.H0_array);
+  HI_constants = other.HI_constants;
+  current_density = other.current_density;
+  current_ye = other.current_ye;
   b0_proj = std::move(other.b0_proj);
   b1_proj = std::move(other.b1_proj);
   evol_b0_proj = std::move(other.evol_b0_proj);
