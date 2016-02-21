@@ -309,6 +309,13 @@ class nuSQUIDS: public squids::SQuIDS {
     squids::SU_vector DM2;
     /// \brief Stores the time independent hamiltonian corresponding to each energy node.
     marray<squids::SU_vector,1> H0_array;
+  
+    /// \brief Product of physical constants needed by HI.
+    double HI_constants;
+    /// \brief The density of the body at the current point on the track
+    double current_density;
+    /// \brief The electron fraction of the body at the current point on the track
+    double current_ye;
 
     /// \brief Mass basis projectors.
     /// \details The i-entry corresponds to the projector in the ith mass eigenstate.

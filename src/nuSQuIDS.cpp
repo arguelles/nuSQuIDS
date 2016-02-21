@@ -257,6 +257,9 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
     Set_GammaScalarTerms(true);
     Set_OtherScalarTerms(true);
   }
+  
+  //precompute this product for HI to avoid repeating expensive pow() calls.
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   //===============================
   // END                         //
@@ -284,6 +287,8 @@ void nuSQUIDS::InitializeInteractionVectors(){
 
 void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
+  current_ye = body->ye(*track);
+  current_density = body->density(*track);
   if( basis != mass and ioscillations){
     EvolveProjectors(x);
   }
@@ -318,26 +323,24 @@ squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
 }
 
 squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
-    double ye = body->ye(*track);
-    double density = body->density(*track);
-
-    double CC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density*ye;
+    double CC = HI_constants*current_density*current_ye;
     double NC;
 
-    if (ye < 1.0e-10){
-      NC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density;
+    if (current_ye < 1.0e-10){
+      NC = HI_constants*current_density;
     }
     else {
-      NC = CC*(-0.5*(1.0-ye)/ye);
+      NC = CC*(-0.5*(1.0-current_ye)/current_ye);
     }
 
     // construct potential in flavor basis
-    //std::cout << CC << " " << NC << std::endl;
-    //std::cout << irho << " " << ie << std::endl;
-    //std::cout << evol_b1_proj[irho][0][ie] << std::endl;
     squids::SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
-    potential += (NC)*(evol_b1_proj[irho][1][ie]);
-    potential += (NC)*(evol_b1_proj[irho][2][ie]);
+    potential += squids::detail::guarantee
+      <squids::detail::NoAlias | squids::detail::EqualSizes>
+      (NC*evol_b1_proj[irho][1][ie]);
+    potential += squids::detail::guarantee
+      <squids::detail::NoAlias | squids::detail::EqualSizes>
+      (NC*evol_b1_proj[irho][2][ie]);
 
     if ((irho == 1 and NT==both) or NT==antineutrino){
         // antineutrino matter potential flips sign
@@ -349,17 +352,6 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     }
 
     return potential;
-    /*
-    if ((irho == 0 and NT==both) or NT==neutrino){
-        // neutrino potential
-        return potential;
-    } else if ((irho == 1 and NT==both) or NT==antineutrino){
-        // antineutrino potential
-        return (-1.0)*std::move(potential);
-    } else{
-        throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
-    }
-    */
 }
 
 squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
