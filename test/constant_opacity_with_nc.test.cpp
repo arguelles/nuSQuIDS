@@ -38,10 +38,10 @@ int DiffEquationKernel(double t,
   for(unsigned int ei = 0; ei < number_of_energy_nodes; ei++)
     dfdE[ei] = -f[ei]*num_nucleon*(is->sigma_CC[0][0][ei]+is->sigma_NC[0][0][ei]);
 
-  for(unsigned int e2 = 0; e2 < number_of_energy_nodes; e2++){
+  for(unsigned int e2 = 1; e2 < number_of_energy_nodes; e2++){
     for(unsigned int e1 = 0; e1 < e2; e1++){
       // this only does neutrinos
-      dfdE[e1] += f[e2]*delE[e2]*is->dNdE_NC[0][0][e2][e1]*is->sigma_NC[0][0][e2]*num_nucleon;
+      dfdE[e1] += f[e2]*delE[e2-1]*is->dNdE_NC[0][0][e2][e1]*is->sigma_NC[0][0][e2]*num_nucleon;
     }
   }
 
