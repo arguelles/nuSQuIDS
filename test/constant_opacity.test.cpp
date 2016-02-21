@@ -22,7 +22,7 @@ int main(){
   squids::Const units;
   double Emin = 1.0e3*units.GeV;
   double Emax = 1.0e6*units.GeV;
-  unsigned int Esize = 40;
+  unsigned int Esize = 50;
   nuSQUIDS nus(Emin,Emax,Esize,numneu,both,true,true);
 
   // constant density
@@ -64,7 +64,7 @@ int main(){
         double exp_analytic = exp(-column_density*(int_structure->sigma_CC[rho][flv][ei]+int_structure->sigma_NC[rho][flv][ei]));
         double exp_nusquids = nus.EvalFlavorAtNode(flv,ei,rho);
         if( std::abs(exp_nusquids - exp_analytic)/exp_analytic > 5.0e-3 )
-          std::cout << exp_nusquids << " " << exp_analytic <<" " << exp_nusquids/exp_analytic << std::endl;
+          std::cout << flv << ' ' << rho << ' ' << ei << ' ' << exp_nusquids << " " << exp_analytic <<" " << exp_nusquids/exp_analytic << std::endl;
       }
     }
   }
