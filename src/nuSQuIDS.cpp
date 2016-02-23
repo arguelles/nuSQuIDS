@@ -334,12 +334,15 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     }
 
     // construct potential in flavor basis
-    squids::SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
+    squids::SU_vector potential=squids::SU_vector::make_aligned(nsun,false);
+    potential = squids::detail::guarantee
+      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+      ((CC+NC)*evol_b1_proj[irho][0][ie]);
     potential += squids::detail::guarantee
-      <squids::detail::NoAlias | squids::detail::EqualSizes>
+      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
       (NC*evol_b1_proj[irho][1][ie]);
     potential += squids::detail::guarantee
-      <squids::detail::NoAlias | squids::detail::EqualSizes>
+      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
       (NC*evol_b1_proj[irho][2][ie]);
 
     if ((irho == 1 and NT==both) or NT==antineutrino){
