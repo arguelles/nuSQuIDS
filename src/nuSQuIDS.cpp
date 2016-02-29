@@ -268,13 +268,16 @@ void nuSQUIDS::InitializeInteractionVectors(){
     // initialize cross section and interaction arrays
     int_struct->dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
     int_struct->dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
+    int_struct->dNdE_GR.resize(std::vector<size_t>{ne,ne});
     // inverse interaction lenghts
     int_struct->invlen_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
     int_struct->invlen_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->invlen_GR.resize(std::vector<size_t>{ne});
     int_struct->invlen_INT.resize(std::vector<size_t>{nrhos,numneu,ne});
     // initialize cross section arrays
     int_struct->sigma_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
     int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
+    int_struct->sigma_GR.resize(std::vector<size_t>{ne});
     // initialize the tau decay and interaction array
     int_struct->invlen_tau.resize(std::vector<size_t>{ne});
     int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
@@ -413,7 +416,15 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     projector_sum = evol_b1_proj[index_rho][0][e2] + evol_b1_proj[index_rho][1][e2];
     projector_sum += evol_b1_proj[index_rho][2][e2];
     temp = ACommutator(projector_sum,state[e2].rho[index_rho]);
+    // NB: 0.5 compensates for factor of 2 in classical-limit {X,Y} = XY + YX = 2XY
     nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2])*delE[e2-1];
+    // Glashow resonance
+    // NB: we assume that the W- -> antineutrino branching fractions are the same for all flavors (close, but not quite)
+    // to do this correctly, weight the contributions to projector_sum by the relative branching fractions
+    if ((NT == both and index_rho == 1) or NT == antineutrino)
+      nc_term += projector_sum
+        * (evol_b1_proj[index_rho][0][e2]*state[e2].rho[index_rho])
+        * (int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
   }
   return nc_term;
 }
@@ -458,6 +469,7 @@ double nuSQUIDS::GetNucleonNumber() const{
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
+    double num_e = num_nuc*body->ye(*track);
     if(debug)
       std::cout << "============ BEGIN UpdateInteractions ============" << std::endl;
     for(unsigned int rho = 0; rho < nrhos; rho++){
@@ -482,6 +494,17 @@ void nuSQUIDS::UpdateInteractions(){
           }
       }
     }
+#ifdef WITH_GLASHOW_RESONANCE
+    // Add Glashow resonance if antineutrinos are in the mix
+    if (NT == both or NT == antineutrino) {
+      assert(numneu > 0);
+      unsigned int rho = (NT == both) ? 1 : 0;
+      for(unsigned int e1 = 0; e1 < ne; e1++){
+        int_struct->invlen_GR[e1] = int_struct->sigma_GR[e1]*num_e;
+        int_struct->invlen_INT[rho][0][e1] += int_struct->invlen_GR[e1];
+      }
+    }
+#endif
   
   //Without oscillations, the entries in evol_b1_proj do not depend on energy.
   //We can exploit this to precalculate the information needed by InteractionsRho
@@ -514,9 +537,19 @@ void nuSQUIDS::UpdateInteractions(){
         for(unsigned int e1=0; e1<ne; e1++)
           interaction_cache[rho][flv][e1]=interaction_cache[rho][0][e1];
       }
+#ifdef WITH_GLASHOW_RESONANCE
+      // Glashow resonance
+      for(unsigned int e2=1; e2<ne; e2++){
+        if ((NT == both and rho == 1) or NT == antineutrino) {
+          temp = projector_sum
+                * (evol_b1_proj[rho][0][e2]*state[e2].rho[rho]);
+          for(unsigned int e1=0; e1<e2; e1++) {
+            interaction_cache[rho][0][e1] += temp*(int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
+          }
+        }
+      }
+#endif
     }
-    //TODO: include GR for nu_e bar if present
-    
     //scalar interactions for nu_tau
     scalar_interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
     for(unsigned int rho = 0; rho < nrhos; rho++){
@@ -602,7 +635,7 @@ void nuSQUIDS::InitializeInteractions(){
     }
     #endif
 
-    // constructing dNdE
+    // constructing dNdE for DIS
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
           for(unsigned int e1 = 0; e1 < ne; e1++){
@@ -619,6 +652,44 @@ void nuSQUIDS::InitializeInteractions(){
                   }
               }
           }
+      }
+    }
+    // construct dNdE for Glashow resonance
+    {
+      GlashowResonanceCrossSection gr_cs;
+      marray<double,2> dsignudE_GR{ne,ne};
+      for(unsigned int e1 = 0; e1 < ne; e1++){
+        int_struct->sigma_GR[e1] = gr_cs.TotalCrossSection(E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
+        for(unsigned int e2 = 0; e2 < e1; e2++){
+          double dsignudE = gr_cs.SingleDifferentialCrossSection(E_range[e1],E_range[e2],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
+          if (dsignudE < 1.0e-50 or (dsignudE != dsignudE)){
+              dsignudE_GR[e1][e2] = 0.0;
+          } else {
+              dsignudE_GR[e1][e2] = dsignudE;
+          }
+        }
+      }
+#ifdef FixCrossSections
+      // Ensure that the differential cross-sections integrate to 1
+      for(unsigned int e1 = 0; e1 < ne; e1++){
+        double X_int = 0.;
+        for(unsigned int e2 = 0; e2 < e1; e2++){
+          X_int += dsignudE_GR[e1][e2]*delE[e2];
+        }
+        if (e1 != 0){
+          double rescale = gr_cs.GetMuonicBranchingFraction()
+            * (int_struct->sigma_GR[e1] - int_struct->sigma_GR[0])/X_int;
+          for(unsigned int e2 = 0; e2 < e1; e2++){
+            dsignudE_GR[e1][e2] *= rescale;
+          }
+        }
+
+      }
+#endif
+      for(unsigned int e1 = 0; e1 < ne; e1++){
+        for(unsigned int e2 = 0; e2 < e1; e2++){
+          int_struct->dNdE_GR[e1][e2] = dsignudE_GR[e1][e2]/int_struct->sigma_GR[e1];
+        }
       }
     }
 
@@ -1339,7 +1410,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     hsize_t XSdim[3] {static_cast<hsize_t>(nrhos),
                       static_cast<hsize_t>(numneu),
                       static_cast<hsize_t>(ne)};
-    std::vector<double> xsCC(nrhos*numneu*ne),xsNC(nrhos*numneu*ne);
+    std::vector<double> xsCC(nrhos*numneu*ne),xsNC(nrhos*numneu*ne),xsGR(ne);
     for ( unsigned int rho = 0; rho < nrhos; rho ++){
       for ( unsigned int flv = 0; flv < numneu; flv ++){
           for ( unsigned int ie = 0; ie < ne; ie ++){
@@ -1348,15 +1419,17 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
+    std::copy(int_struct->sigma_GR.begin(), int_struct->sigma_GR.end(), xsGR.begin());
     dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsCC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsNC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"sigmagr",1,&XSdim[2],H5T_NATIVE_DOUBLE,static_cast<const void*>(xsGR.data()));
 
     // dNdE_CC and dNdE_NC
     hsize_t dXSdim[4] {static_cast<hsize_t>(nrhos),
                        static_cast<hsize_t>(numneu),
                        static_cast<hsize_t>(ne),
                        static_cast<hsize_t>(ne)};
-    std::vector<double> dxsCC(nrhos*numneu*ne*ne),dxsNC(nrhos*numneu*ne*ne);
+    std::vector<double> dxsCC(nrhos*numneu*ne*ne),dxsNC(nrhos*numneu*ne*ne),dxsGR(ne*ne);
 
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
@@ -1373,8 +1446,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
+    std::copy(int_struct->dNdE_GR.begin(), int_struct->dNdE_GR.end(), dxsGR.begin());
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsCC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsNC.data()));
+    dset_id = H5LTmake_dataset(xs_group_id,"dNdEgr",2,&dXSdim[2],H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsGR.data()));
 
     // invlen_tau
     hsize_t iltdim[1] {static_cast<hsize_t>(ne)};
@@ -1810,6 +1885,19 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
               }
           }
       }
+    }
+
+    // sigma_GR
+    {
+      std::vector<double> xsGR(XSdim[2]);
+      H5LTread_dataset_double(xs_grp,"sigmagr", xsGR.data());
+      std::copy(xsGR.begin(), xsGR.end(), int_struct->sigma_GR.begin());
+    }
+    // dNdE_GR
+    {
+      std::vector<double> dxsGR(dXSdim[2]*dXSdim[3]);
+      H5LTread_dataset_double(xs_grp,"dNdEgr", dxsGR.data());
+      std::copy(dxsGR.begin(), dxsGR.end(), int_struct->dNdE_GR.begin());
     }
 
     // invlen_tau

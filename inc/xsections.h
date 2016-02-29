@@ -49,7 +49,7 @@ class NeutrinoCrossSections{
     /// \brief Neutrino types.
     enum NeutrinoType {neutrino = 0, antineutrino = 1};
     /// \brief Interaction current type
-    enum Current { CC, NC };
+    enum Current { CC, NC, GR };
     /// \brief Returns the total neutrino cross section
     /// \details Used to interpolate the total cross sections.
     virtual double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
@@ -142,6 +142,37 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       bool IsInit() const {return is_init;}
 };
 
+/// \class NeutrinoGRCrossSection
+/// \brief Implements electron-antineutrino/electron scattering
+class GlashowResonanceCrossSection : public NeutrinoCrossSections {
+public:
+  virtual ~GlashowResonanceCrossSection();
+
+  GlashowResonanceCrossSection();
+
+  /// \brief Returns the total neutrino cross section
+  double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+  /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+  /// \details The cross section will be returned in cm^2 GeV^-1.
+  /// @param E1 Incident lepton energy.
+  /// @param E2 Outgoing lepton energy.
+  /// @param flavor Flavor index. Must be 0
+  /// @param neutype Must be antineutrino.
+  /// @param current Must be GR.
+  double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+  double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+
+  /// \brief Returns the fraction of final states with a muon
+  /// \details This is the ratio of the integrated single-differential cross-section to the total cross-section
+  double GetMuonicBranchingFraction() const { return B_mu; }
+
+private:
+  double fermi_scale;
+  double M_W;
+  double W_total;
+  double B_mu;
+  double B_had;
+};
 
 } // close namespace
 

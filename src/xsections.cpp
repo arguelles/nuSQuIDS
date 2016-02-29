@@ -23,6 +23,7 @@
 
 
 #include "xsections.h"
+#include "SQuIDS/const.h"
 
 namespace nusquids{
 
@@ -240,6 +241,49 @@ NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){
       gsl_interp_accel_free(*it);
     }
   }
+}
+
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(){
+  const squids::Const constants;
+  fermi_scale = pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi;
+  M_W = 80.385*constants.GeV;
+  W_total = 2.085*constants.GeV;
+  B_mu = 0.1057;
+  B_had = 0.6793;
+}
+
+GlashowResonanceCrossSection::~GlashowResonanceCrossSection(){}
+
+double GlashowResonanceCrossSection::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
+                           NeutrinoType neutype, Current current) const{
+  // only treat the glashow resonance
+  if (not (flavor == electron and neutype == antineutrino and current == GR))
+    return 0.0;
+  // calculate total cross-section for nuebar + e- -> numubar + mu-, then divide
+  // by the W- -> numubar + mu- branching fraction to get total cross-section
+  // see e.g. arxiv:1108.3163v2, Eq. 2.1
+  const squids::Const constants;
+  const double &m = constants.electron_mass;
+  const double &mu = constants.muon_mass;
+  return 2*fermi_scale*Enu*pow(1. - (mu*mu - m*m)/(2*m*Enu), 2)
+    / (pow(1. - 2*m*Enu/(M_W*M_W), 2) + pow(W_total/M_W, 2)) / B_mu / 3;
+}
+
+double GlashowResonanceCrossSection::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+  const squids::Const constants;
+  if (E2 > E1)
+    return 0.;
+  // differential cross section for leptonic final states only
+  // NB: assumes that the branching fractions are identical for all 3 families
+  double xl = E2/E1;
+  return B_mu*3*TotalCrossSection(E1, flavor, neutype, current)*(xl*xl)/E1*constants.GeV;
+}
+
+double GlashowResonanceCrossSection::DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+  // only treat the glashow resonance
+  if (not (flavor == electron and neutype == antineutrino and current == GR))
+    return 0.0;
+  return 0.;
 }
 
 /*
