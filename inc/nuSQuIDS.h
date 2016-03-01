@@ -557,17 +557,6 @@ class nuSQUIDS: public squids::SQuIDS {
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::shared_ptr<InteractionStructure> iis = nullptr);
 
-    /// \brief Constructor from a HDF5 filepath with a valid interaction structure.
-    /// @param hdf5_filename Filename of the HDF5 to use for construction.
-    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
-    /// @param int_struct Interaction Structure to be used in object construction.
-    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
-    /// restoring all properties as well as the state.
-    /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp, std::shared_ptr<InteractionStructure> int_struct = nullptr):
-      int_struct(int_struct)
-    { ReadStateHDF5(hdf5_filename,grp,int_struct); }
-
   public:
     /// \brief Incorporated const object useful to evaluate units.
     ///\todo remove this
@@ -627,12 +616,22 @@ class nuSQUIDS: public squids::SQuIDS {
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
-    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
-    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
+    /// @param grp HDF5 file group path where the nuSQUIDS object is saved.
+    /// @param int_struct Interaction Structure to be used in object construction,
+    ///        if this has already been obtained. May be left as NULL to cause
+    ///        the interaction information to be read from the standard location.
+    /// \details Reads the HDF5 file and constructs the associated nuSQUIDS object
     /// restoring all properties as well as the state.
     /// @see ReadStateHDF5
-    nuSQUIDS(std::string hdf5_filename, std::string grp = "/")
-    { ReadStateHDF5(hdf5_filename, grp, ""); }
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/",
+             std::shared_ptr<InteractionStructure> int_struct = nullptr):
+      int_struct(int_struct)
+    {
+      if(this->int_struct)
+        ReadStateHDF5(hdf5_filename,grp,int_struct);
+      else
+        ReadStateHDF5(hdf5_filename, grp, "");
+    }
 
     //***************************************************************
     virtual ~nuSQUIDS();
