@@ -38,16 +38,16 @@ using namespace nusquids;
 squids::Const units;
 
 double flux_function(double enu){
-  return 2.2e-8*pow(enu/(100.0*units.TeV),-2.58);
-  //return 1.;
+  //return 2.2e-8*pow(enu/(100.0*units.TeV),-2.58);
+  return 1.;
 }
 
 int main()
 {
   squids::Const units;
-  unsigned int numneu = 3;
+  unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e3*units.GeV,1.e7*units.GeV,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
   //nuSQUIDSAtm<> nus_atm(-1.,0.2,50,1.e2*units.GeV,4.e4*units.GeV,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
@@ -68,8 +68,8 @@ int main()
   std::cout << "End: setting mixing angles." << std::endl;
 
   // setup integration settings
-  nus_atm.Set_rel_error(1.0e-20);
-  nus_atm.Set_abs_error(1.0e-20);
+  nus_atm.Set_rel_error(1.0e-10);
+  nus_atm.Set_abs_error(1.0e-10);
 
   auto e_range = nus_atm.GetERange();
 
