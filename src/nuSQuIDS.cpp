@@ -1082,6 +1082,9 @@ double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho) const{
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if ( basis == mass )
     throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
+  if ( EE < *E_range.begin() || EE > *E_range.rbegin() )
+    throw std::runtime_error("nuSQUIDS::Error::Energy "+std::to_string(EE)+" outside of propagated energy range, ["
+                             +std::to_string(*E_range.begin())+","+std::to_string(*E_range.rbegin())+"].");
   return GetExpectationValueD(b0_proj[flv], rho, EE);
 }
 
@@ -1092,6 +1095,9 @@ double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho) const{
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
   if ( basis == mass )
     throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
+  if ( EE < *E_range.begin() || EE > *E_range.rbegin() )
+    throw std::runtime_error("nuSQUIDS::Error::Energy "+std::to_string(EE)+" outside of propagated energy range, ["
+                             +std::to_string(*E_range.begin())+","+std::to_string(*E_range.rbegin())+"].");
   return GetExpectationValueD(b1_proj[rho][flv], rho, EE);
 }
 
