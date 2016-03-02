@@ -121,7 +121,7 @@ if [ "$OS_NAME" = Darwin ]; then
 	GUESS_CXX=clang++
 	GUESS_LD=clang++
 	DYN_SUFFIX=.dylib
-  DYN_OPT='-dynamiclib -install_name $(LIBnuSQUIDS)/$(DYN_PRODUCT) -compatibility_version $(VERSION) -current_version $(VERSION)'
+  DYN_OPT='-dynamiclib $(DYN_PRODUCT) -compatibility_version $(VERSION) -current_version $(VERSION)'
 fi
 
 CC=${CC-$GUESS_CC}
@@ -367,8 +367,8 @@ LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
 
 # Project files
 NAME=nuSQuIDS
-STAT_PRODUCT=$(PATH_nuSQUIDS)/lib/lib$(NAME).a
-DYN_PRODUCT=$(PATH_nuSQUIDS)/lib/lib$(NAME)$(DYN_SUFFIX)
+STAT_PRODUCT=lib/lib$(NAME).a
+DYN_PRODUCT=lib/lib$(NAME)$(DYN_SUFFIX)
 
 # Compilation rules
 all: $(STAT_PRODUCT) $(DYN_PRODUCT)

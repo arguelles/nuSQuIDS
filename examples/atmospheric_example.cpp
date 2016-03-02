@@ -91,7 +91,7 @@ int main()
   }
 
   nus_atm.Set_ProgressBar(true);
-  nus_atm.Set_TauRegeneration(true);
+  //nus_atm.Set_TauRegeneration(true);
 
   // set the initial state
   nus_atm.Set_initial_state(inistate,flavor);
