@@ -47,7 +47,8 @@ int main()
   squids::Const units;
   unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,false);
+  //nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
   //nuSQUIDSAtm<> nus_atm(-1.,0.2,50,1.e2*units.GeV,4.e4*units.GeV,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 

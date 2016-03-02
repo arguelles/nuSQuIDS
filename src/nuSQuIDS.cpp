@@ -2055,6 +2055,8 @@ void nuSQUIDS::ProgressBar() const{
 void nuSQUIDS::Set_TauRegeneration(bool opt){
   if ( NT != both and opt )
     throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
+  if( not iinteraction )
+    throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs has being initialized without interactions, thus tau regeneration cannot be enabled.");
   tauregeneration = opt;
 }
 
