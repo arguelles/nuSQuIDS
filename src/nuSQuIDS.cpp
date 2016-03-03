@@ -81,6 +81,9 @@ void nuSQUIDS::init(double xini){
 
   iniH0();
 
+  //precompute this product for HI to avoid repeating expensive pow() calls.
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+
   //===============================
   // END                         //
   //===============================
