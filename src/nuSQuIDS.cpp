@@ -384,13 +384,13 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
-  // here we assume the cross section to be the same for all flavors
-  squids::SU_vector projector_sum, temp;
-  for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
-    projector_sum = evol_b1_proj[index_rho][0][e2] + evol_b1_proj[index_rho][1][e2];
-    projector_sum += evol_b1_proj[index_rho][2][e2];
-    temp = ACommutator(projector_sum,state[e2].rho[index_rho]);
-    nc_term += temp*(0.5*int_struct->dNdE_NC[index_rho][0][e2][e1]*int_struct->invlen_NC[index_rho][0][e2])*delE[e2-1];
+  for(unsigned int alpha_active : {0,1,2}){
+    double nc_factor=0.0;
+    for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
+      nc_factor+=(evol_b1_proj[index_rho][alpha_active][e2]*state[e2].rho[index_rho])*
+      (int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2]*delE[e2-1]);
+    }
+    nc_term+=nc_factor*evol_b1_proj[index_rho][alpha_active][e1];
   }
   return nc_term;
 }
@@ -559,43 +559,36 @@ void nuSQUIDS::UpdateInteractions(){
   
   //Without oscillations, the entries in evol_b1_proj do not depend on energy.
   //We can exploit this to precalculate the information needed by InteractionsRho
-  //computing the summed projector a number of times proportional to the number
+  //performing operations on SU_vectors a number of times proportional to the number
   //of energies, rather than proportinal to the square.
   if(!ioscillations){
-    //helper function to select a suitably aligned block of size `size` within
-    //the block pointed to by ptr. Requires at least 32 bytes of deliberate
-    //overallocation.
-    auto align=[](double* ptr, unsigned int size){
-      size_t before=size%2; //number of preceding, unaligned entries
-      size_t offset=(intptr_t)(ptr+before)%32;
-      if(offset)
-        ptr+=(32-offset)/sizeof(double);
-      return(ptr);
-    };
-    std::unique_ptr<double[]> proj_store(new double[numneu*numneu+32/sizeof(double)]);
-    std::unique_ptr<double[]> temp_store(new double[numneu*numneu+32/sizeof(double)]);
-    squids::SU_vector projector_sum(numneu, align(proj_store.get(),numneu*numneu));
-    squids::SU_vector temp(numneu, align(temp_store.get(),numneu*numneu));
+    squids::SU_vector projector=squids::SU_vector::make_aligned(nsun);
     
     //first initialize to zero
     memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
+    std::vector<double> nc_factors(ne);
     for(unsigned int rho = 0; rho < nrhos; rho++){
-      //this will be the same for all energies, so we may as well use the first
-      projector_sum = evol_b1_proj[rho][0][0] + evol_b1_proj[rho][1][0];
-      projector_sum += evol_b1_proj[rho][2][0];
-      
-      //then sum contributions from higher energies cascading to lower
-      for(unsigned int e2=1; e2<ne; e2++){
-        temp = squids::detail::guarantee<
-                squids::detail::NoAlias | squids::detail::EqualSizes
-                >(ACommutator(projector_sum,state[e2].rho[rho]));
-        double factor=0.5*int_struct->invlen_NC[rho][0][e2]*delE[e2-1];
-        squids::SU_vector* cache_entry=&interaction_cache[rho][0];
-        double* dNdE_ptr=&int_struct->dNdE_NC[rho][0][e2][0];
-        for(unsigned int e1=0; e1<e2; e1++, cache_entry++, dNdE_ptr++){
-          *cache_entry += squids::detail::guarantee<
-                           squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage
-                          >(temp*(factor**dNdE_ptr));
+      //for each flavor
+      for(unsigned int alpha_active : {0,1,2}){
+        //accumulate the contribution of each energy e2 to each lower energy
+        std::fill(nc_factors.begin(),nc_factors.end(),0);
+        for(unsigned int e2=1; e2<ne; e2++){
+          //the flux of the current flavor at e2
+          double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*state[e2].rho[rho];
+          //premultiply factors which do not depend on the lower energy e1
+          flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
+          double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
+          for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
+            nc_factors[e1]+=flux_a_e2*(*dNdE_ptr);
+        }
+        //then compute the multiplication of the flavor projector at each e1
+        //with the total contribution from all greater energies
+        //The projectors will be the same for all energies, so we just grab the first
+        projector=evol_b1_proj[rho][alpha_active][0];
+        for(unsigned int e1=0; e1<ne; e1++){
+          interaction_cache[rho][e1]+=squids::detail::guarantee
+            <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+            (nc_factors[e1]*projector);
         }
       }
     }
