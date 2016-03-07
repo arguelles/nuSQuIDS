@@ -393,7 +393,7 @@ build/%.o : src/%.cpp
 
 .PHONY: clean test
 clean:
-	rm -rf $(PATH_nuSQUIDS)/build/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/lib/* $(PATH_nuSQUIDS)/bin/*
+	rm -rf $(PATH_nuSQUIDS)/build/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT) $(PATH_nuSQUIDS)/bin/*
 
 doxygen:
 	@doxygen src/doxyfile
