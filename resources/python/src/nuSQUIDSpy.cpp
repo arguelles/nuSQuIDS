@@ -117,7 +117,11 @@ static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num)
   assert(DIM == array_dim && "No matching dimensions.");
 
   // get numpy array shape and create marray object
+#ifdef NPY_1_7_API_VERSION
   npy_intp* array_shape = PyArray_SHAPE(numpy_array);
+#else
+  npy_intp* array_shape = PyArray_DIMS(numpy_array);
+#endif
   std::vector<size_t> dimensions;
   for(unsigned int i = 0; i < array_dim; i++)
     dimensions.push_back(array_shape[i]);

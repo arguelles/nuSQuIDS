@@ -47,9 +47,7 @@ int main()
   squids::Const units;
   unsigned int numneu = 4;
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,false);
-  //nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
-  //nuSQUIDSAtm<> nus_atm(-1.,0.2,50,1.e2*units.GeV,4.e4*units.GeV,150,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(-1.,1.0,60,1.e2*units.GeV,1.e6*units.GeV,150,numneu,both,true,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   std::cout << "Begin: setting mixing angles." << std::endl;
@@ -63,8 +61,8 @@ int main()
 
   nus_atm.Set_CPPhase(0,2,0);
   if(numneu > 3){
-    nus_atm.Set_SquareMassDifference(3,10.);
-    nus_atm.Set_MixingAngle(1,3,0.392699);
+    nus_atm.Set_SquareMassDifference(3,1.);
+    nus_atm.Set_MixingAngle(1,3,0.160875);
   }
   std::cout << "End: setting mixing angles." << std::endl;
 
@@ -83,15 +81,14 @@ int main()
       for ( int rho = 0; rho < 2; rho ++ ){
         for (int flv = 0; flv < numneu; flv++){
           // initialze muon state
-          //inistate[ci][ei][rho][flv] = (flv == 1) ? flux_function(e_range[ei]) : 0.0;
-          inistate[ci][ei][rho][flv] = flux_function(e_range[ei]);
+          inistate[ci][ei][rho][flv] = (flv == 1) ? flux_function(e_range[ei]) : 0.0;
         }
       }
     }
   }
 
   nus_atm.Set_ProgressBar(true);
-  //nus_atm.Set_TauRegeneration(true);
+  nus_atm.Set_IncludeOscillations(true);
 
   // set the initial state
   nus_atm.Set_initial_state(inistate,flavor);
