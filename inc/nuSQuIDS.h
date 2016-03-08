@@ -139,6 +139,9 @@ class nuSQUIDS: public squids::SQuIDS {
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
         marray<double,4> dNdE_NC;
+        /// \brief Glashow resonance differential cross section (electron antineutrino only
+        /// \details Dimensions are initial and final energy node
+        marray<double,2> dNdE_GR;
         /// \brief Array that contains the inverse of the neutrino charge current mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
@@ -149,6 +152,9 @@ class nuSQUIDS: public squids::SQuIDS {
         /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
         /// the second to the flavor, and the last one to the energy.
         marray<double,3> invlen_NC;
+        /// \brief Glashow resonance inverse interaction length (electron antineutrino only)
+        /// \details 1 entry per energy node
+        marray<double,1> invlen_GR;
         /// \brief Array that contains the inverse of the neutrino total mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
@@ -164,6 +170,9 @@ class nuSQUIDS: public squids::SQuIDS {
         /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
         marray<double,3> sigma_NC;
+        /// \brief Glashow resonance cross section (electron antineutrino only)
+        /// \details 1 entry per energy node, in natural units
+        marray<double,1> sigma_GR;
         /// \brief Array that contains the inverse of the tau decay length for each energy node.
         marray<double,1> invlen_tau;
         /// \brief Array that contains the tau decay spectrum to all particles.
@@ -181,11 +190,14 @@ class nuSQUIDS: public squids::SQuIDS {
         InteractionStructure& operator=(const InteractionStructure& other){
           dNdE_CC=other.dNdE_CC;
           dNdE_NC=other.dNdE_NC;
+          dNdE_GR=other.dNdE_GR;
           invlen_NC=other.invlen_NC;
           invlen_CC=other.invlen_CC;
+          invlen_GR=other.invlen_GR;
           invlen_INT=other.invlen_INT;
           sigma_CC=other.sigma_CC;
           sigma_NC=other.sigma_NC;
+          sigma_GR=other.sigma_GR;
           invlen_tau=other.invlen_tau;
           dNdE_tau_all=other.dNdE_tau_all;
           dNdE_tau_lep=other.dNdE_tau_lep;
@@ -195,11 +207,14 @@ class nuSQUIDS: public squids::SQuIDS {
         InteractionStructure& operator=(InteractionStructure&& other){
           dNdE_CC=std::move(other.dNdE_CC);
           dNdE_NC=std::move(other.dNdE_NC);
+          dNdE_GR=std::move(other.dNdE_GR);
           invlen_NC=std::move(other.invlen_NC);
           invlen_CC=std::move(other.invlen_CC);
+          invlen_GR=std::move(other.invlen_GR);
           invlen_INT=std::move(other.invlen_INT);
           sigma_CC=std::move(other.sigma_CC);
           sigma_NC=std::move(other.sigma_NC);
+          sigma_GR=std::move(other.sigma_GR);
           invlen_tau=std::move(other.invlen_tau);
           dNdE_tau_all=std::move(other.dNdE_tau_all);
           dNdE_tau_lep=std::move(other.dNdE_tau_lep);
@@ -210,11 +225,14 @@ class nuSQUIDS: public squids::SQuIDS {
           if (
                dNdE_CC.size() != other.dNdE_CC.size() or
                dNdE_NC.size() != other.dNdE_NC.size() or
+               dNdE_GR.size() != other.dNdE_GR.size() or
                invlen_CC.size() != other.invlen_CC.size() or
                invlen_NC.size() != other.invlen_NC.size() or
+               invlen_GR.size() != other.invlen_GR.size() or
                invlen_INT.size() != other.invlen_INT.size() or
                sigma_CC.size() != other.sigma_CC.size() or
                sigma_NC.size() != other.sigma_NC.size() or
+               sigma_GR.size() != other.sigma_GR.size() or
                invlen_tau.size() != other.invlen_tau.size() or
                dNdE_tau_all.size() != other.dNdE_tau_all.size() or
                dNdE_tau_lep.size() != other.dNdE_tau_lep.size()
@@ -226,16 +244,19 @@ class nuSQUIDS: public squids::SQuIDS {
           if ( not std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) )
             return false;
 
-          if ( not std::equal(dNdE_CC.begin(),dNdE_CC.end(),other.dNdE_CC.begin()) )
+          if ( not std::equal(dNdE_NC.begin(),dNdE_NC.end(),other.dNdE_NC.begin()) )
             return false;
 
-          if ( not std::equal(dNdE_NC.begin(),dNdE_NC.end(),other.dNdE_NC.begin()) )
+          if ( not std::equal(dNdE_GR.begin(),dNdE_GR.end(),other.dNdE_GR.begin()) )
             return false;
 
           if ( not std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) )
             return false;
 
           if ( not std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) )
+            return false;
+
+          if ( not std::equal(invlen_GR.begin(),invlen_GR.end(),other.invlen_GR.begin()) )
             return false;
 
           if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
@@ -245,6 +266,9 @@ class nuSQUIDS: public squids::SQuIDS {
             return false;
 
           if ( not std::equal(sigma_NC.begin(),sigma_NC.end(),other.sigma_NC.begin()) )
+            return false;
+
+          if ( not std::equal(sigma_GR.begin(),sigma_GR.end(),other.sigma_GR.begin()) )
             return false;
 
           if ( not std::equal(invlen_tau.begin(),invlen_tau.end(),other.invlen_tau.begin()) )
@@ -264,18 +288,18 @@ class nuSQUIDS: public squids::SQuIDS {
         }
         /// \brief Copy constructor operator
         InteractionStructure(InteractionStructure& other):
-          dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),
-          invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),invlen_INT(other.invlen_INT),
-          sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),
+          dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),dNdE_GR(other.dNdE_GR),
+          invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT),
+          sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),sigma_GR(other.sigma_GR),
           invlen_tau(other.invlen_tau),
           dNdE_tau_all(other.dNdE_tau_all),
           dNdE_tau_lep(other.dNdE_tau_lep)
         {}
         /// \brief Move constructor operator
         InteractionStructure(InteractionStructure&& other):
-          dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),
-          invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),invlen_INT(std::move(other.invlen_INT)),
-          sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),
+          dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),dNdE_GR(std::move(other.dNdE_GR)),
+          invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT)),
+          sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),sigma_GR(std::move(other.sigma_GR)),
           invlen_tau(std::move(other.invlen_tau)),
           dNdE_tau_all(std::move(other.dNdE_tau_all)),
           dNdE_tau_lep(std::move(other.dNdE_tau_lep))
@@ -413,6 +437,8 @@ class nuSQUIDS: public squids::SQuIDS {
     bool elogscale = true;
     /// \brief Boolean that signals that tau regeneration is being used.
     bool tauregeneration = false;
+    /// \brief Whether the Glashsow resonance for electron antineutrinos is used.
+    bool iglashow = false;
     /// \brief Boolean that signals that positivization will be enforced.
     bool positivization = false;
     /// \brief Boolean that signals that a progress bar will be printed.
@@ -837,11 +863,15 @@ class nuSQUIDS: public squids::SQuIDS {
     double EvalFlavor(unsigned int flv) const;
 
     /// \brief Toggles tau regeneration on and off.
-    /// @param opt If \c true tau regeneration will be considered.
+    /// \param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt);
+  
+    /// \brief Toggles the effect of the Glashow resonance on and off.
+    /// \param opt If \c true resonant W^- production will be considered.
+    void Set_GlashowResonance(bool opt);
 
     /// \brief Toggles neutrino oscillations on and off.
-    /// @param opt If \c true neutrino oscillations will be considered.
+    /// \param opt If \c true neutrino oscillations will be considered.
     void Set_IncludeOscillations(bool opt);
 
     /// \brief Toggles positivization of the flux.

@@ -8,8 +8,6 @@ using namespace nusquids;
 int main(){
 
   squids::Const units;
-  std::cout << std::setprecision(3);
-  std::cout << std::fixed;
 
   nuSQUIDS nus(1.e0*units.GeV,1.e1*units.GeV,60,3,neutrino,false,false);
   const double distance = 500.*units.km;
@@ -55,7 +53,7 @@ int main(){
   for ( int i = 0 ; i < nus.GetNumE(); i++){
       for ( int k = 0; k < nus.GetNumNeu(); k ++){
        // std::cout << outstate_1[i][k] << " ";
-       double dif = fabs(nus.EvalFlavorAtNode(k,i) - outstate_1[i][k]);
+       double dif = fabs(nus.EvalFlavorAtNode(k,i) - outstate_1[i][k])/outstate_1[i][k];
        if (dif > 1.0e-5)
         std::cout << i << " " << k << " " << dif << std::endl;
       }

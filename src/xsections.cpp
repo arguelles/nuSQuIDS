@@ -21,8 +21,8 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-
 #include "xsections.h"
+#include "SQuIDS/const.h"
 
 namespace nusquids{
 
@@ -241,35 +241,52 @@ NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){
     }
   }
 }
-
-/*
-// differential cross sections
-
-double NeutrinoCrossSections::dsde_CC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const{
-  if (i_ele > i_enu) {
-    return 0.0;
-  } else {
-    return dsde_CC_tbl[i_enu][i_ele][neutype][flv];
-  }
+  
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(){
+  const squids::Const constants;
+  fermi_scale = pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi;
+  M_W = 80.385*constants.GeV;
+  W_total = 2.085*constants.GeV;
 }
-
-double NeutrinoCrossSections::dsde_NC(unsigned int i_enu, unsigned int i_ele, NeutrinoFlavor flv, NeutrinoType neutype) const{
-  if (i_ele > i_enu) {
-    return 0.0;
-  } else {
-    return dsde_NC_tbl[i_enu][i_ele][neutype][flv];
-  }
+  
+GlashowResonanceCrossSection::~GlashowResonanceCrossSection(){}
+  
+double GlashowResonanceCrossSection::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
+ NeutrinoType neutype, Current current) const{
+  // only treat the glashow resonance
+  if (not (flavor == electron and neutype == antineutrino and current == GR))
+    return 0;
+  // calculate total cross-section for nuebar + e- -> numubar + mu-, then divide
+  // by the W- -> numubar + mu- branching fraction to get total cross-section
+  // see e.g. arxiv:1108.3163v2, Eq. 2.1
+  const squids::Const constants;
+  const double &m = constants.electron_mass;
+  const double &mu = constants.muon_mass;
+  return 2*fermi_scale*Enu*pow(1. - (mu*mu - m*m)/(2*m*Enu), 2)
+   / (pow(1. - 2*m*Enu/(M_W*M_W), 2) + pow(W_total/M_W, 2)) / B_Muon / 3;
 }
-
-//total cross sections
-
-double NeutrinoCrossSections::sigma_CC(unsigned int i_enu, NeutrinoFlavor flv, NeutrinoType neutype) const{
-  return sigma_CC_tbl[i_enu][neutype][flv];
+  
+double GlashowResonanceCrossSection::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+  // only treat the glashow resonance
+  if (not (flavor == electron and neutype == antineutrino and current == GR))
+    return 0;
+  if (E2 > E1)
+    return 0;
+  // differential cross section for leptonic final states only
+  // NB: assumes that the branching fractions are identical for all 3 families
+  double xl = E2/E1;
+  const squids::Const constants;
+  return B_Muon*3*TotalCrossSection(E1, flavor, neutype, current)*(xl*xl)/E1*constants.GeV;
 }
-
-double NeutrinoCrossSections::sigma_NC(unsigned int i_enu, NeutrinoFlavor flv, NeutrinoType neutype) const{
-  return sigma_NC_tbl[i_enu][neutype][flv];
+  
+double GlashowResonanceCrossSection::DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+  return 0;
 }
-*/
+  
+//K. Olive et al. (PDG), Chin. Phys. C38, 090001 (2014)
+double GlashowResonanceCrossSection::B_Electron = .1071; //unc. .0016
+double GlashowResonanceCrossSection::B_Muon     = .1063; //unc. .0015
+double GlashowResonanceCrossSection::B_Tau      = .1138; //unc. .0021
+double GlashowResonanceCrossSection::B_Hadronic = .6741; //unc. .0027
 
 } // close namespace

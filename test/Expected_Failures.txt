@@ -1,2 +1,3 @@
 cross_section_consistency.test.cpp
 earth_osc_prob.test.cpp
+glashow_resonance.test.cpp

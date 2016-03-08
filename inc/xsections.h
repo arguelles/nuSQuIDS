@@ -49,7 +49,7 @@ class NeutrinoCrossSections{
     /// \brief Neutrino types.
     enum NeutrinoType {neutrino = 0, antineutrino = 1};
     /// \brief Interaction current type
-    enum Current { CC, NC };
+    enum Current { CC, NC, GR };
     /// \brief Returns the total neutrino cross section
     /// \details Used to interpolate the total cross sections.
     virtual double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
@@ -125,12 +125,12 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \details Used to interpolate the total cross sections.
       double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
       /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
-      /// \details The cross section will be returned in cm^2 GeV^-1.
-      /// @param E1 Incident lepton energy.
-      /// @param E2 Outgoing lepton energy.
-      /// @param flavor Flavor index.
-      /// @param neutype Can be either neutrino or antineutrino.
-      /// @param current Can be either CC or NC.
+      /// \param E1 Incident lepton energy.
+      /// \param E2 Outgoing lepton energy.
+      /// \param flavor Flavor index.
+      /// \param neutype Can be either neutrino or antineutrino.
+      /// \param current Can be either CC or NC.
+      /// \return The cross section in cm^2 GeV^-1.
       double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
       /// \brief Returns the number of energy nodes.
       unsigned int GetNumE() const {return div;}
@@ -142,6 +142,55 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       bool IsInit() const {return is_init;}
 };
 
+/// \class NeutrinoGRCrossSection
+/// \brief Implements electron-antineutrino/electron scattering
+class GlashowResonanceCrossSection : public NeutrinoCrossSections {
+public:
+  virtual ~GlashowResonanceCrossSection();
+
+  GlashowResonanceCrossSection();
+
+  /// \brief Returns the total neutrino cross section
+  double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+  /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+  /// \param E1 Incident lepton energy.
+  /// \param E2 Outgoing lepton energy.
+  /// \param flavor Flavor index. Must be 0
+  /// \param neutype Must be antineutrino.
+  /// \param current Must be GR.
+  /// \return The cross section in cm^2 GeV^-1.
+  double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+  
+  /// \warning Not implemented; should not be used.
+  double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+  
+  /// \brief Returns the fraction of final states with a lepton of the specified flavor
+  /// \details For muon flavor, this is the ratio of the integrated single-differential cross-section to the total cross-section
+  static double WDecayBranchingFraction(NeutrinoFlavor flavor){
+    switch(flavor){
+      case electron: return(B_Electron);
+      case muon: return(B_Muon);
+      case tau: return(B_Tau);
+      default: return(0);
+    }
+  }
+
+private:
+  double fermi_scale;
+  ///W mass
+  double M_W;
+  ///W full decay width
+  double W_total;
+  
+  ///W^+ -> e^+ + \nu_e branching ratio
+  static double B_Electron;
+  ///W^+ -> \mu^+ + \nu_\mu branching ratio
+  static double B_Muon;
+  ///W^+ -> \tau^+ + \nu_\tau branching ratio
+  static double B_Tau;
+  ///W^+ -> hadrons branching ratio
+  static double B_Hadronic;
+};
 
 } // close namespace
 

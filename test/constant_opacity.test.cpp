@@ -12,10 +12,6 @@ double density = 5.0; // gr/cm^3
 double ye = 0.3;
 double baseline = 12000;
 
-double flux_function(double enu){
-  return 1.;
-}
-
 int main(){
   // units
   const unsigned int numneu = 3;
@@ -37,10 +33,9 @@ int main(){
   marray<double,3> inistate{nus.GetNumE(),2,numneu};
   std::fill(inistate.begin(),inistate.end(),0);
   for ( unsigned int ei = 0 ; ei < nus.GetNumE(); ei++){
-    for ( unsigned int rho = 0; rho < 2; rho ++ ){
+    for ( unsigned int rho = 0; rho < 2; rho++ ){
       for ( unsigned int flv = 0; flv < numneu; flv++){
-        // initialze muon state
-        inistate[ei][rho][flv] = flux_function(e_range[ei]);
+        inistate[ei][rho][flv] = 1;
       }
     }
   }
@@ -50,6 +45,8 @@ int main(){
 
   nus.Set_initial_state(inistate,flavor);
   nus.Set_IncludeOscillations(false);
+  nus.Set_GlashowResonance(false);
+  nus.Set_TauRegeneration(false);
   nus.Set_OtherRhoTerms(false);
   nus.EvolveState();
 
@@ -60,7 +57,6 @@ int main(){
   for(unsigned int ei = 0 ; ei < nus.GetNumE(); ei++){
     for(unsigned int rho = 0; rho < 2; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
-        // initialze muon state
         double exp_analytic = exp(-column_density*(int_structure->sigma_CC[rho][flv][ei]+int_structure->sigma_NC[rho][flv][ei]));
         double exp_nusquids = nus.EvalFlavorAtNode(flv,ei,rho);
         if( std::abs(exp_nusquids - exp_analytic)/exp_analytic > 5.0e-3 )
