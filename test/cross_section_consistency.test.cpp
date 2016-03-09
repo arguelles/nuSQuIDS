@@ -1,6 +1,6 @@
 #include <iostream>
 #include <iomanip>
-#include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/tools.h>
 #include <gsl/gsl_complex_math.h>
 #include <gsl/gsl_linalg.h>
