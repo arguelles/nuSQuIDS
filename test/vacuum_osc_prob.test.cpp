@@ -24,7 +24,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 
 #define SQ(x) ((x)*(x))
 

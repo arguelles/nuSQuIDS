@@ -1,4 +1,4 @@
-#include <nuSQuIDS/nuSQUIDS.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <iostream>
 #include <iomanip>
 #include <vector>
