@@ -387,7 +387,7 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
 
   // this implements the NC interactinos
   // the tau regeneration terms are implemented at the end
-  for(unsigned int alpha_active : {0/*,1,2*/}){
+  for(unsigned int alpha_active : {0,1,2}){
     double nc_factor=0.0;
     for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
       nc_factor+=(evol_b1_proj[index_rho][alpha_active][e2]*state[e2].rho[index_rho])*
