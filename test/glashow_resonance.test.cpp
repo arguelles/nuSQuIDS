@@ -70,8 +70,8 @@ int main (int argc, char const *argv[])
   
   // setup integration settings
   squid.Set_h_max( 500.0*units.km );
-  squid.Set_rel_error(1.0e-24);
-  squid.Set_abs_error(1.0e-24);
+  squid.Set_rel_error(1.0e-25);
+  squid.Set_abs_error(1.0e-25);
   
   // construct the initial state
   marray<double,3> inistate{num_steps,2,numneu};
