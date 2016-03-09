@@ -373,9 +373,6 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
     V += evol_b1_proj[index_rho][1][ei]*(0.5*int_struct->invlen_INT[index_rho][1][ei]);
     V += evol_b1_proj[index_rho][2][ei]*(0.5*int_struct->invlen_INT[index_rho][2][ei]);
 
-    if (iglashow && ((NT == both and index_rho == 1) or NT == antineutrino))
-      V += evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_GR[ei]);
-
     return V;
 }
 
