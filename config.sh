@@ -57,7 +57,12 @@ function find_hdf5(){
 		#TODO: actually check version
 	fi
 	HDF5_COMPILE_COMMAND=`h5cc -show`
-	HDF5_LIBDIR=`echo "$HDF5_COMPILE_COMMAND" | sed 's/.*-L\([^ ]*\).*/\1/'`
+	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
+	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
+		if [ -d $HDF5_LIBDIR -a -f $HDF5_LIBDIR/libhdf5.a ]; then
+			break
+		fi
+	done
 	if [ ! -d $HDF5_LIBDIR -o ! -f $HDF5_LIBDIR/libhdf5.a ]; then
 		echo " Unable to guess $PKG library directory"
 		return
