@@ -132,19 +132,14 @@ class TauDecaySpectra{
     /// \brief Detault empty constructor.
     TauDecaySpectra();
     /// \brief Constructor for a given energy range.
-    /// @param emin Minimum energy [eV]
-    /// @param emax Maximum energy [eV]
-    /// @param div Number of divisions
-    /// \details Construct the tables from \c emin to \c emax with
-    /// number of divisions \c div using a logarithmic scale.
-    TauDecaySpectra(double emin,double emax,unsigned int div);
     /// \brief Initializer for a given energy range.
-    /// @param emin Minimum energy [eV]
-    /// @param emax Maximum energy [eV]
-    /// @param div Number of divisions
-    /// \details Construct the tables from \c emin to \c emax with
-    /// number of divisions \c div using a logarithmic scale.
-    void Init(double emin,double emax,unsigned int div);
+    /// @param Energy nodes where the cross section will be calculated. [eV]
+    /// \details Construct the tables on a rectangular grid given by E_range X E_range.
+    TauDecaySpectra(marray<double,1> E_range);
+    /// \brief Initializer for a given energy range.
+    /// @param Energy nodes where the cross section will be calculated. [eV]
+    /// \details Construct the tables on a rectangular grid given by E_range X E_range.
+    void Init(marray<double,1> E_range);
 
     /// \brief Returns the differential spectrum with respect to the incoming neutrino energy for
     /// all decay channels. Returned in units of GeV^-1

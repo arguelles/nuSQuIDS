@@ -313,10 +313,6 @@ class nuSQUIDS: public squids::SQuIDS {
     double tau_lifetime;
     /// \brief Tau mass in natural units.
     double tau_mass;
-    /// \brief Length upon which charge tau lepton conversion to neutrino happens.
-    /// \details By default set to 100 km (in natural units).
-    /// @see ConvertTauIntoNuTau()
-    double tau_reg_scale;
 
     /// \brief Length upon which the neutrino fluxes will be positivized.
     double positivization_scale;
@@ -382,35 +378,6 @@ class nuSQUIDS: public squids::SQuIDS {
     /// \warning Since the RHS of the differential equation only involves flavor projectors
     /// we do not current evolve mass projectors.
     void EvolveProjectors(double t);
-
-    /// \brief When called converts the flux of tau charged leptons to neutrinos. It
-    /// is only called when tauregeneration = True and NeutrinoType = both.
-    ///
-    /// At a given time we the system has a flux of charged tau leptons \f$ \phi_\tau(E) \f$ and
-    /// \f$ \phi_{\bar{\tau}}(E) \f$  where E is given in the system nodes. When the tau/taubar decays
-    /// it will produce a taunu/taunubar following a distribution dN/dE_all, where all
-    /// means that both hadronic and leptonic decay channels are considered.
-    /// Furthermore, the taus can decay leptonically with a distribution dN/dE_lep
-    /// and branching ration br_lep.
-    ///
-    /// Considering this we calculate the resulting neutrinos fluxes and add them
-    /// to the current neutrino state flux. In order to do this it is useful to define
-    /// the following functions:
-    ///
-    /// \f$ F_{\tau|\bar{\tau}}(E) = \int_E^\infty d\bar{E} \frac{dN}{d\bar{E}_{all}} \phi_{\tau|\bar{\tau}}\f$
-    ///
-    /// then
-    ///
-    /// \f{eqnarray*}{
-    /// \phi_{\nu_\tau}(E) &=& F_{\tau}\, \\
-    /// \phi_{\bar{\nu}_\tau}(E) &=& F_{\bar{\tau}}\,\\
-    /// \phi_{\nu_e} &=& F_{\bar{\tau}}*br_{lep}\,\\
-    /// \phi_{\bar{\nu}_e} &=& F_{\tau}*br_{lep},
-    /// \f}
-    ///
-    /// and similarly for \f$\nu_\mu\f$. After this transformation is done SetScalarsToZero()
-    /// is called to remove the charged lepton flux.
-    void ConvertTauIntoNuTau();
 
     // bool requirements
   private:

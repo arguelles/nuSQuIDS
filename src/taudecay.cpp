@@ -29,6 +29,9 @@
 // decay formulaes
 namespace nusquids{
 
+// in the following functions E_tau refers to the
+// decaying tau energy, while E_nu refers to the secondary tau
+
 double TauDecaySpectra::TauDecayToLepton(double E_tau,double E_nu) const{
     double z = E_nu/E_tau;
     double g0 = 5.0/3.0-3.0*pow(z,2.0)+(4.0/3.0)*pow(z,3.0);
@@ -120,18 +123,14 @@ void TauDecaySpectra::SetParameters(){
   BrLepton = 0.18,BrPion = 0.12,BrRho = 0.26,BrRA1 = 0.13,BrHadron = 0.13;
 }
 
-TauDecaySpectra::TauDecaySpectra(double Emin_in,double Emax_in,unsigned int div_in){
-  Init(Emin_in,Emax_in,div_in);
+TauDecaySpectra::TauDecaySpectra(marray<double,1> E_range){
+  Init(E_range);
 }
 
-void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
+void TauDecaySpectra::Init(marray<double,1> E_range){
         SetParameters();
-        Emin = Emin_in;
-        Emax = Emax_in;
-        div = div_in;
-
-        marray<double,1> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
-        unsigned int e_size = E_range_GeV.size();
+        double GeV = 1.0e9;
+        unsigned int e_size = E_range.size();
 
         dNdEnu_All_tbl.resize(std::vector<size_t>{e_size,e_size});
         dNdEnu_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
@@ -139,9 +138,9 @@ void TauDecaySpectra::Init(double Emin_in,double Emax_in,unsigned int div_in){
         dNdEle_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
 
         for (unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
-            double Enu1 = E_range_GeV[e1];
+            double Enu1 = E_range[e1]/GeV; // tau energy
             for (unsigned int e2 = 0 ; e2 < e_size ; e2 ++){
-                double Enu2 = E_range_GeV[e2];
+                double Enu2 = E_range[e2]/GeV; // tau neutrino energy
                 // save spectra
                 dNdEle_All_tbl[e1][e2] = TauDecayToAll(Enu1,Enu2)*Enu2/(Enu1*Enu1);
                 dNdEle_Lep_tbl[e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)*Enu2/(Enu1*Enu1);

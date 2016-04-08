@@ -25,6 +25,8 @@
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
 
+//#define FixCrossSections
+
 #include "nuSQuIDS.h"
 
 namespace nusquids{
@@ -213,10 +215,9 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   // Tau properties              //
   //===============================
 
-  taubr_lep = 0.14;
+  taubr_lep = 0.18;
   tau_lifetime = 2.906e-13*params.sec;
   tau_mass = 1776.82*params.MeV;
-  tau_reg_scale = 300.0*params.km;
   positivization_scale = 300.0*params.km;
 
   if(iinteraction and initialize_intereractions){
@@ -231,7 +232,7 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
 
       try{
       // initialize tau decay spectra object
-        tdc.Init(E_range[0],E_range[ne-1],ne-1);
+        tdc.Init(E_range);
       } catch (std::exception& ex) {
         std::cerr << ex.what() << std::endl;
         throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
@@ -325,6 +326,10 @@ void nuSQUIDS::EvolveProjectors(double x){
 }
 
 squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
+  if (not ioscillations){
+    squids::SU_vector V(nsun);
+    return V;
+  }
   return DM2*(0.5/Enu);
 }
 
@@ -369,6 +374,7 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
       return V;
     }
 
+    //std::cout << ei << " " << (0.5*int_struct->invlen_INT[index_rho][0][ei]) << std::endl;
     V = evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_INT[index_rho][0][ei]);
     V += evol_b1_proj[index_rho][1][ei]*(0.5*int_struct->invlen_INT[index_rho][1][ei]);
     V += evol_b1_proj[index_rho][2][ei]*(0.5*int_struct->invlen_INT[index_rho][2][ei]);
@@ -380,20 +386,43 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   if(iinteraction && !ioscillations) //can use precomputed result
     return(interaction_cache[index_rho][e1]);
 
-  squids::SU_vector nc_term(nsun);
+  squids::SU_vector interaction_term(nsun);
+  //return interaction_term;
+  //std::cout << e1 << " " << index_rho << std::endl;
 
   if (not iinteraction)
-    return nc_term;
+    return interaction_term;
 
-  // this implements the NC interactinos
-  // the tau regeneration terms are implemented at the end
+  // NC interactinos
   for(unsigned int alpha_active : {0,1,2}){
     double nc_factor=0.0;
     for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
       nc_factor+=(evol_b1_proj[index_rho][alpha_active][e2]*state[e2].rho[index_rho])*
       (int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2]*delE[e2-1]);
+      //std::cout << e1 << " " << e2 << " " << int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2] << std::endl;
     }
-    nc_term+=nc_factor*evol_b1_proj[index_rho][alpha_active][e1];
+    //std::cout << "nc factor: " << nc_factor << std::endl;
+    interaction_term+=nc_factor*evol_b1_proj[index_rho][alpha_active][e1];
+  }
+  // Tau regeneration
+  if(tauregeneration){
+    unsigned int tau_flavor = 2;
+    unsigned int other_index_rho = (index_rho == 0) ? 1 : 0;
+    double tau_hadlep_decay=0.0;
+    double tau_lep_decay=0.0;
+    for(unsigned int et = e1 + 1; et < ne; et++){ // loop in the tau energies
+      for(unsigned int en = et+ 1; en < ne; en++){ // loop in the tau neutrino energies
+        tau_hadlep_decay += (evol_b1_proj[index_rho][tau_flavor][en]*state[en].rho[index_rho])*
+        (int_struct->dNdE_CC[index_rho][tau_flavor][en][et]*int_struct->invlen_CC[index_rho][tau_flavor][en]*delE[en-1])*
+        (int_struct-> dNdE_tau_all[et][e1]*delE[et-1]);
+        tau_lep_decay += (evol_b1_proj[other_index_rho][tau_flavor][en]*state[en].rho[other_index_rho])*
+        (int_struct->dNdE_CC[other_index_rho][tau_flavor][en][et]*int_struct->invlen_CC[other_index_rho][tau_flavor][en]*delE[en-1])*
+        (int_struct-> dNdE_tau_lep[et][e1]*delE[et-1]);
+      }
+    }
+    interaction_term += tau_hadlep_decay*evol_b1_proj[index_rho][tau_flavor][e1];
+    interaction_term += tau_lep_decay*evol_b1_proj[index_rho][0][e1];
+    interaction_term += tau_lep_decay*evol_b1_proj[index_rho][1][e1];
   }
   // Glashow resonance for electron antineutrinos
   if (iglashow && ((NT == both and index_rho == 1) or NT == antineutrino)) {
@@ -406,9 +435,12 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     projector_sum += evol_b1_proj[index_rho][0][e1];
     projector_sum += evol_b1_proj[index_rho][1][e1];
     projector_sum += evol_b1_proj[index_rho][2][e1];
-    nc_term += gr_factor*projector_sum;
+    interaction_term += gr_factor*projector_sum;
   }
-  return nc_term;
+
+  //std::cout << interaction_term << std::endl;
+  //std::cout << state[e1].rho[index_rho] << std::endl;
+  return interaction_term;
 }
 
 double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
@@ -417,6 +449,7 @@ double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
 }
 
 double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
+  return 0.;
   if (not iinteraction)
     return 0.0;
   if(not ioscillations) //can use precomputed result
@@ -582,14 +615,14 @@ void nuSQUIDS::UpdateInteractions(){
         int_struct->invlen_INT[rho][0][e1] += int_struct->invlen_GR[e1];
       }
     }
-  
+
   //Without oscillations, the entries in evol_b1_proj do not depend on energy.
   //We can exploit this to precalculate the information needed by InteractionsRho
   //performing operations on SU_vectors a number of times proportional to the number
   //of energies, rather than proportinal to the square.
   if(!ioscillations){
     squids::SU_vector projector=squids::SU_vector::make_aligned(nsun);
-    
+
     //first initialize to zero
     memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
     std::vector<double> nc_factors(ne);
@@ -615,6 +648,41 @@ void nuSQUIDS::UpdateInteractions(){
           interaction_cache[rho][e1]+=squids::detail::guarantee
             <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
             (nc_factors[e1]*projector);
+        }
+      }
+
+      if(tauregeneration){
+        unsigned int tau_flavor = 2;
+        unsigned int other_rho = (rho == 0) ? 1 : 0;
+        std::vector<double> tau_hadlep_decays(ne,0);
+        std::vector<double> tau_lep_decays(ne,0);
+
+        squids::SU_vector projector_tau = evol_b1_proj[rho][tau_flavor][0];
+        squids::SU_vector projector_other_tau = evol_b1_proj[other_rho][tau_flavor][0];
+
+        for(unsigned int en=0; en<ne; en++){ // loop over initial tau neutrino energies
+          double nu_tau_flux = projector_tau*state[en].rho[rho];
+          double other_nu_tau_flux = projector_other_tau*state[en].rho[other_rho];
+          double dEn = delE[en-1];
+          double invlen_CC_tau = int_struct->invlen_CC[rho][tau_flavor][en];
+          double invlen_CC_other_tau = int_struct->invlen_CC[other_rho][tau_flavor][en];
+          for(unsigned int et=0; et<en; et++){ // loop over intermediate tau energies
+            double dEt = delE[et-1];
+            double neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[rho][tau_flavor][en][et]*invlen_CC_tau*dEn);
+            double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau*dEn);
+            for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
+              tau_hadlep_decays[e1] += nu_tau_flux*neutrino_decay_rate_spectrum*(int_struct-> dNdE_tau_all[et][e1]*dEt);
+              tau_lep_decays[e1] += other_nu_tau_flux*other_neutrino_decay_rate_spectrum*(int_struct-> dNdE_tau_lep[et][e1]*dEt);
+            }
+          }
+        }
+ 
+        squids::SU_vector projector_e = evol_b1_proj[rho][0][0];
+        squids::SU_vector projector_mu = evol_b1_proj[rho][1][0];
+        for(unsigned int e1=0; e1<ne; e1++){
+          interaction_cache[rho][e1]+=tau_hadlep_decays[e1]*projector_tau;
+          interaction_cache[rho][e1]+=tau_lep_decays[e1]*projector_mu;
+          interaction_cache[rho][e1]+=tau_lep_decays[e1]*projector_e;
         }
       }
       
@@ -767,7 +835,7 @@ void nuSQUIDS::InitializeInteractions(){
         for(unsigned int e2 = 0; e2 < e1; e2++)
           X_int += dsignudE_GR[e1][e2]*delE[e2];
         if (e1 != 0){
-          double rescale = gr_cs.WDecayBranchingFraction(muon) * (int_struct->sigma_GR[e1] - int_struct->sigma_GR[0])/X_int;
+          double rescale = gr_cs.WDecayBranchingFraction(GlashowResonanceCrossSection::muon) * (int_struct->sigma_GR[e1] - int_struct->sigma_GR[0])/X_int;
           for(unsigned int e2 = 0; e2 < e1; e2++)
             dsignudE_GR[e1][e2] *= rescale;
         }
@@ -905,36 +973,16 @@ void nuSQUIDS::EvolveState(){
     return;
   }
 
-  if( not tauregeneration ){
-    if(positivization){
-      int positivization_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/positivization_scale);
-      for (int i = 0; i < positivization_steps; i++){
-        Evolve(positivization_scale);
-        PositivizeFlavors();
-      }
-      Evolve(track->GetFinalX()-positivization_scale*positivization_steps);
+  if(positivization){
+    int positivization_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/positivization_scale);
+    for (int i = 0; i < positivization_steps; i++){
+      Evolve(positivization_scale);
       PositivizeFlavors();
-    } else {
-      Evolve(track->GetFinalX()-track->GetInitialX());
     }
-  }
-  else {
-    double scale;
-    if(positivization)
-      scale = std::min(tau_reg_scale,positivization_scale);
-    else
-      scale = tau_reg_scale;
-    int tau_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/scale);
-    for (int i = 0; i < tau_steps; i++){
-      Evolve(scale);
-      if(positivization)
-        PositivizeFlavors();
-      ConvertTauIntoNuTau();
-    }
-    Evolve(track->GetFinalX()-scale*tau_steps);
-    if(positivization)
-      PositivizeFlavors();
-    ConvertTauIntoNuTau();
+    Evolve(track->GetFinalX()-positivization_scale*positivization_steps);
+    PositivizeFlavors();
+  } else {
+    Evolve(track->GetFinalX()-track->GetInitialX());
   }
 }
 
@@ -944,37 +992,6 @@ void nuSQUIDS::SetScalarsToZero(void){
         state[e1].scalar[rho] = 0.0;
     }
   }
-}
-
-void nuSQUIDS::ConvertTauIntoNuTau(){
-
-  for(unsigned int e1 = 0; e1 < ne; e1++){
-      double tau_neu_all  = 0.0;
-      double tau_neu_lep  = 0.0;
-      double tau_aneu_all = 0.0;
-      double tau_aneu_lep = 0.0;
-
-      for(unsigned int e2 = e1 +1; e2 < ne; e2++){
-          //std::cout << dNdE_tau_all[e2][e1] << " " << delE[e2] << " " << state[e2].scalar[0] << std::endl;
-          tau_neu_all  += int_struct->dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[0];
-          tau_neu_lep  += int_struct->dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[0];
-          tau_aneu_all += int_struct->dNdE_tau_all[e2][e1]*delE[e2]*state[e2].scalar[1];
-          tau_aneu_lep += int_struct->dNdE_tau_lep[e2][e1]*delE[e2]*state[e2].scalar[1];
-      }
-      // note that the br_lepton is already included in dNdE_tau_lep
-      // adding new fluxes
-      //std::cout << tau_neu_all << " " << tau_aneu_all << " " << tau_neu_lep << " " << tau_aneu_lep << std::endl;
-      state[e1].rho[0]  += tau_neu_all*evol_b1_proj[0][2][e1] +
-                            tau_aneu_lep*evol_b1_proj[0][0][e1] +
-                            tau_aneu_lep*evol_b1_proj[0][1][e1];
-      state[e1].rho[1]  += tau_aneu_all*evol_b1_proj[1][2][e1] +
-                            tau_neu_lep*evol_b1_proj[1][0][e1] +
-                            tau_neu_lep*evol_b1_proj[1][1][e1];
-  }
-
-  // clean all lepton arrays
-  SetScalarsToZero();
-
 }
 
 void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
@@ -2262,7 +2279,6 @@ int_struct(std::move(other.int_struct)),
 taubr_lep(other.taubr_lep),
 tau_lifetime(other.tau_lifetime),
 tau_mass(other.tau_mass),
-tau_reg_scale(other.tau_reg_scale),
 positivization_scale(other.positivization_scale),
 body(other.body),
 track(other.track),
@@ -2311,7 +2327,6 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   taubr_lep = other.taubr_lep;
   tau_lifetime = other.tau_lifetime;
   tau_mass = other.tau_mass;
-  tau_reg_scale = other.tau_reg_scale;
   positivization_scale = other.positivization_scale;
   body = other.body;
   track = other.track;
