@@ -23,12 +23,15 @@
 
 #include <vector>
 #include <iostream>
-#include "nuSQuIDS.h"
-
+#include "nuSQuIDS/nuSQuIDS.h"
+#include "exBody.h"
 /*
- * This file demonstrates how to calculate neutrino oscillation
- * probabilities for different initial flavor states, mixing angles
- * and bodies.
+ * This example demonstrates how to calculate neutrino oscillation
+ * probabilities for different initial flavor states, for already
+ * defined bodies and for the new example body writen in the files 
+ * exBody.h and exBody.cpp, 7 examples in total.
+ * The bodyexamples are done for the single energy mode, but the declaration
+ * and use of these is the same for the multiple energy mode and for the nuSQUIDSatm case
  */
 
 using namespace nusquids;
@@ -77,7 +80,8 @@ int main()
    * =========
    * A long baseline oscillation probability
    */
-  std::cout << "*** Earth LongBaseline Neutrino Osc ***" << std::endl;
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "********** Earth LongBaseline Neutrino Osc *******" << std::endl;
 
   double baseline = 500.0*nus.units.km;
   // create a body object, in this case the Earth
@@ -153,8 +157,8 @@ int main()
 
   // To calculate atmospheric neutrino oscillation probabilities
   // we need to speciefy a different body.
-
-  std::cout << "*** Earth Atmospheric Neutrino Osc ***" << std::endl;
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "******** Earth Atmospheric Neutrino Osc **********" << std::endl;
 
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
   std::shared_ptr<EarthAtm::Track> earth_atm_track = std::make_shared<EarthAtm::Track>(phi);
@@ -194,13 +198,129 @@ int main()
     std::cout << std::endl;
   }
 
+
   /*
    * Example 3
    * =========
+   * Atmospheric neutrino oscillation probability with modified earth
+   */
+  
+  phi = acos(-1.0);
+
+  // To calculate atmospheric neutrino oscillation probabilities
+  // we need to speciefy a different body.
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "***** Earth Modified Atmospheric Neutrino Osc ****" << std::endl;
+
+  std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>();
+  std::shared_ptr<EarthMod::Track> earth_mod_track = std::make_shared<EarthMod::Track>(phi);
+  
+  earth_mod->Mod(0.5,0.5,0.5);
+  nus.Set_Body(earth_mod);
+  nus.Set_Track(earth_mod_track);
+  
+  // setup integration settings
+  nus.Set_rel_error(1.0e-20);
+  nus.Set_abs_error(1.0e-20);
+
+  // We can change the energy
+  nus.Set_E(100.0*nus.units.GeV);
+
+  // We reset the initial condition
+  ini_state = {0,1,0};
+  nus.Set_initial_state(ini_state,flavor);
+
+  std::cout << "In state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/nus.units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i) << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  // We do the calculation
+  nus.EvolveState();
+
+  // Output the result
+  std::cout << "Out state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/nus.units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i) << " ";
+    }
+    std::cout << std::endl;
+  }
+
+
+  /*
+   * Example 4
+   * =========
+   * Variable density neutrino oscillation probability
+   */
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "********** Variable Density Neutrino Osc *********" << std::endl;
+  // We will define a variable density environment
+  // which depends on the density (in gr/cm^3) and electron fraction
+  // at each point of the neutrino trayectory. The given lists
+  // will be interpolated using a spline.
+
+  int N=40;
+
+  std::vector<double> x_arr(N);
+  std::vector<double> density_arr(N);
+  std::vector<double> ye_arr(N);
+
+  double size = 1000.0*nus.units.km;
+  for(int i = 0; i < N; i++){
+    x_arr[i] = size*(i/(double)N);
+    density_arr[i] = fabs(cos((double)i));
+    ye_arr[i] = fabs(sin((double)i));
+  }
+
+  std::shared_ptr<VariableDensity> vardens = std::make_shared<VariableDensity>(x_arr,density_arr,ye_arr);
+  std::shared_ptr<VariableDensity::Track> track_vardens = std::make_shared<VariableDensity::Track>(0.0,200.0*nus.units.km);
+
+  nus.Set_Body(vardens);
+  nus.Set_Track(track_vardens);
+
+  // We can change the energy some MeV
+  nus.Set_E(100.0*nus.units.GeV);
+
+  // Lets set the initial state to electron
+  ini_state = {0,1,0};
+  nus.Set_initial_state(ini_state,flavor);
+
+  std::cout << "In state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/nus.units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i) << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  nus.EvolveState();
+
+  // Output the result
+  std::cout << "Out state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/nus.units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i) << " ";
+    }
+    std::cout << std::endl;
+  }
+
+
+
+  /*
+   * Example 5
+   * =========
    * Vacuum neutrino oscillation probability
    */
-
-  std::cout << "*** Vacuum Neutrino Osc ***" << std::endl;
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "*************** Vacuum Neutrino Osc **************" << std::endl;
   std::shared_ptr<Vacuum> vacuum = std::make_shared<Vacuum>();
   double baseline_2 = 500.0*nus.units.km;
   std::shared_ptr<Vacuum::Track> track_vac = std::make_shared<Vacuum::Track>(baseline_2);
@@ -236,13 +356,60 @@ int main()
     std::cout << std::endl;
   }
 
+
+  // /*
+  //  * Example 6
+  //  * =========
+  //  * Solar neutrino oscillation probability
+  //  */
+  // std::cout << "**************************************************" << std::endl;
+  // std::cout << "************* Solar Neutrino Osc *****************" << std::endl;
+  // // We will calculate the solar neutrino oscillation probability
+  // // using the standard solar model
+
+  // std::shared_ptr<Sun> sun = std::make_shared<Sun>();
+  // std::shared_ptr<Sun::Track> track_sun = std::make_shared<Sun::Track>(0.0,sun->GetRadius());
+
+  // nus.Set_Body(sun);
+  // nus.Set_Track(track_sun);
+  // // We can change the energy some MeV
+  // nus.Set_E(10.0*nus.units.MeV);
+
+  // // Lets set the initial state to electron
+  // ini_state = {1,0,0};
+  // nus.Set_initial_state(ini_state,flavor);
+
+  // std::cout << "In state" << std::endl;
+  // for (double EE : nus.GetERange()){
+  //   std::cout << EE/nus.units.GeV << " ";
+  //   for(int i = 0; i < 3; i++){
+  //     std::cout << nus.EvalFlavor(i) << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+
+  // nus.EvolveState();
+
+  // // Output the result
+  // std::cout << "Out state" << std::endl;
+  // for (double EE : nus.GetERange()){
+  //   std::cout << EE/nus.units.GeV << " ";
+  //   for(int i = 0; i < 3; i++){
+  //     std::cout << nus.EvalFlavor(i) << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+
+
+
   /*
-   * Example 4
+   * Example 7
    * =========
    * Constant density neutrino oscillation probability
    */
 
-  std::cout << "*** Constant Density Neutrino Osc ***" << std::endl;
+  std::cout << "**************************************************" << std::endl;
+  std::cout << "********* Constant Density Neutrino Osc **********" << std::endl;
   // We will define a constant density environment
   // which depends on the density (in gr/cm^3) and electron fraction
   double density = 100.0; // gr/cm^3
@@ -253,13 +420,6 @@ int main()
 
   nus.Set_Body(constdens);
   nus.Set_Track(track_constdens);
-
-  // Another thing we can do is change the oscillation parameters
-  // lets try the following
-
-  nus.Set_MixingAngle(0,2,0.5);
-  nus.Set_MixingAngle(1,2,0.5);
-  nus.Set_SquareMassDifference(2,0.0247);
 
   // We can change the energy some MeV
   nus.Set_E(10.0*nus.units.MeV);
@@ -291,106 +451,10 @@ int main()
     std::cout << std::endl;
   }
 
-  /*
-   * Example 5
-   * =========
-   * Variable density neutrino oscillation probability
-   */
 
-  std::cout << "*** Variable Density Neutrino Osc ***" << std::endl;
-  // We will define a variable density environment
-  // which depends on the density (in gr/cm^3) and electron fraction
-  // at each point of the neutrino trayectory. The given lists
-  // will be interpolated using a spline.
 
-  std::vector<double> x_arr(40);
-  std::vector<double> density_arr(40);
-  std::vector<double> ye_arr(40);
 
-  double size = 1000.0*nus.units.km;
-  for(int i = 0; i < 40; i++){
-    x_arr[i] = size*(i/40.);
-    density_arr[i] = fabs(cos((double)i));
-    ye_arr[i] = fabs(sin((double)i));
-  }
 
-  std::shared_ptr<VariableDensity> vardens = std::make_shared<VariableDensity>(x_arr,density_arr,ye_arr);
-  std::shared_ptr<VariableDensity::Track> track_vardens = std::make_shared<VariableDensity::Track>(0.0,200.0*nus.units.km);
 
-  nus.Set_Body(vardens);
-  nus.Set_Track(track_vardens);
-
-  // We can change the energy some MeV
-  nus.Set_E(100.0*nus.units.GeV);
-
-  // Lets set the initial state to electron
-  ini_state = {0,0,1};
-  nus.Set_initial_state(ini_state,flavor);
-
-  std::cout << "In state" << std::endl;
-  for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
-    for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  nus.EvolveState();
-
-  // Output the result
-  std::cout << "Out state" << std::endl;
-  for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
-    for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  return 0;
-
-  /*
-   * Example 6
-   * =========
-   * Solar neutrino oscillation probability
-   */
-
-  std::cout << "*** Solar Neutrino Osc ***" << std::endl;
-  // We will calculate the solar neutrino oscillation probability
-  // using the standard solar model
-
-  std::shared_ptr<Sun> sun = std::make_shared<Sun>();
-  std::shared_ptr<Sun::Track> track_sun = std::make_shared<Sun::Track>(0.0,sun->GetRadius());
-
-  nus.Set_Body(sun);
-  nus.Set_Track(track_sun);
-  // We can change the energy some MeV
-  nus.Set_E(10.0*nus.units.MeV);
-
-  // Lets set the initial state to electron
-  ini_state = {1,0,0};
-  nus.Set_initial_state(ini_state,flavor);
-
-  std::cout << "In state" << std::endl;
-  for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
-    for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  nus.EvolveState();
-
-  // Output the result
-  std::cout << "Out state" << std::endl;
-  for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
-    for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << " ";
-    }
-    std::cout << std::endl;
-  }
   return 0;
 }

@@ -79,12 +79,12 @@ class nuSQUIDS: public squids::SQuIDS {
   // and thus evaluate expectation values.
   template<typename,typename>
   friend class nuSQUIDSAtm;
-  protected:
-    /// \brief Sets the basis in which the problem will be solved.
-    ///
-    /// If interaction basis is used the projectors will be evolved at
-    /// every time step. On the other hand, if mass basis is used no evolution
-    /// is performed.
+protected:
+  /// \brief Sets the basis in which the problem will be solved.
+  ///
+  /// If interaction basis is used the projectors will be evolved at
+  /// every time step. On the other hand, if mass basis is used no evolution
+  /// is performed.
     Basis basis = interaction;
     /// \brief number of neutrino flavors.
     unsigned int numneu;
