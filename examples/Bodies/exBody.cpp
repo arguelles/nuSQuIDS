@@ -123,12 +123,12 @@ static squids::Const param;
     //file << "# " << frho1 <<" "<< frho2 <<" " << frho3 << std::endl;
     for (unsigned int i=0; i < arraysize;i++){
       double d=1;
-      if(i>=0 && i<39)
-	d=frho1;
+      if(i<39)
+        d=frho1;
       else if (i>=39 && i<110)
-	d=frho2;
+        d=frho2;
       else if (i>=110 && i<201)
-	d=frho3;
+        d=frho3;
       
       earth_radius[i] = earth_model[i][0];
       earth_density[i] = d*earth_model[i][1];
@@ -172,12 +172,12 @@ static squids::Const param;
     
     for (unsigned int i=0; i < arraysize;i++){
       double d=1;
-      if(i>=0 && i<39)
-	d=frho1;
+      if(i<39)
+        d=frho1;
       else if (i>=39 && i<110)
-	d=frho2;
+        d=frho2;
       else if (i>=110 && i<201)
-	d=frho3;
+        d=frho3;
 
       earth_radius[i] = earth_model[i][0];
       earth_density[i] = d*earth_model[i][1];
