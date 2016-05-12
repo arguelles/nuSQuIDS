@@ -342,9 +342,13 @@ PATH_SQUIDS=$(SQUIDS_DIR)
 SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 
-EXAMPLES_SRC=$(wildcard examples/*.cpp)
-EXAMPLES=$(patsubst examples/%.cpp,bin/%.exe,$(EXAMPLES_SRC))
-#$(EXAMPLES_SRC:.cpp=.exe)
+EXAMPLES := examples/Single_energy/single_energy \
+            examples/Multiple_energy/multiple_energy \
+            examples/Atm_default/atm_default \
+            examples/Bodies/bodies \
+            examples/Xsections/xsections \
+            examples/NSI/nsi \
+            examples/Atm_NSI/atm_nsi
 
 CXXFLAGS= -std=c++11
 
@@ -380,10 +384,6 @@ all: $(STAT_PRODUCT) $(DYN_PRODUCT)
 
 examples : $(EXAMPLES)
 
-bin/%.exe : examples/%.cpp $(STAT_PRODUCT) $(DYN_PRODUCT) 
-	@echo Compiling $@
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) $< $(LDFLAGS) -lnuSQuIDS -o $@
-
 $(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
 	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS)
@@ -395,6 +395,43 @@ $(STAT_PRODUCT) : $(OBJECTS)
 build/%.o : src/%.cpp
 	@echo Compiling $< to $@
 	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) $< -o $@
+
+examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/main.cpp
+	@echo Compiling single energy example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS)-o $@
+
+examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
+	@echo Compiling multiple energy example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Multiple_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
+	@echo Compiling atmospheric example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp
+	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Bodies/exBody.cpp -o $@
+
+build/ex_bodies_main.o : examples/Bodies/exBody.h examples/Bodies/main.cpp
+	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Bodies/main.cpp -o $@
+
+examples/Bodies/bodies : $(DYN_PRODUCT) build/ex_bodies_main.o build/exBody.o
+	@echo Compiling bodies example
+	$(CXX) $(CXXFLAGS) $(CFLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
+
+build/exCross.o : examples/Xsections/exCross.h examples/Xsections/exCross.cpp
+	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Xsections/exCross.cpp -o $@
+
+examples/Xsections/xsections : $(DYN_PRODUCT) examples/Xsections/main.cpp build/exCross.o
+	@echo Compiling cross section example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Xsections/main.cpp build/exCross.o -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
+	@echo Compiling non-standard interaction example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Atm_NSI/atm_nsi : $(DYN_PRODUCT) examples/Atm_NSI/main.cpp
+	@echo Compiling atmospheric non-standard interaction example
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Atm_NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 .PHONY: clean test
 clean:
