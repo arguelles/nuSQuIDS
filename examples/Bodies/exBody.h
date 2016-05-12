@@ -59,7 +59,8 @@ private:
   double x_ye_max;
 public:
   /// \brief Default constructor using supplied PREM.
-  EarthMod();
+  EarthMod():
+  EarthMod(EARTH_MODEL_LOCATION,1,1,1){}
   /// \brief Constructor from a user supplied EarthMod model.
   /// @param earthmodel Path to the EarthMod model file.
   /// \details The input file should have three columns.

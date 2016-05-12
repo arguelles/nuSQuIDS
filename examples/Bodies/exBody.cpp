@@ -14,11 +14,6 @@ static squids::Const param;
 */
 
 // constructor
-  EarthMod::EarthMod():EarthMod(static_cast<std::string>(EARTH_MODEL_LOCATION),1,1,1)
-  {
-  }
-
-
   EarthMod::Track::Track(double phi_input):Body::Track(0,0)
   {
     radius_nu = 6371.0*param.km;
