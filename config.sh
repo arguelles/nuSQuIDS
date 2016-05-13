@@ -398,7 +398,7 @@ build/%.o : src/%.cpp
 
 examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/main.cpp
 	@echo Compiling single energy example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS)-o $@
+	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
 	@echo Compiling multiple energy example
