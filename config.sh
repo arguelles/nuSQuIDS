@@ -433,7 +433,7 @@ examples/Atm_NSI/atm_nsi : $(DYN_PRODUCT) examples/Atm_NSI/main.cpp
 	@echo Compiling atmospheric non-standard interaction example
 	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Atm_NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-.PHONY: clean test
+.PHONY: clean test docs
 clean:
 	rm -rf $(PATH_nuSQUIDS)/build/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT) $(PATH_nuSQUIDS)/bin/*
 
