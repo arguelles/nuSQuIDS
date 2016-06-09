@@ -62,12 +62,15 @@ int main()
   // CP phase
   nus.Set_CPPhase(0,2,0.0);
 
+  // Define a Const object to handle units
+  squids::Const units;
+
   // Now we set the neutrino energy which we are interested on.
   // Energies are always given in natural units. To handle
   // the units the nuSQUIDS object has a unit subclass
   // which contains the most used units.
 
-  nus.Set_E(10.0*nus.units.GeV);
+  nus.Set_E(10.0*units.GeV);
 
   // Next we have to specify where the neutrino oscillation
   // will take place and its trayectory. We call this, respectively,
@@ -83,7 +86,7 @@ int main()
   std::cout << "**************************************************" << std::endl;
   std::cout << "********** Earth LongBaseline Neutrino Osc *******" << std::endl;
 
-  double baseline = 500.0*nus.units.km;
+  double baseline = 500.0*units.km;
   // create a body object, in this case the Earth
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
   // create a trajectory on the body. In this case the Earth
@@ -120,7 +123,7 @@ int main()
   // Lets print out the initial state
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -130,7 +133,7 @@ int main()
   // Next we can set the numerical accuracy of our result. The values
   // of this parameters depend on the problem and hand, we encourage
   // the user to try different values.
-  nus.Set_h_max( 200.0*nus.units.km );
+  nus.Set_h_max( 200.0*units.km );
   nus.Set_rel_error(1.0e-12);
   nus.Set_abs_error(1.0e-12);
 
@@ -141,7 +144,7 @@ int main()
   // Finally, lets output the state result and save it.
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -171,14 +174,14 @@ int main()
   nus.Set_abs_error(1.0e-20);
 
   // We can change the energy
-  nus.Set_E(100.0*nus.units.GeV);
+  nus.Set_E(100.0*units.GeV);
 
   // We reset the initial condition
   nus.Set_initial_state(ini_state,flavor);
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -191,7 +194,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -224,7 +227,7 @@ int main()
   nus.Set_abs_error(1.0e-20);
 
   // We can change the energy
-  nus.Set_E(100.0*nus.units.GeV);
+  nus.Set_E(100.0*units.GeV);
 
   // We reset the initial condition
   ini_state = {0,1,0};
@@ -232,7 +235,7 @@ int main()
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -245,7 +248,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -271,7 +274,7 @@ int main()
   std::vector<double> density_arr(N);
   std::vector<double> ye_arr(N);
 
-  double size = 1000.0*nus.units.km;
+  double size = 1000.0*units.km;
   for(int i = 0; i < N; i++){
     x_arr[i] = size*(i/(double)N);
     density_arr[i] = fabs(cos((double)i));
@@ -279,13 +282,13 @@ int main()
   }
 
   std::shared_ptr<VariableDensity> vardens = std::make_shared<VariableDensity>(x_arr,density_arr,ye_arr);
-  std::shared_ptr<VariableDensity::Track> track_vardens = std::make_shared<VariableDensity::Track>(0.0,200.0*nus.units.km);
+  std::shared_ptr<VariableDensity::Track> track_vardens = std::make_shared<VariableDensity::Track>(0.0,200.0*units.km);
 
   nus.Set_Body(vardens);
   nus.Set_Track(track_vardens);
 
   // We can change the energy some MeV
-  nus.Set_E(100.0*nus.units.GeV);
+  nus.Set_E(100.0*units.GeV);
 
   // Lets set the initial state to electron
   ini_state = {0,1,0};
@@ -293,7 +296,7 @@ int main()
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -305,7 +308,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -322,14 +325,14 @@ int main()
   std::cout << "**************************************************" << std::endl;
   std::cout << "*************** Vacuum Neutrino Osc **************" << std::endl;
   std::shared_ptr<Vacuum> vacuum = std::make_shared<Vacuum>();
-  double baseline_2 = 500.0*nus.units.km;
+  double baseline_2 = 500.0*units.km;
   std::shared_ptr<Vacuum::Track> track_vac = std::make_shared<Vacuum::Track>(baseline_2);
 
   nus.Set_Body(vacuum);
   nus.Set_Track(track_vac);
 
   // We can change the energy some MeV
-  nus.Set_E(150.0*nus.units.MeV);
+  nus.Set_E(150.0*units.MeV);
 
   // Lets set the initial state to electron
   ini_state = {1,0,0};
@@ -337,7 +340,7 @@ int main()
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -349,7 +352,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -373,7 +376,7 @@ int main()
   // nus.Set_Body(sun);
   // nus.Set_Track(track_sun);
   // // We can change the energy some MeV
-  // nus.Set_E(10.0*nus.units.MeV);
+  // nus.Set_E(10.0*units.MeV);
 
   // // Lets set the initial state to electron
   // ini_state = {1,0,0};
@@ -381,7 +384,7 @@ int main()
 
   // std::cout << "In state" << std::endl;
   // for (double EE : nus.GetERange()){
-  //   std::cout << EE/nus.units.GeV << " ";
+  //   std::cout << EE/units.GeV << " ";
   //   for(int i = 0; i < 3; i++){
   //     std::cout << nus.EvalFlavor(i) << " ";
   //   }
@@ -393,7 +396,7 @@ int main()
   // // Output the result
   // std::cout << "Out state" << std::endl;
   // for (double EE : nus.GetERange()){
-  //   std::cout << EE/nus.units.GeV << " ";
+  //   std::cout << EE/units.GeV << " ";
   //   for(int i = 0; i < 3; i++){
   //     std::cout << nus.EvalFlavor(i) << " ";
   //   }
@@ -415,14 +418,14 @@ int main()
   double density = 100.0; // gr/cm^3
   double ye = 0.3;
   std::shared_ptr<ConstantDensity> constdens = std::make_shared<ConstantDensity>(density,ye);
-  double baseline_3 = 500.0*nus.units.km;
+  double baseline_3 = 500.0*units.km;
   std::shared_ptr<ConstantDensity::Track> track_constdens = std::make_shared<ConstantDensity::Track>(0.0,baseline_3);
 
   nus.Set_Body(constdens);
   nus.Set_Track(track_constdens);
 
   // We can change the energy some MeV
-  nus.Set_E(10.0*nus.units.MeV);
+  nus.Set_E(10.0*units.MeV);
 
   // Lets set the initial state to electron. Note that we have
   // to set the mixing parameters *before* we set the initial state
@@ -432,7 +435,7 @@ int main()
 
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -444,7 +447,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }

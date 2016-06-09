@@ -58,12 +58,15 @@ int main()
   // CP phase
   nus.Set_CPPhase(0,2,0.0);
 
+  // Define a Const object for handleing the units
+  squids::Const units;
+
   // Now we set the neutrino energy which we are interested on.
   // Energies are always given in natural units. To handle
   // the units the nuSQUIDS object has a unit subclass
   // which contains the most used units.
 
-  nus.Set_E(10.0*nus.units.GeV);
+  nus.Set_E(10.0*units.GeV);
 
   // To calculate atmospheric neutrino oscillation probabilities
   // we need to specify a different body.
@@ -86,14 +89,14 @@ int main()
   nus.Set_abs_error(1.0e-20);
   
   // We can change the energy
-  nus.Set_E(100.0*nus.units.GeV);
+  nus.Set_E(100.0*units.GeV);
   
   // We reset the initial condition
   nus.Set_initial_state(ini_state,flavor);
   
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }
@@ -106,7 +109,7 @@ int main()
   // Output the result
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/nus.units.GeV << " ";
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
       std::cout << nus.EvalFlavor(i) << " ";
     }

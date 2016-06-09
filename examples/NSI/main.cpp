@@ -82,11 +82,11 @@ int main()
 
 
   //Setup integration settings
-  nus.Set_h_max( 200.0*nus.units.km );
+  nus.Set_h_max( 200.0*units.km );
   nus.Set_rel_error(1.0e-15);
   nus.Set_abs_error(1.0e-15);
 
-  nus_zero.Set_h_max( 200.0*nus.units.km );
+  nus_zero.Set_h_max( 200.0*units.km );
   nus_zero.Set_rel_error(1.0e-15);
   nus_zero.Set_abs_error(1.0e-15);
 
