@@ -373,6 +373,7 @@ LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
 LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS)
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS)
+EXMAPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
 
 # Project files
 NAME=nuSQuIDS
@@ -398,40 +399,40 @@ build/%.o : src/%.cpp
 
 examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/main.cpp
 	@echo Compiling single energy example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
 	@echo Compiling multiple energy example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Multiple_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Multiple_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
 	@echo Compiling atmospheric example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp
-	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Bodies/exBody.cpp -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) -c examples/Bodies/exBody.cpp -o $@
 
 build/ex_bodies_main.o : examples/Bodies/exBody.h examples/Bodies/main.cpp
-	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Bodies/main.cpp -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) -c examples/Bodies/main.cpp -o $@
 
 examples/Bodies/bodies : $(DYN_PRODUCT) build/ex_bodies_main.o build/exBody.o
 	@echo Compiling bodies example
-	$(CXX) $(CXXFLAGS) $(CFLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
+	$(CXX) $(EXMAPLES_FLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exCross.o : examples/Xsections/exCross.h examples/Xsections/exCross.cpp
-	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) examples/Xsections/exCross.cpp -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) -c examples/Xsections/exCross.cpp -o $@
 
 examples/Xsections/xsections : $(DYN_PRODUCT) examples/Xsections/main.cpp build/exCross.o
 	@echo Compiling cross section example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Xsections/main.cpp build/exCross.o -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Xsections/main.cpp build/exCross.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
 	@echo Compiling non-standard interaction example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Atm_NSI/atm_nsi : $(DYN_PRODUCT) examples/Atm_NSI/main.cpp
 	@echo Compiling atmospheric non-standard interaction example
-	@$(CXX) $(CXXFLAGS) $(CFLAGS) examples/Atm_NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Atm_NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 .PHONY: clean test docs
 clean:
