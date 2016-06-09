@@ -211,13 +211,6 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
     throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize vaccum Hamiltonian [iniH0]");
   }
 
-  //===============================
-  // Tau properties              //
-  //===============================
-
-  taubr_lep = 0.18;
-  tau_lifetime = 2.906e-13*params.sec;
-  tau_mass = 1776.82*params.MeV;
   positivization_scale = 300.0*params.km;
 
   if(iinteraction and initialize_intereractions){
@@ -850,6 +843,8 @@ void nuSQUIDS::InitializeInteractions(){
 
     // initialize interaction lengths to zero
     // tau decay length array
+    tau_lifetime = params.tau_lifetime;
+    tau_mass = params.tau_mass;
     for(unsigned int e1 = 0; e1 < ne; e1++){
         int_struct->invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
     }
@@ -866,6 +861,7 @@ void nuSQUIDS::InitializeInteractions(){
 
     #ifdef FixCrossSections
     // fix tau decay spectra cross section
+    taubr_lep = tdc.GetTauToLeptonBranchingRation();
     double tau_all_int,tau_lep_int,tau_lep_rescale,tau_all_rescale;
     for(unsigned int e1 = 1; e1 < ne; e1++){
         tau_all_int = 0.0;
