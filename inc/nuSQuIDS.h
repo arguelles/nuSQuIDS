@@ -551,9 +551,6 @@ protected:
     void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::shared_ptr<InteractionStructure> iis = nullptr);
 
   public:
-    /// \brief Incorporated const object useful to evaluate units.
-    ///\todo remove this
-    const squids::Const units;
     /************************************************************************************
      * CONSTRUCTORS
     *************************************************************************************/
