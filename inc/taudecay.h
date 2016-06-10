@@ -163,10 +163,10 @@ class TauDecaySpectra{
     /// @param i_ele Outgoing energy node index.
     double dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const;
     /// \brief Returns tau to lepton branching ratio.
-    double GetTauToLeptonBranchingRation() const{
+    double GetTauToLeptonBranchingRatio() const{
       return BrLepton;
     }
-    double GetTauToHadronBranchingRation() const{
+    double GetTauToHadronBranchingRatio() const{
       return BrHadron;
     }
 };

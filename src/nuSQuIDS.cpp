@@ -861,7 +861,7 @@ void nuSQUIDS::InitializeInteractions(){
 
     #ifdef FixCrossSections
     // fix tau decay spectra cross section
-    double taubr_lep = tdc.GetTauToLeptonBranchingRation();
+    double taubr_lep = tdc.GetTauToLeptonBranchingRatio();
     double tau_all_int,tau_lep_int,tau_lep_rescale,tau_all_rescale;
     for(unsigned int e1 = 1; e1 < ne; e1++){
         tau_all_int = 0.0;
