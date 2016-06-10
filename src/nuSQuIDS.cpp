@@ -843,8 +843,8 @@ void nuSQUIDS::InitializeInteractions(){
 
     // initialize interaction lengths to zero
     // tau decay length array
-    tau_lifetime = params.tau_lifetime;
-    tau_mass = params.tau_mass;
+    double tau_lifetime = params.tau_lifetime;
+    double tau_mass = params.tau_mass;
     for(unsigned int e1 = 0; e1 < ne; e1++){
         int_struct->invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
     }
@@ -861,7 +861,7 @@ void nuSQUIDS::InitializeInteractions(){
 
     #ifdef FixCrossSections
     // fix tau decay spectra cross section
-    taubr_lep = tdc.GetTauToLeptonBranchingRation();
+    double taubr_lep = tdc.GetTauToLeptonBranchingRation();
     double tau_all_int,tau_lep_int,tau_lep_rescale,tau_all_rescale;
     for(unsigned int e1 = 1; e1 < ne; e1++){
         tau_all_int = 0.0;
@@ -2272,9 +2272,6 @@ delE(std::move(other.delE)),
 ncs(std::move(other.ncs)),
 tdc(std::move(other.tdc)),
 int_struct(std::move(other.int_struct)),
-taubr_lep(other.taubr_lep),
-tau_lifetime(other.tau_lifetime),
-tau_mass(other.tau_mass),
 positivization_scale(other.positivization_scale),
 body(other.body),
 track(other.track),
@@ -2320,9 +2317,6 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   ncs = other.ncs;
   tdc = other.tdc;
   int_struct = std::move(other.int_struct);
-  taubr_lep = other.taubr_lep;
-  tau_lifetime = other.tau_lifetime;
-  tau_mass = other.tau_mass;
   positivization_scale = other.positivization_scale;
   body = other.body;
   track = other.track;

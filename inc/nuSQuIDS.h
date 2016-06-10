@@ -306,13 +306,8 @@ protected:
         {}
     };
   protected:
+    /// \brief Interaction struct that contains all cross section information tabulated.
     std::shared_ptr<InteractionStructure> int_struct;
-    /// \brief Tau branching ratio to leptons.
-    double taubr_lep;
-    /// \brief Tau lifetime in natural units.
-    double tau_lifetime;
-    /// \brief Tau mass in natural units.
-    double tau_mass;
 
     /// \brief Length upon which the neutrino fluxes will be positivized.
     double positivization_scale;
