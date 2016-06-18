@@ -18,6 +18,7 @@ int main(){
   nuSQUIDS nus(Emin,Emax,Esize,numneu,both,true,true);
 
   auto energies = nus.GetERange();
+  nus.InitializeInteractions();
   auto is = nus.GetInteractionStructure();
 
   for(unsigned int rho = 0; rho < 2; rho++){

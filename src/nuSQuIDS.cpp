@@ -105,18 +105,16 @@ void nuSQUIDS::Set_E(double Enu){
   istate = false;
 }
 
-void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize, bool initialize_intereractions,double xini){
+void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize,double xini){
   // here the energies come in eV
   ne = Esize;
-  if(elogscale){
-    init(logspace(Emin,Emax,ne-1),initialize_intereractions,xini);
-  }
-  else{
-    init(linspace(Emin,Emax,ne-1),initialize_intereractions,xini);
-  }
+  if(elogscale)
+    init(logspace(Emin,Emax,ne-1),xini);
+  else
+    init(linspace(Emin,Emax,ne-1),xini);
 }
 
-void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, double xini){
+void nuSQUIDS::init(marray<double,1> E_vector, double xini){
   // here the energies come in natural units
   if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
@@ -212,41 +210,6 @@ void nuSQUIDS::init(marray<double,1> E_vector, bool initialize_intereractions, d
   }
 
   positivization_scale = 300.0*params.km;
-
-  if(iinteraction and initialize_intereractions){
-      //===============================
-      // init XS and TDecay objects  //
-      //===============================
-
-      // initialize cross section object
-      if ( ncs == nullptr) {
-        ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
-      } // else we assume the user has already inintialized the object if not throw error.
-
-      try{
-      // initialize tau decay spectra object
-        tdc.Init(E_range);
-      } catch (std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
-        throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
-      }
-      // initialize cross section and interaction arrays
-      try {
-        InitializeInteractionVectors();
-      } catch (std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
-        throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize interaction vectors [InitializeInteractionVectors]");
-      }
-      //===============================
-      // Fill in arrays              //
-      //===============================
-      try {
-        InitializeInteractions();
-      } catch (std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
-        throw std::runtime_error("nuSQUIDS::init : Failed while trying to fill in interaction vectors [InitializeInteractions]");
-      }
-  }
 
   if(iinteraction){
     Set_NonCoherentRhoTerms(true);
@@ -716,6 +679,51 @@ void nuSQUIDS::UpdateInteractions(){
 }
 
 void nuSQUIDS::InitializeInteractions(){
+  if(interactions_initialized)
+    return; //nothing to do
+  //===============================
+  // init XS and TDecay objects  //
+  //===============================
+  
+  try{
+    // initialize tau decay spectra object
+    tdc.Init(E_range);
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
+  }
+  
+  // if we don't already have cached data, create it
+  if ( !int_struct ) {
+    int_struct.reset(new InteractionStructure);
+    // initialize cross section object if we don't have one
+    if ( ncs == nullptr) {
+      ncs = std::make_shared<NeutrinoDISCrossSectionsFromTables>();
+    } // else we assume the user has already inintialized the object if not throw error.
+    
+    
+    // initialize cross section and interaction arrays
+    try {
+      InitializeInteractionVectors();
+    } catch (std::exception& ex) {
+      std::cerr << ex.what() << std::endl;
+      throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize interaction vectors [InitializeInteractionVectors]");
+    }
+    //===============================
+    // Fill in arrays              //
+    //===============================
+    try {
+      GetCrossSections();
+    } catch (std::exception& ex) {
+      std::cerr << ex.what() << std::endl;
+      throw std::runtime_error("nuSQUIDS::init : Failed while trying to fill in interaction vectors [InitializeInteractions]");
+    }
+  }
+  
+  interactions_initialized=true;
+}
+  
+void nuSQUIDS::GetCrossSections(){
 
     //units
     double cm2GeV = pow(params.cm,2)*pow(params.GeV,-1);
@@ -936,6 +944,8 @@ void nuSQUIDS::EvolveState(){
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   
+  if( iinteraction && !interactions_initialized )
+    InitializeInteractions();
   if( !ioscillations && iinteraction)
     SetUpInteractionCache();
 
@@ -1350,7 +1360,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
 
   if (!iinteraction)
-    save_cross_section = iinteraction;
+    save_cross_section = false;
 
   // this lines supress HDF5 error messages
   H5Eset_auto (H5E_DEFAULT,NULL, NULL);
@@ -1520,6 +1530,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   }
 
   if (iinteraction and save_cross_section) {
+    if(!interactions_initialized) //TODO: find a better way to deal with this
+      throw std::runtime_error("Unable to save cross sections: not fully initialized");
     // sigma_CC and sigma_NC
     hsize_t XSdim[3] {static_cast<hsize_t>(nrhos),
                       static_cast<hsize_t>(numneu),
@@ -1749,7 +1761,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     Set_E(energy_data[0]);
   }
   else {
-    init(E_range,false,squids_time_initial);
+    init(E_range,squids_time_initial);
   }
   // reset current squids time
   Set_t(squids_time);
@@ -1785,6 +1797,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
       throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
     } else {
       int_struct = iis;
+      interactions_initialized = true;
     }
   }
 
@@ -1944,7 +1957,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     Set_E(energy_data[0]);
   }
   else {
-    init(E_range,false,squids_time_initial);
+    init(E_range,squids_time_initial);
   }
   // reset current squids time
   Set_t(squids_time);
@@ -2062,6 +2075,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
           int_struct->dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
         }
     }
+    interactions_initialized = true;
   }
 
   // read from user parameters

@@ -393,6 +393,8 @@ protected:
     bool istate = false;
     /// \brief Boolean that signals that interactions will be taken into account.
     bool iinteraction = false;
+    /// \brief Whether interactions have been initialized
+    bool interactions_initialized = false;
     /// \brief Boolean that signals that neutrino oscillations will be taken into account.
     bool ioscillations = true;
     /// \brief When multienergy mode is used, it signals that the neutrino energies is in logarithmic scale.
@@ -436,26 +438,24 @@ protected:
     /// @param Emin Minimum neutrino energy [eV].
     /// @param Emax Maximum neutirno energy [eV].
     /// @param Esize Number of energy nodes.
-    /// @param initialize_intereractions Togles interaction arrays initialization.
     /// @param xini The initial position of the system.
     /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
     /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions 
     /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
     /// are called.
-    void init(double Emin,double Emax,unsigned int Esize,bool initialize_intereractions = true, double xini = 0.0);
+    void init(double Emin,double Emax,unsigned int Esize,double xini=0.0);
 
     /// \brief General initilizer for the multi energy mode
     /// @param E_vector Energy nodes [eV].
-    /// @param initialize_intereractions Togles interaction arrays initialization.
     /// @param xini The initial position of the system.
     /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
     /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions
     /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
-    void init(marray<double,1> E_vector, bool initialize_intereractions = true, double xini = 0.0);
+    void init(marray<double,1> E_vector,double xini=0.0);
 
     /// \brief Initilizer for the single energy mode
     /// @param xini The initial position of the system. By default is set to 0.
-    void init(double xini = 0.0);
+    void init(double xini=0.0);
 
     /// \brief Initilizes auxiliary cross section arrays.
     /// \details The arrays are initialize, but not filled with contented. To fill the arrays
@@ -469,7 +469,7 @@ protected:
     /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep , nuSQUIDS#invlen_tau
     /// in int_struct.
     /// @see InitializeInteractionVectors
-    void InitializeInteractions();
+    void GetCrossSections();
   private:
 
     /// \brief Sets all scalar arrays to zero.
@@ -511,7 +511,7 @@ protected:
              bool elogscale = true,bool iinteraction = true):
     numneu(numneu),iinteraction(iinteraction),elogscale(elogscale),NT(NT),int_struct(int_struct)
     {
-      init(Emin,Emax,Esize,false);
+      init(Emin,Emax,Esize);
     }
 
     /// \brief Multiple energy mode constructor using precalculated cross section information.
@@ -529,7 +529,7 @@ protected:
     numneu(numneu),iinteraction(iinteraction),elogscale(false),NT(NT),int_struct(int_struct)
     {
      // assert(int_struct.
-      init(E_vector,false);
+      init(E_vector);
     }
 
     /// \brief Reads and constructs the object from an HDF5 file.
@@ -570,7 +570,7 @@ protected:
     /// @see init
     nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
        bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT),int_struct(new InteractionStructure)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
     {init(Emin,Emax,Esize);}
 
     /// \brief Multiple energy mode constructor.
@@ -586,7 +586,7 @@ protected:
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
        bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT),int_struct(new InteractionStructure)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT)
     {init(E_vector);}
 
     /// \brief Single energy mode constructor.
@@ -856,14 +856,20 @@ protected:
 
     /// \brief Returns the number of rho equations.
     unsigned int GetNumRho() const;
+  
+    void InitializeInteractions();
 
     /// \brief Returns the interaction structure.
     std::shared_ptr<nuSQUIDS::InteractionStructure> GetInteractionStructure() {
+      if(!interactions_initialized)
+        throw std::logic_error("Interactions not initialized");
       return int_struct;
     }
 
     /// \brief Returns the interaction structure with constness.
     std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
+      if(!interactions_initialized)
+        throw std::logic_error("Interactions not initialized");
       return int_struct;
     }
 
@@ -996,6 +1002,12 @@ protected:
     std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections() {
       return(ncs);
     }
+  
+    /// \brief Returns the neutrino interaction cross sections
+    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs) {
+       ncs=xs;
+       interactions_initialized=false;
+    }
 };
 
 /**
@@ -1107,7 +1119,10 @@ class nuSQUIDSAtm {
         log_enu_array[ie] = log(enu_array[ie]);
 
       // setting the interaction structure also on the  main object
+      nusq_array.front().InitializeInteractions();
       int_struct = nusq_array.front().GetInteractionStructure();
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.int_struct=int_struct;
 
       inusquidsatm = true;
     }

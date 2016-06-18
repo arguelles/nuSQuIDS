@@ -11,6 +11,7 @@ int main(){
 
   nuSQUIDS nus1(1.e2*units.GeV,1.e6*units.GeV,60,3,both,true,true);
   auto e_range = nus1.GetERange();
+  nus1.InitializeInteractions();
   auto int_struct = nus1.GetInteractionStructure();
 
   marray<double,1> costh_range {{10},{-1,-0.9,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.1}};
