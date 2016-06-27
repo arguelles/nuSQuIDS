@@ -417,7 +417,7 @@ build/ex_bodies_main.o : examples/Bodies/exBody.h examples/Bodies/main.cpp
 
 examples/Bodies/bodies : $(DYN_PRODUCT) build/ex_bodies_main.o build/exBody.o
 	@echo Compiling bodies example
-	$(CXX) $(EXMAPLES_FLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
+	@$(CXX) $(EXMAPLES_FLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exCross.o : examples/Xsections/exCross.h examples/Xsections/exCross.cpp
 	@$(CXX) $(EXMAPLES_FLAGS) -c examples/Xsections/exCross.cpp -o $@
