@@ -59,11 +59,11 @@ function find_hdf5(){
 	HDF5_COMPILE_COMMAND=`h5cc -show`
 	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
 	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
-		if [ -d $HDF5_LIBDIR -a -f $HDF5_LIBDIR/libhdf5.a ]; then
+		if [ -d $HDF5_LIBDIR -a \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
 			break
 		fi
 	done
-	if [ ! -d $HDF5_LIBDIR -o ! -f $HDF5_LIBDIR/libhdf5.a ]; then
+	if [ ! -d $HDF5_LIBDIR -o ! \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
 		echo " Unable to guess $PKG library directory"
 		return
 	fi
@@ -266,6 +266,9 @@ if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
 		SQUIDS_FOUND=1
 		SQUIDS_CFLAGS="-I$SQUIDS_INCDIR"
 		SQUIDS_LDFLAGS="-L$SQUIDS_LIBDIR -lSQuIDS"
+		if $CXX --version | grep -q 'GCC'; then
+			SQUIDS_CFLAGS="$SQUIDS_CFLAGS -Wno-abi"
+		fi
 	else
 		echo "Warning: manually specifed SQUIDS not found; will attempt auto detection"
 	fi
