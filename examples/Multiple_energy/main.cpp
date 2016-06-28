@@ -31,20 +31,18 @@
  * such as CC/NC interactions and tau regeneration for the Multiple energy case.
  */
 
-//Set if you want or not the one sterile case.
-#define STERILE
-
 using namespace nusquids;
 
 int main()
 {
   squids::Const units;
   //Number of neutrinos, 4 is the case with one sterile neutrino
-#ifdef STERILE
-  const unsigned int numneu = 4;
-#else
-  const unsigned int numneu = 3;
-#endif
+  std::cout << "(3) Three Active Neutrinos, " << "(4) 3+1 Three Active and One Sterile Neutrino" << std::endl;
+  unsigned int numneu;
+  std::cin >>numneu;
+  if( not(numneu==3 || numneu==4)){
+    throw std::runtime_error("Only (3) or (4) are valid options");
+  }
   //Declaration of the nuSQUIDS object, the arguments are:
   //(1). Minimum energy
   //(2). Maximum energy
@@ -75,18 +73,18 @@ int main()
   nus.Set_SquareMassDifference(1,7.65e-05);
   nus.Set_SquareMassDifference(2,0.00247);
 
-#ifdef STERILE
-  // sterile neutrino parameters
-  nus.Set_SquareMassDifference(3,0.1);
-  nus.Set_MixingAngle(1,3,0.1);
-#endif
-
+  if(numneu==4){
+    // sterile neutrino parameters
+    nus.Set_SquareMassDifference(3,0.1);
+    nus.Set_MixingAngle(1,3,0.1);
+  }
+  
   //Here we set the maximum size for the integration step, important for fast or sharp variations of the density.
   nus.Set_h_max( 500.0*units.km );
 
   //Setting the numerical precision of gsl integrator.
-  nus.Set_rel_error(1.0e-9);
-  nus.Set_abs_error(1.0e-9);
+  nus.Set_rel_error(1.0e-10);
+  nus.Set_abs_error(1.0e-10);
 
   //Set true the progress bar during the evolution.
   nus.Set_ProgressBar(true);
@@ -111,9 +109,6 @@ int main()
   nus.EvolveState();
   //This functions save the stat of the system, in this case after the evolution
   std::cout << std::endl << "writing the outputs..." << std::endl;
-
-  //Here we write the state of the system in an hdf5 file  
-  nus.WriteStateHDF5("./state.hdf5");
 
 
   //In this part we will save the values in a txt file to be able to plot or manipulate later.

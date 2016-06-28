@@ -43,6 +43,9 @@ void nuSQUIDS::init(double xini){
 
   if ( numneu > SQUIDS_MAX_HILBERT_DIM )
     throw std::runtime_error("nuSQUIDS::Error::Maximum number of neutrinos exceded");
+  if ( numneu < 3)
+    throw std::runtime_error("nuSQUIDS::Error::Minimum number of neutrinos is three");
+
   nsun = numneu;
 
   //initialize SQUIDS
@@ -126,6 +129,9 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
 
   if ( numneu > SQUIDS_MAX_HILBERT_DIM )
     throw std::runtime_error("nuSQUIDS::Error::Maximum number of neutrinos exceded");
+  if ( numneu < 3)
+    throw std::runtime_error("nuSQUIDS::Error::Minimum number of neutrinos is three");
+
   nsun = numneu;
 
   ne = E_vector.size();

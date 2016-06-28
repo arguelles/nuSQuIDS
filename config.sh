@@ -354,7 +354,9 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Bodies/bodies \
             examples/Xsections/xsections \
             examples/NSI/nsi \
-            examples/Atm_NSI/atm_nsi
+            examples/Atm_NSI/atm_nsi \
+            examples/HDF5_Write_Read/write \
+            examples/HDF5_Write_Read/read 
 
 CXXFLAGS= -std=c++11
 
@@ -411,8 +413,16 @@ examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_ener
 	@echo Compiling multiple energy example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/Multiple_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
+examples/HDF5_Write_Read/write : $(DYN_PRODUCT) examples/HDF5_Write_Read/write.cpp
+	@echo Compiling HDF5 write
+	@$(CXX) $(EXMAPLES_FLAGS) examples/HDF5_Write_Read/write.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/HDF5_Write_Read/read : $(DYN_PRODUCT) examples/HDF5_Write_Read/read.cpp
+	@echo Compiling HDF5 read
+	@$(CXX) $(EXMAPLES_FLAGS) examples/HDF5_Write_Read/read.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
 examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
-	@echo Compiling atmospheric example
+	@echo Compiling atmospheric exampe
 	@$(CXX) $(EXMAPLES_FLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp
