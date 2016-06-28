@@ -469,7 +469,7 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
             double r = atmheight;
             double mm = tan(phi);
 
-            if(cosphi<=0.0){
+/*            if(cosphi<=0.0){
                 L = sqrt(((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*r*R + 2.0*R*
                     (R + sqrt((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*
                     r*R + R*R)))/(1.0 + mm*mm));
@@ -477,7 +477,9 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
                 L = sqrt(((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*r*R + 2.0*R*
                     (R - sqrt((1.0 + mm*mm)*r*r + 2.0*(1.0 + mm*mm)*
                     r*R + R*R)))/(1.0 + mm*mm));
-            }
+            }*/
+
+	    L = sqrt(SQR(R+r)-SQR(R*sin(phi)))-R*cosphi;
 
             x = 0.0;
             xini = 0.0;
@@ -500,8 +502,11 @@ double EarthAtm::density(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
             double xkm = track_earthatm.GetX()/param.km;
+	    double phi = track_earthatm.phi;
+	    double dL = sqrt(SQR(radius+atm_height)-SQR(radius*sin(phi)))+radius*cos(phi);
 
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
+//            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
             #ifdef EarthAtm_DEBUG
             cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
@@ -529,7 +534,10 @@ double EarthAtm::ye(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
             double xkm = track_earthatm.GetX()/param.km;
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
+	    double phi = track_earthatm.phi;
+	    double dL = sqrt(SQR(radius+atm_height)-SQR(radius*sin(phi)))+radius*cos(phi);
+//            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km)*xkm);
+            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
             double rel_r = r/earth_with_atm_radius;
             if ( rel_r < x_radius_min ){
@@ -548,7 +556,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
 EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
         {
             radius = 6371.0; // km
-            atm_height = 20; // km
+            atm_height = 22; // km
             earth_with_atm_radius = radius + atm_height;
 
             marray<double,2> earth_model = quickread(filepath);
