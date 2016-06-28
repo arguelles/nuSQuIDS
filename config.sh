@@ -28,7 +28,7 @@ function find_package(){
 		MIN_VERSION=$2
 		pkg-config --atleast-version $MIN_VERSION $PKG
 		if [ "$?" -ne 0 ]; then
-			echo "Error: installed $PKG verson ("`pkg-config --modversion $PKG`") is too old; version >=$MIN_VERSION is required" 1>&2
+			echo "Error: installed $PKG version ("`pkg-config --modversion $PKG`") is too old; version >=$MIN_VERSION is required" 1>&2
 			exit 1
 		fi
 	fi
@@ -70,8 +70,11 @@ function find_hdf5(){
 	# This is an educated guess. . .
 	HDF5_INCDIR="${HDF5_LIBDIR}/../include"
 	if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
+	    HDF5_INCDIR="${HDF5_LIBDIR}/../../include"
+	    if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
 		echo " Unable to guess $PKG include directory"
 		return
+	    fi
 	fi
 	HDF5_CFLAGS="-I${HDF5_INCDIR}"
 	HDF5_LDFLAGS=`echo "$HDF5_COMPILE_COMMAND" | \
@@ -300,7 +303,7 @@ echo '
 Name: HDF5
 Description: "A data model, library, and file format for storing and managing data."
 URL: https://www.hdfgroup.org/HDF5/' >> lib/hdf5.pc
-echo "Version: $HDF5_VERSION" >> lib/hdf5.pc
+echo "Version: ${HDF5_VERSION}" >> lib/hdf5.pc
 echo "Cflags: ${HDF5_CFLAGS}
 Libs: ${HDF5_LDFLAGS}
 " >> lib/hdf5.pc
