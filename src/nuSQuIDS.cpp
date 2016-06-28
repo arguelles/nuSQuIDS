@@ -1351,7 +1351,7 @@ squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   return H0(E_range[ei],rho)+HI(ei,rho,Get_t());
 }
 
-void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc) const{
+void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc, bool overwrite) const{
   if ( body == NULL )
     throw std::runtime_error("nuSQUIDS::Error::BODY is a NULL pointer");
   if (not ibody )
@@ -1377,7 +1377,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   //std::cout << "writing to hdf5 file" << std::endl;
   // H5F_ACC_TRUNC : overwrittes file
   // H5F_ACC_EXCL  : files if file exists
-  file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+  if(overwrite)
+    file_id = H5Fopen(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT);
+  else
+    file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
   if (file_id < 0 ) {// file already exists
     file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (file_id < 0)

@@ -892,6 +892,7 @@ protected:
     /// @param group Path to the group where the nuSQUIDS content will be saved.
     /// @param save_cross_sections If \c true the cross section tables will also be saved.
     /// @param cross_section_grp_loc Path to the group where the cross section will be saved.
+    /// @param overwrite If true will overwrite previous file, else it will append.
     /// \details By default all contents are saved to the \c root of the HDF5 file
     /// if the user wants a different location it can use \c group and \c save_cross_sections to
     /// change the nuSQUIDS location and the cross section information location. Furthermore, the 
@@ -900,7 +901,7 @@ protected:
     /// to be saved.
     /// @see AddToWriteHDF5
     /// @see ReadStateHDF5
-    void WriteStateHDF5(std::string hdf5_filename,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "") const;
+    void WriteStateHDF5(std::string hdf5_filename,std::string group = "/",bool save_cross_sections = true, std::string cross_section_grp_loc = "",bool overwrite = true) const;
 
     /// \brief User function to write user defined properties from an HDF5 file.
     /// @param hdf5_loc_id HDF5 group id
@@ -1372,7 +1373,7 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(const BaseSQUIDS& nsq : nusq_array){
         // use only the first one to write the cross sections on /crosssections
-        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections");
+        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections",i!=0);
         i++;
       }
     }
