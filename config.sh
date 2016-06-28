@@ -269,7 +269,7 @@ if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
 		SQUIDS_FOUND=1
 		SQUIDS_CFLAGS="-I$SQUIDS_INCDIR"
 		SQUIDS_LDFLAGS="-L$SQUIDS_LIBDIR -lSQuIDS"
-		if $CXX --version | grep -q 'GCC'; then
+		if $CXX --version | grep -q "Free Software Foundation"; then
 			SQUIDS_CFLAGS="$SQUIDS_CFLAGS -Wno-abi"
 		fi
 	else
