@@ -110,11 +110,11 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
               ye_arr[i] = ye_input[i];
             }
 
-            inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,x_arr,density_arr,arraysize);
 
-            inter_ye = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_ye_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_ye,x_arr,ye_arr,arraysize);
 
@@ -234,11 +234,11 @@ Earth::Earth(std::string filepath):Body(4,"Earth")
             x_ye_min = earth_ye[0];
             x_ye_max = earth_ye[arraysize-1];
 
-            inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
 
-            inter_ye = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_ye_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
         }
@@ -275,11 +275,11 @@ Sun::Sun():Body(5,"Sun")
                 sun_xh[i] = sun_model[i][6];
             }
 
-            inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
 
-            inter_rxh = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_rxh_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
@@ -359,11 +359,11 @@ SunASnu::SunASnu():Body(6,"SunASnu")
                 sun_xh[i] = sun_model[i][6];
             }
 
-            inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
 
-            inter_rxh = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_rxh_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
@@ -571,11 +571,11 @@ EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
             x_ye_min = earth_ye[0];
             x_ye_max = earth_ye[arraysize-1];
 
-            inter_density = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_density_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
 
-            inter_ye = gsl_spline_alloc(gsl_interp_cspline,arraysize);
+            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_ye_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
         }
