@@ -1424,7 +1424,8 @@ class nuSQUIDSAtm {
         if(i==0){
           // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
-          int_struct = nsq.GetInteractionStructure();
+          if(nsq.iinteraction)
+            int_struct = nsq.GetInteractionStructure();
         } else {
           // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
