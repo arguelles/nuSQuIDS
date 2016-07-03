@@ -3,6 +3,9 @@
 #include <iomanip>
 #include <vector>
 
+//TODO: should be conditional on being on POSIX system
+#include <unistd.h>
+
 using namespace nusquids;
 
 int main(){
@@ -21,7 +24,7 @@ int main(){
   nus.Set_MixingParametersToDefault();
 
   // setup integration settings
-  nus.Set_h_max( 500.0*nus.units.km );
+  nus.Set_h_max( 500.0*units.km );
   nus.Set_rel_error(1.0e-12);
   nus.Set_abs_error(1.0e-12);
 
@@ -42,6 +45,8 @@ int main(){
 
   nus.EvolveState();
 
+  unlink("./hdf5_muon_test.hdf5");
+  
   nus.WriteStateHDF5("./hdf5_muon_test.hdf5");
 
   nuSQUIDS nus_read("./hdf5_muon_test.hdf5");
@@ -155,9 +160,11 @@ int main(){
   // check that the state is the same
   for ( int i = 0 ; i < nus_read.GetNumE(); i++){
     squids::SU_vector state_diff = nus.GetState(i) - nus_read.GetState(i);
+    unsigned int j=0;
     for (double component : state_diff.GetComponents()){
       if (component > 1.0e-15)
-        std::cout << "SC" << component << std::endl;
+        std::cout << "SC " << i << ' ' << j << ' ' << component << std::endl;
+      j++;
     }
   }
 

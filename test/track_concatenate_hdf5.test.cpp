@@ -6,12 +6,13 @@
 using namespace nusquids;
 
 int main(){
+  squids::Const units;
 
   //std::cout << std::setprecision(15);
   //std::cout << std::fixed;
 
   nuSQUIDS nus(1.e0,1.e1,60,3,neutrino,false,false);
-  const double distance = 500.*nus.units.km;
+  const double distance = 500.*units.km;
   std::shared_ptr<Vacuum> vac = std::make_shared<Vacuum>();
   std::shared_ptr<Vacuum::Track> track = std::make_shared<Vacuum::Track>(distance);
 
@@ -22,7 +23,7 @@ int main(){
   nus.Set_MixingParametersToDefault();
 
   // setup integration settings
-  nus.Set_h_max( 500.0*nus.units.km );
+  nus.Set_h_max( 500.0*units.km );
   nus.Set_rel_error(1.0e-12);
   nus.Set_abs_error(1.0e-12);
 
