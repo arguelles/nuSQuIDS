@@ -36,7 +36,7 @@
 using namespace nusquids;
 
 //If this is defined we are doing the sterile neutrino case 
-//#define STERILE
+
 
 //Function that gives the initial flux, for this example we set it to 1.0
 double flux_function(double enu, double cz){
@@ -49,11 +49,14 @@ int main()
   //Units and constants class
   squids::Const units;
   //Number of neutrinos (3) standard 4 1-sterile
-#ifdef STERILE
-  unsigned int numneu = 4;
-#else
-  unsigned int numneu = 3;
-#endif
+  //Number of neutrinos, 4 is the case with one sterile neutrino
+  std::cout << "(3) Three Active Neutrinos, " << "(4) 3+1 Three Active and One Sterile Neutrino" << std::endl;
+  unsigned int numneu;
+  std::cin >>numneu;
+  if( not(numneu==3 || numneu==4)){
+    throw std::runtime_error("Only (3) or (4) are valid options");
+  }
+
 
   //Minimum and maximum values for the energy and cosine zenith, notice that the energy needs to have the 
   //units, if they are omitted the input is in eV.

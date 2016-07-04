@@ -82,9 +82,12 @@ int main()
   //Here we set the maximum size for the integration step, important for fast or sharp variations of the density.
   nus.Set_h_max( 500.0*units.km );
 
+  //We set the GSL step function
+  nus.Set_GSL_step(gsl_odeiv2_step_rk4);
+
   //Setting the numerical precision of gsl integrator.
-  nus.Set_rel_error(1.0e-10);
-  nus.Set_abs_error(1.0e-10);
+  nus.Set_rel_error(1.0e-5);
+  nus.Set_abs_error(1.0e-5);
 
   //Set true the progress bar during the evolution.
   nus.Set_ProgressBar(true);

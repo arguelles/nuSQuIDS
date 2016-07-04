@@ -81,7 +81,7 @@ class NeutrinoCrossSections{
 /// \details The cross section tables are supplied data/xsections/ and bilinear
 /// interpolation is performed on the logarithm of the energy.
 class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
-    private :
+    protected :
       /// \brief True if the class has being initialized
       bool is_init = false;
       /// \brief Minimum neutrino energy.

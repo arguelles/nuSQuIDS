@@ -34,42 +34,28 @@ class nuSQUIDSNSI: public nuSQUIDS {
     }
 
     squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
-      double ye = body->ye(*track);
-      double density = body->density(*track);
+      double CC = HI_prefactor*body->density(*track)*body->ye(*track);
 
-      double CC = HI_prefactor*density*ye;
-      double NC;
-
-      if (ye < 1.0e-10){
-        NC = HI_prefactor*density;
-      }
-      else {
-        NC = CC*(-0.5*(1.0-ye)/ye);
-      }
-
-      // construct potential in flavor basis
+      // // construct potential in flavor basis
       squids::SU_vector potential(nsun,hiBuffer.get());
-      potential = (CC+NC)*evol_b1_proj[index_rho][0][ei];
-      potential += (NC)*(evol_b1_proj[index_rho][1][ei]);
-      potential += (NC)*(evol_b1_proj[index_rho][2][ei]);
-      // plus sign so that the NSI potential has the same sign as the VCC potential
-      // and the factor of 3 comes from average n_n/n_e at Earth.
-      potential += (3.0*CC)*NSI_evol[ei];
+
+      potential = (3.0*CC)*NSI_evol[ei];
 
       if ((index_rho == 0 and NT==both) or NT==neutrino){
           // neutrino potential
-          return potential;
+          return nuSQUIDS::HI(ei,index_rho) + potential;
       } else if ((index_rho == 1 and NT==both) or NT==antineutrino){
           // antineutrino potential
-          return (-1.0)*std::move(potential);
+          return nuSQUIDS::HI(ei,index_rho) + (-1.0)*std::move(potential);
       } else{
           throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
       }
     }
   public:
-  nuSQUIDSNSI(double epsilon_mutau,double Emin,double Emax,int Esize,int numneu, NeutrinoType NT,
-	      bool elogscale,bool iinteraction) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
-						  hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
+  nuSQUIDSNSI(double epsilon_mutau, double Emin,double Emax,int Esize,int numneu, NeutrinoType NT,
+	      bool elogscale,bool iinteraction,double th01=0.563942, double th02=0.154085, 
+	      double th12=0.785398) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
+				      hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
   {
     assert(numneu == 3);
     // defining a complex matrix M which will contain our flavor
@@ -81,9 +67,9 @@ class nuSQUIDSNSI: public nuSQUIDS {
     
     NSI = squids::SU_vector(M);
     
-    Set_MixingAngle(0,1,0.563942);
-    Set_MixingAngle(0,2,0.154085);
-    Set_MixingAngle(1,2,0.785398);
+    Set_MixingAngle(0,1,th01);
+    Set_MixingAngle(0,2,th02);
+    Set_MixingAngle(1,2,th12);
     
     // rotate to mass reprentation
     NSI.RotateToB1(params);
