@@ -452,14 +452,13 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
             radius_nu = 6371.0*param.km;
             atmheight = 22.*param.km;
 
-            phi = phi_input;
-            cosphi = cos(phi);
+            cosphi = cos(phi_input);
+            double sinsqphi = 1-cosphi*cosphi;
 
             double R = radius_nu;
             double r = atmheight;
-            double mm = tan(phi);
 
-            L = sqrt(SQR(R+r)-SQR(R*sin(phi)))-R*cosphi;
+            L = sqrt(SQR(R+r)-R*R*sinsqphi)-R*cosphi;
 
             x = 0.0;
             xini = 0.0;
@@ -473,17 +472,36 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
                 std::cout << "==" << std::endl;
             #endif
         }
+  
+EarthAtm::Track::Track():
+Body::Track(0,0),radius_nu(6371.0*param.km),atmheight(22.*param.km){}
+  
+EarthAtm::Track
+EarthAtm::Track::makeWithCosine(double cosphi){
+  Track track;
+  
+  track.cosphi = cosphi;
+  double sinsqphi = 1-track.cosphi*track.cosphi;
+  double R = track.radius_nu;
+  
+  track.L = sqrt(SQR(R+track.atmheight)-R*R*sinsqphi)-R*cosphi;
+  track.x = 0.0;
+  track.xini = 0.0;
+  track.xend = track.L;
+  
+  return(track);
+}
 
 void EarthAtm::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
-	TrackParams.push_back(phi);
+	TrackParams.push_back(acos(cosphi));
 }
 
 double EarthAtm::density(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
             double xkm = track_earthatm.GetX()/param.km;
-            double phi = track_earthatm.phi;
-            double dL = sqrt(SQR(radius+atm_height)-SQR(radius*sin(phi)))+radius*cos(phi);
+            double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+            double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
 
             double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
@@ -513,8 +531,8 @@ double EarthAtm::ye(const GenericTrack& track_input) const
         {
             const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
             double xkm = track_earthatm.GetX()/param.km;
-            double phi = track_earthatm.phi;
-            double dL = sqrt(SQR(radius+atm_height)-SQR(radius*sin(phi)))+radius*cos(phi);
+            double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+            double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
             double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
             double rel_r = r/earth_with_atm_radius;

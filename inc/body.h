@@ -512,8 +512,6 @@ class EarthAtm: public Body{
     class Track: public Body::Track{
       friend class EarthAtm;
       private:
-        /// \brief Zenith angle in radians.
-        double phi;
         /// \brief Cosine of the zenith angle.
         double cosphi;
         /// \brief Radius of the Earth.
@@ -522,6 +520,10 @@ class EarthAtm: public Body{
         double atmheight;
         /// \brief Baseline.
         double L;
+      
+        ///Private constructor which does not initialize all members.
+        ///Intended for use only by makeWithCosine.
+        Track();
       public :
         /// \brief Construct trajectory.
         /// @param phi Zenith angle in radians.
@@ -529,6 +531,9 @@ class EarthAtm: public Body{
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
         virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+      
+        ///Construct a track with the cosine of the zenith angle
+        static Track makeWithCosine(double cosphi);
     };
 
     /// \brief Returns the density in g/cm^3
@@ -538,69 +543,6 @@ class EarthAtm: public Body{
     /// \brief Returns the radius of the Earth in natural units.
     double GetRadius() const {return radius;}
 };
-
-/*
-
-/// \class LayeredEarthAtm
-/// \brief A model of the Earth with atmospheric neutrinos geometry assuming constant layers
-class LayeredEarthAtm: public Body{
-  private:
-    /// \brief Radius of the Earth.
-    const double radius;
-    /// \brief Height of the atmosphere.
-    const double atm_height;
-    /// \brief Radius of the Earth plus atmosphere.
-    const double earth_with_atm_radius;
-    /// \brief Minimal number of layers
-    const unsigned int min_number_of_layers = 9;
-    /// \brief PREM model edges
-    const std::vector<double> prem_edges {1221.5, 3480.0, 5701.0, 5771.0, 5971.0, 6151.0, 6346.60, 6356.0, 6356.0};
-    /// \brief layered model number of layers
-    const unsigned int number_of_layers;
-    /// \brief layered  model edges
-    std::vector<double> layer_edges;
-    /// \brief layered densities
-    std::vector<double> layer_density;
-  public:
-    /// \brief Default constructor using supplied PREM.
-    LayeredEarthAtm(unsigned int number_of_layeres = min_number_of_layers);
-    /// @param number of layers of the Earth.
-    /// \details Constructs an Earth model by averaging the density of the PREM
-    //  in each of the layers. The number of layers cannot be less than the PREM
-    //  edges.
-    ~LayeredEarthAtm();
-    /// \class Track
-    /// \brief EarthAtm trajectory
-    class Track: public Body::Track{
-      friend class LayeredEarthAtm;
-      private:
-        /// \brief Zenith angle in radians.
-        double phi;
-        /// \brief Cosine of the zenith angle.
-        double cosphi;
-        /// \brief Radius of the Earth.
-        double radius_nu;
-        /// \brief Height of the atmosphere.
-        double atmheight;
-        /// \brief Baseline.
-        double L;
-      public :
-        /// \brief Construct trajectory.
-        /// @param phi Zenith angle in radians.
-        Track(double phi);
-        /// \brief Returns the neutrino baseline in natural units.
-        double GetBaseline() const {return L;}
-        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
-    };
-
-    /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
-    /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
-    /// \brief Returns the radius of the Earth in natural units.
-    double GetRadius() const {return radius;}
-};
-*/
 
 // type defining
 typedef Body::Track Track;
