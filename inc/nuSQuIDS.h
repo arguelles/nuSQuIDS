@@ -876,17 +876,25 @@ protected:
     /// \brief Return the Hamiltonian at the current time
     squids::SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
-    const squids::SU_vector& GetState(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetState(unsigned int ei,unsigned int rho = 0) const{
+      return state[ei].rho[rho];
+    }
     /// \brief Returns the flavor projector
-    const squids::SU_vector& GetFlavorProj(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetFlavorProj(unsigned int flv,unsigned int rho = 0) const{
+      return b1_proj[rho][flv];
+    }
     /// \brief Returns the mass projector
-    const squids::SU_vector& GetMassProj(unsigned int,unsigned int rho = 0) const;
+    const squids::SU_vector& GetMassProj(unsigned int flv,unsigned int rho = 0) const{
+      return b0_proj[flv];
+    }
 
     /// \brief Returns the trajectory object.
-    std::shared_ptr<Track> GetTrack() const;
+    std::shared_ptr<Track> GetTrack();
     /// \brief Returns the body object.
-    std::shared_ptr<Body> GetBody() const;
+    std::shared_ptr<Body> GetBody();
 
+    const Track& GetTrackFast() const{ return(*track); }
+  
     /// \brief Writes the object into an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// @param group Path to the group where the nuSQUIDS content will be saved.
@@ -1030,9 +1038,11 @@ class nuSQUIDSAtm {
     const squids::Const units;
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
-    /// \brief Bilinear interpolator.
+    /// \brief Linear interpolator.
     double LinInter(double x,double xM, double xP, double yM, double yP) const {
-      return yM + (yP-yM)*(x-xM)/(xP-xM);
+      double f2=(x-xM)/(xP-xM);
+      double f1=1-f2;
+      return f1*yM + f2*yP;
     }
     /// \brief Boolean that signals that an initial state has being set.
     bool iinistate;
@@ -1280,7 +1290,7 @@ class nuSQUIDSAtm {
         throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
       if(not inusquidsatm)
         throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
-
+      
       if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
         throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
       if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
@@ -1289,58 +1299,73 @@ class nuSQUIDSAtm {
                                  ",Emax = " +
                                  std::to_string(*enu_array.rbegin()) +
                                  ", Enu = " + std::to_string(enu) + ")");
-
-      int cth_M = -1;
-      for(int i = 0; i < costh_array.extent(0); i++){
-        if ( costh >= costh_array[i] and costh <= costh_array[i+1] ) {
-          cth_M = i;
-          break;
-        }
-      }
-
-      int loge_M = -1;
-      double logE = log(enu);
-      for(int i = 0; i < log_enu_array.extent(0); i++){
-        if ( logE >= log_enu_array[i] and logE <= log_enu_array[i+1] ) {
-          loge_M = i;
-          break;
-        }
-      }
-
-      if (loge_M < 0 or cth_M < 0)
-        throw std::runtime_error("nuSQUIDSAtm::Error::While trying to evaluate flavor coult not find grid position.["+ std::to_string(loge_M) + "," + std::to_string(cth_M) +"]");
-
-      std::shared_ptr<EarthAtm::Track> track = std::make_shared<EarthAtm::Track>(acos(costh));
-      // get the evolution generator
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
-      double delta_t_final = track->GetFinalX()-track->GetInitialX();
+      
+      auto cthit=std::lower_bound(costh_array.begin(),costh_array.end(),costh);
+      if(cthit==costh_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(cthit!=costh_array.begin())
+        cthit--;
+      size_t cth_M=std::distance(costh_array.begin(),cthit);
+      
+      /*double logE = log(enu);
+      auto logeit=std::lower_bound(log_enu_array.begin(),log_enu_array.end(),logE);
+      if(logeit==log_enu_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(logeit!=log_enu_array.begin())
+        logeit--;
+      size_t loge_M=std::distance(log_enu_array.begin(),logeit);*/
+      
+      auto eit=std::lower_bound(enu_array.begin(),enu_array.end(),enu);
+      if(eit==enu_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(eit!=enu_array.begin())
+        eit--;
+      size_t loge_M=std::distance(enu_array.begin(),eit);
+      
+      //EarthAtm::Track track(acos(costh));
+      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
+      double delta_t_final = track.GetFinalX()-track.GetInitialX();
       if (randomize_production_height){
         double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
         delta_t_final += production_height;
       }
-
+      
       // assuming offsets are zero
       double delta_t_1 = nusq_array[cth_M].Get_t() - nusq_array[cth_M].Get_t_initial();
       double delta_t_2 = nusq_array[cth_M+1].Get_t() - nusq_array[cth_M+1].Get_t_initial();
-      double delta_t_final_1 = nusq_array[cth_M].GetTrack()->GetFinalX() - nusq_array[cth_M].GetTrack()->GetInitialX();
-      double delta_t_final_2 = nusq_array[cth_M+1].GetTrack()->GetFinalX() - nusq_array[cth_M+1].GetTrack()->GetInitialX();
+      double delta_t_final_1 = nusq_array[cth_M].GetTrackFast().GetFinalX() - nusq_array[cth_M].GetTrackFast().GetInitialX();
+      double delta_t_final_2 = nusq_array[cth_M+1].GetTrackFast().GetFinalX() - nusq_array[cth_M+1].GetTrackFast().GetInitialX();
       double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
-
-      double flux = 0;
-      H0_at_enu = nusq_array[0].H0(enu,rho);
-      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
-
-      double phiMM,phiMP,phiPM,phiPP;
-      squids::SU_vector temp(evol_proj.Dim());
-      phiMM = (temp=nusq_array[cth_M].GetState(loge_M,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M],rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiMP = (temp=nusq_array[cth_M].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M].H0(enu_array[loge_M+1],rho),t_inter - nusq_array[cth_M].Get_t()))*evol_proj;
-      phiPM = (temp=nusq_array[cth_M+1].GetState(loge_M,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M],rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-      phiPP = (temp=nusq_array[cth_M+1].GetState(loge_M+1,rho).Evolve(nusq_array[cth_M+1].H0(enu_array[loge_M+1],rho),t_inter - nusq_array[cth_M+1].Get_t()))*evol_proj;
-      flux += LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],
-            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiMM,phiMP),
-            LinInter(logE,log_enu_array[loge_M],log_enu_array[loge_M+1],phiPM,phiPP));
-
-      return flux;
+      
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
+      
+      struct storage_type{
+        squids::SU_vector evol_proj, temp1, temp2;
+        storage_type(unsigned int dim):evol_proj(dim),temp1(dim),temp2(dim){}
+      };
+  #ifdef SQUIDS_THREAD_LOCAL
+      static SQUIDS_THREAD_LOCAL
+  #endif
+      storage_type storage(H0_at_enu.Dim());
+      
+      storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
+      
+      //coefficients for energy interpolation
+      double f2=(enu-enu_array[loge_M])/(enu_array[loge_M+1]-enu_array[loge_M]);
+      double f1=1-f2;
+      
+      storage.temp1 =f1*nusq_array[cth_M  ].GetState(loge_M  ,rho);
+      storage.temp1+=f2*nusq_array[cth_M  ].GetState(loge_M+1,rho);
+      storage.temp2=storage.temp1.Evolve(H0_at_enu,t_inter - nusq_array[cth_M  ].Get_t());
+      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      
+      storage.temp1 =f1*nusq_array[cth_M+1].GetState(loge_M  ,rho);
+      storage.temp1+=f2*nusq_array[cth_M+1].GetState(loge_M+1,rho);
+      storage.temp2=storage.temp1.Evolve(H0_at_enu,t_inter - nusq_array[cth_M+1].Get_t());
+      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      
+      //perform angular interpolation
+      return(LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],phiM,phiP));
     }
 
     /// \brief Writes the object into an HDF5 file.

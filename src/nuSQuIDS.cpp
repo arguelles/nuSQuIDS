@@ -1332,18 +1332,6 @@ void nuSQUIDS::SetIniFlavorProyectors(){
   }
 }
 
-const squids::SU_vector& nuSQUIDS::GetState(unsigned int ie, unsigned int rho) const{
-  return state[ie].rho[rho];
-}
-
-const squids::SU_vector& nuSQUIDS::GetFlavorProj(unsigned int flv,unsigned int rho) const{
-  return b1_proj[rho][flv];
-}
-
-const squids::SU_vector& nuSQUIDS::GetMassProj(unsigned int flv,unsigned int rho) const{
-  return b0_proj[flv];
-}
-
 squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   if (!ienergy)
     throw std::runtime_error("nuSQUIDS::Error::Energy not initialized");
@@ -2217,11 +2205,11 @@ void nuSQUIDS::Set_IncludeOscillations(bool opt){
   ioscillations = opt;
 }
 
-std::shared_ptr<Track> nuSQUIDS::GetTrack() const{
+std::shared_ptr<Track> nuSQUIDS::GetTrack(){
   return track;
 }
 
-std::shared_ptr<Body> nuSQUIDS::GetBody() const{
+std::shared_ptr<Body> nuSQUIDS::GetBody(){
   return body;
 }
 
