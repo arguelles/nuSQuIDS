@@ -465,7 +465,7 @@ class SunASnu: public Body{
 /// \class EarthAtm
 /// \brief A model of the Earth with atmospheric neutrinos geometry.
 class EarthAtm: public Body{
-  private:
+  protected:
     /// \brief Radius of the Earth.
     double radius;
     /// \brief Height of the atmosphere.
