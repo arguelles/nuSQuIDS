@@ -92,6 +92,57 @@ function find_hdf5(){
 	HDF5_FOUND=1
 }
 
+function find_boost(){
+	PKG=hdf5
+	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
+	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
+	if [ "$TMP_FOUND" ]; then return; fi
+
+	which h5cc 2>&1 > /dev/null
+	if [ "$?" -ne 0 ]; then return; fi
+
+	HDF5_VERSION=`h5ls --version | sed 's/.* \([0-9.]*\)/\1/'`
+	echo " Found $PKG version $HDF5_VERSION via executables in \$PATH"
+	if [ $# -ge 1 ]; then
+		MIN_VERSION=$1
+		#TODO: actually check version
+	fi
+	HDF5_COMPILE_COMMAND=`h5cc -show`
+	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
+	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
+		if [ -d $HDF5_LIBDIR -a \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
+			break
+		fi
+	done
+	if [ ! -d $HDF5_LIBDIR -o ! \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
+		echo " Unable to guess $PKG library directory"
+		return
+	fi
+	# This is an educated guess. . .
+	HDF5_INCDIR="${HDF5_LIBDIR}/../include"
+	if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
+	    HDF5_INCDIR="${HDF5_LIBDIR}/../../include"
+	    if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
+		echo " Unable to guess $PKG include directory"
+		return
+	    fi
+	fi
+	HDF5_CFLAGS="-I${HDF5_INCDIR}"
+	HDF5_LDFLAGS=`echo "$HDF5_COMPILE_COMMAND" | \
+	sed 's/ /\\
+	/g' | \
+	sed -n -E \
+	-e '/^[[:space:]]*-l/p' \
+	-e '/^[[:space:]]*-L/p' \
+	-e '/^[[:space:]]*-Wl,/p' \
+	-e 's/^[[:space:]]*.*lib([^.]*)\.a/-l\1/p' \
+	-e 's/^[[:space:]]*.*lib([^.]*)\.so/-l\1/p' \
+	-e 's/^[[:space:]]*.*lib([^.]*)\.dylib/-l\1/p' `
+	HDF5_LDFLAGS=`echo $HDF5_LDFLAGS` # collapse to single line
+
+	HDF5_FOUND=1
+}
+
 function ensure_found(){
 	PKG=$1
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`

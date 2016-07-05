@@ -1372,7 +1372,7 @@ class nuSQUIDSAtm {
     /// @param hdf5_filename Filename of the HDF5 into which save the object.
     /// \details All contents are saved to the \c root of the HDF5 file.
     /// @see ReadStateHDF5
-    void WriteStateHDF5(std::string filename) const{
+    void WriteStateHDF5(std::string filename, bool overwrite = true) const{
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
       if(not inusquidsatm)
@@ -1381,7 +1381,10 @@ class nuSQUIDSAtm {
       hid_t file_id,root_id;
       hid_t dset_id;
       // create HDF5 file
-      file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      if(overwrite)
+        file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      else
+        file_id = H5Fcreate (filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT, H5P_DEFAULT);
       if (file_id < 0)
           throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + filename + ".");
       root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
@@ -1398,7 +1401,8 @@ class nuSQUIDSAtm {
       unsigned int i = 0;
       for(const BaseSQUIDS& nsq : nusq_array){
         // use only the first one to write the cross sections on /crosssections
-        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections",i!=0);
+        // the last false is because the HDF5 file has already been created, should not overwrite 
+        nsq.WriteStateHDF5(filename,"/costh_"+std::to_string(costh_array[i]),i==0,"crosssections",false);
         i++;
       }
     }

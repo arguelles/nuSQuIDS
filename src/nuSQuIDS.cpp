@@ -1369,7 +1369,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     file_id = H5Fopen(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT);
   else
     file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-  if (file_id < 0 ) {// file already exists
+
+  if (file_id < 0) {// file already exists
     file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (file_id < 0)
         throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + str + ".");
