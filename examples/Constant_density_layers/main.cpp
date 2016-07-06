@@ -62,7 +62,7 @@ int main(){
       file << E << " ";
       for(unsigned int k = 0; k < nus.GetNumNeu(); k ++){
         double p = nus.EvalFlavorAtNode(k,i);
-        file << p << std::endl;
+        file << p << " ";
       }
       file << std::endl;
   }
