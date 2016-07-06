@@ -1,4 +1,4 @@
-#!/usr/bin/env gnuplot
+#!/usr/bin/env gnuplot -persist
 if ( GPVAL_VERSION >= 4.4 && strstrt(GPVAL_TERMINALS, 'wxt') > 0 ) set terminal wxt persist
 if ( GPVAL_VERSION >= 4.4 && strstrt(GPVAL_TERMINALS, 'wxt') == 0 ) print "wxt terminal not available, proceeding with default"
 if ( GPVAL_VERSION < 4.4 ) print "gnuplot is too old to check for available terminals" ; print "attempting to use wxt terminal and hoping for the best" ; set terminal wxt persist
@@ -14,5 +14,4 @@ replot "fluxes_flavor.txt" u 1:8 w l title "Tau"
 set terminal postscript enhance eps color
 set output "plot.eps"
 replot
-
 

@@ -856,7 +856,14 @@ protected:
 
     /// \brief Returns the number of rho equations.
     unsigned int GetNumRho() const;
-  
+
+    /// \brief Returns true if noncoherent interactions are considered
+    bool GetUseInteractions() const {return iinteraction;}
+
+    /// \brief Returns true if oscillations are considered
+    bool GetUseOscillations() const {return ioscillations;}
+
+    /// \brinf Initiàlized interaction structure
     void InitializeInteractions();
 
     /// \brief Returns the interaction structure.
@@ -1129,11 +1136,13 @@ class nuSQUIDSAtm {
       for(unsigned int ie = 0 ; ie < enu_array.size(); ie++)
         log_enu_array[ie] = log(enu_array[ie]);
 
-      // setting the interaction structure also on the  main object
-      nusq_array.front().InitializeInteractions();
-      int_struct = nusq_array.front().GetInteractionStructure();
-      for(BaseSQUIDS& nsq : nusq_array)
-        nsq.int_struct=int_struct;
+      if(nusq_array.front().GetUseInteractions()){
+        // setting the interaction structure also on the  main object
+        nusq_array.front().InitializeInteractions();
+        int_struct = nusq_array.front().GetInteractionStructure();
+        for(BaseSQUIDS& nsq : nusq_array)
+          nsq.int_struct=int_struct;
+      }
 
       inusquidsatm = true;
     }

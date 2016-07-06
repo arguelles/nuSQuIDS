@@ -56,17 +56,22 @@ int main()
   if( not(numneu==3 || numneu==4)){
     throw std::runtime_error("Only (3) or (4) are valid options");
   }
-
+  std::cout << "Consider Earth absorption and interactions? " << std::endl;
+  std::string use_int;
+  std::cin >> use_int;
+  bool interactions = false;
+  if(use_int=="yes" || use_int=="y")
+    interactions = true;
 
   //Minimum and maximum values for the energy and cosine zenith, notice that the energy needs to have the 
   //units, if they are omitted the input is in eV.
-  double Emin=1.e2*units.GeV;
+  double Emin=1.e1*units.GeV;
   double Emax=1.e6*units.GeV;
   double czmin=-1;
   double czmax=0;
   //Declaration of the atmospheric object
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(czmin,czmax,40,Emin,Emax,100,numneu,both,true,true);
+  nuSQUIDSAtm<> nus_atm(czmin,czmax,40,Emin,Emax,100,numneu,both,true,interactions);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
   
   
@@ -135,7 +140,7 @@ int main()
   //Set the resolution and the ranges for the ouput, remember that an interpolation in energy is used in 
   //in the interaction picture, the vacuum oscillations are solve analytically with arbitrary Energy precision.
   //For the zenith a linear interpolation is used.
-  int Nen =700;
+  int Nen=700;
   int Ncz=100;
   double lEmin=log10(Emin);
   double lEmax=log10(Emax);;
