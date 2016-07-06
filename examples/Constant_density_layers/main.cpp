@@ -59,7 +59,7 @@ int main(){
   std::ofstream file("fluxes_flavor.txt");
   for(unsigned int i = 0 ; i < nus.GetNumE(); i++){
       double E = energy_range[i];
-      file << E << " ";
+      file << E/units.GeV << " ";
       for(unsigned int k = 0; k < nus.GetNumNeu(); k ++){
         double p = nus.EvalFlavorAtNode(k,i);
         file << p << " ";
