@@ -134,6 +134,7 @@ int main()
     }
     file << std::endl;
   }
+  file.close();
   std::string plt;
   std::cout << std::endl <<  "Done! " << std::endl <<
     "  Do you want to run the gnuplot script? yes/no" << std::endl;

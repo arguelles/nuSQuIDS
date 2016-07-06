@@ -407,7 +407,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/NSI/nsi \
             examples/Atm_NSI/atm_nsi \
             examples/HDF5_Write_Read/write \
-            examples/HDF5_Write_Read/read 
+            examples/HDF5_Write_Read/read \
+						examples/Constant_density_layers/const_dens_layers
 
 CXXFLAGS= -std=c++11
 
@@ -500,6 +501,10 @@ examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
 examples/Atm_NSI/atm_nsi : $(DYN_PRODUCT) examples/Atm_NSI/main.cpp
 	@echo Compiling atmospheric non-standard interaction example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/Atm_NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Constant_density_layers/const_dens_layers : $(DYN_PRODUCT) examples/Constant_density_layers/main.cpp
+	@echo Compiling constant density layer example
+	@$(CXX) $(EXMAPLES_FLAGS) examples/Constant_density_layers/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 .PHONY: clean test docs
 clean:
