@@ -21,7 +21,7 @@ int main(){
   std::shared_ptr<Vacuum::Track> track_env0 = std::make_shared<Vacuum::Track>(layer_1);
   // second layer
   const double layer_2 = 50.*units.km;
-  std::shared_ptr<ConstantDensity> constdens_env1 = std::make_shared<ConstantDensity>(4.,0.5); // density [gr/cm^3[, ye [dimensionless]
+  std::shared_ptr<ConstantDensity> constdens_env1 = std::make_shared<ConstantDensity>(3.5,0.5); // density [gr/cm^3[, ye [dimensionless]
   std::shared_ptr<ConstantDensity::Track> track_env1 = std::make_shared<ConstantDensity::Track>(layer_2);
   // three layer
   const double layer_3 = 200.*units.km;
