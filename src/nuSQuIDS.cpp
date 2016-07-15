@@ -754,7 +754,7 @@ void nuSQUIDS::GetCrossSections(){
   
     auto validateCrossSection=[this](double value, double unit, const char* interaction, bool singleDiff, double neuE, double leptE, int flavor){
       //all active neutrino types should have sensible cross sections
-      if(flavor<3 && (value<=0.0 || std::isinf(value) || std::isnan(value))){
+      if(flavor<3 && (value<0.0 || std::isinf(value) || std::isnan(value))){
         std::ostringstream ss;
         ss << "Invalid " << interaction << (singleDiff ? " singly-differential" : " total")
         << " cross section value: " << value/unit << '\n';
