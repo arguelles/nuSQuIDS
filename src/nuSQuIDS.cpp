@@ -642,7 +642,7 @@ void nuSQUIDS::UpdateInteractions(){
         squids::SU_vector projector_tau = evol_b1_proj[rho][tau_flavor][0];
         squids::SU_vector projector_other_tau = evol_b1_proj[other_rho][tau_flavor][0];
 
-        for(unsigned int en=0; en<ne; en++){ // loop over initial tau neutrino energies
+        for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
           double nu_tau_flux = projector_tau*state[en].rho[rho];
           double other_nu_tau_flux = projector_other_tau*state[en].rho[other_rho];
           double dEn = delE[en-1];
@@ -650,7 +650,7 @@ void nuSQUIDS::UpdateInteractions(){
           double invlen_CC_other_tau = int_struct->invlen_CC[other_rho][tau_flavor][en];
           const double invlen_CC_tau_en       = invlen_CC_tau*dEn;
           const double invlen_CC_other_tau_en = invlen_CC_other_tau*dEn;
-          for(unsigned int et=0; et<en; et++){ // loop over intermediate tau energies
+          for(unsigned int et=1; et<en; et++){ // loop over intermediate tau energies
             double dEt = delE[et-1];
             const double       neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[      rho][tau_flavor][en][et]*invlen_CC_tau_en);
             const double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau_en);
