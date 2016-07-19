@@ -593,7 +593,7 @@ void nuSQUIDS::UpdateInteractions(){
   //performing operations on SU_vectors a number of times proportional to the number
   //of energies, rather than proportinal to the square.
   if(!ioscillations){
-    squids::SU_vector projector=squids::SU_vector::make_aligned(nsun);
+    squids::SU_vector projector=squids::SU_vector(nsun);
 
     //first initialize to zero
     memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
@@ -670,9 +670,15 @@ void nuSQUIDS::UpdateInteractions(){
         squids::SU_vector projector_e = evol_b1_proj[rho][0][0];
         squids::SU_vector projector_mu = evol_b1_proj[rho][1][0];
         for(unsigned int e1=0; e1<ne; e1++){
-          interaction_cache[rho][e1]+=tau_hadlep_decays[e1]*projector_tau;
-          interaction_cache[rho][e1]+=tau_lep_decays[e1]*projector_mu;
-          interaction_cache[rho][e1]+=tau_lep_decays[e1]*projector_e;
+          interaction_cache[rho][e1]+=squids::detail::guarantee
+                                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                      (tau_hadlep_decays[e1]*projector_tau);
+          interaction_cache[rho][e1]+=squids::detail::guarantee
+                                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                      (tau_lep_decays[e1]*projector_mu);
+          interaction_cache[rho][e1]+=squids::detail::guarantee
+                                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                      (tau_lep_decays[e1]*projector_e);
         }
       }
       
@@ -688,12 +694,16 @@ void nuSQUIDS::UpdateInteractions(){
         SQUIDS_POINTER_IS_ALIGNED(gr_factor_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e2=1; e2<ne; e2++){
           double flux=projector_e*state[e2].rho[rho];
-          for(unsigned int e1=0; e1<e2; e1++){
-            gr_factor_ptr[e1] += flux*(int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
-          }
+          double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
+          double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
+          for(unsigned int e1=0; e1<e2; e1++)
+            gr_factor_ptr[e1] += flux_invlen_en*dNdE_GR_ptr[e1];
         }
         for(unsigned int e1=0; e1<ne; e1++){
-          interaction_cache[rho][e1]+=gr_factors[e1]*projector_sum;
+          interaction_cache[rho][e1]+=squids::detail::guarantee
+                                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                      (gr_factors[e1]*projector_sum);
         }
       }
     }
