@@ -659,6 +659,37 @@ public:
 		}
 	}
 	
+	///Construct an marray with a given size initialize its contents to values
+	///from another container. Since the input iterator pair is interpreted as a
+	///one dimensional range this is equivalent to constructing the marray without
+	///initialization and then using std::copy to copy the data into it; that is
+	///the values will be stored in iteration order.
+	///\param dims the extents of the array in all of its dimensions
+	///\param init_begin iterator to the start of the data to be copied into the array
+	///\param init_end iterator to the start of the data to be copied into the array
+	///\param alloc the allocator to be used by the array to obtain memory
+	///\pre std::distance(init_begin,init_end) must equal the product of the entries in dims
+	template<typename ForwardIterator>
+	marray(std::initializer_list<size_type> dims, ForwardIterator init_begin, ForwardIterator init_end, allocator_type alloc=allocator_type()):
+	total_size_and_alloc(compute_total_size(dims),alloc),
+	data(total_size()?allocator_traits::allocate(allocator(),total_size()):nullptr){
+		std::copy(dims.begin(),dims.end(),extents.begin());
+		
+		if(std::distance(init_begin,init_end)!=total_size())
+			throw std::logic_error("Iterator range has wrong size to initialize marray");
+		
+		pointer write_pos=data;
+		try{
+			for(; init_begin!=init_end; init_begin++, write_pos++)
+				*write_pos = *init_begin;
+		}catch(...){
+			for(pointer p=data; p!=write_pos; p++)
+				allocator_traits::destroy(allocator(),p);
+			allocator_traits::deallocate(allocator(),data,total_size());
+			throw;
+		}
+	}
+	
 	///Construct an marray by copying from an existing instance
 	marray(const marray& other):
 	extents(other.extents),
@@ -1003,6 +1034,11 @@ public:
 	reverse_iterator rend(){ return(reverse_iterator(this,-1)); }
 	const_reverse_iterator rend() const{ return(const_reverse_iterator(this,-1)); }
 	const_reverse_iterator crend() const{ return(const_reverse_iterator(this,-1)); }
+	
+	reference front(){ return(data[0]); }
+	const_reference front() const { return(data[0]); }
+	reference back(){ return(data[size()-1]); }
+	const_reference back() const { return(size()-1); }
 	
 	///Get the allocator currently used by the array
 	allocator_type get_allocator() const{ return(allocator()); }
