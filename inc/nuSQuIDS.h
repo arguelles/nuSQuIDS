@@ -34,6 +34,7 @@
 #include "xsections.h"
 #include "taudecay.h"
 #include "marray.h"
+#include "aligned_alloc.h"
 
 #include <algorithm>
 #include <cstring>
@@ -119,6 +120,15 @@ protected:
 
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
     NeutrinoType NT = both;
+  
+    ///aligned arrays should be aligned to at least this many items
+    constexpr static size_t preferred_alignment=4;
+    constexpr static size_t log2(size_t n) {
+      return((n>1) ? log2(n/2)+1 : 0);
+    }
+    constexpr static size_t round_up_to_aligned(size_t n){
+      return((n&~(preferred_alignment-1))+preferred_alignment);
+    }
 
   public:
     /// \brief Struct that contains all cross section information.
@@ -130,7 +140,7 @@ protected:
         /// its initialized when InitializeInteractions() is called. The first dimension
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
-        marray<double,4> dNdE_CC;
+        marray<double,4,aligned_allocator<double>> dNdE_CC;
         /// \brief Neutrino neutral current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
@@ -138,54 +148,68 @@ protected:
         /// its initialized when InitializeInteractions() is called. The first dimension
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
-        marray<double,4> dNdE_NC;
+        marray<double,4,aligned_allocator<double>> dNdE_NC;
         /// \brief Glashow resonance differential cross section (electron antineutrino only
         /// \details Dimensions are initial and final energy node
-        marray<double,2> dNdE_GR;
+        marray<double,2,aligned_allocator<double>> dNdE_GR;
         /// \brief Array that contains the inverse of the neutrino charge current mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
         /// the second to the flavor, and the last one to the energy.
-        marray<double,3> invlen_CC;
+        marray<double,3,aligned_allocator<double>> invlen_CC;
         /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
         /// the second to the flavor, and the last one to the energy.
-        marray<double,3> invlen_NC;
+        marray<double,3,aligned_allocator<double>> invlen_NC;
         /// \brief Glashow resonance inverse interaction length (electron antineutrino only)
         /// \details 1 entry per energy node
-        marray<double,1> invlen_GR;
+        marray<double,1,aligned_allocator<double>> invlen_GR;
         /// \brief Array that contains the inverse of the neutrino total mean free path.
         /// \details The array contents are in natural units (i.e. eV) and is update when
         /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
         /// added together.
-        marray<double,3> invlen_INT;
+        marray<double,3,aligned_allocator<double>> invlen_INT;
         /// \brief Array that contains the neutrino charge current cross section.
         /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
         /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3> sigma_CC;
+        marray<double,3,aligned_allocator<double>> sigma_CC;
         /// \brief Array that contains the neutrino neutral current cross section.
         /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
         /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3> sigma_NC;
+        marray<double,3,aligned_allocator<double>> sigma_NC;
         /// \brief Glashow resonance cross section (electron antineutrino only)
         /// \details 1 entry per energy node, in natural units
-        marray<double,1> sigma_GR;
+        marray<double,1,aligned_allocator<double>> sigma_GR;
         /// \brief Array that contains the inverse of the tau decay length for each energy node.
-        marray<double,1> invlen_tau;
+        marray<double,1,aligned_allocator<double>> invlen_tau;
         /// \brief Array that contains the tau decay spectrum to all particles.
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
-        marray<double,2> dNdE_tau_all;
+        marray<double,2,aligned_allocator<double>> dNdE_tau_all;
         /// \brief Array that contains the tau decay spectrum to leptons.
         /// \brief Array that contains the tau decay spectrum to all particles.
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
-        marray<double,2> dNdE_tau_lep;
+        marray<double,2,aligned_allocator<double>> dNdE_tau_lep;
         /// \brief Default constructor
-        InteractionStructure(){}
+        InteractionStructure():
+        dNdE_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        invlen_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        invlen_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        invlen_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        invlen_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        sigma_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        sigma_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        sigma_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        invlen_tau(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_tau_all(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_tau_lep(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
+        {}
         /// \brief Assignment operator
         InteractionStructure& operator=(const InteractionStructure& other){
           dNdE_CC=other.dNdE_CC;

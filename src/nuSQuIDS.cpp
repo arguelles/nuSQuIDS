@@ -28,6 +28,7 @@
 //#define FixCrossSections
 
 #include "nuSQuIDS.h"
+#include "aligned_alloc.h"
 
 namespace nusquids{
 
@@ -233,25 +234,28 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
 }
 
 void nuSQUIDS::InitializeInteractionVectors(){
-
-    // initialize cross section and interaction arrays
-    int_struct->dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
-    int_struct->dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,ne});
-    int_struct->dNdE_GR.resize(std::vector<size_t>{ne,ne});
-    // inverse interaction lenghts
-    int_struct->invlen_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    int_struct->invlen_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    int_struct->invlen_GR.resize(std::vector<size_t>{ne});
-    int_struct->invlen_INT.resize(std::vector<size_t>{nrhos,numneu,ne});
-    // initialize cross section arrays
-    int_struct->sigma_CC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,ne});
-    int_struct->sigma_GR.resize(std::vector<size_t>{ne});
-    // initialize the tau decay and interaction array
-    int_struct->invlen_tau.resize(std::vector<size_t>{ne});
-    int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,ne});
-    int_struct->dNdE_tau_lep.resize(std::vector<size_t>{ne,ne});
-
+  //Note that by rounding up the size of each array's final dimension we ensure
+  //that if the beginning of the array is aligned, each segment starting with an
+  //entry whose final index is zero will be as well.
+  
+  // initialize cross section and interaction arrays
+  size_t rounded_ne=round_up_to_aligned(ne);
+  int_struct->dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,rounded_ne});
+  int_struct->dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,rounded_ne});
+  int_struct->dNdE_GR.resize(std::vector<size_t>{ne,rounded_ne});
+  // inverse interaction lenghts
+  int_struct->invlen_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  int_struct->invlen_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  int_struct->invlen_GR.resize(std::vector<size_t>{rounded_ne});
+  int_struct->invlen_INT.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  // initialize cross section arrays
+  int_struct->sigma_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  int_struct->sigma_GR.resize(std::vector<size_t>{rounded_ne});
+  // initialize the tau decay and interaction array
+  int_struct->invlen_tau.resize(std::vector<size_t>{rounded_ne});
+  int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,rounded_ne});
+  int_struct->dNdE_tau_lep.resize(std::vector<size_t>{ne,rounded_ne});
 }
 
 void nuSQUIDS::PreDerive(double x){
@@ -572,9 +576,15 @@ void nuSQUIDS::UpdateInteractions(){
       assert(numneu > 0);
       unsigned int rho = (NT == both) ? 1 : 0;
       double num_e = num_nuc*current_ye;
+      double* sigma_GR_ptr=&int_struct->sigma_GR[0];
+      double* invlen_GR_ptr=&int_struct->invlen_GR[0];
+      double* invlen_INT_ptr=&int_struct->invlen_INT[rho][0][0];
+      SQUIDS_POINTER_IS_ALIGNED(sigma_GR_ptr,preferred_alignment*sizeof(double));
+      SQUIDS_POINTER_IS_ALIGNED(invlen_GR_ptr,preferred_alignment*sizeof(double));
+      SQUIDS_POINTER_IS_ALIGNED(invlen_INT_ptr,preferred_alignment*sizeof(double));
       for(unsigned int e1 = 0; e1 < ne; e1++){
-        int_struct->invlen_GR[e1] = int_struct->sigma_GR[e1]*num_e;
-        int_struct->invlen_INT[rho][0][e1] += int_struct->invlen_GR[e1];
+        invlen_GR_ptr[e1] = sigma_GR_ptr[e1]*num_e;
+        invlen_INT_ptr[e1] += invlen_GR_ptr[e1];
       }
     }
 
@@ -587,20 +597,24 @@ void nuSQUIDS::UpdateInteractions(){
 
     //first initialize to zero
     memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
-    std::vector<double> nc_factors(ne);
+    std::vector<double,aligned_allocator<double>>
+    nc_factors(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //for each flavor
       for(unsigned int alpha_active : {0,1,2}){
         //accumulate the contribution of each energy e2 to each lower energy
         std::fill(nc_factors.begin(),nc_factors.end(),0);
+        double* nc_factor_ptr=&nc_factors[0];
+        SQUIDS_POINTER_IS_ALIGNED(nc_factor_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e2=1; e2<ne; e2++){
           //the flux of the current flavor at e2
           double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*state[e2].rho[rho];
           //premultiply factors which do not depend on the lower energy e1
           flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
           for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
-            nc_factors[e1]+=flux_a_e2*(*dNdE_ptr);
+            nc_factor_ptr[e1]+=flux_a_e2*(*dNdE_ptr);
         }
         //then compute the multiplication of the flavor projector at each e1
         //with the total contribution from all greater energies
@@ -616,8 +630,14 @@ void nuSQUIDS::UpdateInteractions(){
       if(tauregeneration){
         unsigned int tau_flavor = 2;
         unsigned int other_rho = (rho == 0) ? 1 : 0;
-        std::vector<double> tau_hadlep_decays(ne,0);
-        std::vector<double> tau_lep_decays(ne,0);
+        std::vector<double,aligned_allocator<double>>
+        tau_hadlep_decays(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
+        std::vector<double,aligned_allocator<double>>
+        tau_lep_decays(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
+        double* tau_hadlep_decays_ptr=tau_hadlep_decays.data();
+        double* tau_lep_decays_ptr=tau_lep_decays.data();
+        SQUIDS_POINTER_IS_ALIGNED(tau_hadlep_decays_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(tau_lep_decays_ptr,preferred_alignment*sizeof(double));
 
         squids::SU_vector projector_tau = evol_b1_proj[rho][tau_flavor][0];
         squids::SU_vector projector_other_tau = evol_b1_proj[other_rho][tau_flavor][0];
@@ -636,9 +656,13 @@ void nuSQUIDS::UpdateInteractions(){
             const double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau_en);
             const double       flux_decay_en=      nu_tau_flux*      neutrino_decay_rate_spectrum*dEt;
             const double other_flux_decay_en=other_nu_tau_flux*other_neutrino_decay_rate_spectrum*dEt;
+            double* tau_all_ptr=&int_struct->dNdE_tau_all[et][0];
+            double* tau_lep_ptr=&int_struct->dNdE_tau_lep[et][0];
+            SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
+            SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
             for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-              tau_hadlep_decays[e1] +=       flux_decay_en*int_struct->dNdE_tau_all[et][e1];
-              tau_lep_decays[e1]    += other_flux_decay_en*int_struct->dNdE_tau_lep[et][e1];
+              tau_hadlep_decays_ptr[e1] +=       flux_decay_en*tau_all_ptr[e1];
+              tau_lep_decays_ptr[e1]    += other_flux_decay_en*tau_lep_ptr[e1];
             }
           }
         }
@@ -658,11 +682,14 @@ void nuSQUIDS::UpdateInteractions(){
         projector_sum += projector_e;
         projector_sum += evol_b1_proj[rho][1][0];
         projector_sum += evol_b1_proj[rho][2][0];
-        std::vector<double> gr_factors(ne,0);
+        std::vector<double,aligned_allocator<double>>
+        gr_factors(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
+        double* gr_factor_ptr=&gr_factors[0];
+        SQUIDS_POINTER_IS_ALIGNED(gr_factor_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e2=1; e2<ne; e2++){
           double flux=projector_e*state[e2].rho[rho];
           for(unsigned int e1=0; e1<e2; e1++){
-            gr_factors[e1] += flux*(int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
+            gr_factor_ptr[e1] += flux*(int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
           }
         }
         for(unsigned int e1=0; e1<ne; e1++){
@@ -677,9 +704,11 @@ void nuSQUIDS::UpdateInteractions(){
       for(unsigned int e1=0; e1<ne; e1++)
         scalar_interaction_cache[rho][e1]=0;
       for(unsigned int e2=1; e2<ne; e2++){
-        double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho]);
+        double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho])*int_struct->invlen_CC[rho][2][e2];
+        double* dNdE_CC_ptr=&int_struct->dNdE_CC[rho][2][e2][0];
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e1=0; e1<e2; e1++)
-          scalar_interaction_cache[rho][e1]+=temp*(int_struct->invlen_CC[rho][2][e2])*(int_struct->dNdE_CC[rho][2][e2][e1])*delE[e2-1];
+          scalar_interaction_cache[rho][e1]+=temp*dNdE_CC_ptr[e1]*delE[e2-1];
       }
     }
   }
@@ -1547,7 +1576,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
-    std::copy(int_struct->sigma_GR.begin(), int_struct->sigma_GR.end(), xsGR.begin());
+    std::copy(int_struct->sigma_GR.begin(), int_struct->sigma_GR.begin()+ne, xsGR.begin());
     dset_id = H5LTmake_dataset(xs_group_id,"sigmacc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsCC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"sigmanc",3,XSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(xsNC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"sigmagr",1,&XSdim[2],H5T_NATIVE_DOUBLE,static_cast<const void*>(xsGR.data()));
@@ -1574,7 +1603,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
           }
       }
     }
-    std::copy(int_struct->dNdE_GR.begin(), int_struct->dNdE_GR.end(), dxsGR.begin());
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+      for(unsigned int e2 = 0; e2 < ne; e2++)
+        dxsGR[e1*ne + e2]=int_struct->dNdE_GR[e1][e2];
+    }
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEcc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsCC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsNC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEgr",2,&dXSdim[2],H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsGR.data()));
@@ -2052,7 +2084,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     {
       std::vector<double> dxsGR(dXSdim[2]*dXSdim[3]);
       H5LTread_dataset_double(xs_grp,"dNdEgr", dxsGR.data());
-      std::copy(dxsGR.begin(), dxsGR.end(), int_struct->dNdE_GR.begin());
+      for( unsigned int e1 = 0; e1 < ne; e1++){
+        for( unsigned int e2 = 0; e2 < e1; e2++)
+          int_struct->dNdE_GR[e1][e2]=dxsGR[e1*ne + e2];
+      }
     }
     // invlen_tau
     hsize_t iltdim[1];
