@@ -543,24 +543,24 @@ void nuSQUIDS::SetUpInteractionCache(){
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
-    if(debug)
-      std::cout << "============ BEGIN UpdateInteractions ============" << std::endl;
+//    if(debug)
+//      std::cout << "============ BEGIN UpdateInteractions ============" << std::endl;
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
           //#ifdef UpdateInteractions_DEBUG
-          if(debug){
-            std::cout << "============" << flv << "============" << std::endl;
-          }
-          //#endif
+//          if(debug){
+//            std::cout << "============" << flv << "============" << std::endl;
+//          }
+//          //#endif
           for(unsigned int e1 = 0; e1 < ne; e1++){
-              //#ifdef UpdateInteractions_DEBUG
-              if(debug){
-                  std::cout << "== CC NC Terms x = " << track->GetX()/params.km << " [km] ";
-                  std::cout << "E = " << E_range[e1] << " [eV] ==" << std::endl;
-                  std::cout << "CC : " << int_struct->sigma_CC[rho][flv][e1]*num_nuc << " NC : " << int_struct->sigma_NC[rho][flv][e1]*num_nuc << std::endl;
-                  std::cout << "==" << std::endl;
-              }
-              //#endif
+//              //#ifdef UpdateInteractions_DEBUG
+//              if(debug){
+//                  std::cout << "== CC NC Terms x = " << track->GetX()/params.km << " [km] ";
+//                  std::cout << "E = " << E_range[e1] << " [eV] ==" << std::endl;
+//                  std::cout << "CC : " << int_struct->sigma_CC[rho][flv][e1]*num_nuc << " NC : " << int_struct->sigma_NC[rho][flv][e1]*num_nuc << std::endl;
+//                  std::cout << "==" << std::endl;
+//              }
+//              //#endif
               int_struct->invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
               int_struct->invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
               int_struct->invlen_INT[rho][flv][e1] = int_struct->invlen_NC[rho][flv][e1] + int_struct->invlen_CC[rho][flv][e1];
@@ -626,15 +626,19 @@ void nuSQUIDS::UpdateInteractions(){
           double nu_tau_flux = projector_tau*state[en].rho[rho];
           double other_nu_tau_flux = projector_other_tau*state[en].rho[other_rho];
           double dEn = delE[en-1];
-          double invlen_CC_tau = int_struct->invlen_CC[rho][tau_flavor][en];
+          double invlen_CC_tau       = int_struct->invlen_CC[      rho][tau_flavor][en];
           double invlen_CC_other_tau = int_struct->invlen_CC[other_rho][tau_flavor][en];
+          const double invlen_CC_tau_en       = invlen_CC_tau*dEn;
+          const double invlen_CC_other_tau_en = invlen_CC_other_tau*dEn;
           for(unsigned int et=0; et<en; et++){ // loop over intermediate tau energies
             double dEt = delE[et-1];
-            double neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[rho][tau_flavor][en][et]*invlen_CC_tau*dEn);
-            double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau*dEn);
+            const double       neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[      rho][tau_flavor][en][et]*invlen_CC_tau_en);
+            const double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau_en);
+            const double       flux_decay_en=      nu_tau_flux*      neutrino_decay_rate_spectrum*dEt;
+            const double other_flux_decay_en=other_nu_tau_flux*other_neutrino_decay_rate_spectrum*dEt;
             for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-              tau_hadlep_decays[e1] += nu_tau_flux*neutrino_decay_rate_spectrum*(int_struct-> dNdE_tau_all[et][e1]*dEt);
-              tau_lep_decays[e1] += other_nu_tau_flux*other_neutrino_decay_rate_spectrum*(int_struct-> dNdE_tau_lep[et][e1]*dEt);
+              tau_hadlep_decays[e1] +=       flux_decay_en*int_struct->dNdE_tau_all[et][e1];
+              tau_lep_decays[e1]    += other_flux_decay_en*int_struct->dNdE_tau_lep[et][e1];
             }
           }
         }
@@ -666,7 +670,7 @@ void nuSQUIDS::UpdateInteractions(){
         }
       }
     }
-    
+
     //scalar interactions for nu_tau
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //first initialize to zero
