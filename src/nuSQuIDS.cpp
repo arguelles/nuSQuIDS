@@ -349,12 +349,10 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
 }
 
 squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_rho) const{
-  if(iinteraction && !ioscillations) //can use precomputed result
+  if(iinteraction && !ioscillations) //can use precomputed result from UpdateInteractions
     return(interaction_cache[index_rho][e1]);
 
   squids::SU_vector interaction_term(nsun);
-  //return interaction_term;
-  //std::cout << e1 << " " << index_rho << std::endl;
 
   if (not iinteraction)
     return interaction_term;
@@ -365,10 +363,10 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
       nc_factor+=(evol_b1_proj[index_rho][alpha_active][e2]*state[e2].rho[index_rho])*
       (int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2]*delE[e2-1]);
-      //std::cout << e1 << " " << e2 << " " << int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2] << std::endl;
     }
-    //std::cout << "nc factor: " << nc_factor << std::endl;
-    interaction_term+=nc_factor*evol_b1_proj[index_rho][alpha_active][e1];
+    interaction_term+=squids::detail::guarantee
+    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+    (nc_factor*evol_b1_proj[index_rho][alpha_active][e1]);
   }
   // Tau regeneration
   if(tauregeneration){
@@ -376,14 +374,16 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     unsigned int other_index_rho = (index_rho == 0) ? 1 : 0;
     double tau_hadlep_decay=0.0;
     double tau_lep_decay=0.0;
-    for(unsigned int et = e1 + 1; et < ne; et++){ // loop in the tau energies
-      for(unsigned int en = et+ 1; en < ne; en++){ // loop in the tau neutrino energies
+    for(unsigned int et = e1 + 1; et < ne; et++){ // all tau energies which can cascade down
+      double dN_tau_all=int_struct->dNdE_tau_all[et][e1]*delE[et-1];
+      double dN_tau_lep=int_struct->dNdE_tau_lep[et][e1]*delE[et-1];
+      for(unsigned int en = et + 1; en < ne; en++){ // all tau neutrino energies which can cascade down
         tau_hadlep_decay += (evol_b1_proj[index_rho][tau_flavor][en]*state[en].rho[index_rho])*
         (int_struct->dNdE_CC[index_rho][tau_flavor][en][et]*int_struct->invlen_CC[index_rho][tau_flavor][en]*delE[en-1])*
-        (int_struct-> dNdE_tau_all[et][e1]*delE[et-1]);
+        dN_tau_all;
         tau_lep_decay += (evol_b1_proj[other_index_rho][tau_flavor][en]*state[en].rho[other_index_rho])*
         (int_struct->dNdE_CC[other_index_rho][tau_flavor][en][et]*int_struct->invlen_CC[other_index_rho][tau_flavor][en]*delE[en-1])*
-        (int_struct-> dNdE_tau_lep[et][e1]*delE[et-1]);
+        dN_tau_lep;
       }
     }
     interaction_term += tau_hadlep_decay*evol_b1_proj[index_rho][tau_flavor][e1];
@@ -401,16 +401,15 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     projector_sum += evol_b1_proj[index_rho][0][e1];
     projector_sum += evol_b1_proj[index_rho][1][e1];
     projector_sum += evol_b1_proj[index_rho][2][e1];
-    interaction_term += gr_factor*projector_sum;
+    interaction_term += squids::detail::guarantee
+    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+    (gr_factor*projector_sum);
   }
 
-  //std::cout << interaction_term << std::endl;
-  //std::cout << state[e1].rho[index_rho] << std::endl;
   return interaction_term;
 }
 
 double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
-  // we will just keep all the taus and convert them at the end
   return 0.0;
 }
 
