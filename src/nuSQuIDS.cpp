@@ -109,15 +109,6 @@ void nuSQUIDS::Set_E(double Enu){
   istate = false;
 }
 
-void nuSQUIDS::init(double Emin,double Emax,unsigned int Esize,double xini){
-  // here the energies come in eV
-  ne = Esize;
-  if(elogscale)
-    init(logspace(Emin,Emax,ne-1),xini);
-  else
-    init(linspace(Emin,Emax,ne-1),xini);
-}
-
 void nuSQUIDS::init(marray<double,1> E_vector, double xini){
   // here the energies come in natural units
   if (NT == neutrino || NT == antineutrino)
@@ -1431,7 +1422,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // write the energy range
   hsize_t Edims[1]={E_range.extent(0)};
   dset_id = H5LTmake_dataset(group_id,"energies",1,Edims,H5T_NATIVE_DOUBLE,E_range.get_data());
-  H5LTset_attribute_string(group_id, "energies", "elogscale", (elogscale) ? "True":"False");
 
   // write mixing parameters
   hsize_t dim[1]{1};
@@ -1762,13 +1752,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   for (unsigned int ie = 0; ie < ne; ie++)
     E_range[ie] = energy_data[ie];
 
-  H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
-  aux = auxchar;
-  if ( aux == "True")
-    elogscale = true;
-  else
-    elogscale = false;
-
   // reading body and track
   unsigned int body_id;
   hsize_t dimbody[1];
@@ -1957,13 +1940,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   E_range = marray<double,1>{ne};
   for (unsigned int ie = 0; ie < ne; ie++)
     E_range[ie] = energy_data[ie];
-
-  H5LTget_attribute_string(group_id,"energies","elogscale", auxchar);
-  aux = auxchar;
-  if ( aux == "True")
-    elogscale = true;
-  else
-    elogscale = false;
 
   // reading body and track
   unsigned int body_id;
@@ -2351,7 +2327,6 @@ itrack(other.itrack),
 istate(other.istate),
 iinteraction(other.iinteraction),
 ioscillations(other.ioscillations),
-elogscale(other.elogscale),
 tauregeneration(other.tauregeneration),
 iglashow(other.iglashow),
 positivization(other.positivization),
@@ -2397,7 +2372,6 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   istate = other.istate;
   iinteraction = other.iinteraction;
   ioscillations = other.ioscillations;
-  elogscale = other.elogscale;
   tauregeneration = other.tauregeneration;
   iglashow = other.iglashow;
   positivization = other.positivization;

@@ -50,8 +50,8 @@ int main()
   //Declaration of the nusquids NSI object, for more details about how to construct an object
   //like this look at the file NSI.h
   //We declare two objects "nus" with NSI value of eps_mutau and nus_zero with 0.0
-  nuSQUIDSNSI nus(eps_mutau,Emin,Emax,200,numneu,antineutrino,true,false);
-  nuSQUIDSNSI nus_zero(0.0,Emin,Emax,200,numneu,antineutrino,true,false);
+  nuSQUIDSNSI nus(eps_mutau,logspace(Emin,Emax,200),numneu,antineutrino,false);
+  nuSQUIDSNSI nus_zero(0.0,logspace(Emin,Emax,200),numneu,antineutrino,false);
 
   //zenith angle for which we propagate the neutrino flux, they go though the earth.
   double phi = acos(-1.);

@@ -61,7 +61,7 @@ int main()
   double epsilon_mutau=1e-2;
   //Declaration of the atmospheric object now with the nuSQUIDSNSI instead of the basic nuSQuIDS
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(czmin,czmax,40,epsilon_mutau,Emin,Emax,100,numneu,both,true,true);
+  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(czmin,czmax,40,epsilon_mutau,logspace(Emin,Emax,100),numneu,both,true);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   //Optionally you can access every one of the nuSQUIDSNSI objects in the array of zenith angles to 

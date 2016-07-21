@@ -46,9 +46,9 @@ int main (int argc, char const *argv[])
 
   std::cout << "Evolving a nue_bar line spectrum at the Glashow resonance" << std::endl;
   const unsigned int numneu = 3;
-  const unsigned int num_steps = 151;
+  const unsigned int num_steps = 150;
   squids::Const units;
-  nuSQUIDS squid(1e4*units.GeV,1e7*units.GeV,num_steps,numneu,both,true,true);
+  nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true);
 
   double phi = acos(-1);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -79,7 +79,7 @@ int main (int argc, char const *argv[])
   squid.Set_abs_error(1.0e-10);
 
   // construct the initial state
-  marray<double,3> inistate{num_steps,2,numneu};
+  marray<double,3> inistate{num_steps+1,2,numneu};
   std::fill(inistate.begin(), inistate.end(), 0.);
   marray<double,1> E_range = squid.GetERange();
   unsigned int e0 = 140;

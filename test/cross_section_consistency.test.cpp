@@ -15,7 +15,7 @@ int main(){
   double Emin = 1.0e2*units.GeV;
   double Emax = 1.0e6*units.GeV;
   unsigned int Esize = 100;
-  nuSQUIDS nus(Emin,Emax,Esize,numneu,both,true,true);
+  nuSQUIDS nus(logspace(Emin,Emax,Esize),numneu,both,true);
 
   auto energies = nus.GetERange();
   nus.InitializeInteractions();

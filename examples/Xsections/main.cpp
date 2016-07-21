@@ -54,7 +54,7 @@ int main()
   //(7). Scattering non coherent interactions. 
   //(8). neutrino cross section object.
   std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<NeutrinoDISCrossSectionsFromTablesExtended>();
-  nuSQUIDS nus(Emin,Emax,200,numneu,neutrino,true,true,ncs);
+  nuSQUIDS nus(logspace(Emin,Emax,200),numneu,neutrino,true,ncs);
   
   //Here we define the trajectory that the particle follows and the object for more examples
   // of how construct a track and object look body_track example.

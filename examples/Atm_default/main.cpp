@@ -71,7 +71,7 @@ int main()
   double czmax=0;
   //Declaration of the atmospheric object
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<> nus_atm(czmin,czmax,40,Emin,Emax,100,numneu,both,true,interactions);
+  nuSQUIDSAtm<> nus_atm(czmin,czmax,40,logspace(Emin,Emax,100),numneu,both,interactions);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
   
   

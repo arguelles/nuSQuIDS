@@ -421,8 +421,6 @@ protected:
     bool interactions_initialized = false;
     /// \brief Boolean that signals that neutrino oscillations will be taken into account.
     bool ioscillations = true;
-    /// \brief When multienergy mode is used, it signals that the neutrino energies is in logarithmic scale.
-    bool elogscale = true;
     /// \brief Boolean that signals that tau regeneration is being used.
     bool tauregeneration = false;
     /// \brief Whether the Glashsow resonance for electron antineutrinos is used.
@@ -459,22 +457,8 @@ protected:
     void SetBodyTrack(unsigned int,unsigned int,double*,unsigned int,double*);
 
     /// \brief General initilizer for the multi energy mode
-    /// @param Emin Minimum neutrino energy [eV].
-    /// @param Emax Maximum neutirno energy [eV].
-    /// @param Esize Number of energy nodes.
-    /// @param xini The initial position of the system.
-    /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
-    /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions 
-    /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
-    /// are called.
-    void init(double Emin,double Emax,unsigned int Esize,double xini=0.0);
-
-    /// \brief General initilizer for the multi energy mode
     /// @param E_vector Energy nodes [eV].
     /// @param xini The initial position of the system.
-    /// \details Constructs the energy node arrays from that energy range; the variable nuSQUIDS#elogscale
-    /// sets if the scale will be linear or logarithmic. If \c initialize_intereractions
-    /// is set to \c true then InitializeInteractionVectors() and InitializeInteractions()
     void init(marray<double,1> E_vector,double xini=0.0);
 
     /// \brief Initilizer for the single energy mode
@@ -517,32 +501,10 @@ protected:
     /// @see PreDerive
     virtual void AddToPreDerive(double x){}
 
-    /// \brief Multiple energy mode constructor.
-    /// @param Emin Minimum neutrino energy [eV].
-    /// @param Emax Maximum neutirno energy [eV].
-    /// @param Esize Number of energy nodes.
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param int_struct Structure that contains cross section information.
-    /// @param elogscale Sets the energy scale to be logarithmic
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
-    /// \details By default the energy scale is logarithmic and interactions are turn off.
-    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
-    /// cross section which make take considertable time depending on the energy grid.
-    /// @see init
-    /// \todo put asserts here to ensure some minimal safety
-    nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu, NeutrinoType NT,std::shared_ptr<InteractionStructure> int_struct,
-             bool elogscale = true,bool iinteraction = true):
-    numneu(numneu),iinteraction(iinteraction),elogscale(elogscale),NT(NT),int_struct(int_struct)
-    {
-      init(Emin,Emax,Esize);
-    }
-
     /// \brief Multiple energy mode constructor using precalculated cross section information.
     /// @param E_vector Energy nodes [eV].
     /// @param numneu Number of neutrino flavors.
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// @param int_struct Structure that contains cross section information.
     /// @warning The user should assure that the cross section struct has the same range as the provided energy range
@@ -550,7 +512,7 @@ protected:
     /// \todo put asserts here to ensure some minimal safety 
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT,std::shared_ptr<InteractionStructure> int_struct,
              bool iinteraction = true):
-    numneu(numneu),iinteraction(iinteraction),elogscale(false),NT(NT),int_struct(int_struct)
+    numneu(numneu),iinteraction(iinteraction),NT(NT),int_struct(int_struct)
     {
      // assert(int_struct.
       init(E_vector);
@@ -581,27 +543,9 @@ protected:
     nuSQUIDS(nuSQUIDS&&);
 
     /// \brief Multiple energy mode constructor.
-    /// @param Emin Minimum neutrino energy [eV].
-    /// @param Emax Maximum neutirno energy [eV].
-    /// @param Esize Number of energy nodes.
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param elogscale Sets the energy scale to be logarithmic
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
-    /// \details By default the energy scale is logarithmic and interactions are turn off.
-    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
-    /// cross section which make take considertable time depending on the energy grid.
-    /// @see init
-    nuSQUIDS(double Emin,double Emax,unsigned int Esize,unsigned int numneu,NeutrinoType NT = both,
-       bool elogscale = true,bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(elogscale),NT(NT)
-    {init(Emin,Emax,Esize);}
-
-    /// \brief Multiple energy mode constructor.
     /// @param E_vector Energy nodes [eV].
     /// @param numneu Number of neutrino flavors.
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// @param ncs Cross section object.
     /// \details By default the energy scale is logarithmic and interactions are turn off.
@@ -610,7 +554,7 @@ protected:
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
        bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
-    numneu(numneu),ncs(ncs),iinteraction(iinteraction),elogscale(false),NT(NT)
+    numneu(numneu),ncs(ncs),iinteraction(iinteraction),NT(NT)
     {init(E_vector);}
 
     /// \brief Single energy mode constructor.
@@ -620,7 +564,7 @@ protected:
     /// neutrino-antineutrino solution (both) possible.
     /// \details Constructors projectors and initializes Hamiltonian.
     nuSQUIDS(unsigned int numneu, NeutrinoType NT = neutrino):
-    numneu(numneu),iinteraction(false),elogscale(false),NT(NT)
+    numneu(numneu),iinteraction(false),NT(NT)
     {init();}
 
     /// \brief Constructor from a HDF5 filepath.
@@ -648,56 +592,7 @@ protected:
     //***************************************************************
     ///\brief Move assigns a nuSQUIDS object from an existing object
     nuSQUIDS& operator=(nuSQUIDS&&);
-
-    public:// should this be protected? should this by private? should this exist?
-
-    /************************************************************************************
-     * INITIALIZERS
-    *************************************************************************************/
-    /// \brief Multiple energy mode initializer.
-    /// @param Emin Minimum neutrino energy [eV].
-    /// @param Emax Maximum neutirno energy [eV].
-    /// @param Esize Number of energy nodes.
-    /// @param numneu_ Number of neutrino flavors.
-    /// @param NT_ NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param elogscale_ Sets the energy scale to be logarithmic
-    /// @param iinteraction_ Sets the neutrino noncoherent neutrino interactions on.
-    /// \details By default the energy scale is logarithmic and interactions are turn off.
-    /// \warning When interactions are present interpolation is performed to precalculate the neutrino
-    /// cross section which make take considertable time depending on the energy grid.
-    /// @see init
-    void Init(double Emin,double Emax,unsigned int Esize,unsigned int numneu_,NeutrinoType NT_ = both,
-      bool elogscale_ = true,bool iinteraction_ = false, std::shared_ptr<NeutrinoCrossSections> ncs_ = nullptr){
-      iinteraction = iinteraction_;
-      elogscale = elogscale_;
-      numneu = numneu_;
-      NT = NT_;
-      ncs = ncs_;
-      init(Emin,Emax,Esize);
-    }
-
-    /// \brief Single energy mode initializer.
-    /// @param numneu_ Number of neutrino flavors.
-    /// @param NT_ NeutrinoType: neutrino or antineutrino.
-    /// \warning Interactions are not possible in the single energy mode, nor is simultaneous
-    /// neutrino-antineutrino solution (both) possible.
-    /// \details Constructors projectors and initializes Hamiltonian.
-    void Init(int numneu_, NeutrinoType NT_ = neutrino){
-      iinteraction = false;
-      elogscale = false;
-      numneu = numneu_;
-      NT = NT_;
-      init();
-    }
-
-    /// \brief Initializer from a HDF5 filepath.
-    /// @param hdf5_filename Filename of the HDF5 to use for construction.
-    /// @param grp HDF5 file group path where the nuSQUIDS object is save.
-    /// @param cross_section_grp_loc HDF5 file group path where the nuSQUIDS cross sections are saved.
-    /// \details Reads the HDF5 file and construct the associated nuSQUIDS object
-    /// restoring all properties as well as the state.
-    /// @see ReadStateHDF5
-    void Init(std::string hdf5_filename, std::string grp = "/", std::string cross_section_grp_loc = "" ) { ReadStateHDF5(hdf5_filename, grp, cross_section_grp_loc); }
+  
   protected:
     /************************************************************************************
      * PHYSICS FUNCTIONS - SUPER IMPORTANT
@@ -1110,7 +1005,6 @@ class nuSQUIDSAtm {
     /// @param energy_div Number of energy divisions.
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
-    /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes> nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
@@ -1126,7 +1020,6 @@ class nuSQUIDSAtm {
     /// @param energy_div Number of energy divisions.
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
-    /// @param elogscale Sets the energy scale to be logarithmic
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array,

@@ -8,7 +8,7 @@ using namespace nusquids;
 int main(){
 
   squids::Const units;
-  nuSQUIDSAtm<nuSQUIDS> nus(-1,0,5,1.e2*units.GeV,1.e6*units.GeV,60,3,neutrino,true,true);
+  nuSQUIDSAtm<nuSQUIDS> nus(-1,0,5,logspace(1.e2*units.GeV,1.e6*units.GeV,60),3,neutrino,true);
 
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();

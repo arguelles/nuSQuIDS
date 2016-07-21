@@ -19,7 +19,7 @@ int main(){
   double Emin = 1.0e3*units.GeV;
   double Emax = 1.0e6*units.GeV;
   unsigned int Esize = 50;
-  nuSQUIDS nus(Emin,Emax,Esize,numneu,both,true,true);
+  nuSQUIDS nus(logspace(Emin,Emax,Esize),numneu,both,true);
 
   // constant density
   std::shared_ptr<ConstantDensity> constdens = std::make_shared<ConstantDensity>(density,ye);

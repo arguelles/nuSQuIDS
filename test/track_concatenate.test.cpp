@@ -9,7 +9,7 @@ int main(){
 
   squids::Const units;
 
-  nuSQUIDS nus(1.e0*units.GeV,1.e1*units.GeV,60,3,neutrino,false,false);
+  nuSQUIDS nus(linspace(1.e0*units.GeV,1.e1*units.GeV,60),3,neutrino,false);
   const double distance = 500.*units.km;
   std::shared_ptr<Vacuum> vac = std::make_shared<Vacuum>();
   std::shared_ptr<Vacuum::Track> track = std::make_shared<Vacuum::Track>(distance);

@@ -56,9 +56,9 @@ class nuSQUIDSNSI: public nuSQUIDS {
   //of understanding c++ but probably Chris knows
   nuSQUIDSNSI(){}
   //Constructor
-  nuSQUIDSNSI(double epsilon_mutau, double Emin,double Emax,int Esize,unsigned int numneu, NeutrinoType NT,
-	      bool elogscale,bool iinteraction,double th01=0.563942, double th02=0.154085, 
-	      double th12=0.785398) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
+  nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange,unsigned int numneu, NeutrinoType NT,
+              bool iinteraction,double th01=0.563942, double th02=0.154085,double th12=0.785398):
+                      nuSQUIDS(Erange,numneu,NT,iinteraction),
 				      hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
   {
     assert(numneu == 3);

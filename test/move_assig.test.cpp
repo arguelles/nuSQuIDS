@@ -18,7 +18,7 @@ int main(){
   std::cout << std::setprecision(3);
   std::cout << std::fixed;
 
-  nuSQUIDS nus(1.*units.GeV,1.e2*units.GeV,200,3,neutrino,true,false);
+  nuSQUIDS nus(logspace(1.*units.GeV,1.e2*units.GeV,199),3,neutrino,false);
 
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
   std::shared_ptr<Earth::Track> track = std::make_shared<Earth::Track>(500.0*units.km);
