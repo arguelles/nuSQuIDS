@@ -1,0 +1,290 @@
+\subsection{Body \& Track}
+
+{\ttf Body} and {\ttf Body::Track} are abstract {\ttf C++} classes
+which are used to represent the environment where the neutrino
+propages ({\ttf Body}) and the neutrino path inside it ({\ttf
+  Body::Track}). Along this document we will sometime use the short
+hand {\ttf Track} for {\ttf Body::Track},
+ since its clear that the former is meaningless without its
+ corresponding environment.
+
+The evolution of the system is a uniparametric evolution which means
+that all the evolution is described by a single parameter, the
+interplay between the evolution of this parameter and the trajectory
+inside a given body is what is encoded in the {\ttf Body} and 
+{\ttf Body::Track} classes.
+
+Imagine a {\ttf body} is defined by a matter density and electron fraction depending on
+the position of a 3 dimensional space, $\rho_m(\vec{r})$ and
+$Y_e(\vec{r})$, in this case the role of the {\ttf Track} would be
+equivalent to the trajectory, $\vec{r}(x)$.
+Notice that the {\ttf Track} contains also the current position on
+the trajectory that is evolved internally during the propagation.
+
+In the context of the code, the two main virtual functions that the
+user should provide in order to define a non trivial {\ttf Body} are:
+\begin{itemize}
+\item[$\circ$] 
+  \begin{lstlisting}
+    virtual double density(std::shared_ptr<Track>);
+  \end{lstlisting}
+This function returns the density, in ${\rm gr}/{\rm cm}^3$, for a
+given {\ttf Track}.
+\item[$\circ$] 
+  \begin{lstlisting}
+    virtual double ye(std::shared_ptr<Track>);
+  \end{lstlisting}
+Returns the electron fraction at a give {\ttf Track} position.
+\end{itemize}
+
+In order to allow the user to store the information relative to the
+object while writing a derived object are,
+
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::vector<double> BodyParams;
+  \end{lstlisting}
+  This double vector that contains all the parameters that are
+  needed to compute the density and electron fraction form the parameter
+  {\ttf x}.
+  
+\item[$\circ$]
+  \begin{lstlisting}
+    const std::string name;
+  \end{lstlisting}
+  String that contains the body name.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    const unsigned int id;
+  \end{lstlisting}
+  Integer that contains the id of the object.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    bool is_constant_density = false;
+  \end{lstlisting}  
+  This label is true if the object is a constant density object, this is
+  used to use some better fast computations internally when this is set to true.
+\end{itemize}
+
+Other public function of the {\ttf Body} object are,
+
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    const std::vector<double>& GetBodyParams() const { return BodyParams;}
+  \end{lstlisting}
+  This function returns the parameters that define the body.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    unsigned int GetId() const {return id;}
+  \end{lstlisting}
+  It returns the Id of the body.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::string GetName() const {return name;}
+  \end{lstlisting}
+  It returns the name of the object.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    virtual bool IsConstantDensity() const {return is_constant_density;}
+  \end{lstlisting}
+  It returns true or false if its a  constant density.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
+  \end{lstlisting}
+  Set true or false the constant density. 
+\end{itemize}
+Furthermore, the {\ttf Track} object has the following protected
+variables, these are basically the initial, final and current
+evolution parameter values,
+%
+%
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+  double x;
+  \end{lstlisting}
+  Current position.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double xini;
+  \end{lstlisting}
+  Initial position.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double xend;
+  \end{lstlisting}
+  Final position.
+\end{itemize}
+%
+And the following public functions are provided,
+%
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    Track(double xini, double xend): xini(xini),xend(xend)
+  \end{lstlisting}
+  Default constructor.
+\item[$\circ$]  
+  \begin{lstlisting}
+    void SetX(double y);
+  \end{lstlisting}
+  Sets the current position along the trajectory.
+  
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetX() const;
+  \end{lstlisting}
+  Returns the current value of the evolution parameter {\ttf x}.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetInitialX() const;
+  \end{lstlisting}    
+  Returns the initial value of the evolution parameter {\ttf x}.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetFinalX() const;
+  \end{lstlisting}          
+  Returns the final value of the evolution parameter {\ttf x}
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::vector<double> GetTrackParams() const 
+  \end{lstlisting}           
+  Returns a vector of doubles that define the trajectory.
+\item[$\circ$]  
+  \begin{lstlisting}
+    virtual void FillDerivedParams(std::vector<double>& TrackParams) const{};
+  \end{lstlisting}           
+  Should be implemented by derived classes to append their
+  additional parameters to TrackParams
+\end{itemize}
+
+
+Since {\ttf Body} and {\ttf Track} are abstract classes they themselves do not perform any task, but rather their specializations specify the real neutrino propagation environment and how it relates to its trajectory. $\nu$-SQuIDS implements the most common used environments and trajectory configurations, but the {\it user} is free (and encouraged) to create new {\it classes} in order to extend $\nu$-SQuIDS applicability.
+
+The {\ttf Body} classes specializations implemented in $\nu$-SQuIDS are the following: {\ttf Vacuum}, {\ttf ConstantDensity}, {\ttf VariableDensity}, {\ttf Earth}, {\ttf EarthAtm}, and {\ttf Sun}.
+
+\subsubsection{Vacuum}
+
+\begin{itemize}
+\item[$\circ$] {\ttf Vacuum}
+  \begin{lstlisting}
+    Vacuum(void);
+  \end{lstlisting}
+  Initializes a {\ttf Vacuum} environment. 
+\item[$\circ$] {\ttf Vacuum::Track}
+  \begin{lstlisting}
+    Vacuum::Track(double xini,double xend);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the initial ({\ttf xini}) and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{ConstantDensity}
+
+\begin{itemize}
+\item[$\circ$] {\ttf ConstantDensity}
+  \begin{lstlisting}
+    ConstantDensity(double rho, double ye);
+  \end{lstlisting}
+  Initializes a {\ttf ConstantDensity} environment with constant density {\ttf rho}, in ${\rm gr}/{\rm cm}^3$, and electron fraction {\ttf ye}.
+\item[$\circ$] {\ttf ConstantDensity::Track}
+  \begin{lstlisting}
+    ConstantDensity::Track(double xini,double xend);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the initial ({\ttf xini}) and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{VariableDensity}
+
+\begin{itemize}
+\item[$\circ$] {\ttf VariableDensity}
+  \begin{lstlisting}
+    VariableDensity(std::vector<double> x,std::vector<double> density,
+    std::vector<double> ye);
+  \end{lstlisting}
+  Initializes a {\ttf VariableDensity} environment given three equal size arrays specifying the density and electron fraction at given positions. An object will be created that interpolates using {\ttfamily gsl\_spline} \citep{gough2009gnu} along the {\ttf x} array to get the density and electron fraction as continuous functions.
+  \item[$\circ$] {\ttf VariableDensity::Track}
+  \begin{lstlisting}
+    VariableDensity::Track(double xini,double xend);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the initial ({\ttf xini}) and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{Earth}
+The {\ttf Earth} body specification is designed to propagate neutrinos
+in the earth form two points in the surface, since the earth in the
+PREM model is assumed to be spherically symmetric the length of the
+path is enough to determine the trajectory. 
+\begin{itemize}
+\item[$\circ$] {\ttf Earth}
+  \begin{lstlisting}
+    Earth(void);
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  \begin{lstlisting}
+    Earth(string filepath);
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm gr}/{\rm cm}^3$), and $y_e$ (dimensionless). {\ttfamily gsl\_spline} \citep{gough2009gnu} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
+\item[$\circ$] {\ttf Earth::Track}
+  \begin{lstlisting}
+    Track(double baseline);
+  \end{lstlisting}
+  Constructor that sets the path on the earth for a given baseline
+  {ttf baseline}
+\item[$\circ$] {\ttf Earth::Track}
+  \begin{lstlisting}
+    Earth::Track(double xini,double xend, double L);
+  \end{lstlisting}
+  The same as the other constructor but with the initial and final points set by
+  {ttf xini} and {ttf xend}.
+\end{itemize}
+
+\subsubsection{{EarthAtm}}
+This is to be used when the relevant parameter is the zenith angle of
+the path,
+\begin{itemize}
+\item[$\circ$] {\ttf EarthAtm}
+  \begin{lstlisting}
+    EarthAtm(void);
+  \end{lstlisting}
+  Initializes an {\ttf EarthAtm} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  \begin{lstlisting}
+    EarthAtm(string filepath);
+  \end{lstlisting}
+  Initializes an {\ttf EarthAtm} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm gr}/{\rm cm}^3$), and ye (dimensionless). {\ttfamily gsl\_spline} \citep{gough2009gnu} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
+  \item[$\circ$] {\ttf EarthAtm::Track}
+  \begin{lstlisting}
+    EarthAtm::Track(double phi);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} by specifying the zenith angle in radians.
+\end{itemize}
+
+\subsubsection{{Sun}}
+This specification of the object allows to define the Sun and radial
+trajectories that start from the center of the sun.
+\begin{itemize}
+\item[$\circ$] {\ttf Sun}
+  \begin{lstlisting}
+    Sun(void);
+  \end{lstlisting}
+  Initializes an {\ttf Sun} environment as defined by the {\it Standard Solar Model} \citep{bahcall2005new}.
+  \item[$\circ$] {\ttf Sun::Track}
+  \begin{lstlisting}
+    Sun::Track(double xini);
+  \end{lstlisting}
+  This constructor sets the trajectory starting at a distance 
+  {\ttf xini} from the Sun center.
+  \item[$\circ$] {\ttf Sun::Track}
+  \begin{lstlisting}
+    Sun::Track(double xini, double xend);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} by the initial position in the sun {\ttf xini} and {\ttf xend} along the solar radius.
+\end{itemize}

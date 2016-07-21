@@ -1,0 +1,67 @@
+
+\newcommand{\jt}[2]{
+\item[$\circ$]{#1}
+  \begin{lstlisting}
+    {#2}
+  \end{lstlisting}
+}
+
+\subsection{nuSQUIDSAtm}
+
+Atmospheric neutrino oscillations is a major and instrumental part of
+research in contemporary neutrino physics. Experiments like
+SuperKamiokande, IceCube, and Antares have used atmospheric neutrinos
+to measure neutrino mass splittings and mixing angles. Furthermore,
+proposed extensions like HyperKamiokande, PINGU, and ORCA ought to
+improve the current measurements and have sensitivity to neutrino
+neutrino mass ordering. This class allows to propagate a set of full
+energy spectrum of neutrinos for a different number of zenith angles.
+It implements functions to set easily the initial conditions and also
+interpolations to get the fluxes.
+\subsubsection{Constructors}
+
+\begin{itemize}
+\item[$\circ$] Constructor with {\ttf costh} range.
+  \begin{lstlisting}
+    template<typename... ArgTypes> nuSQUIDSAtm(double costh_min, 
+                                               double costh_max,
+                                               unsigned int costh_div, 
+                                               ArgTypes&&... args)
+  \end{lstlisting}
+This constructor it creates a set {\ttf nuSQUIDS} or derived {\ttf
+  nuSQUIDS} objects with a set of
+{\ttf costh\_div} zenith angles from {\ttf costh\_min} to {\ttf
+  costh\_max}, the last arguments are the argmunets of the base {\ttf
+  nuSQUIDS} object.
+
+\item[$\circ$] Constructor with {\ttf costh} array.
+  \begin{lstlisting}
+    template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array,
+                                               ArgTypes&&... args):
+  \end{lstlisting}
+Similar to the last constructor but instead of define the boundaries
+and the number of divisions the user should give as an argument an
+array with the number of the zenith cosine.
+\item[$\circ$] Constructing from a $\nu$SQuIDSAtm-HDF5 file
+  \begin{lstlisting}
+    nuSQUIDSAtm(std::string hdf5_filename);
+  \end{lstlisting}
+This constructor initializes {\ttfamily nuSQUIDS} from a 
+previously generated $\nu$SQuIDS-HDF5 file. The result {\ttfamily nuSQUIDS} 
+object will be given in {\it single} or {\it multiple} energy mode
+depending on the HDF5 file configuration. {\ttfamily filepath} must specify the full
+path of the HDF5 file. Furthermore,
+{\ttfamily grp} specifies the location on the HDF5 file structure
+where the object will be saved; by default
+it will be saved on the {\ttfamily root} of the HDF5 file.
+\item[$\circ$] Constructing from a $\nu$SQuIDS-HDF5 object
+  \begin{lstlisting}
+    nuSQUIDSAtm(nuSQUIDSAtm&&);
+  \end{lstlisting}
+Construct a {\ttfamily nuSQUIDSAtm} object from an existing {\ttfamily
+  nuSQUIDSAtm} object through the {\ttfamily move} operator.
+
+\end{itemize}
+
+
+\subsubsection{Functions}

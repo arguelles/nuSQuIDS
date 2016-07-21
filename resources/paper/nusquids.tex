@@ -1,0 +1,666 @@
+%\documentclass[3p,12pt,authoryear]{elsarticle}
+\documentclass[3p,12pt]{elsarticle}
+\usepackage{natbib}
+
+\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue]{hyperref}
+\usepackage{amsmath,amssymb}
+\usepackage{epsfig}  
+\usepackage{graphicx}               % Standard graphics package  
+\usepackage{url}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{color}
+\usepackage{listings}
+
+\usepackage{tikz}
+\usetikzlibrary{trees}
+
+\tikzstyle{every node}=[draw=black,thick,anchor=west]
+\tikzstyle{selected}=[dashed,draw=red,fill=red!30]
+\tikzstyle{optional}=[dashed,fill=gray!50]
+
+\usepackage{chngcntr}
+\counterwithin{figure}{section}
+
+\titleclass{\subsubsubsection}{straight}[\subsection]
+\newcounter{subsubsubsection}[subsubsection]
+\renewcommand\thesubsubsubsection{\thesubsubsection.\arabic{subsubsubsection}}
+\renewcommand\theparagraph{\thesubsubsubsection.\arabic{paragraph}} % optional; useful if paragraphs are to be numbered
+
+\titleformat{\subsubsubsection}
+  {\normalfont\normalsize\itshape}{\thesubsubsubsection}{1em}{}
+\titlespacing*{\subsubsubsection}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+\newcommand{\bra}[1]{\ensuremath{\left\langle#1\right|}}
+\newcommand{\ket}[1]{\ensuremath{\left|#1\right\rangle}}
+\newcommand{\bracket}[2]{\ensuremath{\left\langle#1 \vphantom{#2}\right| \left. #2 \vphantom{#1}\right\rangle}}
+\newcommand{\matrixel}[3]{\ensuremath{\left\langle #1 \vphantom{#2#3} \right| #2 \left| #3 \vphantom{#1#2} \right\rangle}}
+\newcommand{\bls}{\begin{lstlisting}}
+\newcommand{\els}{\end{lstlisting}}
+
+\newcommand{\ttf}{\ttfamily}
+
+\newcommand{\pa}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\p}[1]{\partial_{#1}}
+
+\definecolor{mauve}{rgb}{1,0,1}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+% \definecolor{gray}{rgb}{0.5,0.5,0.5}
+% \definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{language=C++,
+%   aboveskip=3mm,
+%   belowskip=3mm,
+%   showstringspaces=false,
+%   columns=flexible,
+   basicstyle={\small\ttfamily},
+%   numbers=none,
+%   numberstyle=\tiny\color{gray},
+   morekeywords={SU\_vector,string,Body,Track,marray,Basis},   
+   keywordstyle=\color{blue},
+   deletekeywords={const},
+   keywords=[2]{const},
+   keywordstyle={[2]\ttfamily\color{red}},
+   deletekeywords={operator},
+   keywords=[3]{operator},
+   keywordstyle={[3]\ttfamily\color{dkgreen}},
+   commentstyle=\color{dkgreen},
+   stringstyle=\color{mauve},
+%   breaklines=true,
+%   breakatwhitespace=true
+%   tabsize=3
+}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{$\nu$-SQuIDS: A toolbox for neutrino oscillations\tnoteref{t1}}
+
+\author[MIT]{Carlos Alberto Arg\"uelles}
+\ead{caad@mit.edu}
+\author[ific]{Jordi Salvado}
+\ead{jsalvado@ific.uv.es}
+\author[UA]{Christopher Nils Weaver}
+\ead{chris.weaver@icecube.wisc.edu}
+\address[MIT]{Massachusetts Institute of Technology, Cambridge, MA 02139, USA}
+\address[UA]{Dept.~of Physics, University of Alberta, Edmonton,
+  Alberta, Canada T6G 2E1} 
+\address[ific]{Instituto de F\'isica Corpuscular, Universidad de
+  Valencia CSIC, Valencia 46071, Spain}
+
+\tnotetext[t1]{The code can be found in \url{https://github.com/arguelles/nuSQuIDS}}
+\journal{arXiv}
+%\journal{Computer Physics Communications}
+
+\begin{abstract}
+The Neutrino Simple Quantum Integro-Differential Solver ($\nu$-SQuIDS) is a C++ code based on SQuIDS that propagates an ensemble of neutrinos through a given media, e.g. Sun, Earth, Vacuum, etc, while considering, in a consistent way, the effect of neutrino oscillations, with coherent matter interactions, and non coherent interactions. The code has been design to be accurate and flexible, while at the same time maintain excellent performance. Furthermore, the user can easily change the neutrino oscillation parameters, propagation medium, and incorporate new oscillation physics. 
+\end{abstract}
+
+\begin{keyword}
+Neutrino oscillation, phenomenology, collective neutrino behavior, numerical techniques
+\end{keyword}
+
+\end{frontmatter}
+
+\hypersetup{linkcolor=black}
+\tableofcontents
+\hypersetup{linkcolor=blue}
+\newpage
+\section{Introduction}
+\label{sec:intro} 
+
+In recent decades a plethora of evidence that neutrinos change
+flavor as they propagate macroscopical distances due to the
+nonalignment of their mass and flavor eigenstates \citep{Mohapatra:qv, Gouvea:2013fj} has accumulated from
+solar \citep{Abe:2010hy, Borexino2014},
+atmospheric \citep{PhysRevD.91.072004,Richard:2015aua},
+accelerator \citep{PhysRevLett.112.181801,
+  PhysRevD.93.051104,PhysRevLett.116.151806, PhysRevLett.110.251801}, and
+reactor \citep{An:2013zwz,Abe:2015rcp, Kim:2016yvm} experiments.
+Thanks to these remarkable
+experimental results and related theoretical calculations the
+  neutrino-mass induced flavor oscillation paradigm
+\citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,
+  Akhmedov:1999uz,Balantekin:2013kc, GonzalezGarcia:2007ib}
+has been firmly established and the three mixing angles, which
+parametrize the lepton mixing matrix, together with the two squared
+mass differences, have been measured to good precision
+\citep{Gonzalez-Garcia:2014bfa}. Furthermore, it is the task of on-going 
+and future experiments to determine the neutrino mass ordering
+and the Dirac CP-violating phase \citep{Hewett:2012et,
+  Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
+Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
+spectrum above 100GeV allowing new physics
+models to be constrained \citep{Aartsen:2014gkd,TheIceCube:2016oqi}.
+The identification of high energy
+extraterrestrial neutrinos \citep{ Aartsen:2014gkd, Aartsen:2015rwa}
+has opened the possibility of exploring new physics at these energies as well
+\citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc}. 
+
+Matter effects play a fundamental role in the explanation of solar
+neutrinos \citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of new flavor
+changing neutrino interactions \citep{Barger:1991ae, Roulet:1991sm, GonzalezGarcia:2011my,
+  Gonzalez-Garcia:2013usa, Pospelov:2011dp, Kopp:2014nosterile,
+  Maltoni:2015kca}.
+Even though most of the data can be explained in the standard three
+neutrino framework, some puzzling anomalies still remain
+\citep{LSND,Mention:2011rr,MiniBoone:2012dn}. These may be explained
+by introducing new light neutrino states \citep{kopp2013sterile,
+  Collin:2016rao, Abazajian:2012rf} and other new physics
+\citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
+Also, the interplay between cosmology and neutrino
+oscillation has been widely studied in the literature
+\citep{Bergstrom:2014fqa, Giusarma:2016phn,
+  Dasgupta:2013la,Hernandez:2016kel,Arguelles:2016uwb}. 
+% the following sentence doesn't really make sense:
+In general, neutrino physics constitutes an excellent proof for
+fundamental physics \citep{Hewett:2012et}.
+
+Tools are needed to accurately and reliably compute neutrino
+oscillation phenomenology, i.e. vacuum oscillation and matter
+interactions. In particular, when only neutrino
+oscillations are important libraries such as {\ttf GLoBES}
+\citep{Huber:2007ji}, {\ttf Prob3++} \citep{prob3pp, Calland:2013vaa},  and {\ttf
+  nuCRAFT} \citep{Wallraff:2014vl} are available. Unfortunately, when non-coherent interactions are
+important they are no longer applicable. Furthermore, the ability to
+allow the user to incorporate new physics models or to change the
+propagation medium is also limited. {\ttf nuSQuIDS} seeks to
+address all of these problems by providing a highly customizable
+package, while at the same time remain numerically efficient.
+
+The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we demonstrate the use of the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
+
+\section{Neutrino Oscillation Theory}
+\label{sec:theory} 
+In this section we are going to briefly review neutrino oscillations
+using the density matrix formalism.
+We can represent the state of the neutrino ensemble, at an energy $E$
+and position $x$, using the density
+matrix, i.e. in the weak-interaction flavor eigenstate basis
+$\{\ket{\nu_\alpha}\}$  it can be written as
+
+\begin{equation}
+\rho(E,x) = \sum_\alpha \phi_\alpha(E,x) \ket{\nu_\alpha}\bra{\nu_\alpha} , 
+\label{eq:state}
+\end{equation}
+where $\phi_\alpha$ specifies the flavor content. Another important
+basis is the mass eigenstates $\{ \ket{\nu_i}  \}$, which are the
+eigenstate of the propagation in vacuum and are related to the former by
+\begin{equation}
+\ket{\nu_\alpha} = \sum_i U^*_{\alpha i} \ket{\nu_i} ,
+\label{eq:changebasis}
+\end{equation}
+where $U$ is known as the Pontecorvo-Maki-Nakagawa-Sakata (PMNS)
+mixing matrix. For antineutrinos the relation is the same as in
+\eqref{eq:changebasis} with $U \to U^*$.
+It is customary to parametrize the mixing matrix $U$
+with mixing angles, $\{\theta_{ij}\}$, and CP phases, $\{ \delta_{ij}
+\}$, for example when considering the standard three flavor paradigm
+the following parametrization is often used
+\begin{equation}
+U
+=
+\begin{pmatrix}
+c_{12} c_{13} & s_{12} c_{13} & s_{13} e^{-i\delta_{13}} \\ 
+- s_{12} c_{23} - c_{12} s_{23} s_{13} e^{i\delta_{13}} & c_{12} c_{23} - s_{12} s_{23} s_{13} e^{i\delta_{13}} & s_{23} c_{13} \\
+s_{12}s_{23} -c_{12}c_{23}s_{13}e^{i\delta_{13}} & - c_{12} s_{23} - s_{12} c_{23} s_{13} e^{i\delta_{13}} & c_{23} c_{13}
+\end{pmatrix}
+\,,
+\label{eq:U}
+\end{equation}
+where $c_{ij} = \cos \theta_{ij}$, $s_{ij} = \sin \theta_{ij}$. In the
+three flavor scenario we use the aforementioned parametrization (with
+values from \citep{Gonzalez-Garcia:2014bfa}) and when more flavors are
+considered we used the prescription given in
+\cite{SQUIDS}. Furthermore, the neutrino ensemble propagation is
+described by the following quantum Von Neumann equation \footnote{We set $c = \hbar = 1$.} 
+\begin{equation}
+\pa{\rho(E,x)}{x} = -i [ H (E,x), \rho(E,x) ].
+\label{eq:schrodinger}
+\end{equation}
+
+In general we can always split the Hamiltonian, $H$, into a time dependent and independent parts. In particular, for neutrino oscillations the following splitting is convenient
+\begin{subequations}
+\label{eq:hamiltonian}
+\begin{align}
+H(E,x) &= H_0(E)  + H_{1}(E,x) ,\\
+H_0 (E) &= \frac{1}{2E} {\rm diag}( 0 , \Delta m^2_{21},\Delta m^2_{31},\Delta m^2_{41},...,\Delta m^2_{n1}) \label{eq:h0} ,\\
+H_1 (E,x) &= \sqrt{2} G_F U^\dagger {\rm diag} ( N_e(x) -
+N_{nuc}(x)/2, -N_{nuc}(x)/2, -N_{nuc}(x)/2 , 0,...,0 )U ,\label{eq:hi} 
+\end{align}
+\end{subequations}
+where $n$ is the number of neutrino states, $G_F$ is the Fermi
+constant, $\Delta m^2_{i1}$ are the neutrino mass square differences,
+and $N_e(x)$ and $N_{nuc}(x)$ are the electron and nucleon number
+densities at position $x$. 
+ In writing these equations we have used the
+convention that the first three flavor eigenstates corresponds to
+$\nu_e$, $\nu_\mu$, and $\nu_\tau$, while the rest are assumed to be
+sterile neutrinos. Furthermore, $H_0$ arises from the neutrino kinetic
+term, where as $H_1$ incorporates the matter potential, i.e. coherent
+forward scattering interactions
+\citep{Mikheev:1986gs,Mikheev:1986wj,Wolfenstein:1977ue}. Notice that the matter
+potential, $H_1$, given in \eqref{eq:hi} for neutrinos changes to
+$-H_1^*$ for antineutrinos. 
+Given this Hamiltonian splitting it is convenient to change to the so
+called interaction picture. For an operator $O(x)$ the interaction picture transformed
+operator, $O_I(x)$, generated by $H_0$ is defined as
+\begin{equation}
+O_I(x)=\exp(-iH_0x)O(x)\exp(iH_0x),
+\end{equation}
+and the corresponding evolution equation is
+\begin{equation}
+\pa{\rho_I(E,x)}{x} = -i [ H_{1I} (E,x), \rho_I(E,x) ]~.
+\label{eq:schrodinger_int}
+\end{equation}
+
+So far we have only incorporated vacuum oscillations and matter
+effects through coherent interactions, but we now wish to extend this
+formalism to incorporate noncoherent interactions and collective
+neutrino behavior. In what follows we will remove the subindex $I$ and
+assume that all operators, unless specified, are on the interaction picture 
+This problem has been extensively discussed in the literature,
+\citep{Sigl:1992fn,Duan:2010tk,Strack:qd,Zhang:2013ay,
+ Cirelli:mw,Blennow:2007tw,Arguelles:2012cf}, for definiteness we
+follow the formalism and notation given in
+\citep{Gonzalez-Garcia:2005xw}.
+The neutrino (antineutrino), $\rho$ $(\bar\rho)$, kinetic equations are
+\begin{subequations}
+\begin{eqnarray}
+\pa{\rho(E,x)}{x} &=& -i [ H_1 (E,x), \rho(E,x) ] - \left\{ \Gamma(E,x),
+  \rho(E,x) \right\} + F\left[\rho,\bar\rho;E,x\right] ,\\
+%
+\pa{\bar\rho(E,x)}{x} &=& i [ H^*_1 (E,x), \bar\rho(E,x) ] - \left\{ \bar\Gamma(E,x),
+  \rho(E,x) \right\} + \bar F\left[\rho,\bar\rho;E,x\right] ,
+\end{eqnarray}
+\end{subequations}
+where $\Gamma$ and $\bar\Gamma$  are functions that incorporate the effect of attenuation due to
+noncoherent interactions, and $F$ and $\bar F$  are  functionals on
+$\rho$ and $\bar\rho$ that takes into account interactions between
+different energies for neutrinos and antineutrinos respectively. From
+now on we use the bar notation to refer to antiparticles.
+In {\ttf nuSQuIDS} the attenuation terms are
+
+\begin{subequations}
+\begin{eqnarray}
+\Gamma(E,x) &=& \frac{1}{2} \sum_\alpha  \frac{\Pi_\alpha(E,x)}{
+  \lambda^\alpha_{\rm NC}(E,x)+\lambda^\alpha_{\rm CC}(E,x)},\label{eq:gammarhoa} \\
+%
+\bar\Gamma(E,x) &=& \frac{1}{2} \sum_\alpha  \frac{\bar\Pi_\alpha(E,x)}{
+  \bar\lambda^\alpha_{\rm NC}(E,x)+\bar\lambda^\alpha_{\rm CC}(E,x)
+  + \bar\lambda^\alpha_{\rm GR}(E,x)}, \label{eq:gammarhob}
+\end{eqnarray}
+\end{subequations}
+where $\Pi_\alpha(E,x)$ is the neutrino projector onto flavor $\alpha \in
+\{e,\mu,\tau\}$, $\lambda^\alpha_{\rm CC}$ ($\lambda^\alpha_{\rm NC}$)
+is the charged (neutral) current neutrino interaction length,
+given by $(N_{nuc}(x)\sigma^\alpha_{\rm CC(NC)}(E))^{-1}$, and
+$\bar\lambda^e_{\rm GR}$ is the mean free path due to the Glashow
+resonance $(N_{e}(x)\sigma^e_{\rm GR}(E))^{-1}$. Notice that we assume
+the matter only contains electrons, protons, and neutrons,
+i.e. $\bar\lambda^\mu_{\rm GR}=\bar\lambda^\tau_{\rm GR}=0$.
+The other interaction terms are as follows
+\begin{subequations}
+  \begin{eqnarray}
+    F\left[\rho,\bar\rho;E,x\right] &=& \sum_\alpha \Pi_\alpha(E,x)  \int_E^\infty  
+    {\rm Tr}\left[\Pi_\alpha(E_{\nu_\alpha},x) \rho(E_{\nu_\alpha},x) \right]
+    \frac{1}{\lambda^\alpha_{\rm NC}(E_{\nu_\alpha},x)} \pa{N^\alpha_{\rm
+        NC}(E_{\nu_\alpha},E)}{E} dE_{\nu_\alpha}  \label{eq:intro} \nonumber\\
+    &&  + \Pi_\tau (E,x) \int_E^\infty\int_{E_\tau}^\infty  
+    {\rm Tr} \left[ \Pi_\tau(E_{\nu_\tau},x)
+      \rho(E_{\nu_\tau},x)\right] \nonumber\\
+    && \hspace{2cm} \times \frac{1}{\lambda^\tau_{\rm CC}(E_{\nu_\tau},x)}
+    \pa{N^{\tau}_{\rm CC} (E_{\nu_\tau},E_\tau)}{E_\tau}
+    \pa{N^{\rm all}_{\rm dec}
+      (E_\tau,E)}{E}  dE_{\nu_\tau} dE_\tau  \nonumber \\
+    &&  + \Big({\rm Br}_e \Pi_e (E,x)+{\rm
+      Br}_\mu\Pi_\mu (E,x)\Big) \int_E^\infty\int_{E_\tau}^\infty  
+    {\rm Tr} \left[
+      \bar\Pi_\tau(E_{\bar\nu_\tau},x)
+      \bar\rho(E_{\bar\nu_\tau},x)\right]\nonumber\\
+    && \hspace{2cm} \times \frac{1}{\bar\lambda^\tau_{\rm CC} ( E_{\bar\nu_\tau},x)}
+    \pa{\bar N^{\tau}_{\rm CC} (E_{\bar\nu_\tau},E_\tau)}{E_\tau}
+    \pa{\bar N^{\rm lep}_{\rm dec}
+      (E_\tau,E)}{E}  dE_{\bar\nu_\tau}
+    dE_\tau 
+    \label{eq:Fterm}
+  \end{eqnarray}
+  \begin{eqnarray}
+    \bar F\left[\rho,\bar\rho;E,x\right] &=& \sum_\alpha \bar\Pi_\alpha(E,x)  \int_E^\infty  
+    {\rm Tr}\left[\bar\Pi_\alpha(E_{\bar\nu_\alpha},x) \bar\rho(E_{\bar\nu_\alpha},x) \right]
+    \frac{1}{\bar\lambda^\alpha_{\rm NC}(E_{\bar\nu_\alpha},x)} \pa{\bar N^\alpha_{\rm
+        NC}(E_{\bar\nu_\alpha},E)}{E} dE_{\bar\nu_\alpha}  \label{eq:intro} \nonumber\\
+    &&  + \bar\Pi_\tau (E,x) \int_E^\infty\int_{E_\tau}^\infty  
+    {\rm Tr} \left[ \bar\Pi_\tau(E_{\bar\nu_\tau},x)
+      \bar\rho(E_{\bar\nu_\tau},x)\right] \nonumber\\
+    && \hspace{2cm} \times \frac{1}{\bar\lambda^\tau_{\rm CC}(E_{\nu_\tau},x)}
+    \pa{\bar N^{\tau}_{\rm CC} (E_{\bar\nu_\tau},E_\tau)}{E_\tau}
+    \pa{\bar N^{\rm all}_{\rm dec}
+      (E_\tau,E)}{E}  dE_{\bar\nu_\tau} dE_\tau  \nonumber \\
+    &&  + \Big({\rm Br}_e \bar\Pi_e (E,x)+{\rm
+      Br}_\mu\bar\Pi_\mu (E,x)\Big) \int_E^\infty\int_{E_\tau}^\infty  
+    {\rm Tr} \left[
+      \Pi_\tau(E_{\nu_\tau},x)
+      \rho(E_{\nu_\tau},x)\right]\nonumber\\
+    && \hspace{2cm} \times \frac{1}{\lambda^\tau_{\rm CC} ( E_{\nu_\tau},x)}
+    \pa{N^{\tau}_{\rm CC} (E_{\nu_\tau},E_\tau)}{E_\tau}
+    \pa{N^{\rm lep}_{\rm dec}
+      (E_\tau,E)}{E}  dE_{\nu_\tau}
+    dE_\tau \label{eq:antiFterm}\\ 
+    && + \left(\sum_\alpha \bar\Pi_\alpha(E,x)\right) \int_E^\infty {\rm Tr}
+    \left[\bar\Pi(E_{\bar\nu_e},x)\bar\rho(E_{\bar\nu_e},x)\right]
+    \frac{1}{\bar\lambda_{\rm GR} ( E_{\bar\nu_e},x)}
+    \pa{\bar N^e_{\rm GR} (E_{\bar\nu_e},E)}{E}
+    d E_{\bar\nu_e}\nonumber
+  \end{eqnarray}
+\end{subequations}
+where ${\rm Br}_\alpha$ is the $\tau$ branching ratio to $\nu_\alpha$,
+\begin{subequations}
+  \begin{eqnarray}
+    \pa{N^{\alpha}_{\rm CC (NC)}
+      (E_{\nu_\alpha},E_\alpha)}{E_\alpha}&=&\frac{1}{\sigma^\alpha_{\rm
+        CC(NC)} (E_{\nu_\alpha})} \pa{\sigma^\alpha_{\rm
+        CC(NC)} (E_{\nu_\alpha},E_\alpha)}{E_\alpha}, \\
+    \pa{\bar N^{e}_{\rm GR}
+      (E_{\bar\nu_e},E_e)}{E_e}&=&\frac{1}{\bar\sigma^e_{\rm
+        GR} (E_{\bar\nu_e})} \pa{\bar\sigma^e_{\rm
+        GR} (E_{\bar\nu_e},E_e)}{E_e},
+  \end{eqnarray}
+\end{subequations}
+are the charged current, neutral current, and Glashow resonance
+interaction. The $\tau$ decay distribution in all modes and leptonic
+modes are
+\begin{eqnarray}
+\pa{N^{\rm lep}_{\rm
+    dec}(E_\tau,E)}{E}&=&\frac{1}{{\tilde\Gamma_{\rm lep}}^\tau(E_\tau)}
+\pa{\tilde\Gamma_{\rm lep}^\tau(E_{\tau},E)}{E}, \\
+\pa{N^{\rm all}_{\rm
+    dec}(E_\tau,E)}{E}&=&\frac{1}{{\tilde\Gamma_{\rm all}}^\tau(E_\tau)}
+\pa{\tilde\Gamma_{\rm all}^\tau(E_{\tau},E)}{E}, 
+\end{eqnarray}
+where $\tilde \Gamma^\tau(E_{\tau})=\frac{E_{\tau}}{m_\tau}\tau_\tau$,
+in which $m_\tau$ is the $\tau$ mass and $\tau_\tau$ is the $\tau$
+lifetime, ``all'' and ``lep'' indicate the all and leptonic $\tau$
+decay modes respectively.
+
+The first term in \eqref{eq:Fterm} and \eqref{eq:antiFterm} accounts for
+neutrino re-injection at lower energies coming from
+\eqref{eq:gammarhoa} and \eqref{eq:gammarhob} due to neutral current
+interaction.
+The second and third term is the injection due to the $\tau$ decay
+in to $\nu_\tau$ and in the other flavors in the leptonic case: this
+is known as tau-regeneration. It is important to note that the latter
+terms couple neutrinos and antineutrinos propagation.
+Finally the last term in \eqref{eq:antiFterm} account for the
+neutrinos produces in the Glashow resonance due to $W^-$ decay.
+
+In the code the energy dependency is treated in a discrete way, and
+the energy integrals are solved using discrete summations, for more
+details refer to \citep{SQUIDS}.
+
+\section{Description of the code} 
+\label{sec:code} 
+
+$\nu$-SQuIDS is a {\ttf C++} code build using the SQuIDS class and
+framework \citep{SQUIDS}. It is designed to propagate neutrinos
+through media while taking into account flavor oscillations and
+noncoherent interactions. 
+
+In order to allow the user to compute simple oscillation probabilities
+for a single energy the code has a simplified mode.
+In this mode the neutrino energy is fixed and only coherent interactions
+are implemented.
+In this case, only Eq. \eqref{eq:schrodinger} is relevant for the
+neutrino propagation, and the {\ttf nuSQuIDS} class implements {\ttf
+  SQuIDS::H0} as in Eq. \eqref{eq:h0} and {\ttf SQuIDS::HI} as given
+in Eq. \eqref{eq:hi}. 
+
+In the default mode a statistical ensemble of neutrinos is
+considered. The ensemble is described by means of a set of {\ttf
+  SU\_vector} objects located at fixed  energy nodes spaced over the
+energy region under consideration. Besides defining {\ttf SQuIDS::H0}
+and {\ttf SQuIDS::HI}, as in the simplified single energy mode, the
+following functions are also defined: {\ttf SQuIDS::GammaRho} by
+equations \eqref{eq:gammarhoa} and \eqref{eq:gammarhob}, and {\ttf
+  SQuIDS::InteractionsRho} in equations \eqref{eq:Fterm} and
+\eqref{eq:antiFterm}. Furthermore, in the latter equation
+\eqref{eq:antiFterm} $\tau$-regeneration is implemented assuming
+instantaneous $\tau$ decay.
+
+Even though the {\ttf nuSQuIDS} class implements all the necessary
+differential equations we must still specify the neutrino propagation
+environment, its trajectory, and the relevant cross sections.  For
+example, when interactions are considered the {\ttf nuSQuIDS} instance
+will automatically construct appropriate {\ttf NeutrinoCrossSections}
+and {\ttf TauDecaySpectra} objects to evaluate cross sections and
+$\tau$ physics respectively. On the other hand, the user must
+explicitly specify the neutrino propagation medium and trajectory
+through relevant specialization of {\ttf Body} and {\ttf Body::Track}.
+
+Finally, {\ttf nuSQuIDS} provides a set functions to evaluate the
+neutrino ensemble flavor and mass composition as well as the
+capability to store the system state in an HDF5 \citep{folk1999hdf5}
+file for later use.
+
+\input{body_track.tex}
+\input{cross_section_tau_decay.tex}
+\input{nusquids_class.tex}
+\input{nusquidsatm_class.tex}
+
+
+
+\section{Examples and benchmarks} 
+\label{sec:examples} 
+
+\subsection{{\it Single} energy mode}
+
+In this section we illustrate the usage of the {\it single} energy mode. A full written example can be found in {\ttf nuSQUIDS/examples/osc\_example.cpp}; here only code snippets will be shown.
+
+\subsubsection{Example 1}
+
+In this first example, shown in Listing \ref{ex:sin1}, we will define a {\ttf nuSQUIDS} instance, set the mixing angles, and then calculate $P(\nu_\mu \to \nu_e$) for a 500 km baseline experiment in the Earth.
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
+// create a nuSQUIDS object setting number of flavors = 3
+nuSQUIDS nus(3,"neutrino");
+
+// We can change the mixing angles from their defaults
+nus.Set("th12",0.563942);
+nus.Set("th13",0.154085);
+nus.Set("th23",0.785398);
+// square mass differences
+nus.Set("dm21sq",7.65e-05);
+nus.Set("dm31sq",0.00247);
+// CP phase
+nus.Set("delta1",0.0);
+
+// We must set the neutrino energy
+nus.Set_E(10.0*nus.units.GeV);
+
+// For this example lets consider a long baseline experiment
+double baseline = 500.0*nus.units.km;
+// create a body object, in this case the Earth
+std::shared_ptr<Earth> earth = std::make_shared<Earth>();
+// create a trajectory on the body. In this case the Earth
+// trajectory is given by three quantities: Initial position,
+// Final position, and Baseline.
+std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(0.0,baseline,baseline);
+// Then we set the body and trajectory in the nuSQUIDS object.
+nus.Set_Body(earth);
+nus.Set_Track(earth_track);
+
+// We must specify the initial neutrino flavor composition
+// In this case we will start with a pure nu_mu state.
+std::vector<double> ini_state{0,1,0};
+nus.Set_initial_state(ini_state,"flavor");
+
+// Now that we have all the pieces in place we can tell the
+// nuSQUIDS object to evolve the given state.
+nus.EvolveState();
+
+// Then we can evaluate, for example, the nu_e content
+nus.EvalFlavor(0);
+
+\end{lstlisting}
+
+\subsubsection{Example 2}
+
+Even though we recommend to use the {\it multiple} energy mode when considering a range of energies
+this can also be performed in the single energy mode. Lets assume that a set of energies is provided in 
+{\ttf std::vector<double> energy\_range}, then the code snip in Listing \ref{ex:sin2} presents how this could be implemented (results of this can be seen in Fig. \ref{fig:atmo_osc})
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin2 ]
+nuSQUIDS nus(3,"neutrino");
+double phi = acos(-1.0);
+std::vector<double> ini_state{0,1,0};
+nus.Set_Body(std::make_shared<EarthAtm>());
+nus.Set_Track(std::make_shared<EarthAtm::Track>(phi));
+for( double enu : energy_range ){
+	nus.Set_E(enu);
+	nus.Set_initial_state(ini_state,"flavor");
+	nus.EvolveState();
+	std::cout << nus.EvalFlavor(1) << std::endl;
+}
+\end{lstlisting}
+
+\begin{figure}[ht]
+\begin{center}
+\label{fig:atmo_osc}
+\includegraphics[width=0.8\textwidth]{./fig/earth_oscillation.pdf}
+\caption{Single mode neutrino oscillation probability in a constant density matter environment.}
+\end{center}
+\end{figure}
+
+In the above example we could had rather fix the energy and reset the {\ttf Track} in order to explore the probability as a function of baseline. 
+
+\subsubsection{Example 3}
+
+We can also use the custom environments provided, such as {\ttf ConstantDensity} and {\ttf VariableDensity}. For example in case we want to consider $\rho = 13 {\rm gr}/{\rm cm}^3$ and $y_e = 0.5$ we can use the code snipped in Listing \ref{ex:sin3}, which result is shown in Fig. \ref{fig:nu_mu_nue_single_energy},
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin3]
+nuSQUIDS nus(3,"neutrino");
+double phi = acos(-1.0);
+std::vector<double> ini_state{0,1,0};
+nus.Set_Body(std::make_shared<ConstantDensity>(13.0,0.5));
+nus.Set_Track(std::make_shared<ConstantDensity::Track>(0.0,1000.0*nus.units.km));
+for( double enu : energy_range ){
+	nus.Set_E(enu);
+	nus.Set_initial_state(ini_state,"flavor");
+	nus.EvolveState();
+	std::cout << nus.EvalFlavor(0) << std::endl;
+}
+\end{lstlisting}
+
+\begin{figure}[ht]
+\begin{center}
+\label{fig:nu_mu_nue_single_energy}
+\includegraphics[width=0.8\textwidth]{./fig/nu_mu_nue_single_energy.pdf}
+\caption{Single mode neutrino oscillation probability in a constant density matter environment.}
+\end{center}
+\end{figure}
+
+\subsection{{\it Multiple} energy mode}
+
+As explained in the text the {\it multiple} energy mode can consider a {\it set} of neutrino energies. The simplest thing that can be done is to 
+
+\subsubsection{Example 1}
+
+In this mode we can actually input a neutrino flux and propagate it in its environment. For example we could propagate $\phi(E) = \phi_0 E^{-1} \Pi_\mu$, i.e. power law pure $\nu_\mu$ flux, through the Earth. In Listing \ref{ex:mul1} we shall consider the this case and further demonstrate the how to consider more neutrino flavors. The results of the following code are shown in Figure \ref{fig:sterile_osc}.
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:mul1]
+nuSQUIDS nus(1.,1.e2,200,4,"neutrino",true,false);
+
+double phi = acos(-1.);
+std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
+std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
+
+// set sterile parameters while leaving the rest at default
+nus.Set("dm41sq", 3.0);
+nus.Set("th24", 0.7);
+
+nus.Set("rel_error", 1.0e-9);
+nus.Set("abs_error", 1.0e-9);
+
+// construct the initial state
+vector<double> E_range = nus.GetERange();
+array2D inistate(E_range.size());
+double N0 = 1.0e18;
+for ( int i = 0 ; i < inistate.size(); i++){
+      inistate[i].resize(3);
+      for ( int k = 0; k < 3; k ++){
+        // initialze muon state
+        inistate[i][k] = (k == 1) ? N0*pow(E_range[i],-2) : 0.0;
+      }
+}
+// set the initial state
+nus.Set_initial_state(inistate,"flavor");
+
+nus.EvolveState();
+// save the result
+nus.WriteStateHDF5("./mulene_example1.hdf5");
+\end{lstlisting}
+
+\begin{figure}[ht]
+\begin{center}
+\label{fig:sterile_osc}
+\includegraphics[width=0.8\textwidth]{./fig/sterile_osc_demo.pdf}
+\caption{Single mode neutrino oscillation probability in a constant density matter environment.}
+\end{center}
+\end{figure}
+
+\subsubsection{Example 2}
+
+We can further consider the the propagation of $\phi(E) = \phi_0 E^{-1} ( \Pi_\mu + \Pi_\tau )$, again through the Earth, but considering $\tau$ regeneration. 
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+
+\end{lstlisting}
+
+\section{Python Interface}
+
+As the particle physics community has transition from {\ttfamily FORTRAN} to {\ttfamily C++} based Monte Carlos, it is also a current trent to be able to interface particle physics software with high level interpreted languages such as {\ttfamily Mathematica}, {\ttfamily R}, and {\ttfamily Python}. Of these languages we have decided to implement bindings with Python due to the well developed {\ttfamily C++}-{\ttfamily Python} bindings given by the {\ttfamily Boost} library. In later version of this software we may incorporate interfaces to other high level languages; though, note, that in particular {\ttfamily Mathematica} architecture is not object oriented and bindings to other languages only exist in {\ttfamily C} and {\ttfamily FORTRAN}.
+
+\subsection{Installation}
+
+In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost-C++} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following commands to install the bindings
+
+\begin{lstlisting}[language=Bash]
+./config --with-python-bindings
+make && make install
+\end{lstlisting}
+
+After successful installation you can import the python bindings in the following manner
+
+\begin{lstlisting}[language=Python]
+import nuSQUIDSpy as nsq
+\end{lstlisting}
+where here we have introduce the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extended the
+capabilities of nuSQuIDS in {\ttfamily Python} by means of the the {\ttfamily nuSQUIDSTools} python module. When 
+this module is loaded the nuSQuIDS functions and objects get overloaded with python only functionalities. In order to enable this, after loading the {\ttfamily nuSQUIDSpy} module, do
+
+\begin{lstlisting}[language=Python]
+import nuSQUIDSTools
+\end{lstlisting}
+
+
+\subsection{Description of the interface}
+
+
+
+\subsection{Examples}
+
+\section{Conclusions \& Acknowledgements} 
+\label{sec:conclu} 
+
+\bibliographystyle{plain}
+%\bibliographystyle{elsarticle-harv}
+\bibliography{nusquids}
+
+\end{document}
+
