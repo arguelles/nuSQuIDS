@@ -997,23 +997,6 @@ class nuSQUIDSAtm {
     *************************************************************************************/
 
     /// \brief Basic constructor.
-    /// @param costh_min Minimum cos(th) value.
-    /// @param costh_max Maximum cos(th) value.
-    /// @param costh_div Number of divisions in cos(th).
-    /// @param energy_min Minimum neutrino energy value [ev].
-    /// @param energy_max Maximum neutrino energy value [eV].
-    /// @param energy_div Number of energy divisions.
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
-    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
-    template<typename... ArgTypes> nuSQUIDSAtm(double costh_min,double costh_max,unsigned int costh_div,
-                ArgTypes&&... args):
-    nuSQUIDSAtm(linspace(costh_min,costh_max,costh_div-1),
-        std::forward<ArgTypes>(args)...)
-    {}
-
-    /// \brief Basic constructor.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
     /// @param energy_min Minimum neutrino energy value [ev].
     /// @param energy_max Maximum neutrino energy value [eV].
@@ -1022,8 +1005,8 @@ class nuSQUIDSAtm {
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
-    template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array,
-                ArgTypes&&... args):
+    template<typename... ArgTypes>
+    nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args):
     costh_array(costh_array)
     {
       gsl_rng_env_setup();
@@ -1038,7 +1021,7 @@ class nuSQUIDSAtm {
 
       unsigned int i = 0;
       for(BaseSQUIDS& nsq : nusq_array){
-        nsq = BaseSQUIDS(std::forward<ArgTypes>(args)...);
+        nsq = BaseSQUIDS(args...);
         if(!ncs)
           ncs=nsq.GetNeutrinoCrossSections();
         nsq.Set_Body(earth_atm);

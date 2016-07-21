@@ -127,6 +127,7 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
   nsun = numneu;
 
   ne = E_vector.size();
+  assert(ne>0);
 
   //===============================
   // BEGIN                       //
