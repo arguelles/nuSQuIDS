@@ -989,6 +989,12 @@ void nuSQUIDS::EvolveState(){
   if( !ioscillations && iinteraction)
     SetUpInteractionCache();
 
+  // is track time reversed
+  if(track->GetFinalX() < track->GetInitialX()){
+    // flip the arrow of time
+    Set_h((-1.0)*Get_h());
+  }
+
   if ( body->IsConstantDensity() and not iinteraction ){
     // when only oscillations are considered and the density is constant
     // we can ju st rotate the system to the propagation eigenstates

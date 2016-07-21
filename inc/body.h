@@ -87,6 +87,12 @@ class Body{
           double GetInitialX() const { return xini; }
           /// \brief Returns the final position measured along the trajectory.
           double GetFinalX() const { return xend; }
+          /// \brief Reverses the track initial and final position
+          void ReverseTrack() {
+            double xtmp = xend;
+            xend = xini;
+            xini = xtmp;
+          }
           /// \brief Returns parameters that define the trajectory.
           std::vector<double> GetTrackParams() const {
             std::vector<double> TrackParams{xini,xend};
