@@ -382,9 +382,6 @@ protected:
     std::unique_ptr<double[]> interaction_cache_store;
     ///Total size of interaction_cache_store
     size_t interaction_cache_store_size;
-    ///Cache of precalculated results for InteractionsScalar.
-    ///Used only when interactions are on and oscillations are off.
-    marray<double,2> scalar_interaction_cache;
   
     ///Initialize the interaction cahce data structures to the corretc sizes for
     ///the current problem.
@@ -480,8 +477,6 @@ protected:
     void GetCrossSections();
   private:
 
-    /// \brief Sets all scalar arrays to zero.
-    void SetScalarsToZero();
     /// \brief Prints progress bar.
     /// \details To enable it call Set_ProgressBar()
     void ProgressBar() const;

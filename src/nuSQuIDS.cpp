@@ -135,20 +135,10 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
 
   try {
     // initialize SQUIDS
-    if (iinteraction)
-      ini(ne,numneu,nrhos,nrhos,xini);
-    else
-      ini(ne,numneu,nrhos,0,xini);
+    ini(ne,numneu,nrhos,0,xini);
   } catch (std::exception& ex) {
     std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
-  }
-
-  try{
-    SetScalarsToZero();
-  } catch (std::exception& ex) {
-    std::cerr << ex.what() << std::endl;
-    throw std::runtime_error("nuSQUIDS::init : Failed while trying to set scalar arrays to zero [SetScalarsToZero].");
   }
 
   Set_CoherentRhoTerms(true);
@@ -213,8 +203,6 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
   if(iinteraction){
     Set_NonCoherentRhoTerms(true);
     Set_OtherRhoTerms(true);
-    Set_GammaScalarTerms(true);
-    Set_OtherScalarTerms(true);
   }
   
   //precompute this product for HI to avoid repeating expensive pow() calls.
@@ -407,16 +395,6 @@ double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
 
 double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
   return 0.;
-  if (not iinteraction)
-    return 0.0;
-  if(not ioscillations) //can use precomputed result
-    return scalar_interaction_cache[iscalar][ei];
-
-  double nutautoleptau = 0.0;
-  for(unsigned int e2 = ei + 1; e2 < ne; e2++)
-    nutautoleptau += (evol_b1_proj[iscalar][2][e2]*state[e2].rho[iscalar])*
-                     (int_struct->invlen_CC[iscalar][2][e2])*(int_struct->dNdE_CC[iscalar][2][e2][ei])*delE[e2-1];
-  return nutautoleptau;
 }
 
 double nuSQUIDS::GetNucleonNumber() const{
@@ -531,9 +509,6 @@ void nuSQUIDS::SetUpInteractionCache(){
       ptr+=vector_size+padding;
     }
   }
-  
-  //also set the correct size for the scalar cache
-  scalar_interaction_cache.resize(std::initializer_list<size_t>{nrhos,ne});
 }
 
 void nuSQUIDS::UpdateInteractions(){
@@ -699,19 +674,6 @@ void nuSQUIDS::UpdateInteractions(){
       }
     }
 
-    //scalar interactions for nu_tau
-    for(unsigned int rho = 0; rho < nrhos; rho++){
-      //first initialize to zero
-      for(unsigned int e1=0; e1<ne; e1++)
-        scalar_interaction_cache[rho][e1]=0;
-      for(unsigned int e2=1; e2<ne; e2++){
-        double temp=(evol_b1_proj[rho][2][e2]*state[e2].rho[rho])*int_struct->invlen_CC[rho][2][e2];
-        double* dNdE_CC_ptr=&int_struct->dNdE_CC[rho][2][e2][0];
-        SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_ptr,preferred_alignment*sizeof(double));
-        for(unsigned int e1=0; e1<e2; e1++)
-          scalar_interaction_cache[rho][e1]+=temp*dNdE_CC_ptr[e1]*delE[e2-1];
-      }
-    }
   }
   
     if(debug)
@@ -1038,14 +1000,6 @@ void nuSQUIDS::EvolveState(){
   }
 }
 
-void nuSQUIDS::SetScalarsToZero(void){
-  for(unsigned int rho = 0; rho < nscalars; rho++){
-    for(unsigned int e1 = 0; e1 < ne; e1++){
-        state[e1].scalar[rho] = 0.0;
-    }
-  }
-}
-
 void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
   if( v.size()== 0 )
     throw std::runtime_error("nuSQUIDS::Error:Null size input array.");
@@ -1092,8 +1046,6 @@ void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
       }
     }
   }
-  if(nscalars)
-    SetScalarsToZero();
 
   istate = true;
 };
@@ -1143,8 +1095,6 @@ void nuSQUIDS::Set_initial_state(const marray<double,2>& v, Basis basis){
       }
     }
   }
-  if(nscalars)
-    SetScalarsToZero();
 
   istate = true;
 }
@@ -1198,8 +1148,6 @@ void nuSQUIDS::Set_initial_state(const marray<double,3>& v, Basis basis){
       }
     }
   }
-  if(nscalars)
-    SetScalarsToZero();
   istate = true;
 }
 
