@@ -611,6 +611,8 @@ void nuSQUIDS::UpdateInteractions(){
         for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
           double nu_tau_flux = projector_tau*state[en].rho[rho];
           double other_nu_tau_flux = projector_other_tau*state[en].rho[other_rho];
+          if(nu_tau_flux<=0 && other_nu_tau_flux<=0)
+            continue;
           double dEn = delE[en-1];
           double invlen_CC_tau       = int_struct->invlen_CC[      rho][tau_flavor][en];
           double invlen_CC_other_tau = int_struct->invlen_CC[other_rho][tau_flavor][en];
@@ -620,6 +622,8 @@ void nuSQUIDS::UpdateInteractions(){
             double dEt = delE[et-1];
             const double       neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[      rho][tau_flavor][en][et]*invlen_CC_tau_en);
             const double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau_en);
+            if(neutrino_decay_rate_spectrum<=0 && other_neutrino_decay_rate_spectrum<=0)
+              continue;
             const double       flux_decay_en=      nu_tau_flux*      neutrino_decay_rate_spectrum*dEt;
             const double other_flux_decay_en=other_nu_tau_flux*other_neutrino_decay_rate_spectrum*dEt;
             double* tau_all_ptr=&int_struct->dNdE_tau_all[et][0];
