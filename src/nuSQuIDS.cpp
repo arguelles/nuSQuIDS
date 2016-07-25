@@ -554,6 +554,20 @@ void nuSQUIDS::UpdateInteractions(){
       }
     }
 
+  //Create a local buffer, in the form of an std::vector holding values of type
+  //buf_type, with space for at least buf_size elements. Align data storage
+  //according to preferred_alignment, rounding up the actual size of the buffer
+  //if necessary. All data is initialized to zero.
+  //Produces a pointer named buf_name to the resulting underlying storage, and
+  //hints to the compiler that this pointer points to aligned data.
+  #define ALIGNED_LOCAL_BUFFER(buf_name,buf_type,buf_size) \
+    std::vector<buf_type,aligned_allocator<buf_type>> buf_name ## _vec( \
+      round_up_to_aligned(buf_size),0, \
+      aligned_allocator<buf_type>(log2(preferred_alignment*sizeof(buf_type)))); \
+    buf_type* buf_name=(buf_name ## _vec).data(); \
+    SQUIDS_POINTER_IS_ALIGNED(buf_name,preferred_alignment*sizeof(buf_type)) \
+  // ^ Note lack of trailing semicolon
+  
   //Without oscillations, the entries in evol_b1_proj do not depend on energy.
   //We can exploit this to precalculate the information needed by InteractionsRho
   //performing operations on SU_vectors a number of times proportional to the number
@@ -563,15 +577,12 @@ void nuSQUIDS::UpdateInteractions(){
 
     //first initialize to zero
     memset(interaction_cache_store.get(),0,interaction_cache_store_size*sizeof(double));
-    std::vector<double,aligned_allocator<double>>
-    nc_factors(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
+    ALIGNED_LOCAL_BUFFER(nc_factors,double,ne);
     for(unsigned int rho = 0; rho < nrhos; rho++){
       //for each flavor
       for(unsigned int alpha_active : {0,1,2}){
         //accumulate the contribution of each energy e2 to each lower energy
-        std::fill(nc_factors.begin(),nc_factors.end(),0);
-        double* nc_factor_ptr=&nc_factors[0];
-        SQUIDS_POINTER_IS_ALIGNED(nc_factor_ptr,preferred_alignment*sizeof(double));
+        std::fill(nc_factors_vec.begin(),nc_factors_vec.end(),0);
         for(unsigned int e2=1; e2<ne; e2++){
           //the flux of the current flavor at e2
           double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*state[e2].rho[rho];
@@ -580,7 +591,7 @@ void nuSQUIDS::UpdateInteractions(){
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
           SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
           for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
-            nc_factor_ptr[e1]+=flux_a_e2*(*dNdE_ptr);
+            nc_factors[e1]+=flux_a_e2*(*dNdE_ptr);
         }
         //then compute the multiplication of the flavor projector at each e1
         //with the total contribution from all greater energies
@@ -596,18 +607,14 @@ void nuSQUIDS::UpdateInteractions(){
       if(tauregeneration){
         unsigned int tau_flavor = 2;
         unsigned int other_rho = (rho == 0) ? 1 : 0;
-        std::vector<double,aligned_allocator<double>>
-        tau_hadlep_decays(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
-        std::vector<double,aligned_allocator<double>>
-        tau_lep_decays(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
-        double* tau_hadlep_decays_ptr=tau_hadlep_decays.data();
-        double* tau_lep_decays_ptr=tau_lep_decays.data();
-        SQUIDS_POINTER_IS_ALIGNED(tau_hadlep_decays_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(tau_lep_decays_ptr,preferred_alignment*sizeof(double));
-
+        
+        //first accumulate the flux of taus produced by interaction
+        ALIGNED_LOCAL_BUFFER(tau_decay_fluxes,double,ne);
+        ALIGNED_LOCAL_BUFFER(other_tau_decay_fluxes,double,ne);
+        
         squids::SU_vector projector_tau = evol_b1_proj[rho][tau_flavor][0];
         squids::SU_vector projector_other_tau = evol_b1_proj[other_rho][tau_flavor][0];
-
+        
         for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
           double nu_tau_flux = projector_tau*state[en].rho[rho];
           double other_nu_tau_flux = projector_other_tau*state[en].rho[other_rho];
@@ -616,30 +623,38 @@ void nuSQUIDS::UpdateInteractions(){
           double dEn = delE[en-1];
           double invlen_CC_tau       = int_struct->invlen_CC[      rho][tau_flavor][en];
           double invlen_CC_other_tau = int_struct->invlen_CC[other_rho][tau_flavor][en];
-          const double invlen_CC_tau_en       = invlen_CC_tau*dEn;
-          const double invlen_CC_other_tau_en = invlen_CC_other_tau*dEn;
+          double       nu_tau_flux_invlen_CC =       nu_tau_flux*      invlen_CC_tau*dEn;
+          double other_nu_tau_flux_invlen_CC = other_nu_tau_flux*invlen_CC_other_tau*dEn;
+          double* dNdE_CC_rho       = &int_struct->dNdE_CC[      rho][tau_flavor][en][0];
+          double* dNdE_CC_other_rho = &int_struct->dNdE_CC[other_rho][tau_flavor][en][0];
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_rho      ,preferred_alignment*sizeof(double));
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_other_rho,preferred_alignment*sizeof(double));
           for(unsigned int et=1; et<en; et++){ // loop over intermediate tau energies
             double dEt = delE[et-1];
-            const double       neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[      rho][tau_flavor][en][et]*invlen_CC_tau_en);
-            const double other_neutrino_decay_rate_spectrum=(int_struct->dNdE_CC[other_rho][tau_flavor][en][et]*invlen_CC_other_tau_en);
-            if(neutrino_decay_rate_spectrum<=0 && other_neutrino_decay_rate_spectrum<=0)
-              continue;
-            const double       flux_decay_en=      nu_tau_flux*      neutrino_decay_rate_spectrum*dEt;
-            const double other_flux_decay_en=other_nu_tau_flux*other_neutrino_decay_rate_spectrum*dEt;
-            double* tau_all_ptr=&int_struct->dNdE_tau_all[et][0];
-            double* tau_lep_ptr=&int_struct->dNdE_tau_lep[et][0];
-            SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
-            SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
-            for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-              tau_hadlep_decays_ptr[e1] +=       flux_decay_en*tau_all_ptr[e1];
-              tau_lep_decays_ptr[e1]    += other_flux_decay_en*tau_lep_ptr[e1];
-            }
+            tau_decay_fluxes[et]      +=      nu_tau_flux_invlen_CC*      dNdE_CC_rho[et]*dEt;
+            other_tau_decay_fluxes[et]+=other_nu_tau_flux_invlen_CC*dNdE_CC_other_rho[et]*dEt;
           }
         }
- 
+        
+        //then accumulate the contributions back to the neutrino fluxes from the taus decaying
+        ALIGNED_LOCAL_BUFFER(tau_hadlep_decays,double,ne);
+        ALIGNED_LOCAL_BUFFER(tau_lep_decays,double,ne);
+        
+        for(unsigned int et=1; et<ne; et++){ // loop over intermediate tau energies
+          double* tau_all_ptr=&int_struct->dNdE_tau_all[et][0];
+          double* tau_lep_ptr=&int_struct->dNdE_tau_lep[et][0];
+          SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
+          SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
+          for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
+            tau_hadlep_decays[e1] +=       tau_decay_fluxes[et]*tau_all_ptr[e1];
+            tau_lep_decays[e1]    += other_tau_decay_fluxes[et]*tau_lep_ptr[e1];
+          }
+        }
+        
+        //finally, add those contributions into the state derivatives
         squids::SU_vector projector_e = evol_b1_proj[rho][0][0];
         squids::SU_vector projector_mu = evol_b1_proj[rho][1][0];
-        for(unsigned int e1=0; e1<ne; e1++){
+        for(unsigned int e1=0; e1<ne; e1++){ // loop over final neutrino energies
           interaction_cache[rho][e1]+=squids::detail::guarantee
                                       <squids::detail::EqualSizes | squids::detail::AlignedStorage>
                                       (tau_hadlep_decays[e1]*projector_tau);
@@ -658,17 +673,14 @@ void nuSQUIDS::UpdateInteractions(){
         projector_sum += projector_e;
         projector_sum += evol_b1_proj[rho][1][0];
         projector_sum += evol_b1_proj[rho][2][0];
-        std::vector<double,aligned_allocator<double>>
-        gr_factors(round_up_to_aligned(ne),0,aligned_allocator<double>(log2(preferred_alignment*sizeof(double))));
-        double* gr_factor_ptr=&gr_factors[0];
-        SQUIDS_POINTER_IS_ALIGNED(gr_factor_ptr,preferred_alignment*sizeof(double));
+        ALIGNED_LOCAL_BUFFER(gr_factors,double,ne);
         for(unsigned int e2=1; e2<ne; e2++){
           double flux=projector_e*state[e2].rho[rho];
           double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
           double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
           SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
           for(unsigned int e1=0; e1<e2; e1++)
-            gr_factor_ptr[e1] += flux_invlen_en*dNdE_GR_ptr[e1];
+            gr_factors[e1] += flux_invlen_en*dNdE_GR_ptr[e1];
         }
         for(unsigned int e1=0; e1<ne; e1++){
           interaction_cache[rho][e1]+=squids::detail::guarantee
@@ -680,8 +692,9 @@ void nuSQUIDS::UpdateInteractions(){
 
   }
   
-    if(debug)
-      std::cout << "============ END UpdateInteractions ============" << std::endl;
+  if(debug)
+    std::cout << "============ END UpdateInteractions ============" << std::endl;
+  #undef ALIGNED_LOCAL_BUFFER
 }
 
 void nuSQUIDS::InitializeInteractions(){
