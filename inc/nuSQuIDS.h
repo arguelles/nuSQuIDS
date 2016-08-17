@@ -496,23 +496,6 @@ protected:
     /// @see PreDerive
     virtual void AddToPreDerive(double x){}
 
-    /// \brief Multiple energy mode constructor using precalculated cross section information.
-    /// @param E_vector Energy nodes [eV].
-    /// @param numneu Number of neutrino flavors.
-    /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
-    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
-    /// @param int_struct Structure that contains cross section information.
-    /// @warning The user should assure that the cross section struct has the same range as the provided energy range
-    /// @see init
-    /// \todo put asserts here to ensure some minimal safety 
-    nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT,std::shared_ptr<InteractionStructure> int_struct,
-             bool iinteraction = true):
-    numneu(numneu),iinteraction(iinteraction),NT(NT),int_struct(int_struct)
-    {
-     // assert(int_struct.
-      init(E_vector);
-    }
-
     /// \brief Reads and constructs the object from an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
     /// @param group Path to the group where the nuSQUIDS content will be saved.
