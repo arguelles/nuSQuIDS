@@ -9,7 +9,7 @@ int main(){
 
   squids::Const units;
 
-  nuSQUIDS nus(1.e0*units.GeV,1.e1*units.GeV,60,3,neutrino,false,false);
+  nuSQUIDS nus(linspace(1.e0*units.GeV,1.e1*units.GeV,60),3,neutrino,false);
   auto energy_range = nus.GetERange();
 
   // set mixing angles and masses

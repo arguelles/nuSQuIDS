@@ -54,7 +54,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
   public:
   //void constructor, is needed for some wierd reason beyon my capability 
   //of understanding c++ but probably Chris knows
-  nuSQUIDSNSI(){}
+//  nuSQUIDSNSI(){}
   //Constructor
   nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange,unsigned int numneu, NeutrinoType NT,
               bool iinteraction,double th01=0.563942, double th02=0.154085,double th12=0.785398):

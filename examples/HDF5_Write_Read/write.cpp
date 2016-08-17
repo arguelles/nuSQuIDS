@@ -41,14 +41,13 @@ int main()
   unsigned int numneu=3;
 
   //Declaration of the nuSQUIDS object, the arguments are:
-  //(1). Minimum energy
-  //(2). Maximum energy
-  //(3). Number of energy bins
-  //(4). Number of neutrino states
-  //(5). Neutrino or anti-neutrino case
-  //(6). Energy logarithmic scale? 
-  //(7). Scattering non coherent interactions. 
-  nuSQUIDS nus(1.*units.GeV,1.e4*units.GeV,200,numneu,neutrino,true,false);
+  //(1a). Minimum energy
+  //(1b). Maximum energy
+  //(1c). Number of energy bins
+  //(2). Number of neutrino states
+  //(3). Neutrino or anti-neutrino case
+  //(4). Scattering non coherent interactions. 
+  nuSQUIDS nus(logspace(1.*units.GeV,1.e4*units.GeV,200),numneu,neutrino,false);
   
   //Here we define the trajectory that the particle follows and the object for more examples
   // of how construct a track and object look body_track example.

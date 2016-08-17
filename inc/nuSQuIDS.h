@@ -1008,21 +1008,16 @@ class nuSQUIDSAtm {
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
 
-      nusq_array = std::vector<BaseSQUIDS>(costh_array.extent(0));
-
       earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
 
-      unsigned int i = 0;
-      for(BaseSQUIDS& nsq : nusq_array){
-        nsq = BaseSQUIDS(args...);
-        if(!ncs)
-          ncs=nsq.GetNeutrinoCrossSections();
-        nsq.Set_Body(earth_atm);
-        nsq.Set_Track(track_array[i]);
-        i++;
+      for(unsigned int i = 0; i < costh_array.extent(0); i++){
+        nusq_array.emplace_back(args...);
+        nusq_array.back().Set_Body(earth_atm);
+        nusq_array.back().Set_Track(track_array[i]);
       }
+      ncs=nusq_array.front().GetNeutrinoCrossSections();
 
       enu_array = nusq_array.front().GetERange();
       log_enu_array.resize(std::vector<size_t>{enu_array.size()});
