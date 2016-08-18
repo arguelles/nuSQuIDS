@@ -1597,6 +1597,8 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     H5Gclose ( group_id );
   // close HDF5 file
   H5Fclose (file_id);
+  // close all HDF5 variables/memory
+  H5close();
 }
 
 void nuSQUIDS::AddToWriteHDF5(hid_t hdf5_loc_id) const {
@@ -1786,6 +1788,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   // close root and file
   H5Gclose ( root_id );
   H5Fclose (file_id);
+  // close all HDF5 variables/memory
+  H5close();
 
   // we assume that this was created with the writer and got to this point!
   istate = true;
