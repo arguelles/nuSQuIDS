@@ -1362,7 +1362,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     save_cross_section = false;
 
   // this lines supress HDF5 error messages
-  H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
 
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
@@ -1371,15 +1371,16 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // H5F_ACC_TRUNC : overwrittes file
   // H5F_ACC_EXCL  : files if file exists
   if(overwrite)
-    file_id = H5Fopen(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT);
+    file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
   else
     file_id = H5Fopen(str.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 
-  if (file_id < 0) {// file already exists
+  if (file_id < 0) {// file could not be open. Create a new file.
     file_id = H5Fcreate(str.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     if (file_id < 0)
         throw std::runtime_error("nuSQUIDS::Error::Cannot create file at " + str + ".");
   }
+
   root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
   if (strncmp(grp.c_str(),"/",1)!=0){
     std::cout << "nuSQUIDS::WriteStateHDF5::Warning::group location name did not start with '/'. '/' was prepend to " + grp << std::endl;
@@ -1470,34 +1471,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   dset_id = H5LTmake_dataset(group_id,"neustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(neustate.data()));
   dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(aneustate.data()));
 
-/*
-  // writing state flavor and mass composition
-  hsize_t pdim[2] {E_range.size(), static_cast<hsize_t>(numneu)};
-  if ( NT == both )
-    pdim[1] *= 2;
-  std::vector<double> flavor,mass;
-
-  for(unsigned int ie = 0; ie < ne; ie++){
-    // neutrino
-    if (NT == both or NT == neutrino){
-      for(unsigned int i = 0; i < numneu; i++){
-          flavor.push_back(EvalFlavorAtNode(i,ie,0));
-          mass.push_back(EvalMassAtNode(i,ie,0));
-        }
-    }
-      // antineutrino
-    if (NT == both or NT == antineutrino){
-      for(unsigned int i = 0; i < numneu; i++){
-          flavor.push_back(EvalFlavorAtNode(i,ie,0));
-          mass.push_back(EvalMassAtNode(i,ie,0));
-      }
-    }
-  }
-
-  dset_id = H5LTmake_dataset(group_id,"flavorcomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(flavor.data()));
-  idset_id = H5LTmake_dataset(group_id,"masscomp",2,pdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(mass.data()));
-*/
-
   // writing body and track information
   hsize_t trackparamdim[1] {track->GetTrackParams().size()};
   if ( trackparamdim[0] == 0 ) {
@@ -1531,9 +1504,11 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     xs_group_id = H5Gcreate(root_id, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   }
 
-  if (iinteraction and save_cross_section) {
-    if(!interactions_initialized) //TODO: find a better way to deal with this
-      throw std::runtime_error("Unable to save cross sections: not fully initialized");
+  if(iinteraction and save_cross_section) {
+    if(!interactions_initialized){
+      // we shall pay for this sin. Evil. Very evil.
+      const_cast<nuSQUIDS*>(this)->InitializeInteractions();
+    }
     // sigma_CC and sigma_NC
     hsize_t XSdim[3] {static_cast<hsize_t>(nrhos),
                       static_cast<hsize_t>(numneu),
@@ -1616,6 +1591,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   AddToWriteHDF5(user_parameters_id);
   //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
 
+  std::cout << "about to close" << std::endl;
   // close root group
   H5Gclose ( root_id );
   if ( root_id != group_id )
