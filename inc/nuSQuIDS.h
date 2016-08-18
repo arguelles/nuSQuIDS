@@ -1325,6 +1325,7 @@ class nuSQUIDSAtm {
 
       H5Gclose(root_id);
       H5Fclose(file_id);
+      H5close();
 
       // resize apropiately the nuSQUIDSAtm container vector
       nusq_array.clear();
