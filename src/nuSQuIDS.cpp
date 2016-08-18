@@ -764,7 +764,7 @@ void nuSQUIDS::GetCrossSections(){
       // in this case NT is both
       neutype_xs_dict = (std::map<unsigned int,NeutrinoCrossSections::NeutrinoType>){{0, NeutrinoCrossSections::neutrino},{1,NeutrinoCrossSections::antineutrino}};
     }
-  
+
     auto validateCrossSection=[this](double value, double unit, const char* interaction, bool singleDiff, double neuE, double leptE, int flavor){
       //all active neutrino types should have sensible cross sections
       if(flavor<3 && (value<0.0 || std::isinf(value) || std::isnan(value))){
@@ -798,46 +798,19 @@ void nuSQUIDS::GetCrossSections(){
       }
     }
 
-    #ifdef FixCrossSections
-    // fix charge current and neutral current differential cross sections
-    for(unsigned int neutype = 0; neutype < nrhos; neutype++){
-      double XCC_MIN,XNC_MIN,XCC_int,XNC_int,CC_rescale,NC_rescale;
-      for(unsigned int flv = 0; flv < numneu; flv++){
-          XCC_MIN = int_struct->sigma_CC[neutype][flv][0];
-          XNC_MIN = int_struct->sigma_NC[neutype][flv][0];
-          for(unsigned int e1 = 0; e1 < ne; e1++){
-              XCC_int = 0.0;
-              XNC_int = 0.0;
-              for(unsigned int e2 = 0; e2 < e1; e2++){
-                  XCC_int += dsignudE_CC[neutype][flv][e1][e2]*delE[e2];
-                  XNC_int += dsignudE_NC[neutype][flv][e1][e2]*delE[e2];
-              }
-
-              if(e1 != 0 ){
-                  CC_rescale = (int_struct->sigma_CC[neutype][flv][e1] - XCC_MIN)/XCC_int;
-                  NC_rescale = (int_struct->sigma_NC[neutype][flv][e1] - XNC_MIN)/XNC_int;
-
-                  for(unsigned int e2 = 0; e2 < e1; e2++){
-                      dsignudE_CC[neutype][flv][e1][e2] = dsignudE_CC[neutype][flv][e1][e2]*CC_rescale;
-                      dsignudE_NC[neutype][flv][e1][e2] = dsignudE_NC[neutype][flv][e1][e2]*NC_rescale;
-                  }
-              }
-          }
-      }
-    }
-    #endif
-
     // constructing dNdE for DIS
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
           for(unsigned int e1 = 0; e1 < ne; e1++){
               for(unsigned int e2 = 0; e2 < e1; e2++){
                 int_struct->dNdE_NC[rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[rho][flv][e1]);
+//                validateCrossSection(int_struct->dNdE_NC[rho][flv][e1][e2],1.,"NC",false,E_range[e1],E_range[e2],flv);
                 int_struct->dNdE_CC[rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[rho][flv][e1]);
               }
           }
       }
     }
+
     // construct dNdE for Glashow resonance
     {
       GlashowResonanceCrossSection gr_cs;
@@ -848,19 +821,6 @@ void nuSQUIDS::GetCrossSections(){
           dsignudE_GR[e1][e2] = gr_cs.SingleDifferentialCrossSection(E_range[e1],E_range[e2],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
         }
       }
-#ifdef FixCrossSections
-      // Ensure that the differential cross-sections integrate to 1
-      for(unsigned int e1 = 0; e1 < ne; e1++){
-        double X_int = 0.;
-        for(unsigned int e2 = 0; e2 < e1; e2++)
-          X_int += dsignudE_GR[e1][e2]*delE[e2];
-        if (e1 != 0){
-          double rescale = gr_cs.WDecayBranchingFraction(GlashowResonanceCrossSection::muon) * (int_struct->sigma_GR[e1] - int_struct->sigma_GR[0])/X_int;
-          for(unsigned int e2 = 0; e2 < e1; e2++)
-            dsignudE_GR[e1][e2] *= rescale;
-        }
-      }
-#endif //FixCrossSections
       for(unsigned int e1 = 0; e1 < ne; e1++){
         for(unsigned int e2 = 0; e2 < e1; e2++){
           int_struct->dNdE_GR[e1][e2] = dsignudE_GR[e1][e2]/int_struct->sigma_GR[e1];
@@ -885,30 +845,6 @@ void nuSQUIDS::GetCrossSections(){
             int_struct->dNdE_tau_lep[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
         }
     }
-
-    #ifdef FixCrossSections
-    // fix tau decay spectra cross section
-    double taubr_lep = tdc.GetTauToLeptonBranchingRatio();
-    double tau_all_int,tau_lep_int,tau_lep_rescale,tau_all_rescale;
-    for(unsigned int e1 = 1; e1 < ne; e1++){
-        tau_all_int = 0.0;
-        tau_lep_int = 0.0;
-        for(unsigned int e2 = 0; e2 < e1; e2++){
-             tau_all_int += int_struct->dNdE_tau_all[e1][e2]*delE[e2];
-             tau_lep_int += int_struct->dNdE_tau_lep[e1][e2]*delE[e2];
-        }
-
-        if( int_struct->dNdE_tau_all[e1][0]*E_range[0] < 0.25 ) {
-            tau_all_rescale = (1.0 - int_struct->dNdE_tau_all[e1][0]*E_range[0])/tau_all_int;
-            tau_lep_rescale = (taubr_lep - int_struct->dNdE_tau_lep[e1][0]*E_range[0])/tau_lep_int;
-
-            for(unsigned int e2 = 0; e2 < e1; e2++){
-                int_struct->dNdE_tau_all[e1][e2] = int_struct->dNdE_tau_all[e1][e2]*tau_all_rescale;
-                int_struct->dNdE_tau_lep[e1][e2] = int_struct->dNdE_tau_lep[e1][e2]*tau_lep_rescale;
-            }
-        }
-    }
-    #endif
 }
 
 void nuSQUIDS::Set_Body(std::shared_ptr<Body> body_in){
