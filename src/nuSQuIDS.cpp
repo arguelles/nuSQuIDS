@@ -1362,7 +1362,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     save_cross_section = false;
 
   // this lines supress HDF5 error messages
-  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  H5Eset_auto (H5E_DEFAULT,NULL, NULL);
 
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
@@ -1591,7 +1591,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   AddToWriteHDF5(user_parameters_id);
   //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
 
-  std::cout << "about to close" << std::endl;
   // close root group
   H5Gclose ( root_id );
   if ( root_id != group_id )
