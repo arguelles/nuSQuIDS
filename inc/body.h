@@ -247,6 +247,8 @@ class VariableDensity: public Body{
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     VariableDensity(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    /// \brief Destructor.
+    ~VariableDensity();
 
     /// \brief Serialization function
     void Serialize(hid_t group) const;
@@ -279,6 +281,14 @@ class Earth: public Body{
   private:
     /// \brief Radius of the Earth.
     double radius;
+    /// \brief Earth radius position array
+    double * earth_radius;
+    /// \brief Earth density array
+    double * earth_density;
+    /// \brief Earth electron fraction array
+    double * earth_ye;
+    /// \brief Data arrays size
+    unsigned int arraysize;
 
     /// \brief Density gsl spline.
     gsl_spline * inter_density;
@@ -313,6 +323,13 @@ class Earth: public Body{
     /// a given position, while the third column must contain
     /// the electron fraction.
     Earth(std::string earthmodel);
+    /// \brief Constructor in which the user provides, as vectors, the 
+    /// Earth properties.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// \pre All input vectors must be of equal size.
+    Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
     /// \brief Destructor.
     ~Earth();
 
@@ -523,6 +540,16 @@ class EarthAtm: public Body{
     /// \brief Radius of the Earth plus atmosphere.
     double earth_with_atm_radius;
 
+    /// \brief Earth radius position array
+    double * earth_radius;
+    /// \brief Earth density array
+    double * earth_density;
+    /// \brief Earth electron fraction array
+    double * earth_ye;
+    /// \brief Data arrays size
+    unsigned int arraysize;
+
+
     /// \brief Density gsl spline.
     gsl_spline * inter_density;
     /// \brief Density gsl spline auxiliary pointer.
@@ -556,6 +583,13 @@ class EarthAtm: public Body{
     /// a given position, while the third column must contain
     /// the electron fraction.
     EarthAtm(std::string earthmodel);
+    /// \brief Constructor in which the user provides, as vectors, the
+    /// Earth properties.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// \pre All input vectors must be of equal size.
+    EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
     ~EarthAtm();
 
     /// \brief Serialization function

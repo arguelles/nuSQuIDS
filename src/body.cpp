@@ -54,10 +54,13 @@ double Vacuum::ye(const GenericTrack& track_input) const{
 bool Vacuum::IsConstantDensity() const { return true;}
 
 void Vacuum::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5Gclose(g);
 }
 std::shared_ptr<Vacuum> Vacuum::Deserialize(hid_t group){
-
+  return std::make_shared<Vacuum>();
 }
 
 /*
@@ -75,10 +78,23 @@ ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Bod
         }
 
 void ConstantDensity::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_double(group, name,"constant_density",&constant_density,1);
+  H5LTset_attribute_double(group, name,"constant_ye",&constant_ye,1);
+  H5Gclose(g);
 }
-std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
 
+std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "ConstantDensity", H5P_DEFAULT);
+  double const_dens;
+  H5LTget_attribute_double(group,"ConstantDensity","constant_density" ,&const_dens);
+  double const_ye;
+  H5LTget_attribute_double(group,"ConstantDensity","constant_ye" ,&const_ye);
+  H5Gclose(g);
+  return std::make_shared<ConstantDensity>(const_dens,const_ye);
 }
 
 // track constructor
@@ -141,10 +157,29 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
         }
 
 void VariableDensity::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  std::vector<hsize_t> dims {arraysize};
+  H5LTmake_dataset_double(g, "x_arr", 1, dims.data(), x_arr);
+  H5LTmake_dataset_double(g, "density_arr", 1, dims.data(), density_arr);
+  H5LTmake_dataset_double(g, "ye_arr", 1, dims.data(), ye_arr);
+  H5Gclose(g);
 }
-std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
 
+std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "VariableDensity", H5P_DEFAULT);
+  // getting properties
+  unsigned int asize;
+  H5LTget_attribute_uint(group,"VariableDensity","arraysize", &asize);
+  std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
+  H5LTread_dataset_double(g,"x_arr",x_vec.data());
+  H5LTread_dataset_double(g,"density_arr",rho_vec.data());
+  H5LTread_dataset_double(g,"ye_arr",ye_vec.data());
+  H5Gclose(g);
+  return std::make_shared<VariableDensity>(x_vec,rho_vec,ye_vec);
 }
 
 // track constructor
@@ -172,6 +207,12 @@ double VariableDensity::ye(const GenericTrack& track_input) const
           }
         }
 
+VariableDensity::~VariableDensity(){
+  free(x_arr);
+  free(density_arr);
+  free(ye_arr);
+}
+
 /*
 ----------------------------------------------------------------------
          Earth CLASS DEFINITIONS
@@ -183,44 +224,96 @@ Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION)){}
 
 Earth::Earth(std::string filepath):Body(4,"Earth")
 {
-          // The Input file should have the radius specified from 0 to 1.
-          // where 0 is the center of the Earth and 1 is the surface.
-            radius = 6371.0; // [km]
+  // The Input file should have the radius specified from 0 to 1.
+  // where 0 is the center of the Earth and 1 is the surface.
+  radius = 6371.0; // [km]
 
-            marray<double,2> earth_model = quickread(filepath);
-            size_t arraysize = earth_model.extent(0);
+  marray<double,2> earth_model = quickread(filepath);
+  arraysize = earth_model.extent(0);
 
-            double earth_radius[arraysize];
-            double earth_density[arraysize];
-            double earth_ye[arraysize];
+  earth_radius = new double[arraysize];
+  earth_density = new double[arraysize];
+  earth_ye = new double[arraysize];
 
-            for (unsigned int i=0; i < arraysize;i++){
-                earth_radius[i] = earth_model[i][0];
-                earth_density[i] = earth_model[i][1];
-                earth_ye[i] = earth_model[i][2];
-            }
+  for (unsigned int i=0; i < arraysize;i++){
+    earth_radius[i] = earth_model[i][0];
+    earth_density[i] = earth_model[i][1];
+    earth_ye[i] = earth_model[i][2];
+  }
 
-            x_radius_min = earth_radius[0];
-            x_radius_max = earth_radius[arraysize-1];
-            x_rho_min = earth_density[0];
-            x_rho_max = earth_density[arraysize-1];
-            x_ye_min = earth_ye[0];
-            x_ye_max = earth_ye[arraysize-1];
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
 
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
 
-            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_ye_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_ye_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+}
+
+Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body(4,"Earth")
+{
+  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
+  // The Input file should have the radius specified from 0 to 1.
+  // where 0 is the center of the Earth and 1 is the surface.
+  radius = 6371.0; // [km]
+  arraysize = x.size();
+
+  earth_radius = new double[arraysize];
+  earth_density = new double[arraysize];
+  earth_ye = new double[arraysize];
+
+  for (unsigned int i=0; i < arraysize;i++){
+    earth_radius[i] = x[i];
+    earth_density[i] = rho[i];
+    earth_ye[i] = ye[i];
+  }
+
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
+
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
+
+  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_ye_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
 }
 
 void Earth::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  std::vector<hsize_t> dims {arraysize};
+  H5LTmake_dataset_double(g, "earth_radius", 1, dims.data(), earth_radius);
+  H5LTmake_dataset_double(g, "earth_density", 1, dims.data(), earth_density);
+  H5LTmake_dataset_double(g, "earth_ye", 1, dims.data(), earth_ye);
+  H5Gclose(g);
 }
-std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
 
+std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "Earth", H5P_DEFAULT);
+  unsigned int asize;
+  H5LTget_attribute_uint(group,"Earth","arraysize", &asize);
+  std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
+  H5LTread_dataset_double(g,"earth_radius",x_vec.data());
+  H5LTread_dataset_double(g,"earth_density",rho_vec.data());
+  H5LTread_dataset_double(g,"earth_ye",ye_vec.data());
+  H5Gclose(g);
+  return std::make_shared<Earth>(x_vec,rho_vec,ye_vec);
 }
 
 double Earth::density(const GenericTrack& track_input) const
@@ -260,6 +353,9 @@ double Earth::ye(const GenericTrack& track_input) const
         }
 
 Earth::~Earth(){
+  free(earth_radius);
+  free(earth_density);
+  free(earth_ye);
   gsl_spline_free(inter_density);
   gsl_interp_accel_free(inter_density_accel);
   gsl_spline_free(inter_ye);
@@ -275,7 +371,6 @@ Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,
 void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
     TrackParams.push_back(baseline);
 }
-
 
 /*
 ----------------------------------------------------------------------
@@ -518,10 +613,28 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
 }
 
 void EarthAtm::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  std::vector<hsize_t> dims {arraysize};
+  H5LTmake_dataset_double(g, "earth_radius", 1, dims.data(), earth_radius);
+  H5LTmake_dataset_double(g, "earth_density", 1, dims.data(), earth_density);
+  H5LTmake_dataset_double(g, "earth_ye", 1, dims.data(), earth_ye);
+  H5Gclose(g);
 }
-std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
 
+std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "EarthAtm", H5P_DEFAULT);
+  unsigned int asize;
+  H5LTget_attribute_uint(group,"EarthAtm","arraysize", &asize);
+  std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
+  H5LTread_dataset_double(g,"earth_radius",x_vec.data());
+  H5LTread_dataset_double(g,"earth_density",rho_vec.data());
+  H5LTread_dataset_double(g,"earth_ye",ye_vec.data());
+  H5Gclose(g);
+  return std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
 }
 
 EarthAtm::Track::Track():
@@ -601,47 +714,87 @@ double EarthAtm::ye(const GenericTrack& track_input) const
         }
 
 EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
-        {
-            radius = 6371.0; // km
-            atm_height = 22; // km
-            earth_with_atm_radius = radius + atm_height;
+{
+  radius = 6371.0; // km
+  atm_height = 22; // km
+  earth_with_atm_radius = radius + atm_height;
 
-            marray<double,2> earth_model = quickread(filepath);
-            size_t arraysize = earth_model.extent(0);
+  marray<double,2> earth_model = quickread(filepath);
+  arraysize = earth_model.extent(0);
 
-            double earth_radius[arraysize];
-            double earth_density[arraysize];
-            double earth_ye[arraysize];
+  earth_radius = new double[arraysize];
+  earth_density = new double[arraysize];
+  earth_ye = new double[arraysize];
 
-            for (unsigned int i=0; i < arraysize;i++){
-                earth_radius[i] = earth_model[i][0];
-                earth_density[i] = earth_model[i][1];
-                earth_ye[i] = earth_model[i][2];
-            }
+  for (unsigned int i=0; i < arraysize;i++){
+      earth_radius[i] = earth_model[i][0];
+      earth_density[i] = earth_model[i][1];
+      earth_ye[i] = earth_model[i][2];
+  }
 
-            x_radius_min = earth_radius[0];
-            x_radius_max = earth_radius[arraysize-1];
-            x_rho_min = earth_density[0];
-            x_rho_max = earth_density[arraysize-1];
-            x_ye_min = earth_ye[0];
-            x_ye_max = earth_ye[arraysize-1];
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
 
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
 
-            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_ye_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
-        }
+  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_ye_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+}
 
-EarthAtm::~EarthAtm(void)
-        {
-            gsl_spline_free(inter_density);
-            gsl_interp_accel_free(inter_density_accel);
-            gsl_spline_free(inter_ye);
-            gsl_interp_accel_free(inter_ye_accel);
-        }
+EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body(7,"EarthAtm")
+{
+  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
+  // The Input file should have the radius specified from 0 to 1.
+  // where 0 is the center of the Earth and 1 is the surface.
+  radius = 6371.0; // km
+  atm_height = 22; // km
+  earth_with_atm_radius = radius + atm_height;
+  arraysize = x.size();
+
+  earth_radius = new double[arraysize];
+  earth_density = new double[arraysize];
+  earth_ye = new double[arraysize];
+
+  for (unsigned int i=0; i < arraysize;i++){
+    earth_radius[i] = x[i];
+    earth_density[i] = rho[i];
+    earth_ye[i] = ye[i];
+  }
+
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
+
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
+
+  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_ye_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+}
+
+EarthAtm::~EarthAtm(){
+  free(earth_radius);
+  free(earth_density);
+  free(earth_ye);
+  gsl_spline_free(inter_density);
+  gsl_interp_accel_free(inter_density_accel);
+  gsl_spline_free(inter_ye);
+  gsl_interp_accel_free(inter_ye_accel);
+}
+
+
 
 /*
 ----------------------------------------------------------------------
