@@ -41,6 +41,13 @@
 #include <assert.h>
 #include <memory>
 #include <exception>
+// hdf5 serializtion
+#include "H5Epublic.h"
+#include "H5Tpublic.h"
+#include "hdf5.h"
+#include "hdf5_hl.h"
+#include "H5Gpublic.h"
+#include "H5Fpublic.h"
 
 namespace nusquids{
 
@@ -63,6 +70,11 @@ class Body{
     /// \brief Body Constructor;
     Body(unsigned int id_, std::string name_):name(name_),id(id_){}
     virtual ~Body(){}
+
+    /// \brief Serialization function
+    virtual void Serialize(hid_t group) const=0;
+    /// \brief Deserialization function
+    static std::shared_ptr<Body> Deserialize(hid_t group);
 
     /// \class Track
     /// \brief Trajectory subclass. Specifies the trajectory
@@ -130,6 +142,11 @@ class Vacuum: public Body {
     /// \brief Constructor.
     Vacuum():Body(1,"Vacuum"){}
 
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<Vacuum> Deserialize(hid_t group);
+
     /// \class Track
     /// \brief Vacuum trajectory
     class Track: public Body::Track {
@@ -166,6 +183,11 @@ class ConstantDensity: public Body{
     /// @param density Density in g/cm^3.
     /// @param ye electron fraction.
     ConstantDensity(double density,double ye);
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<ConstantDensity> Deserialize(hid_t group);
 
     /// \class Track
     /// \brief Constant density trajectory
@@ -225,6 +247,11 @@ class VariableDensity: public Body{
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     VariableDensity(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<VariableDensity> Deserialize(hid_t group);
 
     /// \class Track
     /// \brief Variable density trajectory
@@ -288,6 +315,11 @@ class Earth: public Body{
     Earth(std::string earthmodel);
     /// \brief Destructor.
     ~Earth();
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<Earth> Deserialize(hid_t group);
 
     /// \class Track
     /// \brief Earth trajectory
@@ -370,7 +402,14 @@ class Sun: public Body{
   public:
     /// \brief Detault constructor.
     Sun();
+    /// \brief Destructor
     ~Sun();
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<Sun> Deserialize(hid_t group);
+
     /// \class Track
     /// \brief Sun trajectory
     class Track: public Body::Track{
@@ -434,6 +473,11 @@ class SunASnu: public Body{
     /// \brief Detault constructor.
     SunASnu();
     ~SunASnu();
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<SunASnu> Deserialize(hid_t group);
 
     /// \class Track
     /// \brief SunASnu trajectory
@@ -513,6 +557,12 @@ class EarthAtm: public Body{
     /// the electron fraction.
     EarthAtm(std::string earthmodel);
     ~EarthAtm();
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const;
+    /// \brief Deserialization function
+    static std::shared_ptr<EarthAtm> Deserialize(hid_t group);
+
     /// \class Track
     /// \brief EarthAtm trajectory
     class Track: public Body::Track{

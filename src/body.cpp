@@ -53,6 +53,13 @@ double Vacuum::ye(const GenericTrack& track_input) const{
 
 bool Vacuum::IsConstantDensity() const { return true;}
 
+void Vacuum::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<Vacuum> Vacuum::Deserialize(hid_t group){
+
+}
+
 /*
 ----------------------------------------------------------------------
          ConstantDensity CLASS DEFINITIONS
@@ -66,6 +73,13 @@ ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Bod
         {
             BodyParams = {constant_density, constant_ye};
         }
+
+void ConstantDensity::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
+
+}
 
 // track constructor
 ConstantDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
@@ -126,6 +140,13 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
               BodyParams.push_back(ye);
         }
 
+void VariableDensity::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
+
+}
+
 // track constructor
 VariableDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
         {
@@ -158,18 +179,48 @@ double VariableDensity::ye(const GenericTrack& track_input) const
 */
 
 // constructor
-Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION))
-        {
-        }
+Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION)){}
 
-// track constructor
-Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,xend),baseline(baseline)
-        {
-            x = xini;
-        }
-	
-void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
-    TrackParams.push_back(baseline);
+Earth::Earth(std::string filepath):Body(4,"Earth")
+{
+          // The Input file should have the radius specified from 0 to 1.
+          // where 0 is the center of the Earth and 1 is the surface.
+            radius = 6371.0; // [km]
+
+            marray<double,2> earth_model = quickread(filepath);
+            size_t arraysize = earth_model.extent(0);
+
+            double earth_radius[arraysize];
+            double earth_density[arraysize];
+            double earth_ye[arraysize];
+
+            for (unsigned int i=0; i < arraysize;i++){
+                earth_radius[i] = earth_model[i][0];
+                earth_density[i] = earth_model[i][1];
+                earth_ye[i] = earth_model[i][2];
+            }
+
+            x_radius_min = earth_radius[0];
+            x_radius_max = earth_radius[arraysize-1];
+            x_rho_min = earth_density[0];
+            x_rho_max = earth_density[arraysize-1];
+            x_ye_min = earth_ye[0];
+            x_ye_max = earth_ye[arraysize-1];
+
+            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+            inter_density_accel = gsl_interp_accel_alloc ();
+            gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
+
+            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
+            inter_ye_accel = gsl_interp_accel_alloc ();
+            gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+}
+
+void Earth::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
+
 }
 
 double Earth::density(const GenericTrack& track_input) const
@@ -208,47 +259,23 @@ double Earth::ye(const GenericTrack& track_input) const
             }
         }
 
-Earth::Earth(std::string filepath):Body(4,"Earth")
-        {
-          // The Input file should have the radius specified from 0 to 1.
-          // where 0 is the center of the Earth and 1 is the surface.
-            radius = 6371.0; // [km]
-
-            marray<double,2> earth_model = quickread(filepath);
-            size_t arraysize = earth_model.extent(0);
-
-            double earth_radius[arraysize];
-            double earth_density[arraysize];
-            double earth_ye[arraysize];
-
-            for (unsigned int i=0; i < arraysize;i++){
-                earth_radius[i] = earth_model[i][0];
-                earth_density[i] = earth_model[i][1];
-                earth_ye[i] = earth_model[i][2];
-            }
-
-            x_radius_min = earth_radius[0];
-            x_radius_max = earth_radius[arraysize-1];
-            x_rho_min = earth_density[0];
-            x_rho_max = earth_density[arraysize-1];
-            x_ye_min = earth_ye[0];
-            x_ye_max = earth_ye[arraysize-1];
-
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
-
-            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_ye_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
-        }
-
 Earth::~Earth(){
   gsl_spline_free(inter_density);
   gsl_interp_accel_free(inter_density_accel);
   gsl_spline_free(inter_ye);
   gsl_interp_accel_free(inter_ye_accel);
 }
+
+// track constructor
+Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,xend),baseline(baseline)
+        {
+            x = xini;
+        }
+
+void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
+    TrackParams.push_back(baseline);
+}
+
 
 /*
 ----------------------------------------------------------------------
@@ -258,7 +285,7 @@ Earth::~Earth(){
 
 // constructor
 Sun::Sun():Body(5,"Sun")
-        {
+{
             radius = 695980.0*param.km;
 
             // import sun model
@@ -282,12 +309,14 @@ Sun::Sun():Body(5,"Sun")
             inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
             inter_rxh_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
-        }
-// track constructor
-Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
-        {
-            x = xini;
-        }
+}
+
+void Sun::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
+
+}
 
 double Sun::rdensity(double x) const{
         // x is adimentional radius : x = 0 : center, x = 1 : radius
@@ -335,6 +364,13 @@ Sun::~Sun(){
   //free(inter_nele);
   //free(inter_nele_accel);
 }
+
+// track constructor
+Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
+        {
+            x = xini;
+        }
+
 /*
 ----------------------------------------------------------------------
          SUN ASNU CLASS DEFINITIONS
@@ -376,7 +412,15 @@ SunASnu::Track::Track(double xini, double b_impact):
             x = xini;
             xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));
         }
-	
+
+void SunASnu::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
+
+}
+
+
 void SunASnu::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 	TrackParams.push_back(b_impact);
 }
@@ -448,7 +492,7 @@ EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
 
 // track constructor
 EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
-        {
+{
             radius_nu = 6371.0*param.km;
             atmheight = 22.*param.km;
 
@@ -471,15 +515,22 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
                 ", L = " << radius_nu/param.km << std::endl;
                 std::cout << "==" << std::endl;
             #endif
-        }
-  
+}
+
+void EarthAtm::Serialize(hid_t group) const {
+
+}
+std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
+
+}
+
 EarthAtm::Track::Track():
 Body::Track(0,0),radius_nu(6371.0*param.km),atmheight(22.*param.km){}
-  
+
 EarthAtm::Track
 EarthAtm::Track::makeWithCosine(double cosphi){
   Track track;
-  
+
   track.cosphi = cosphi;
   double sinsqphi = 1-track.cosphi*track.cosphi;
   double R = track.radius_nu;
