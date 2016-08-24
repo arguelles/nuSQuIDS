@@ -419,6 +419,14 @@ class Sun: public Body{
   public:
     /// \brief Detault constructor.
     Sun();
+    /// \brief Constructor in which the user provides, as vectors, the
+    /// Sun properties.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param xh Hydrogen fraction at each point.
+    /// \pre All input vectors must be of equal size.
+    Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
+
     /// \brief Destructor
     ~Sun();
 
@@ -489,6 +497,15 @@ class SunASnu: public Body{
   public:
     /// \brief Detault constructor.
     SunASnu();
+    /// \brief Constructor in which the user provides, as vectors, the
+    /// Sun properties.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param xh Hydrogen fraction at each point.
+    /// \pre All input vectors must be of equal size.
+    SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
+
+
     ~SunASnu();
 
     /// \brief Serialization function

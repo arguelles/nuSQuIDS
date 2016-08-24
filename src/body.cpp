@@ -381,36 +381,78 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 // constructor
 Sun::Sun():Body(5,"Sun")
 {
-            radius = 695980.0*param.km;
+  radius = 695980.0*param.km;
 
-            // import sun model
-            sun_model = quickread(SUN_MODEL_LOCATION);
-            arraysize = sun_model.extent(0);
+  // import sun model
+  sun_model = quickread(SUN_MODEL_LOCATION);
+  arraysize = sun_model.extent(0);
 
-            sun_radius = new double[arraysize];
-            sun_density = new double[arraysize];
-            sun_xh = new double[arraysize];
+  sun_radius = new double[arraysize];
+  sun_density = new double[arraysize];
+  sun_xh = new double[arraysize];
 
-            for (unsigned int i=0; i < arraysize;i++){
-                sun_radius[i] = sun_model[i][1];
-                sun_density[i] = sun_model[i][3];
-                sun_xh[i] = sun_model[i][6];
-            }
+  for (unsigned int i=0; i < arraysize;i++){
+      sun_radius[i] = sun_model[i][1];
+      sun_density[i] = sun_model[i][3];
+      sun_xh[i] = sun_model[i][6];
+  }
 
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
 
-            inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_rxh_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
+  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_rxh_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
+}
+
+Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body(5,"Sun")
+{
+  radius = 695980.0*param.km;
+
+  arraysize = x.size();
+
+  sun_radius = new double[arraysize];
+  sun_density = new double[arraysize];
+  sun_xh = new double[arraysize];
+
+  for (unsigned int i=0; i < arraysize;i++){
+      sun_radius[i] = x[i];
+      sun_density[i] = rho[i];
+      sun_xh[i] = xh[i];
+  }
+
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
+
+  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_rxh_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
 }
 
 void Sun::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  std::vector<hsize_t> dims {arraysize};
+  H5LTmake_dataset_double(g, "sun_radius", 1, dims.data(), sun_radius);
+  H5LTmake_dataset_double(g, "sun_density", 1, dims.data(), sun_density);
+  H5LTmake_dataset_double(g, "sun_hx", 1, dims.data(), sun_xh);
+  H5Gclose(g);
 }
 std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
-
+  hid_t g = H5Gopen(group, "Sun", H5P_DEFAULT);
+  unsigned int asize;
+  H5LTget_attribute_uint(group,"Sun","arraysize", &asize);
+  std::vector<double> x_vec(asize),rho_vec(asize),xh_vec(asize);
+  H5LTread_dataset_double(g,"sun_radius",x_vec.data());
+  H5LTread_dataset_double(g,"sun_density",rho_vec.data());
+  H5LTread_dataset_double(g,"sun_xh",xh_vec.data());
+  H5Gclose(g);
+  return std::make_shared<Sun>(x_vec,rho_vec,xh_vec);
 }
 
 double Sun::rdensity(double x) const{
@@ -498,6 +540,32 @@ SunASnu::SunASnu():Body(6,"SunASnu")
             inter_rxh_accel = gsl_interp_accel_alloc ();
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
+
+SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body(6,"SunASnu")
+{
+  radius = 695980.0*param.km;
+
+  arraysize = x.size();
+
+  sun_radius = new double[arraysize];
+  sun_density = new double[arraysize];
+  sun_xh = new double[arraysize];
+
+  for (unsigned int i=0; i < arraysize;i++){
+      sun_radius[i] = x[i];
+      sun_density[i] = rho[i];
+      sun_xh[i] = xh[i];
+  }
+
+  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_density_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
+
+  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
+  inter_rxh_accel = gsl_interp_accel_alloc ();
+  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
+}
+
 // track constructor
 SunASnu::Track::Track(double xini, double b_impact):
   Body::Track(xini,xini),
@@ -509,12 +577,29 @@ SunASnu::Track::Track(double xini, double b_impact):
         }
 
 void SunASnu::Serialize(hid_t group) const {
-
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  // saving properties
+  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  std::vector<hsize_t> dims {arraysize};
+  H5LTmake_dataset_double(g, "sun_radius", 1, dims.data(), sun_radius);
+  H5LTmake_dataset_double(g, "sun_density", 1, dims.data(), sun_density);
+  H5LTmake_dataset_double(g, "sun_hx", 1, dims.data(), sun_xh);
+  H5Gclose(g);
 }
+
 std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
-
+  hid_t g = H5Gopen(group, "SunASnu", H5P_DEFAULT);
+  unsigned int asize;
+  H5LTget_attribute_uint(group,"SunASnu","arraysize", &asize);
+  std::vector<double> x_vec(asize),rho_vec(asize),xh_vec(asize);
+  H5LTread_dataset_double(g,"sun_radius",x_vec.data());
+  H5LTread_dataset_double(g,"sun_density",rho_vec.data());
+  H5LTread_dataset_double(g,"sun_xh",xh_vec.data());
+  H5Gclose(g);
+  return std::make_shared<SunASnu>(x_vec,rho_vec,xh_vec);
 }
-
 
 void SunASnu::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 	TrackParams.push_back(b_impact);
