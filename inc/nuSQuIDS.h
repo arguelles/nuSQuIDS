@@ -695,12 +695,20 @@ protected:
     double EvalFlavorAtNode(unsigned int flv,unsigned int ie,unsigned int rho = 0) const;
 
     /// \brief Returns the mass composition at a given energy in the multiple energy mode.
+    /// averaging out the high frequencies.
     /// @param flv Neutrino flavor.
     /// @param enu Neutrino energy in natural units [eV].
     /// @param rho Index of the equation, see details.
-    /// \details When NeutrinoType is \c both \c rho specifies wether one
-    /// is considering neutrinos (0) or antineutrinos (1).
-    double EvalMass(unsigned int flv,double enu,unsigned int rho = 0) const;
+    double EvalMass(unsigned int flv,double enu,unsigned int rho) const;
+
+    /// \brief Returns the mass composition at a given energy in the multiple energy mode.
+    /// averaging out the high frequencies.
+    /// @param flv Neutrino flavor.
+    /// @param enu Neutrino energy in natural units [eV].
+    /// @param rho Index of the equation, see details.
+    /// @param scale scale upon which oscillations will be averaged out
+    /// @param avg bool array which is true for all scales that were averaged out
+    double EvalMass(unsigned int flv,double enu,unsigned int rho,double scale,bool* avr) const;
 
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
     /// @param flv Neutrino flavor.
@@ -709,6 +717,15 @@ protected:
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalFlavor(unsigned int flv,double enu,unsigned int rho = 0) const;
+
+    /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
+    /// averaging out the high frequencies.
+    /// @param flv Neutrino flavor.
+    /// @param enu Neutrino energy in natural units [eV].
+    /// @param rho Index of the equation, see details.
+    /// @param scale scale upon which oscillations will be averaged out
+    /// @param avg bool array which is true for all scales that were averaged out
+    double EvalFlavor(unsigned int flv,double enu,unsigned int rho,double scale,bool* avr) const;
 
     /// \brief Returns the mass composition in the single energy mode.
     /// @param flv Neutrino flavor.

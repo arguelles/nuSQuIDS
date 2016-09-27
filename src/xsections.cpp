@@ -102,7 +102,8 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
 
 void NeutrinoDISCrossSectionsFromTables::Init(){
        std::string root = XSECTION_LOCATION ;
-       std::string filename_format = "_1e+11_1e+18_500.dat";
+       //std::string filename_format = "_1e+11_1e+18_500.dat";
+       std::string filename_format = "_all_flavor.txt";
 
        std::string filename_dsde_CC = root+"dsde_CC"+filename_format;
        std::string filename_dsde_NC = root+"dsde_NC"+filename_format;
