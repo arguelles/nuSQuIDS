@@ -36,9 +36,12 @@ double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, Neutrin
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
-  if ( Enu < Emin or Enu > Emax )
+  if ( Enu > Emax )
     throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
 quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
+
+  if ( Enu < Emin )
+    return std::numeric_limits<double>::min();
 
   // convert to GeV
   Enu /= GeV;
@@ -52,9 +55,11 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
-  if ( E1 < Emin or E1 > Emax )
+  if (E1 > Emax)
     throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
 quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
+  if (E1 < Emin)
+    return std::numeric_limits<double>::min();
 
   // convert to GeV
   E1 /= GeV;
