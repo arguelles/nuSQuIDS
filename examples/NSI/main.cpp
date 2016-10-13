@@ -94,7 +94,7 @@ int main()
   marray<double,1> E_range = nus.GetERange();
 
   //Construct the initial state
-  marray<double,2> inistate({200,3});
+  marray<double,2> inistate({201,3});
   double N0 = 1.0;
   for ( int i = 0 ; i < inistate.extent(0); i++){
       for ( int k = 0; k < inistate.extent(1); k ++){
