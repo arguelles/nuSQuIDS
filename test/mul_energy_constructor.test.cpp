@@ -8,7 +8,7 @@ using namespace nusquids;
 int main(){
   squids::Const units;
 
-  nuSQUIDS nus1(logspace(1.e2*units.GeV,1.e6*units.GeV,59),3,neutrino,false);
+  nuSQUIDS nus1(logspace(1.e2*units.GeV,1.e6*units.GeV,60),3,neutrino,false);
   auto e_range = nus1.GetERange();
 
   nuSQUIDS nus2(e_range,3,neutrino,false);

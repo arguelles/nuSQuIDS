@@ -57,13 +57,13 @@ int quickwrite(const std::string filename,const marray<double,2>& array);
 /// \brief Construct a linear space
 /// @param min Minimum value in the linear span.
 /// @param max Maximum value in the linear span.
-/// @param div Number of divisions in the span.
-marray<double,1> linspace(double min,double max,unsigned int div);
+/// @param samples Number of samples to generate.
+marray<double,1> linspace(double min,double max,unsigned int samples);
 /// \brief Construct a logarithmic space.
 /// @param min Minimum value in the logarithmic span.
 /// @param max Maximum value in the logarithmic span.
-/// @param div Number of divisions in the span.
-marray<double,1> logspace(double min,double max,unsigned int div);
+/// @param samples Number of samples to generate.
+marray<double,1> logspace(double min,double max,unsigned int samples);
 // additional GSL-like tools
 void gsl_matrix_complex_conjugate(gsl_matrix_complex*);
 void gsl_matrix_complex_print(gsl_matrix_complex*);

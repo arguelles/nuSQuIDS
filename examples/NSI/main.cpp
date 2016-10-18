@@ -41,7 +41,7 @@ int main()
   //class that contains the basic constant and units
   squids::Const units;
   //number of neutrinos
-  int numneu=3;
+  unsigned int numneu=3;
   //Value for the epsilon mutau
   double eps_mutau=1.0e-2;
   //minimum and maximum energy
@@ -94,7 +94,7 @@ int main()
   marray<double,1> E_range = nus.GetERange();
 
   //Construct the initial state
-  marray<double,2> inistate({201,3});
+  marray<double,2> inistate({200,numneu});
   double N0 = 1.0;
   for ( int i = 0 ; i < inistate.extent(0); i++){
       for ( int k = 0; k < inistate.extent(1); k ++){

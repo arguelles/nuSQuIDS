@@ -79,7 +79,7 @@ int main (int argc, char const *argv[])
   squid.Set_abs_error(1.0e-10);
 
   // construct the initial state
-  marray<double,3> inistate{num_steps+1,2,numneu};
+  marray<double,3> inistate{num_steps,2,numneu};
   std::fill(inistate.begin(), inistate.end(), 0.);
   marray<double,1> E_range = squid.GetERange();
   unsigned int e0 = 140;

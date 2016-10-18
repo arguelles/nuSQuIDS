@@ -11,7 +11,7 @@ using namespace nusquids;
 int main(){
   squids::Const units;
 
-  nuSQUIDS nus(logspace(1.e2*units.GeV,1.e6*units.GeV,59),3,neutrino,true);
+  nuSQUIDS nus(logspace(1.e2*units.GeV,1.e6*units.GeV,60),3,neutrino,true);
 
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
