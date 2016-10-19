@@ -60,15 +60,11 @@ class Body{
   protected:
     /// \brief Body parameters.
     std::vector<double> BodyParams;
-    /// \brief Body name.
-    const std::string name;
-    /// \brief Body id.
-    const unsigned int id;
     /// \brief bool that signal if the body is constant density or not
     bool is_constant_density = false;
   public:
     /// \brief Body Constructor;
-    Body(unsigned int id_, std::string name_):name(name_),id(id_){}
+    Body(){}
     virtual ~Body(){}
 
     /// \brief Serialization function
@@ -90,7 +86,15 @@ class Body{
           double xend;
         public:
           /// \brief Default constructor.
-          Track(double xini, double xend): xini(xini),xend(xend) {}
+          Track(double x,double xini, double xend): x(x), xini(xini),xend(xend) {}
+          /// \brief Default constructor.
+          Track(double xini, double xend): Track(xini,xini,xend) {}
+          /// \brief Serialization function
+          virtual void Serialize(hid_t group) const=0;
+          /// \brief Deserialization function
+          static std::shared_ptr<Body::Track> Deserialize(hid_t group);
+          /// \brief Get track object name
+          static std::string GetName() {return "BodyTrack";};
           /// \brief Sets the current position along the trajectory.
           void SetX(double y){ x = y; }
           /// \brief Returns the current position along the trajectory.
@@ -122,9 +126,9 @@ class Body{
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
     /// \brief Returns the body identifier.
-    unsigned int GetId() const {return id;}
+    static unsigned int GetId() {return 0;}
     /// \brief Returns the name of the body.
-    std::string GetName() const {return name;}
+    static std::string GetName() {return "Body";}
     /// \brief Return true if the body is a constant density.
     virtual bool IsConstantDensity() const {return is_constant_density;}
     /// \brief Return true if the body is a constant density.
@@ -140,7 +144,7 @@ typedef Body::Track GenericTrack;
 class Vacuum: public Body {
   public:
     /// \brief Constructor.
-    Vacuum():Body(1,"Vacuum"){}
+    Vacuum():Body(){}
 
     /// \brief Serialization function
     void Serialize(hid_t group) const;
@@ -152,15 +156,29 @@ class Vacuum: public Body {
     class Track: public Body::Track {
       public :
         /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double xini,double xend);
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double xini,double xend):Track(xini,xini,xend){};
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
         Track(double xend):Track(0.0,xend){}
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<Vacuum::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "VacuumTrack";}
     };
-
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 1;}
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "Vacuum";}
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
@@ -193,16 +211,31 @@ class ConstantDensity: public Body{
     /// \brief Constant density trajectory
     class Track: public Body::Track{
       public :
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
-        Track(double xini,double xend);
+        Track(double xini,double xend):Track(xini,xini,xend){};
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
         Track(double xend):Track(0.0,xend){}
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<ConstantDensity::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "ConstantDensityTrack";}
     };
 
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 2;}
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "ConstantDensity";}
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
@@ -259,16 +292,31 @@ class VariableDensity: public Body{
     /// \brief Variable density trajectory
     class Track: public Body::Track{
       public :
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
-        Track(double xini,double xend);
+        Track(double xini,double xend):Track(xini,xini,xend){};
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
         Track(double xend):Track(0.0,xend){}
-    };
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<VariableDensity::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "VariableDensityTrack";}
 
+    };
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 3;}
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "VariableDensity";}
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
@@ -323,7 +371,7 @@ class Earth: public Body{
     /// a given position, while the third column must contain
     /// the electron fraction.
     Earth(std::string earthmodel);
-    /// \brief Constructor in which the user provides, as vectors, the 
+    /// \brief Constructor in which the user provides, as vectors, the
     /// Earth properties.
     /// @param x Vector containing position nodes in cm.
     /// @param rho Density, in gr/cm^3, at each of the nodes.
@@ -345,11 +393,16 @@ class Earth: public Body{
         /// \brief Baseline of the neutrino experiment in natural units.
         const double baseline;
       public :
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double x,double xini,double xend,double baseline):Body::Track(x,xini,xend),baseline(baseline){};
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
         /// @param baseline Baseline of experiment in eV^-1.
-        Track(double xini,double xend,double baseline);
+        Track(double xini,double xend,double baseline):Track(xini,xini,xend,baseline){};
         /// \brief Construct a trajectory where the neutrino travels a distance given by baseline.
         /// @param baseline Traverse distance in eV^-1.
         /// \details In this case \c xini = 0, \c xend = \c baseline.
@@ -357,7 +410,18 @@ class Earth: public Body{
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return baseline;}
         virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<Earth::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "EarthTrack";}
     };
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 4;}
+
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "Earth";}
 
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
@@ -439,16 +503,33 @@ class Sun: public Body{
     /// \brief Sun trajectory
     class Track: public Body::Track{
       public :
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
+        /// @param xini Initial position [eV^-1].
+        /// @param xend Final position [eV^-1].
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
         /// \details The trajectory is measured from the sun center which is set to zero.
-        Track(double xini,double xend);
+        Track(double xini,double xend):Track(xini,xini,xend){};
         /// \brief Construct a trajectory from the sun center to a final position.
         /// @param xend Final position in eV^-1.
         /// \details The trajectory is measured from the sun center which is set to zero.
         Track(double xend):Track(0.,xend){}
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<Sun::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "SunTrack";}
     };
+
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 5;}
+
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "Sun";}
 
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
@@ -505,7 +586,6 @@ class SunASnu: public Body{
     /// \pre All input vectors must be of equal size.
     SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
 
-
     ~SunASnu();
 
     /// \brief Serialization function
@@ -523,19 +603,36 @@ class SunASnu: public Body{
         /// \brief Impact parameter.
         double b_impact;
       public:
+        /// \brief Rectilinear trajectory from xini to xend.
+        /// @param x current position [eV^-1].
+        /// @param xini Initial position [eV^-1].
+        /// @param b_impact impact parameter in eV^-1.
+        Track(double x,double xini,double b_impact);
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param b_impact impact parameter in eV^-1.
         /// \details The trajectory baseline is determined by the impact parameter and starts
         /// at \c xini, and ends when the neutrino exits the sun.
-        Track(double xini,double b_impact);
+        Track(double xini,double b_impact):Track(xini,xini,b_impact){};
         /// \brief Construct a for a given impact parameter.
         /// @param b_impact_ impact parameter in eV^-1.
         /// \details The trajectory baseline is determined by the impact parameter and starts
         /// at \c xini = 0, and ends when the neutrino exits the sun.
         Track(double b_impact_):Track(0.0,b_impact_){}
         virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<SunASnu::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "SunASnuTrack";}
     };
+
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 6;}
+
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "SunASnu";}
 
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
@@ -627,22 +724,34 @@ class EarthAtm: public Body{
         double atmheight;
         /// \brief Baseline.
         double L;
-      
+
         ///Private constructor which does not initialize all members.
         ///Intended for use only by makeWithCosine.
         Track();
       public :
+        /// \brief Construct trajectory.
+        /// @param x current position [eV^-1].
+        /// @param phi Zenith angle in radians.
+        Track(double x_,double phi):Track(phi){x=x_;};
         /// \brief Construct trajectory.
         /// @param phi Zenith angle in radians.
         Track(double phi);
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
         virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
-      
         ///Construct a track with the cosine of the zenith angle
         static Track makeWithCosine(double cosphi);
+        /// \brief Serialization function
+        void Serialize(hid_t group) const;
+        /// \brief Deserialization function
+        static std::shared_ptr<EarthAtm::Track> Deserialize(hid_t group);
+        /// \brief Get track object name
+        static std::string GetName() {return "EarthAtmTrack";}
     };
-
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 7;}
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "EarthAtm";}
     /// \brief Returns the density in g/cm^3
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction

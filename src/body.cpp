@@ -31,17 +31,60 @@ namespace nusquids{
 
 static squids::Const param;
 
+namespace {
+
+void addStringAttribute(hid_t object, std::string name, std::string contents){
+  hid_t strtype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(strtype, contents.size());
+  hsize_t dim=1;
+  hid_t dataspace_id = H5Screate_simple(1, &dim, NULL);
+  hid_t attribute_id = H5Acreate(object,name.c_str(),strtype,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
+  H5Awrite(attribute_id, strtype, &contents[0]);
+  H5Aclose(attribute_id);
+  H5Sclose(dataspace_id);
+}
+
+std::string readStringAttribute(hid_t object, std::string name){
+  hid_t strtype = H5Tcopy(H5T_C_S1);
+  hid_t attribute_id = H5Aopen(object,name.c_str(),H5P_DEFAULT);
+  hsize_t storage = H5Aget_storage_size(attribute_id);
+  if(storage==0)
+    throw std::runtime_error("Not finite space");
+  std::unique_ptr<char[]> char_out(new char[storage]);
+  herr_t status = H5Aread(attribute_id,strtype,char_out.get());
+  if(status<0)
+    throw std::runtime_error("Failed to read attribute '"+name+"'");
+  H5Aclose(attribute_id);
+  return std::string(char_out.get());
+}
+
+void addDoubleAttribute(hid_t object, std::string name, double value){
+  hsize_t dim=1;
+  hid_t dataspace_id = H5Screate_simple(1, &dim, NULL);
+  hid_t attribute_id = H5Acreate(object,name.c_str(),H5T_IEEE_F64LE,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
+  H5Awrite(attribute_id, H5T_IEEE_F64LE, &value);
+  H5Aclose(attribute_id);
+  H5Sclose(dataspace_id);
+}
+
+double readDoubleAttribute(hid_t object, std::string name){
+  double target;
+  hid_t attribute_id = H5Aopen(object,name.c_str(),H5P_DEFAULT);
+  herr_t status = H5Aread(attribute_id, H5T_NATIVE_DOUBLE, &target);
+  if(status<0)
+    throw std::runtime_error("Failed to read attribute '"+name+"'");
+  H5Aclose(attribute_id);
+  return target;
+}
+
+} // close unnamed namespace
+
+
 /*
 ----------------------------------------------------------------------
          VACUUM CLASS DEFINITIONS
 ----------------------------------------------------------------------
 */
-
-// track constructor
-Vacuum::Track::Track(double xini, double xend):Body::Track(xini,xend)
-        {
-            x = xini;
-        }
 
 double Vacuum::density(const GenericTrack& track_input) const{
             return 0.0;
@@ -54,13 +97,27 @@ double Vacuum::ye(const GenericTrack& track_input) const{
 bool Vacuum::IsConstantDensity() const { return true;}
 
 void Vacuum::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
 }
+
 std::shared_ptr<Vacuum> Vacuum::Deserialize(hid_t group){
   return std::make_shared<Vacuum>();
+}
+
+void Vacuum::Track::Serialize(hid_t group) const {
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
+}
+
+std::shared_ptr<Vacuum::Track> Vacuum::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "VacuumTrack", H5P_DEFAULT);
+  double x_,xini_,xend_;
+  H5LTget_attribute_double(group,"VacuumTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"VacuumTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"VacuumTrack","xend" ,&xend_);
+  H5Gclose(g);
+  return std::make_shared<Vacuum::Track>(x_,xini_,xend_);
 }
 
 /*
@@ -70,7 +127,7 @@ std::shared_ptr<Vacuum> Vacuum::Deserialize(hid_t group){
 */
 
 // constructor
-ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Body(2,"ConstantDensity"),
+ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Body(),
                                                                              constant_density(constant_density),
                                                                              constant_ye(constant_ye)
         {
@@ -98,10 +155,26 @@ std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
 }
 
 // track constructor
-ConstantDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
-        {
-            x = xini;
-        }
+
+void ConstantDensity::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<ConstantDensity::Track> ConstantDensity::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "ConstantDensityTrack", H5P_DEFAULT);
+  double x_,xini_,xend_;
+  H5LTget_attribute_double(group,"ConstantDensityTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"ConstantDensityTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"ConstantDensityTrack","xend" ,&xend_);
+  H5Gclose(g);
+  return std::make_shared<ConstantDensity::Track>(x_,xini_,xend_);
+}
 
 double ConstantDensity::density(const GenericTrack& track_input) const
         {
@@ -122,7 +195,7 @@ bool ConstantDensity::IsConstantDensity() const { return true;}
 */
 
 // constructor
-VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):Body(3,"VariableDensity")
+VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):Body()
         {
             assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_input.size() == density_input.size() && x_input.size() == ye_input.size());
             arraysize = x_input.size();
@@ -183,10 +256,6 @@ std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
 }
 
 // track constructor
-VariableDensity::Track::Track(double xini, double xend):Body::Track(xini,xend)
-        {
-            x = xini;
-        }
 
 double VariableDensity::density(const GenericTrack& track_input) const
         {
@@ -207,6 +276,26 @@ double VariableDensity::ye(const GenericTrack& track_input) const
           }
         }
 
+void VariableDensity::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<VariableDensity::Track> VariableDensity::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "VariableDensityTrack", H5P_DEFAULT);
+  double x_,xini_,xend_;
+  H5LTget_attribute_double(group,"VariableDensityTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"VariableDensityTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"VariableDensityTrack","xend" ,&xend_);
+  H5Gclose(g);
+  return std::make_shared<VariableDensity::Track>(x_,xini_,xend_);
+}
+
 VariableDensity::~VariableDensity(){
   free(x_arr);
   free(density_arr);
@@ -222,7 +311,7 @@ VariableDensity::~VariableDensity(){
 // constructor
 Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION)){}
 
-Earth::Earth(std::string filepath):Body(4,"Earth")
+Earth::Earth(std::string filepath):Body()
 {
   // The Input file should have the radius specified from 0 to 1.
   // where 0 is the center of the Earth and 1 is the surface.
@@ -257,7 +346,7 @@ Earth::Earth(std::string filepath):Body(4,"Earth")
   gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
 }
 
-Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body(4,"Earth")
+Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body()
 {
   assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
   // The Input file should have the radius specified from 0 to 1.
@@ -293,19 +382,17 @@ Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> y
 
 void Earth::Serialize(hid_t group) const {
   const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_string(group, "Body","name",GetName().c_str());
   // saving properties
   H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(g, "earth_radius", 1, dims.data(), earth_radius);
-  H5LTmake_dataset_double(g, "earth_density", 1, dims.data(), earth_density);
-  H5LTmake_dataset_double(g, "earth_ye", 1, dims.data(), earth_ye);
-  H5Gclose(g);
+  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius);
+  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density);
+  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye);
 }
 
 std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "Earth", H5P_DEFAULT);
+  hid_t g = H5Gopen(group, Earth::GetName().c_str(), H5P_DEFAULT);
   unsigned int asize;
   H5LTget_attribute_uint(group,"Earth","arraysize", &asize);
   std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
@@ -363,10 +450,27 @@ Earth::~Earth(){
 }
 
 // track constructor
-Earth::Track::Track(double xini, double xend,double baseline): Body::Track(xini,xend),baseline(baseline)
-        {
-            x = xini;
-        }
+void Earth::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5LTset_attribute_double(group, name,"baseline",&baseline,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<Earth::Track> Earth::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "EarthTrack", H5P_DEFAULT);
+  double x_,xini_,xend_,baseline_;
+  H5LTget_attribute_double(group,"EarthTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"EarthTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"EarthTrack","xend" ,&xend_);
+  H5LTget_attribute_double(group,"EarthTrack","baseline" ,&baseline_);
+  H5Gclose(g);
+  return std::make_shared<Earth::Track>(x_,xini_,xend_,baseline_);
+}
 
 void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
     TrackParams.push_back(baseline);
@@ -379,7 +483,7 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 */
 
 // constructor
-Sun::Sun():Body(5,"Sun")
+Sun::Sun():Body()
 {
   radius = 695980.0*param.km;
 
@@ -406,7 +510,7 @@ Sun::Sun():Body(5,"Sun")
   gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
 }
 
-Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body(5,"Sun")
+Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body()
 {
   radius = 695980.0*param.km;
 
@@ -502,11 +606,25 @@ Sun::~Sun(){
   //free(inter_nele_accel);
 }
 
-// track constructor
-Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
-        {
-            x = xini;
-        }
+void Sun::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "SunTrack", H5P_DEFAULT);
+  double x_,xini_,xend_,baseline_;
+  H5LTget_attribute_double(group,"SunTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"SunTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"SunTrack","xend" ,&xend_);
+  H5Gclose(g);
+  return std::make_shared<Sun::Track>(x_,xini_,xend_);
+}
 
 /*
 ----------------------------------------------------------------------
@@ -515,7 +633,7 @@ Sun::Track::Track(double xini, double xend):Body::Track(xini,xend)
 */
 
 // constructor
-SunASnu::SunASnu():Body(6,"SunASnu")
+SunASnu::SunASnu():Body()
         {
             radius = 694439.0*param.km;
 
@@ -541,7 +659,7 @@ SunASnu::SunASnu():Body(6,"SunASnu")
             gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
         }
 
-SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body(6,"SunASnu")
+SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body()
 {
   radius = 695980.0*param.km;
 
@@ -567,14 +685,33 @@ SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<doubl
 }
 
 // track constructor
-SunASnu::Track::Track(double xini, double b_impact):
-  Body::Track(xini,xini),
+SunASnu::Track::Track(double x,double xini,double b_impact):
+  Body::Track(x,xini,xini),
   radius_nu(694439.0*param.km),
   b_impact(b_impact)
         {
-            x = xini;
             xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));
         }
+
+void SunASnu::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<SunASnu::Track> SunASnu::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "SunASnuTrack", H5P_DEFAULT);
+  double x_,xini_,xend_,baseline_;
+  H5LTget_attribute_double(group,"SunASnuTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"SunASnuTrack","xini" ,&xini_);
+  H5LTget_attribute_double(group,"SunASnuTrack","xend" ,&xend_);
+  H5Gclose(g);
+  return std::make_shared<SunASnu::Track>(x_,xini_,xend_);
+}
 
 void SunASnu::Serialize(hid_t group) const {
   const char* name = GetName().c_str();
@@ -697,6 +834,26 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
             #endif
 }
 
+void EarthAtm::Track::Serialize(hid_t group) const {
+  const char* name = GetName().c_str();
+  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5LTset_attribute_string(group, name,"name",name);
+  H5LTset_attribute_double(group, name,"x",&x,1);
+  H5LTset_attribute_double(group, name,"xini",&xini,1);
+  H5LTset_attribute_double(group, name,"xend",&xend,1);
+  H5LTset_attribute_double(group, name,"cosphi",&cosphi,1);
+  H5Gclose(g);
+}
+
+std::shared_ptr<EarthAtm::Track> EarthAtm::Track::Deserialize(hid_t group){
+  hid_t g = H5Gopen(group, "EarthAtmTrack", H5P_DEFAULT);
+  double x_,cosphi_;
+  H5LTget_attribute_double(group,"EarthAtmTrack","x" ,&x_);
+  H5LTget_attribute_double(group,"EarthAtmTrack","cosphi" ,&cosphi_);
+  H5Gclose(g);
+  return std::make_shared<EarthAtm::Track>(x_,acos(cosphi_));
+}
+
 void EarthAtm::Serialize(hid_t group) const {
   const char* name = GetName().c_str();
   hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -732,12 +889,12 @@ EarthAtm::Track::makeWithCosine(double cosphi){
   track.cosphi = cosphi;
   double sinsqphi = 1-track.cosphi*track.cosphi;
   double R = track.radius_nu;
-  
+
   track.L = sqrt(SQR(R+track.atmheight)-R*R*sinsqphi)-R*cosphi;
   track.x = 0.0;
   track.xini = 0.0;
   track.xend = track.L;
-  
+
   return(track);
 }
 
@@ -798,7 +955,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
             }
         }
 
-EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
+EarthAtm::EarthAtm(std::string filepath):Body()
 {
   radius = 6371.0; // km
   atm_height = 22; // km
@@ -833,7 +990,7 @@ EarthAtm::EarthAtm(std::string filepath):Body(7,"EarthAtm")
   gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
 }
 
-EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body(7,"EarthAtm")
+EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body()
 {
   assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
   // The Input file should have the radius specified from 0 to 1.
