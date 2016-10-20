@@ -760,8 +760,22 @@ class EarthAtm: public Body{
     double GetRadius() const {return radius;}
 };
 
-// type defining
-typedef Body::Track Track;
+  // type defining
+  typedef Body::Track Track;
+
+  // registration body
+  namespace detail{
+    class registerBody{
+      public:
+        registerBody(const std::string& name,std::function<std::shared_ptr<Body>(hid_t)> fdeserialize);
+    };
+  }
+
+// body registration
+#define ASW(a, b) a ## b
+
+#define NUSQUIDS_REGISTER_BODY(classname) \
+namespace{ nusquids::detail::registerBody ASW(registerer,classname)(classname::GetName(),classname::Deserialize); }
 
 } // close namespace
 

@@ -23,6 +23,7 @@
 
 
 #include "body.h"
+#include <map>
 
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
@@ -1036,40 +1037,26 @@ EarthAtm::~EarthAtm(){
   gsl_interp_accel_free(inter_ye_accel);
 }
 
+// body registration stuff
 
+std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>* registry=NULL;
 
-/*
-----------------------------------------------------------------------
-         LAYEREDEARTHATM CLASS DEFINITIONS
-----------------------------------------------------------------------
-
-LayeredEarthAtm::LayeredEarthAtm(unsigned int number_of_layers):
-  number_of_layers(number_of_layers)
-{
-
-  if(min_number_of_layers > number_of_layers)
-    throw std::runtime_error("Number of layers is less than minimum recommended number.");
-  unsigned int number_of_new_layers = number_of_layeres - min_number_of_layers;
-
-  layer_edges.resize(number_of_new_layers);
-  double spacing = Radius/std::static_cast<double>(number_of_new_layers);
-  for(unsigned int i = 0; i < number_of_new_layers; i++){
-    layer_edges[i] = spacing*i
-  }
-  layer_edges.insert(layer_edges.end(),prem_edges.begin(),prem_edges.end());
-  std::sort(layer_edges.begin(),layer_edges.end());
-
-  layer_density.resize(number_of_layers);
-  for(unsigned int i = 0; i < number_of_layers-1; i++){
-    layer_density = average_density(layer_edges[i],layer_edges[i+1]);
+namespace detail{
+  registerBody::registerBody(const std::string& name,std::function<std::shared_ptr<Body>(hid_t)> fdeserialize){
+    if(!registry)
+      registry=new std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>;
+    registry->insert(std::make_pair(name,fdeserialize));
   }
 }
-
-LayeredEarthAtm::average_density(double a,double b){
-
-
-}
-
-*/
-
 } // close namespace
+
+// registering the default bodies
+using namespace nusquids;
+NUSQUIDS_REGISTER_BODY(Vacuum);
+NUSQUIDS_REGISTER_BODY(ConstantDensity);
+NUSQUIDS_REGISTER_BODY(VariableDensity);
+NUSQUIDS_REGISTER_BODY(Earth);
+NUSQUIDS_REGISTER_BODY(EarthAtm);
+NUSQUIDS_REGISTER_BODY(Sun);
+NUSQUIDS_REGISTER_BODY(SunASnu);
+
