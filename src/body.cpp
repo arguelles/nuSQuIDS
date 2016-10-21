@@ -520,7 +520,7 @@ void Sun::Serialize(hid_t group) const {
   std::vector<hsize_t> dims {arraysize};
   H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
   H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(group, "sun_hx", 1, dims.data(), sun_xh);
+  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh);
 }
 std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
   unsigned int asize=readUIntAttribute(group,"arraysize");
@@ -679,7 +679,7 @@ void SunASnu::Serialize(hid_t group) const {
   std::vector<hsize_t> dims {arraysize};
   H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
   H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(group, "sun_hx", 1, dims.data(), sun_xh);
+  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh);
 }
 
 std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
