@@ -78,6 +78,25 @@ double readDoubleAttribute(hid_t object, std::string name){
   return target;
 }
 
+void addUIntAttribute(hid_t object, std::string name, unsigned int value){
+  hsize_t dim=1;
+  hid_t dataspace_id = H5Screate_simple(1, &dim, NULL);
+  hid_t attribute_id = H5Acreate(object,name.c_str(),H5T_NATIVE_UINT,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
+  H5Awrite(attribute_id, H5T_NATIVE_UINT, &value);
+  H5Aclose(attribute_id);
+  H5Sclose(dataspace_id);
+}
+
+unsigned int readUIntAttribute(hid_t object, std::string name){
+  unsigned int target;
+  hid_t attribute_id = H5Aopen(object,name.c_str(),H5P_DEFAULT);
+  herr_t status = H5Aread(attribute_id, H5T_NATIVE_UINT, &target);
+  if(status<0)
+    throw std::runtime_error("Failed to read attribute '"+name+"'");
+  H5Aclose(attribute_id);
+  return target;
+}
+
 } // close unnamed namespace
 
 
@@ -106,18 +125,16 @@ std::shared_ptr<Vacuum> Vacuum::Deserialize(hid_t group){
 }
 
 void Vacuum::Track::Serialize(hid_t group) const {
+  addStringAttribute(group,"name", GetName().c_str());
   addDoubleAttribute(group,"x",x);
   addDoubleAttribute(group,"xini",xini);
   addDoubleAttribute(group,"xend",xend);
 }
 
 std::shared_ptr<Vacuum::Track> Vacuum::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "VacuumTrack", H5P_DEFAULT);
-  double x_,xini_,xend_;
-  H5LTget_attribute_double(group,"VacuumTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"VacuumTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"VacuumTrack","xend" ,&xend_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
   return std::make_shared<Vacuum::Track>(x_,xini_,xend_);
 }
 
@@ -136,44 +153,30 @@ ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Bod
         }
 
 void ConstantDensity::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  // saving properties
-  H5LTset_attribute_double(group, name,"constant_density",&constant_density,1);
-  H5LTset_attribute_double(group, name,"constant_ye",&constant_ye,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"constant_density",constant_density);
+  addDoubleAttribute(group,"constant_ye",constant_ye);
 }
 
 std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "ConstantDensity", H5P_DEFAULT);
-  double const_dens;
-  H5LTget_attribute_double(group,"ConstantDensity","constant_density" ,&const_dens);
-  double const_ye;
-  H5LTget_attribute_double(group,"ConstantDensity","constant_ye" ,&const_ye);
-  H5Gclose(g);
+  double const_dens=readDoubleAttribute(group,"constant_density");
+  double const_ye=readDoubleAttribute(group,"constant_ye");
   return std::make_shared<ConstantDensity>(const_dens,const_ye);
 }
 
 // track constructor
 
 void ConstantDensity::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
 }
 
 std::shared_ptr<ConstantDensity::Track> ConstantDensity::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "ConstantDensityTrack", H5P_DEFAULT);
-  double x_,xini_,xend_;
-  H5LTget_attribute_double(group,"ConstantDensityTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"ConstantDensityTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"ConstantDensityTrack","xend" ,&xend_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
   return std::make_shared<ConstantDensity::Track>(x_,xini_,xend_);
 }
 
@@ -231,28 +234,20 @@ VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double>
         }
 
 void VariableDensity::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  // saving properties
-  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  addStringAttribute(group,"name", GetName().c_str());
+  addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(g, "x_arr", 1, dims.data(), x_arr);
-  H5LTmake_dataset_double(g, "density_arr", 1, dims.data(), density_arr);
-  H5LTmake_dataset_double(g, "ye_arr", 1, dims.data(), ye_arr);
-  H5Gclose(g);
+  H5LTmake_dataset_double(group, "x_arr", 1, dims.data(), x_arr);
+  H5LTmake_dataset_double(group, "density_arr", 1, dims.data(), density_arr);
+  H5LTmake_dataset_double(group, "ye_arr", 1, dims.data(), ye_arr);
 }
 
 std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "VariableDensity", H5P_DEFAULT);
-  // getting properties
-  unsigned int asize;
-  H5LTget_attribute_uint(group,"VariableDensity","arraysize", &asize);
+  unsigned int asize=readUIntAttribute(group,"arraysize");
   std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
-  H5LTread_dataset_double(g,"x_arr",x_vec.data());
-  H5LTread_dataset_double(g,"density_arr",rho_vec.data());
-  H5LTread_dataset_double(g,"ye_arr",ye_vec.data());
-  H5Gclose(g);
+  H5LTread_dataset_double(group,"x_arr",x_vec.data());
+  H5LTread_dataset_double(group,"density_arr",rho_vec.data());
+  H5LTread_dataset_double(group,"ye_arr",ye_vec.data());
   return std::make_shared<VariableDensity>(x_vec,rho_vec,ye_vec);
 }
 
@@ -278,22 +273,16 @@ double VariableDensity::ye(const GenericTrack& track_input) const
         }
 
 void VariableDensity::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
 }
 
 std::shared_ptr<VariableDensity::Track> VariableDensity::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "VariableDensityTrack", H5P_DEFAULT);
-  double x_,xini_,xend_;
-  H5LTget_attribute_double(group,"VariableDensityTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"VariableDensityTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"VariableDensityTrack","xend" ,&xend_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
   return std::make_shared<VariableDensity::Track>(x_,xini_,xend_);
 }
 
@@ -382,10 +371,8 @@ Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> y
 }
 
 void Earth::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  H5LTset_attribute_string(group, "Body","name",GetName().c_str());
-  // saving properties
-  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  addStringAttribute(group,"name", GetName().c_str());
+  addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
   H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius);
   H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density);
@@ -393,14 +380,11 @@ void Earth::Serialize(hid_t group) const {
 }
 
 std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, Earth::GetName().c_str(), H5P_DEFAULT);
-  unsigned int asize;
-  H5LTget_attribute_uint(group,"Earth","arraysize", &asize);
+  unsigned int asize=readUIntAttribute(group,"arraysize");
   std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
-  H5LTread_dataset_double(g,"earth_radius",x_vec.data());
-  H5LTread_dataset_double(g,"earth_density",rho_vec.data());
-  H5LTread_dataset_double(g,"earth_ye",ye_vec.data());
-  H5Gclose(g);
+  H5LTread_dataset_double(group,"earth_radius",x_vec.data());
+  H5LTread_dataset_double(group,"earth_density",rho_vec.data());
+  H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
   return std::make_shared<Earth>(x_vec,rho_vec,ye_vec);
 }
 
@@ -452,24 +436,18 @@ Earth::~Earth(){
 
 // track constructor
 void Earth::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5LTset_attribute_double(group, name,"baseline",&baseline,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
+  addDoubleAttribute(group,"baseline",baseline);
 }
 
 std::shared_ptr<Earth::Track> Earth::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "EarthTrack", H5P_DEFAULT);
-  double x_,xini_,xend_,baseline_;
-  H5LTget_attribute_double(group,"EarthTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"EarthTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"EarthTrack","xend" ,&xend_);
-  H5LTget_attribute_double(group,"EarthTrack","baseline" ,&baseline_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
+  double baseline_=readDoubleAttribute(group,"baseline");
   return std::make_shared<Earth::Track>(x_,xini_,xend_,baseline_);
 }
 
@@ -537,26 +515,19 @@ Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):B
 }
 
 void Sun::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  // saving properties
-  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  addStringAttribute(group,"name", GetName().c_str());
+  addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(g, "sun_radius", 1, dims.data(), sun_radius);
-  H5LTmake_dataset_double(g, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(g, "sun_hx", 1, dims.data(), sun_xh);
-  H5Gclose(g);
+  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
+  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
+  H5LTmake_dataset_double(group, "sun_hx", 1, dims.data(), sun_xh);
 }
 std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "Sun", H5P_DEFAULT);
-  unsigned int asize;
-  H5LTget_attribute_uint(group,"Sun","arraysize", &asize);
+  unsigned int asize=readUIntAttribute(group,"arraysize");
   std::vector<double> x_vec(asize),rho_vec(asize),xh_vec(asize);
-  H5LTread_dataset_double(g,"sun_radius",x_vec.data());
-  H5LTread_dataset_double(g,"sun_density",rho_vec.data());
-  H5LTread_dataset_double(g,"sun_xh",xh_vec.data());
-  H5Gclose(g);
+  H5LTread_dataset_double(group,"sun_radius",x_vec.data());
+  H5LTread_dataset_double(group,"sun_density",rho_vec.data());
+  H5LTread_dataset_double(group,"sun_xh",xh_vec.data());
   return std::make_shared<Sun>(x_vec,rho_vec,xh_vec);
 }
 
@@ -608,22 +579,16 @@ Sun::~Sun(){
 }
 
 void Sun::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
 }
 
 std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "SunTrack", H5P_DEFAULT);
-  double x_,xini_,xend_,baseline_;
-  H5LTget_attribute_double(group,"SunTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"SunTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"SunTrack","xend" ,&xend_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
   return std::make_shared<Sun::Track>(x_,xini_,xend_);
 }
 
@@ -695,47 +660,34 @@ SunASnu::Track::Track(double x,double xini,double b_impact):
         }
 
 void SunASnu::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
 }
 
 std::shared_ptr<SunASnu::Track> SunASnu::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "SunASnuTrack", H5P_DEFAULT);
-  double x_,xini_,xend_,baseline_;
-  H5LTget_attribute_double(group,"SunASnuTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"SunASnuTrack","xini" ,&xini_);
-  H5LTget_attribute_double(group,"SunASnuTrack","xend" ,&xend_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double xini_=readDoubleAttribute(group,"xini");
+  double xend_=readDoubleAttribute(group,"xend");
   return std::make_shared<SunASnu::Track>(x_,xini_,xend_);
 }
 
 void SunASnu::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  // saving properties
-  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  addStringAttribute(group,"name", GetName().c_str());
+  addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(g, "sun_radius", 1, dims.data(), sun_radius);
-  H5LTmake_dataset_double(g, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(g, "sun_hx", 1, dims.data(), sun_xh);
-  H5Gclose(g);
+  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
+  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
+  H5LTmake_dataset_double(group, "sun_hx", 1, dims.data(), sun_xh);
 }
 
 std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "SunASnu", H5P_DEFAULT);
-  unsigned int asize;
-  H5LTget_attribute_uint(group,"SunASnu","arraysize", &asize);
+  unsigned int asize=readUIntAttribute(group,"arraysize");
   std::vector<double> x_vec(asize),rho_vec(asize),xh_vec(asize);
-  H5LTread_dataset_double(g,"sun_radius",x_vec.data());
-  H5LTread_dataset_double(g,"sun_density",rho_vec.data());
-  H5LTread_dataset_double(g,"sun_xh",xh_vec.data());
-  H5Gclose(g);
+  H5LTread_dataset_double(group,"sun_radius",x_vec.data());
+  H5LTread_dataset_double(group,"sun_density",rho_vec.data());
+  H5LTread_dataset_double(group,"sun_xh",xh_vec.data());
   return std::make_shared<SunASnu>(x_vec,rho_vec,xh_vec);
 }
 
@@ -836,47 +788,34 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
 }
 
 void EarthAtm::Track::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  H5LTset_attribute_double(group, name,"x",&x,1);
-  H5LTset_attribute_double(group, name,"xini",&xini,1);
-  H5LTset_attribute_double(group, name,"xend",&xend,1);
-  H5LTset_attribute_double(group, name,"cosphi",&cosphi,1);
-  H5Gclose(g);
+  addStringAttribute(group,"name", GetName().c_str());
+  addDoubleAttribute(group,"x",x);
+  addDoubleAttribute(group,"xini",xini);
+  addDoubleAttribute(group,"xend",xend);
+  addDoubleAttribute(group,"cosphi",cosphi);
 }
 
 std::shared_ptr<EarthAtm::Track> EarthAtm::Track::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "EarthAtmTrack", H5P_DEFAULT);
-  double x_,cosphi_;
-  H5LTget_attribute_double(group,"EarthAtmTrack","x" ,&x_);
-  H5LTget_attribute_double(group,"EarthAtmTrack","cosphi" ,&cosphi_);
-  H5Gclose(g);
+  double x_   =readDoubleAttribute(group,"x");
+  double cosphi_   =readDoubleAttribute(group,"cosphi");
   return std::make_shared<EarthAtm::Track>(x_,acos(cosphi_));
 }
 
 void EarthAtm::Serialize(hid_t group) const {
-  const char* name = GetName().c_str();
-  hid_t g = H5Gcreate(group, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5LTset_attribute_string(group, name,"name",name);
-  // saving properties
-  H5LTset_attribute_uint(group,name,"arraysize", &arraysize,1);
+  addStringAttribute(group,"name", GetName().c_str());
+  addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(g, "earth_radius", 1, dims.data(), earth_radius);
-  H5LTmake_dataset_double(g, "earth_density", 1, dims.data(), earth_density);
-  H5LTmake_dataset_double(g, "earth_ye", 1, dims.data(), earth_ye);
-  H5Gclose(g);
+  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius);
+  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density);
+  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye);
 }
 
 std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
-  hid_t g = H5Gopen(group, "EarthAtm", H5P_DEFAULT);
-  unsigned int asize;
-  H5LTget_attribute_uint(group,"EarthAtm","arraysize", &asize);
+  unsigned int asize=readUIntAttribute(group,"arraysize");
   std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
-  H5LTread_dataset_double(g,"earth_radius",x_vec.data());
-  H5LTread_dataset_double(g,"earth_density",rho_vec.data());
-  H5LTread_dataset_double(g,"earth_ye",ye_vec.data());
-  H5Gclose(g);
+  H5LTread_dataset_double(group,"earth_radius",x_vec.data());
+  H5LTread_dataset_double(group,"earth_density",rho_vec.data());
+  H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
   return std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
 }
 
