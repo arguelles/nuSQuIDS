@@ -33,6 +33,7 @@
 #include <string>
 #include <math.h>
 #include <cmath>
+#include <map>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include <SQuIDS/const.h>
@@ -769,13 +770,21 @@ class EarthAtm: public Body{
       public:
         registerBody(const std::string& name,std::function<std::shared_ptr<Body>(hid_t)> fdeserialize);
     };
+    class registerTrack{
+      public:
+        registerTrack(const std::string& name,std::function<std::shared_ptr<Track>(hid_t)> fdeserialize);
+    };
   }
+
+  std::function<std::shared_ptr<Body>(hid_t)> GetBodyDeserializer(std::string);
+  std::function<std::shared_ptr<Track>(hid_t)> GetTrackDeserializer(std::string);
+
 
 // body registration
 #define ASW(a, b) a ## b
 
 #define NUSQUIDS_REGISTER_BODY(classname) \
-namespace{ nusquids::detail::registerBody ASW(registerer,classname)(classname::GetName(),classname::Deserialize); }
+namespace{ nusquids::detail::registerBody ASW(body_registerer,classname)(classname::GetName(),classname::Deserialize); nusquids::detail::registerTrack ASW(track_registerer,classname)(classname::Track::GetName(),classname::Track::Deserialize);}
 
 } // close namespace
 

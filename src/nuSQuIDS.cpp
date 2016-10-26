@@ -32,6 +32,34 @@
 
 namespace nusquids{
 
+
+namespace {
+
+std::string getStringAttribute(hid_t loc_id, const char* obj_name, const char* attr_name){
+  herr_t err;
+  int rank;
+  err=H5LTget_attribute_ndims(loc_id,obj_name,attr_name,&rank);
+  if(err<0)
+    throw std::runtime_error("Failed to get dimensionality of attribute " + std::string(attr_name)+" of object "+std::string(obj_name));
+  if(rank!=1)
+    throw std::runtime_error("Attribute "+std::string(attr_name) +" of object "+std::string(obj_name)+" is not one-dimensional");
+  hsize_t dims;
+  H5T_class_t type_class;
+  size_t type_size;
+  err=H5LTget_attribute_info(loc_id,obj_name,attr_name,&dims,&type_class,&type_size);
+  if(err<0)
+    throw std::runtime_error("Failed to get info on attribute "+std::string(attr_name)+" of object "+std::string(obj_name));
+  std::unique_ptr<char[]> buffer(new char[type_size+1]);
+  if(!buffer)
+    throw std::runtime_error("Failed to allocate space to read string atribute");
+  err=H5LTget_attribute_string(loc_id,obj_name,attr_name,buffer.get());
+  if(err<0)
+    throw std::runtime_error("Failed to read attribute "+std::string(attr_name)+" of object "+std::string(obj_name));
+  return(std::string(buffer.get(),type_size));
+}
+
+} // close unnamed namespace
+
 void nuSQUIDS::init(double xini){
   // single energy implementation
   ne = 1;
@@ -1443,29 +1471,13 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   dset_id = H5LTmake_dataset(group_id,"aneustate",2,statedim,H5T_NATIVE_DOUBLE,static_cast<const void*>(aneustate.data()));
 
   // writing body and track information
-  hsize_t trackparamdim[1] {track->GetTrackParams().size()};
-  if ( trackparamdim[0] == 0 ) {
-    H5LTmake_dataset(group_id,"track",1,dim,H5T_NATIVE_DOUBLE,0);
-  } else {
-    H5LTmake_dataset(group_id,"track",1,trackparamdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(track->GetTrackParams().data()));
-  }
+  hid_t track_group_id = H5Gcreate(group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track->Serialize(track_group_id);
+  H5Gclose(track_group_id);
 
-  double xi = track->GetInitialX();
-  H5LTset_attribute_double(group_id, "track","XINI",&xi, 1);
-  double xf = track->GetFinalX();
-  H5LTset_attribute_double(group_id, "track","XEND",&xf, 1);
-  double xx = track->GetX();
-  H5LTset_attribute_double(group_id, "track","X",&xx, 1);
-
-  hsize_t bodyparamdim[1] {body->GetBodyParams().size()};
-  if ( bodyparamdim[0] == 0 ){
-    H5LTmake_dataset(group_id,"body",1,dim,H5T_NATIVE_DOUBLE,0);
-  } else {
-    H5LTmake_dataset(group_id,"body",1,bodyparamdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(body->GetBodyParams().data()));
-  }
-  H5LTset_attribute_string(group_id, "body", "NAME", body->GetName().c_str());
-  unsigned int bid = body->GetId();
-  H5LTset_attribute_uint(group_id, "body", "ID", &bid,1);
+  hid_t body_group_id = H5Gcreate(group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body->Serialize(body_group_id);
+  H5Gclose(body_group_id);
 
   // writing cross section information
   hid_t xs_group_id;
@@ -1611,7 +1623,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     iinteraction = true;
   else
     iinteraction = false;
-  
+
   err=H5LTget_attribute_int(group_id, "basic", "oscillations", &auxint);
   if(err>=0) ioscillations=auxint;
   err=H5LTget_attribute_int(group_id, "basic", "tau_regeneration", &auxint);
@@ -1673,28 +1685,44 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     E_range[ie] = energy_data[ie];
 
   // reading body and track
-  unsigned int body_id;
-  hsize_t dimbody[1];
-  H5LTget_attribute_uint(group_id,"body","ID",&body_id);
+  if(nusquids_version>100000){
+    std::string body_name = getStringAttribute(group_id,"body","name");
+    hid_t body_group_id = H5Gopen(group_id, "body", H5P_DEFAULT);
+    if(body_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening body group");
+    body=GetBodyDeserializer(body_name)(body_group_id);
+    H5Gclose(body_group_id);
 
-  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
-  double body_params[dimbody[0]];
-  H5LTread_dataset_double(group_id,"body", body_params);
+    hid_t track_group_id = H5Gopen(group_id, "track", H5P_DEFAULT);
+    if(track_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening track group");
+    std::string track_name = getStringAttribute(group_id,"track","name");
+    track=GetTrackDeserializer(track_name)(track_group_id);
+    H5Gclose(track_group_id);
+  } else {
+    unsigned int body_id;
+    hsize_t dimbody[1];
+    H5LTget_attribute_uint(group_id,"body","ID",&body_id);
 
-  hsize_t dimtrack[1];
-  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
-  std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
-  H5LTread_dataset_double(group_id,"track", track_params.get());
+    H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+    double body_params[dimbody[0]];
+    H5LTread_dataset_double(group_id,"body", body_params);
 
-  double x_current;
-  H5LTget_attribute_double(group_id,"track","X",&x_current);
+    hsize_t dimtrack[1];
+    H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+    std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
+    H5LTread_dataset_double(group_id,"track", track_params.get());
 
-  // setting body and track
-  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+    double x_current;
+    H5LTget_attribute_double(group_id,"track","X",&x_current);
 
-  // set trayectory to current time
-  track->SetX(x_current);
-  
+    // setting body and track
+    SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+
+    // set trayectory to current time
+    track->SetX(x_current);
+  }
+
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);
@@ -1864,28 +1892,44 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     E_range[ie] = energy_data[ie];
 
   // reading body and track
-  unsigned int body_id;
-  hsize_t dimbody[1];
-  H5LTget_attribute_uint(group_id,"body","ID",&body_id);
+  if(nusquids_version>100000){
+    std::string body_name = getStringAttribute(group_id,"body","name");
+    hid_t body_group_id = H5Gopen(group_id, "body", H5P_DEFAULT);
+    if(body_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening body group");
+    body=GetBodyDeserializer(body_name)(body_group_id);
+    H5Gclose(body_group_id);
 
-  H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
-  double body_params[dimbody[0]];
-  H5LTread_dataset_double(group_id,"body", body_params);
+    hid_t track_group_id = H5Gopen(group_id, "track", H5P_DEFAULT);
+    if(track_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening track group");
+    std::string track_name = getStringAttribute(group_id,"track","name");
+    track=GetTrackDeserializer(track_name)(track_group_id);
+    H5Gclose(track_group_id);
+  } else {
+    unsigned int body_id;
+    hsize_t dimbody[1];
+    H5LTget_attribute_uint(group_id,"body","ID",&body_id);
 
-  hsize_t dimtrack[1];
-  H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
-  std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
-  H5LTread_dataset_double(group_id,"track", track_params.get());
+    H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+    double body_params[dimbody[0]];
+    H5LTread_dataset_double(group_id,"body", body_params);
 
-  double x_current;
-  H5LTget_attribute_double(group_id,"track","X",&x_current);
+    hsize_t dimtrack[1];
+    H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+    std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
+    H5LTread_dataset_double(group_id,"track", track_params.get());
 
-  // setting body and track
-  SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+    double x_current;
+    H5LTget_attribute_double(group_id,"track","X",&x_current);
 
-  // set trayectory to current time
-  track->SetX(x_current);
-  
+    // setting body and track
+    SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+
+    // set trayectory to current time
+    track->SetX(x_current);
+  }
+
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);

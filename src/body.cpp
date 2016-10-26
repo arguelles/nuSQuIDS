@@ -23,7 +23,6 @@
 
 
 #include "body.h"
-#include <map>
 
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
@@ -978,15 +977,36 @@ EarthAtm::~EarthAtm(){
 
 // body registration stuff
 
-std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>* registry=NULL;
+std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>* body_registry=NULL;
+std::map<std::string,std::function<std::shared_ptr<Track>(hid_t)>>* track_registry=NULL;
 
 namespace detail{
   registerBody::registerBody(const std::string& name,std::function<std::shared_ptr<Body>(hid_t)> fdeserialize){
-    if(!registry)
-      registry=new std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>;
-    registry->insert(std::make_pair(name,fdeserialize));
+    if(!body_registry)
+      body_registry=new std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>;
+    body_registry->insert(std::make_pair(name,fdeserialize));
+  }
+  registerTrack::registerTrack(const std::string& name,std::function<std::shared_ptr<Track>(hid_t)> fdeserialize){
+    if(!track_registry)
+      track_registry=new std::map<std::string,std::function<std::shared_ptr<Track>(hid_t)>>;
+    track_registry->insert(std::make_pair(name,fdeserialize));
   }
 }
+
+std::function<std::shared_ptr<Body>(hid_t)> GetBodyDeserializer(std::string body_name){
+  auto it=body_registry->find(body_name);
+  if(it==body_registry->end())
+    throw std::runtime_error("Unknown Body type: "+body_name);
+  return it->second;
+}
+
+std::function<std::shared_ptr<Track>(hid_t)> GetTrackDeserializer(std::string track_name){
+  auto it=track_registry->find(track_name);
+  if(it==track_registry->end())
+    throw std::runtime_error("Unknown track type: "+track_name);
+  return it->second;
+}
+
 } // close namespace
 
 // registering the default bodies
