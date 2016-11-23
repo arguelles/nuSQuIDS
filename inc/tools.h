@@ -32,14 +32,10 @@
 #include <string>
 #include <vector>
 #include <math.h>
-#include <gsl/gsl_complex.h>
-#include <gsl/gsl_complex_math.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
 #include <stdexcept>
 #include "marray.h"
+#include <gsl/gsl_complex.h>
+#include <gsl/gsl_matrix.h>
 
 namespace nusquids{
 
