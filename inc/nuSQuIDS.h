@@ -1325,7 +1325,7 @@ class nuSQUIDSAtm {
 
       double data[costhdims[0]];
       H5LTread_dataset_double(group_id, "zenith_angles", data);
-      costh_array.resize(std::vector<size_t> {costhdims[0]});
+      costh_array.resize(std::vector<size_t> {static_cast<unsigned long>(costhdims[0])});
       for (unsigned int i = 0; i < costhdims[0]; i ++)
         costh_array[i] = data[i];
 
@@ -1334,7 +1334,7 @@ class nuSQUIDSAtm {
 
       double enu_data[energydims[0]];
       H5LTread_dataset_double(group_id, "energy_range", enu_data);
-      enu_array.resize(std::vector<size_t>{energydims[0]});log_enu_array.resize(std::vector<size_t>{energydims[0]});
+      enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});log_enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});
       for (unsigned int i = 0; i < energydims[0]; i ++){
         enu_array[i] = enu_data[i];
         log_enu_array[i] = log(enu_data[i]);
