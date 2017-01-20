@@ -59,70 +59,19 @@ function find_hdf5(){
 	HDF5_COMPILE_COMMAND=`h5cc -show`
 	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
 	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
-		if [ -d $HDF5_LIBDIR -a \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
+		if [ -d $HDF5_LIBDIR -a \( -e $HDF5_LIBDIR/libhdf5.a -o -e $HDF5_LIBDIR/libhdf5.so \) ]; then
 			break
 		fi
 	done
-	if [ ! -d $HDF5_LIBDIR -o ! \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
+	if [ ! -d $HDF5_LIBDIR -o ! \( -e $HDF5_LIBDIR/libhdf5.a -o -e $HDF5_LIBDIR/libhdf5.so \) ]; then
 		echo " Unable to guess $PKG library directory"
 		return
 	fi
 	# This is an educated guess. . .
 	HDF5_INCDIR="${HDF5_LIBDIR}/../include"
-	if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
+	if [ ! -d $HDF5_INCDIR -o ! -e $HDF5_INCDIR/H5version.h ]; then
 	    HDF5_INCDIR="${HDF5_LIBDIR}/../../include"
-	    if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
-		echo " Unable to guess $PKG include directory"
-		return
-	    fi
-	fi
-	HDF5_CFLAGS="-I${HDF5_INCDIR}"
-	HDF5_LDFLAGS=`echo "$HDF5_COMPILE_COMMAND" | \
-	sed 's/ /\\
-	/g' | \
-	sed -n -E \
-	-e '/^[[:space:]]*-l/p' \
-	-e '/^[[:space:]]*-L/p' \
-	-e '/^[[:space:]]*-Wl,/p' \
-	-e 's/^[[:space:]]*.*lib([^.]*)\.a/-l\1/p' \
-	-e 's/^[[:space:]]*.*lib([^.]*)\.so/-l\1/p' \
-	-e 's/^[[:space:]]*.*lib([^.]*)\.dylib/-l\1/p' `
-	HDF5_LDFLAGS=`echo $HDF5_LDFLAGS` # collapse to single line
-
-	HDF5_FOUND=1
-}
-
-function find_boost(){
-	PKG=hdf5
-	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
-	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
-	if [ "$TMP_FOUND" ]; then return; fi
-
-	which h5cc 2>&1 > /dev/null
-	if [ "$?" -ne 0 ]; then return; fi
-
-	HDF5_VERSION=`h5ls --version | sed 's/.* \([0-9.]*\)/\1/'`
-	echo " Found $PKG version $HDF5_VERSION via executables in \$PATH"
-	if [ $# -ge 1 ]; then
-		MIN_VERSION=$1
-		#TODO: actually check version
-	fi
-	HDF5_COMPILE_COMMAND=`h5cc -show`
-	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
-	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
-		if [ -d $HDF5_LIBDIR -a \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
-			break
-		fi
-	done
-	if [ ! -d $HDF5_LIBDIR -o ! \( -f $HDF5_LIBDIR/libhdf5.a -o -f $HDF5_LIBDIR/libhdf5.so \) ]; then
-		echo " Unable to guess $PKG library directory"
-		return
-	fi
-	# This is an educated guess. . .
-	HDF5_INCDIR="${HDF5_LIBDIR}/../include"
-	if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
-	    HDF5_INCDIR="${HDF5_LIBDIR}/../../include"
-	    if [ ! -d $HDF5_INCDIR -o ! -f $HDF5_INCDIR/H5version.h ]; then
+	    if [ ! -d $HDF5_INCDIR -o ! -e $HDF5_INCDIR/H5version.h ]; then
 		echo " Unable to guess $PKG include directory"
 		return
 	    fi
@@ -281,9 +230,9 @@ done
 if [ "$GSL_INCDIR" -a "$GSL_LIBDIR" ]; then
 	echo "Checking manually specified GSL..."
 	if [ -d "$GSL_INCDIR/gsl" \
-         -a -f "$GSL_INCDIR/gsl/gsl_version.h" \
+         -a -e "$GSL_INCDIR/gsl/gsl_version.h" \
          -a -d "$GSL_LIBDIR" \
-         -a -f "$GSL_LIBDIR/libgsl.a" ]; then
+         -a -e "$GSL_LIBDIR/libgsl.a" ]; then
 		GSL_FOUND=1
 		GSL_CFLAGS="-I$GSL_INCDIR"
 		GSL_LDFLAGS="-L$GSL_LIBDIR -lgsl -lgslcblas -lm"
@@ -297,10 +246,10 @@ find_package gsl 1.15
 if [ "$HDF5_INCDIR" -a "$HDF5_LIBDIR" ]; then
 	echo "Checking manually specified HDF5..."
 	if [ -d "$HDF5_INCDIR" \
-         -a -f "$HDF5_INCDIR/H5version.h" \
+         -a -e "$HDF5_INCDIR/H5version.h" \
          -a -d "$HDF5_LIBDIR" \
-         -a -f "$HDF5_LIBDIR/libhdf5.a" \
-         -a -f "$HDF5_LIBDIR/libhdf5_hl.a" ]; then
+         -a -e "$HDF5_LIBDIR/libhdf5.a" \
+         -a -e "$HDF5_LIBDIR/libhdf5_hl.a" ]; then
 		HDF5_FOUND=1
 		HDF5_CFLAGS="-I$HDF5_INCDIR"
 		HDF5_LDFLAGS="-L$HDF5_LIBDIR -lhdf5 -lhdf5_hl"
@@ -316,7 +265,7 @@ if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
 	echo "Checking manually specified SQUIDS..."
 	if [ -d "$SQUIDS_INCDIR" \
          -a -d "$SQUIDS_LIBDIR" \
-         -a -f "$SQUIDS_LIBDIR/libSQuIDS.a" ]; then
+         -a -e "$SQUIDS_LIBDIR/libSQuIDS.a" ]; then
 		SQUIDS_FOUND=1
 		SQUIDS_CFLAGS="-I$SQUIDS_INCDIR"
 		SQUIDS_LDFLAGS="-L$SQUIDS_LIBDIR -lSQuIDS"
