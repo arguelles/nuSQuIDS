@@ -43,6 +43,7 @@ function find_package(){
 
 function find_hdf5(){
 	PKG=hdf5
+	echo "Looking for $PKG..."
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
 	if [ "$TMP_FOUND" ]; then return; fi
@@ -50,11 +51,17 @@ function find_hdf5(){
 	which h5cc 2>&1 > /dev/null
 	if [ "$?" -ne 0 ]; then return; fi
 
-	HDF5_VERSION=`h5ls --version | sed 's/.* \([0-9.]*\)/\1/'`
-	echo " Found $PKG version $HDF5_VERSION via executables in \$PATH"
-	if [ $# -ge 1 ]; then
-		MIN_VERSION=$1
-		#TODO: actually check version
+	which h5ls 2>&1 > /dev/null
+	if [ "$?" -eq 0 ]; then
+		HDF5_VERSION=`h5ls --version | sed 's/.* \([0-9.]*\)/\1/'`
+		echo " Found $PKG version $HDF5_VERSION via executables in \$PATH"
+		if [ $# -ge 1 ]; then
+			MIN_VERSION=$1
+			#TODO: actually check version
+		fi
+	else
+		echo " h5ls not found; cannot check $PKG version"
+		echo " Proceeding with unknown version and hoping for the best"
 	fi
 	HDF5_COMPILE_COMMAND=`h5cc -show`
 	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
@@ -67,15 +74,18 @@ function find_hdf5(){
 		echo " Unable to guess $PKG library directory"
 		return
 	fi
-	# This is an educated guess. . .
-	HDF5_INCDIR="${HDF5_LIBDIR}/../include"
-	if [ ! -d $HDF5_INCDIR -o ! -e $HDF5_INCDIR/H5version.h ]; then
-	    HDF5_INCDIR="${HDF5_LIBDIR}/../../include"
-	    if [ ! -d $HDF5_INCDIR -o ! -e $HDF5_INCDIR/H5version.h ]; then
+	POSSIBLE_HDF5_INCDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-I\([^ ]*\).*/\1/p'`
+	POSSIBLE_HDF5_INCDIRS="$POSSIBLE_HDF5_INCDIRS ${HDF5_LIBDIR}/../include"
+	for HDF5_INCDIR in $POSSIBLE_HDF5_INCDIRS; do
+		if [ -d $HDF5_INCDIR -a -e $HDF5_INCDIR/H5version.h ]; then
+			break
+		fi
+	done
+	if [ ! -d $HDF5_INCDIR -o ! $HDF5_INCDIR/H5version.h ]; then
 		echo " Unable to guess $PKG include directory"
 		return
-	    fi
 	fi
+
 	HDF5_CFLAGS="-I${HDF5_INCDIR}"
 	HDF5_LDFLAGS=`echo "$HDF5_COMPILE_COMMAND" | \
 	sed 's/ /\\
@@ -258,7 +268,8 @@ if [ "$HDF5_INCDIR" -a "$HDF5_LIBDIR" ]; then
 	fi
 fi
 
-find_package hdf5 1.8
+#Do not use this due to broken Ubuntu package
+#find_package hdf5 1.8
 find_hdf5
 
 if [ "$SQUIDS_INCDIR" -a "$SQUIDS_LIBDIR" ]; then
