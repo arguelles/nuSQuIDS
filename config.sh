@@ -64,7 +64,13 @@ function find_hdf5(){
 		echo " Proceeding with unknown version and hoping for the best"
 	fi
 	HDF5_COMPILE_COMMAND=`h5cc -show`
-	POSSIBLE_HDF5_LIBDIRS=`echo "$HDF5_COMPILE_COMMAND" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
+	for item in $HDF5_COMPILE_COMMAND; do
+		item=`echo "$item" | sed 's| |\n|g' | sed -n 's/.*-L\([^ ]*\).*/\1/p'`
+		if [ -n "$item" ]; then
+			POSSIBLE_HDF5_LIBDIRS="$POSSIBLE_HDF5_LIBDIRS
+				$item"
+		fi
+	done
 	for HDF5_LIBDIR in $POSSIBLE_HDF5_LIBDIRS; do
 		if [ -d $HDF5_LIBDIR -a \( -e $HDF5_LIBDIR/libhdf5.a -o -e $HDF5_LIBDIR/libhdf5.so \) ]; then
 			break
