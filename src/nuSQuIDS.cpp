@@ -973,7 +973,7 @@ void nuSQUIDS::EvolveState(){
         //std::cout << "despues " << E_range[ie] << " " << tmp2 << std::endl;
       }
     }
-
+    ProgressBar();
     return;
   }
 
@@ -988,6 +988,7 @@ void nuSQUIDS::EvolveState(){
   } else {
     Evolve(track->GetFinalX()-track->GetInitialX());
   }
+  ProgressBar();
 }
 
 void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
