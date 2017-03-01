@@ -383,6 +383,11 @@ protected:
     ///Total size of interaction_cache_store
     size_t interaction_cache_store_size;
   
+    marray<double,3> nc_factors;
+    marray<double,2> tau_hadlep_decays;
+    marray<double,2> tau_lep_decays;
+    marray<double,1> gr_factors;
+  
     ///Initialize the interaction cahce data structures to the corretc sizes for
     ///the current problem.
     ///Should be invoked only when interactions are on and oscillations are off.

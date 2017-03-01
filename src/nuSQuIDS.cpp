@@ -366,54 +366,39 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     return interaction_term;
 
   // NC interactinos
-  for(unsigned int alpha_active : {0,1,2}){
-    double nc_factor=0.0;
-    for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
-      nc_factor+=(evol_b1_proj[index_rho][alpha_active][e2]*state[e2].rho[index_rho])*
-      (int_struct->dNdE_NC[index_rho][alpha_active][e2][e1]*int_struct->invlen_NC[index_rho][alpha_active][e2]*delE[e2-1]);
-    }
-    interaction_term+=squids::detail::guarantee
-    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-    (nc_factor*evol_b1_proj[index_rho][alpha_active][e1]);
-  }
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (nc_factors[index_rho][0][e1]*evol_b1_proj[index_rho][0][e1]);
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (nc_factors[index_rho][1][e1]*evol_b1_proj[index_rho][1][e1]);
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (nc_factors[index_rho][2][e1]*evol_b1_proj[index_rho][2][e1]);
+  
   // Tau regeneration
   if(tauregeneration){
-    unsigned int tau_flavor = 2;
-    unsigned int other_index_rho = (index_rho == 0) ? 1 : 0;
-    double tau_hadlep_decay=0.0;
-    double tau_lep_decay=0.0;
-    for(unsigned int et = e1 + 1; et < ne; et++){ // all tau energies which can cascade down
-      double dN_tau_all=int_struct->dNdE_tau_all[et][e1]*delE[et-1];
-      double dN_tau_lep=int_struct->dNdE_tau_lep[et][e1]*delE[et-1];
-      for(unsigned int en = et + 1; en < ne; en++){ // all tau neutrino energies which can cascade down
-        tau_hadlep_decay += (evol_b1_proj[index_rho][tau_flavor][en]*state[en].rho[index_rho])*
-        (int_struct->dNdE_CC[index_rho][tau_flavor][en][et]*int_struct->invlen_CC[index_rho][tau_flavor][en]*delE[en-1])*
-        dN_tau_all;
-        tau_lep_decay += (evol_b1_proj[other_index_rho][tau_flavor][en]*state[en].rho[other_index_rho])*
-        (int_struct->dNdE_CC[other_index_rho][tau_flavor][en][et]*int_struct->invlen_CC[other_index_rho][tau_flavor][en]*delE[en-1])*
-        dN_tau_lep;
-      }
-    }
-    interaction_term += tau_hadlep_decay*evol_b1_proj[index_rho][tau_flavor][e1];
-    interaction_term += tau_lep_decay*evol_b1_proj[index_rho][0][e1];
-    interaction_term += tau_lep_decay*evol_b1_proj[index_rho][1][e1];
+    interaction_term+=squids::detail::guarantee
+                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                      (tau_hadlep_decays[index_rho][e1]*evol_b1_proj[index_rho][2][e1]);
+    interaction_term+=squids::detail::guarantee
+                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                      (tau_lep_decays[index_rho][e1]*evol_b1_proj[index_rho][1][e1]);
+    interaction_term+=squids::detail::guarantee
+                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                      (tau_lep_decays[index_rho][e1]*evol_b1_proj[index_rho][0][e1]);
   }
+  
   // Glashow resonance for electron antineutrinos
   if (iglashow && ((NT == both and index_rho == 1) or NT == antineutrino)) {
-    double gr_factor=0;
-    for(unsigned int e2 = e1 + 1; e2 < ne; e2++){
-      gr_factor += (evol_b1_proj[index_rho][0][e2]*state[e2].rho[index_rho])
-       * (int_struct->dNdE_GR[e2][e1]*int_struct->invlen_GR[e2]*delE[e2-1]);
-    }
-    squids::SU_vector projector_sum(nsun);
-    projector_sum += evol_b1_proj[index_rho][0][e1];
+    squids::SU_vector projector_sum(evol_b1_proj[index_rho][0][e1]);
     projector_sum += evol_b1_proj[index_rho][1][e1];
     projector_sum += evol_b1_proj[index_rho][2][e1];
-    interaction_term += squids::detail::guarantee
-    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-    (gr_factor*projector_sum);
+    interaction_term+=squids::detail::guarantee
+                      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                      (gr_factors[e1]*projector_sum);
   }
-
+  
   return interaction_term;
 }
 
@@ -633,13 +618,14 @@ void nuSQUIDS::UpdateInteractions(){
       }
 
       if(tauregeneration){
-        unsigned int tau_flavor = 2;
+        const unsigned int tau_flavor = 2;
         unsigned int other_rho = (rho == 0) ? 1 : 0;
         
         //first accumulate the flux of taus produced by interaction
         ALIGNED_LOCAL_BUFFER(tau_decay_fluxes,double,ne);
         ALIGNED_LOCAL_BUFFER(other_tau_decay_fluxes,double,ne);
         
+        //without osciallations we can always just use the first projectors
         squids::SU_vector projector_tau = evol_b1_proj[rho][tau_flavor][0];
         squids::SU_vector projector_other_tau = evol_b1_proj[other_rho][tau_flavor][0];
         
@@ -719,9 +705,91 @@ void nuSQUIDS::UpdateInteractions(){
     }
 
   }
+  else{ //oscillations
+    std::fill(nc_factors.begin(),nc_factors.end(),0.);
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      //for each flavor
+      for(unsigned int alpha_active : {0,1,2}){
+        //accumulate the contribution of each energy e2 to each lower energy
+        for(unsigned int e2=1; e2<ne; e2++){
+          //the flux of the current flavor at e2
+          double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*state[e2].rho[rho];
+          //premultiply factors which do not depend on the lower energy e1
+          flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
+          double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
+          for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
+            nc_factors[rho][alpha_active][e1]+=flux_a_e2*(*dNdE_ptr);
+        }
+      }
+    }
+    
+    if(tauregeneration){
+      const unsigned int tau_flavor = 2;
+      //first accumulate the flux of taus produced by interaction
+      ALIGNED_LOCAL_BUFFER(tau_decay_fluxes,double,ne);
+      ALIGNED_LOCAL_BUFFER(tau_bar_decay_fluxes,double,ne);
+      //we must use the actual projector for each energy, no shortcuts!
+      for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
+        double nu_tau_flux     = evol_b1_proj[0][tau_flavor][en]*state[en].rho[0];
+        double nu_tau_bar_flux = evol_b1_proj[1][tau_flavor][en]*state[en].rho[1];
+        if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
+          continue;
+        double dEn = delE[en-1];
+        double invlen_CC_tau     = int_struct->invlen_CC[0][tau_flavor][en];
+        double invlen_CC_tau_bar = int_struct->invlen_CC[1][tau_flavor][en];
+        double nu_tau_flux_invlen_CC     =     nu_tau_flux*    invlen_CC_tau*dEn;
+        double nu_tau_bar_flux_invlen_CC = nu_tau_bar_flux*invlen_CC_tau_bar*dEn;
+        double* dNdE_CC_tau     = &int_struct->dNdE_CC[0][tau_flavor][en][0];
+        double* dNdE_CC_tau_bar = &int_struct->dNdE_CC[1][tau_flavor][en][0];
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau    ,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau_bar,preferred_alignment*sizeof(double));
+        for(unsigned int et=1; et<en; et++){ // loop over intermediate tau energies
+          double dEt = delE[et-1];
+          tau_decay_fluxes[et]    +=    nu_tau_flux_invlen_CC*    dNdE_CC_tau[et]*dEt;
+          tau_bar_decay_fluxes[et]+=nu_tau_bar_flux_invlen_CC*dNdE_CC_tau_bar[et]*dEt;
+        }
+      }
+      
+      //then accumulate the contributions back to the neutrino fluxes from the taus decaying
+      
+      //zero out the arrays
+      std::fill(tau_hadlep_decays.begin(),tau_hadlep_decays.end(),0.);
+      std::fill(tau_lep_decays.begin(),tau_lep_decays.end(),0.);
+      //fill in new data
+      for(unsigned int et=1; et<ne; et++){ // loop over intermediate tau energies
+        double* tau_all_ptr=&int_struct->dNdE_tau_all[et][0];
+        double* tau_lep_ptr=&int_struct->dNdE_tau_lep[et][0];
+        SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
+        for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
+          tau_hadlep_decays[0][e1] +=     tau_decay_fluxes[et]*tau_all_ptr[e1];
+          tau_lep_decays   [0][e1] += tau_bar_decay_fluxes[et]*tau_lep_ptr[e1];
+          tau_hadlep_decays[1][e1] += tau_bar_decay_fluxes[et]*tau_all_ptr[e1];
+          tau_lep_decays   [1][e1] +=     tau_decay_fluxes[et]*tau_lep_ptr[e1];
+        }
+      }
+      
+    }
+    
+    if(iglashow && (NT == both or NT == antineutrino)){
+      std::fill(gr_factors.begin(),gr_factors.end(),0.);
+      unsigned int rho=(NT == both) ? 1 : 0;
+      
+      for(unsigned int e2=1; e2<ne; e2++){
+        double flux=evol_b1_proj[rho][0][e2]*state[e2].rho[rho];
+        double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
+        double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
+        for(unsigned int e1=0; e1<e2; e1++)
+          gr_factors[e1] += flux_invlen_en*dNdE_GR_ptr[e1];
+      }
+    }
+    
+  }
   
-  if(debug)
-    std::cout << "============ END UpdateInteractions ============" << std::endl;
+//  if(debug)
+//    std::cout << "============ END UpdateInteractions ============" << std::endl;
   #undef ALIGNED_LOCAL_BUFFER
 }
 
@@ -765,6 +833,16 @@ void nuSQUIDS::InitializeInteractions(){
       std::cerr << ex.what() << std::endl;
       throw std::runtime_error("nuSQUIDS::init : Failed while trying to fill in interaction vectors [InitializeInteractions]");
     }
+  }
+  
+  if(iinteraction){
+    nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
+    if(tauregeneration){
+      tau_hadlep_decays.resize(std::vector<size_t>{2,ne});
+      tau_lep_decays.resize(std::vector<size_t>{2,ne});
+    }
+    if(iglashow)
+      gr_factors.resize(std::vector<size_t>{ne});
   }
   
   interactions_initialized=true;
