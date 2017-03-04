@@ -366,38 +366,31 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     return interaction_term;
 
   // NC interactinos
-  interaction_term+=squids::detail::guarantee
-                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                    (nc_factors[index_rho][0][e1]*evol_b1_proj[index_rho][0][e1]);
-  interaction_term+=squids::detail::guarantee
-                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                    (nc_factors[index_rho][1][e1]*evol_b1_proj[index_rho][1][e1]);
-  interaction_term+=squids::detail::guarantee
-                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                    (nc_factors[index_rho][2][e1]*evol_b1_proj[index_rho][2][e1]);
-  
+  double factor_e  =nc_factors[index_rho][0][e1];
+  double factor_mu =nc_factors[index_rho][1][e1];
+  double factor_tau=nc_factors[index_rho][2][e1];
   // Tau regeneration
   if(tauregeneration){
-    interaction_term+=squids::detail::guarantee
-                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                      (tau_hadlep_decays[index_rho][e1]*evol_b1_proj[index_rho][2][e1]);
-    interaction_term+=squids::detail::guarantee
-                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                      (tau_lep_decays[index_rho][e1]*evol_b1_proj[index_rho][1][e1]);
-    interaction_term+=squids::detail::guarantee
-                      <squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                      (tau_lep_decays[index_rho][e1]*evol_b1_proj[index_rho][0][e1]);
+    factor_e  +=tau_lep_decays[index_rho][e1];
+    factor_mu +=tau_lep_decays[index_rho][e1];
+    factor_tau+=tau_hadlep_decays[index_rho][e1];
   }
-  
   // Glashow resonance for electron antineutrinos
   if (iglashow && ((NT == both and index_rho == 1) or NT == antineutrino)) {
-    squids::SU_vector projector_sum(evol_b1_proj[index_rho][0][e1]);
-    projector_sum += evol_b1_proj[index_rho][1][e1];
-    projector_sum += evol_b1_proj[index_rho][2][e1];
-    interaction_term+=squids::detail::guarantee
-                      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                      (gr_factors[e1]*projector_sum);
+    factor_e  +=gr_factors[e1];
+    factor_mu +=gr_factors[e1];
+    factor_tau+=gr_factors[e1];
   }
+  // Add the weighted projectors
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (factor_e*evol_b1_proj[index_rho][0][e1]);
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (factor_mu*evol_b1_proj[index_rho][1][e1]);
+  interaction_term+=squids::detail::guarantee
+                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                    (factor_tau*evol_b1_proj[index_rho][2][e1]);
   
   return interaction_term;
 }
