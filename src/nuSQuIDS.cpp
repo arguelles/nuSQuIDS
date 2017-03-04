@@ -300,10 +300,8 @@ void nuSQUIDS::EvolveProjectors(double x){
 }
 
 squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
-  if (not ioscillations){
-    squids::SU_vector V(nsun);
-    return V;
-  }
+  if (not ioscillations)
+    return squids::SU_vector(nsun);
   return DM2*(0.5/Enu);
 }
 
@@ -311,18 +309,18 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
     double CC = HI_constants*current_density*current_ye;
     double NC;
 
-    if (current_ye < 1.0e-10){
+    if (current_ye < 1.0e-10)
       NC = HI_constants*current_density;
-    }
-    else {
+    else
       NC = CC*(-0.5*(1.0-current_ye)/current_ye);
+    // antineutrino matter potential flips sign
+    if ((irho == 1 and NT==both) or NT==antineutrino){
+      CC*=-1;
+      NC*=-1;
     }
 
     // construct potential in flavor basis
-    squids::SU_vector potential=squids::SU_vector::make_aligned(nsun,false);
-    potential = squids::detail::guarantee
-      <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-      ((CC+NC)*evol_b1_proj[irho][0][ie]);
+    squids::SU_vector potential((CC+NC)*evol_b1_proj[irho][0][ie]);
     potential += squids::detail::guarantee
       <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
       (NC*evol_b1_proj[irho][1][ie]);
@@ -330,26 +328,17 @@ squids::SU_vector nuSQUIDS::HI(unsigned int ie, unsigned int irho) const{
       <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
       (NC*evol_b1_proj[irho][2][ie]);
 
-    if ((irho == 1 and NT==both) or NT==antineutrino){
-        // antineutrino matter potential flips sign
-        potential *= (-1.0);
-    }
-
-    if (basis == mass){
+    if (basis == mass)
       potential += H0_array[ie];
-    }
 
     return potential;
 }
 
 squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) const{
-    squids::SU_vector V(nsun);
-    if (not iinteraction){
-      return V;
-    }
+    if (not iinteraction)
+      return squids::SU_vector(nsun);
 
-    //std::cout << ei << " " << (0.5*int_struct->invlen_INT[index_rho][0][ei]) << std::endl;
-    V = evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_INT[index_rho][0][ei]);
+    squids::SU_vector V(evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_INT[index_rho][0][ei]));
     V += evol_b1_proj[index_rho][1][ei]*(0.5*int_struct->invlen_INT[index_rho][1][ei]);
     V += evol_b1_proj[index_rho][2][ei]*(0.5*int_struct->invlen_INT[index_rho][2][ei]);
 
@@ -360,10 +349,8 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   if(iinteraction && !ioscillations) //can use precomputed result from UpdateInteractions
     return(interaction_cache[index_rho][e1]);
 
-  squids::SU_vector interaction_term(nsun);
-
   if (not iinteraction)
-    return interaction_term;
+    return squids::SU_vector(nsun);
 
   // NC interactinos
   double factor_e  =nc_factors[index_rho][0][e1];
@@ -382,9 +369,7 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     factor_tau+=gr_factors[e1];
   }
   // Add the weighted projectors
-  interaction_term+=squids::detail::guarantee
-                    <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                    (factor_e*evol_b1_proj[index_rho][0][e1]);
+  squids::SU_vector interaction_term(factor_e*evol_b1_proj[index_rho][0][e1]);
   interaction_term+=squids::detail::guarantee
                     <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
                     (factor_mu*evol_b1_proj[index_rho][1][e1]);
@@ -407,18 +392,8 @@ double nuSQUIDS::GetNucleonNumber() const{
     double density = body->density(*track);
     double num_nuc = (params.gr*pow(params.cm,-3))*density*2.0/(params.proton_mass+params.neutron_mass);
 
-    //#ifdef UpdateInteractions_DEBUG
-    if(debug){
-      std::cout << "============ BEGIN GetNucleonNumber ============" << std::endl;
-      std::cout << "Density " << density << std::endl;
-      std::cout << "Nucleon Number " << num_nuc << std::endl;
-      std::cout << "============ END GetNucleonNumber ============" << std::endl;
-    }
-    //#endif
-
-    if(num_nuc < 1.0e-10 ){
+    if(num_nuc < 1.0e-10 )
       num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
-    }
 
     return num_nuc;
 }
@@ -519,24 +494,9 @@ void nuSQUIDS::SetUpInteractionCache(){
 
 void nuSQUIDS::UpdateInteractions(){
     double num_nuc = GetNucleonNumber();
-//    if(debug)
-//      std::cout << "============ BEGIN UpdateInteractions ============" << std::endl;
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
-          //#ifdef UpdateInteractions_DEBUG
-//          if(debug){
-//            std::cout << "============" << flv << "============" << std::endl;
-//          }
-//          //#endif
           for(unsigned int e1 = 0; e1 < ne; e1++){
-//              //#ifdef UpdateInteractions_DEBUG
-//              if(debug){
-//                  std::cout << "== CC NC Terms x = " << track->GetX()/params.km << " [km] ";
-//                  std::cout << "E = " << E_range[e1] << " [eV] ==" << std::endl;
-//                  std::cout << "CC : " << int_struct->sigma_CC[rho][flv][e1]*num_nuc << " NC : " << int_struct->sigma_NC[rho][flv][e1]*num_nuc << std::endl;
-//                  std::cout << "==" << std::endl;
-//              }
-//              //#endif
               int_struct->invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
               int_struct->invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
               int_struct->invlen_INT[rho][flv][e1] = int_struct->invlen_NC[rho][flv][e1] + int_struct->invlen_CC[rho][flv][e1];
@@ -755,11 +715,15 @@ void nuSQUIDS::UpdateInteractions(){
         double* tau_lep_ptr=&int_struct->dNdE_tau_lep[et][0];
         SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
         SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
+        double     tau_decay_flux_et=    tau_decay_fluxes[et];
+        double tau_bar_decay_flux_et=tau_bar_decay_fluxes[et];
         for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-          tau_hadlep_decays[0][e1] +=     tau_decay_fluxes[et]*tau_all_ptr[e1];
-          tau_lep_decays   [0][e1] += tau_bar_decay_fluxes[et]*tau_lep_ptr[e1];
-          tau_hadlep_decays[1][e1] += tau_bar_decay_fluxes[et]*tau_all_ptr[e1];
-          tau_lep_decays   [1][e1] +=     tau_decay_fluxes[et]*tau_lep_ptr[e1];
+          double tau_all_e1=tau_all_ptr[e1];
+          double tau_lep_e1=tau_lep_ptr[e1];
+          tau_hadlep_decays[0][e1] +=     tau_decay_flux_et*tau_all_e1;
+          tau_lep_decays   [0][e1] += tau_bar_decay_flux_et*tau_lep_e1;
+          tau_hadlep_decays[1][e1] += tau_bar_decay_flux_et*tau_all_e1;
+          tau_lep_decays   [1][e1] +=     tau_decay_flux_et*tau_lep_e1;
         }
       }
       
