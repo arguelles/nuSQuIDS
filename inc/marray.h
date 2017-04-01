@@ -1107,7 +1107,7 @@ private:
 	///\param source_buffer the existing buffer from whose objects thes objects in the buffer are copy constructed
 	///\pre source_buffer is a buffer of at least size valid value_type objects
 	static void copy_init_buffer(value_type* buffer, size_type size, allocator_type& alloc, value_type* source_buffer)
-	noexcept(noexcept(value_type(std::declval<const value_type&>()))){
+	noexcept(noexcept(allocator_traits::construct(std::declval<allocator_type&>(),std::declval<const value_type*>(),std::declval<const value_type&>()))){
 		size_type i=0;
 		try{
 			for(; i!=size; i++)
