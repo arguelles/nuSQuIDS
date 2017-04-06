@@ -655,7 +655,7 @@ SunASnu::Track::Track(double x,double xini,double b_impact):
   radius_nu(694439.0*param.km),
   b_impact(b_impact)
         {
-            xend = 2.0*sqrt(SQR(radius_nu)+SQR(b_impact));
+            xend = 2.0*sqrt(SQR(radius_nu)-SQR(b_impact));
         }
 
 void SunASnu::Track::Serialize(hid_t group) const {
