@@ -67,6 +67,7 @@ int main (int argc, char const *argv[])
 
   squid.Set_IncludeOscillations(false);
   squid.Set_GlashowResonance(true);
+  squid.Set_PositivityConstrain(false);
 
   // setup integration settings
   squid.Set_h_max( 500.0*units.km );
@@ -88,8 +89,6 @@ int main (int argc, char const *argv[])
 
   // set the initial state
   squid.Set_initial_state(inistate,flavor);
-  squid.Set_IncludeOscillations(false);
-  squid.Set_PositivityConstrain(false);
 
   std::cout << "Propagating. . . " << std::endl;
   squid.EvolveState();
