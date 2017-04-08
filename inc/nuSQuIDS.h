@@ -136,16 +136,16 @@ protected:
         /// \brief Neutrino charge current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
-        /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
-        /// its initialized when InitializeInteractions() is called. The first dimension
+        /// This array is constructed when InitializeInteractionVectors() is called and
+        /// is initialized when InitializeInteractions() is called. The first dimension
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
         marray<double,4,aligned_allocator<double>> dNdE_CC;
         /// \brief Neutrino neutral current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
-        /// The array four dimensional is constructed when InitializeInteractionVectors() is called and
-        /// its initialized when InitializeInteractions() is called. The first dimension
+        /// This array is constructed when InitializeInteractionVectors() is called and
+        /// is initialized when InitializeInteractions() is called. The first dimension
         /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
         /// and the last two the initial and final energy node respectively.
         marray<double,4,aligned_allocator<double>> dNdE_NC;
@@ -468,8 +468,8 @@ protected:
     void init(double xini=0.0);
 
     /// \brief Initilizes auxiliary cross section arrays.
-    /// \details The arrays are initialize, but not filled with contented. To fill the arrays
-    /// call InitializeInteractions().
+    /// \details The arrays are initialize, but not filled with contented.
+    /// To fill the arrays call InitializeInteractions().
     void InitializeInteractionVectors();
 
     /// \brief Fills in auxiliary cross section arrays.
@@ -782,7 +782,7 @@ protected:
     /// \brief Returns true if oscillations are considered
     bool GetUseOscillations() const {return ioscillations;}
 
-    /// \brinf Initiàlized interaction structure
+    /// \brinf Initiàlize interaction structure
     void InitializeInteractions();
 
     /// \brief Returns the interaction structure.
@@ -1031,14 +1031,6 @@ class nuSQUIDSAtm {
       for(unsigned int ie = 0 ; ie < enu_array.size(); ie++)
         log_enu_array[ie] = log(enu_array[ie]);
 
-      if(nusq_array.front().GetUseInteractions()){
-        // setting the interaction structure also on the  main object
-        nusq_array.front().InitializeInteractions();
-        int_struct = nusq_array.front().GetInteractionStructure();
-        for(BaseSQUIDS& nsq : nusq_array)
-          nsq.int_struct=int_struct;
-      }
-
       inusquidsatm = true;
     }
 
@@ -1167,6 +1159,17 @@ class nuSQUIDSAtm {
         throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
       if(not inusquidsatm)
         throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+
+      if(nusq_array.front().GetUseInteractions()){
+        // setting the interaction structure also on the  main object
+        nusq_array.front().InitializeInteractions();
+        int_struct = nusq_array.front().GetInteractionStructure();
+        for(BaseSQUIDS& nsq : nusq_array){
+          nsq.int_struct=int_struct; //copy identical cross section data
+          nsq.InitializeInteractions(); //still need to initialize intermediate buffers
+        }
+      }
+
       unsigned int i = 0;
       for(BaseSQUIDS& nsq : nusq_array){
       if(progressbar){
@@ -1578,6 +1581,12 @@ class nuSQUIDSAtm {
     void Set_TauRegeneration(bool opt){
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_TauRegeneration(opt);
+      }
+    }
+	
+    void Set_GlashowResonance(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_GlashowResonance(opt);
       }
     }
 

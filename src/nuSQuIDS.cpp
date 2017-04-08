@@ -618,10 +618,10 @@ void nuSQUIDS::UpdateInteractions(){
         #pragma clang loop vectorize(assume_safety)
 #endif
         for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-          //Defer adding the letponic decays to both the electron and muon sums
+          //Defer adding the leptonic decays to both the electron and muon sums
           //to reduce the amount of data written in this inner loop from ~2*ne^2
           //to ne^2 + 2*ne. Since the hadlep contributions only go into the tau
-          //components we might as well put them there directly. 
+          //components we might as well put them there directly.
           tau_lep_decays[e1]     += tau_bar_decay_fluxes[et]*tau_lep_ptr[e1];
           tau_bar_lep_decays[e1] +=     tau_decay_fluxes[et]*tau_lep_ptr[e1];
           factors_nu_tau[e1]     +=     tau_decay_fluxes[et]*tau_all_ptr[e1];
@@ -1845,6 +1845,13 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
       throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
     } else {
       int_struct = iis;
+      nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
+      if(tauregeneration){
+        tau_hadlep_decays.resize(std::vector<size_t>{2,ne});
+        tau_lep_decays.resize(std::vector<size_t>{2,ne});
+      }
+      if(iglashow)
+        gr_factors.resize(std::vector<size_t>{ne});
       interactions_initialized = true;
     }
   }
@@ -2137,6 +2144,15 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
           int_struct->dNdE_tau_lep[e1][e2] = dNdEtaulep[e1*ne + e2];
         }
     }
+    
+    nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
+    if(tauregeneration){
+      tau_hadlep_decays.resize(std::vector<size_t>{2,ne});
+      tau_lep_decays.resize(std::vector<size_t>{2,ne});
+    }
+    if(iglashow)
+      gr_factors.resize(std::vector<size_t>{ne});
+    
     interactions_initialized = true;
   }
 
