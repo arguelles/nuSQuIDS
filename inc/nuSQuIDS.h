@@ -35,6 +35,7 @@
 #include "taudecay.h"
 #include "marray.h"
 #include "aligned_alloc.h"
+#include "ThreadPool.h"
 
 #include <algorithm>
 #include <cstring>
@@ -991,6 +992,8 @@ class nuSQUIDSAtm {
     std::shared_ptr<NeutrinoCrossSections> ncs;
     /// \brief Contains the interaction information structure.
     std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
+    /// \brief the number of threads to use when performing the evolution
+    unsigned int evalThreads;
   public:
     /************************************************************************************
      * CONSTRUCTORS
@@ -1007,7 +1010,8 @@ class nuSQUIDSAtm {
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes>
     nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args):
-    costh_array(costh_array)
+    costh_array(costh_array),
+    evalThreads(1)
     {
       gsl_rng_env_setup();
       const gsl_rng_type * T_gsl = gsl_rng_default;
@@ -1059,7 +1063,8 @@ class nuSQUIDSAtm {
     earth_atm(std::move(other.earth_atm)),
     track_array(std::move(other.track_array)),
     ncs(std::move(other.ncs)),
-    int_struct(std::move(other.int_struct))
+    int_struct(std::move(other.int_struct)),
+    evalThreads(other.evalThreads)
     {
       other.inusquidsatm = false;
     }
@@ -1081,6 +1086,7 @@ class nuSQUIDSAtm {
       track_array = std::move(other.track_array);
       ncs = std::move(other.ncs);
       int_struct = std::move(other.int_struct);
+      evalThreads = other.evalThreads;
 
       // initial nusquids object render useless
       other.inusquidsatm = false;
@@ -1170,16 +1176,34 @@ class nuSQUIDSAtm {
         }
       }
 
-      unsigned int i = 0;
-      for(BaseSQUIDS& nsq : nusq_array){
-      if(progressbar){
-        std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
-        i++;
+      if(evalThreads==1){
+        unsigned int i = 0;
+        for(BaseSQUIDS& nsq : nusq_array){
+          if(progressbar){
+            std::cout << "Calculating cos(th) = " + std::to_string(costh_array[i]) << std::endl;
+            i++;
+          }
+          nsq.EvolveState();
+          if(progressbar){
+            std::cout << std::endl;
+          }
+        }
       }
-      nsq.EvolveState();
-      if(progressbar){
-        std::cout << std::endl;
-      }
+      else{
+        bool overrideProgressBar=progressbar;
+        Set_ProgressBar(false);
+        ThreadPool tpool(evalThreads);
+        std::vector<std::future<void>> tasks;
+        tasks.reserve(nusq_array.size());
+        for(BaseSQUIDS& nsq : nusq_array)
+          tasks.emplace_back(tpool.enqueue([&](){ nsq.EvolveState(); }));
+        unsigned int i = 0;
+        for(const auto& task : tasks){
+          task.wait();
+          if(overrideProgressBar)
+            std::cout << "cos(th) = " + std::to_string(costh_array[i++]) << " complete" << std::endl;
+        }
+        Set_ProgressBar(overrideProgressBar);
       }
     }
 
@@ -1611,6 +1635,26 @@ class nuSQUIDSAtm {
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_PositivityConstrainStep(step);
       }
+    }
+  
+    /// \brief Ste the number of threads used for evolution.
+    ///
+    /// \param nThreads the number of execution threads EvolveState should use.
+    /// If zero, use an automatic, system defined number.
+    void Set_EvalThreads(unsigned int nThreads){
+      evalThreads=nThreads;
+      if(evalThreads==0){ //if the user wants automatic selection
+        evalThreads=std::thread::hardware_concurrency();
+        if(evalThreads==0) //if autodetection failed
+          evalThreads=1;
+      }
+    }
+  
+    /// \brief Get the number of threads used for evolution.
+    ///
+    /// \return The number of execution threads EvolveState should use.
+    unsigned int Get_EvalThreads() const{
+      return(evalThreads);
     }
 };
 
