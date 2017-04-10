@@ -34,6 +34,7 @@
 #include <math.h>
 #include <cmath>
 #include <map>
+#include <mutex>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include <SQuIDS/const.h>
@@ -673,6 +674,8 @@ class EarthAtm: public Body{
     gsl_spline * inter_ye;
     /// \brief Electron fraction gsl spline auxiliary pointer.
     gsl_interp_accel * inter_ye_accel;
+    /// \brief mutex to ensure that only one thread accesses GSL structures at a time
+    mutable std::mutex gsl_mut;
 
     /// \brief Minimum radius.
     double x_radius_min;

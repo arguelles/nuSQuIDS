@@ -868,6 +868,7 @@ double EarthAtm::density(const GenericTrack& track_input) const
                 double h0 = 25.0;
                 return 1.05*exp(-h/h0);
             } else {
+              std::lock_guard<std::mutex> lck(gsl_mut);
               return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
             }
         }
@@ -890,6 +891,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
             else if ( rel_r > radius/earth_with_atm_radius ){
               return 0.494;
             }else {
+              std::lock_guard<std::mutex> lck(gsl_mut);
               return gsl_spline_eval(inter_ye,rel_r,inter_ye_accel);
             }
         }
