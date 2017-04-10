@@ -129,9 +129,9 @@ void nuSQUIDS::Set_E(double Enu){
   E_range[0] = Enu;
   Set_xrange(std::vector<double>{Enu});
 
-  // energy is initialize
+  // energy is initialized
   ienergy = true;
-  // state is invalited, because hamiltonian changes.
+  // state is invalided, because hamiltonian changes.
   istate = false;
 }
 
@@ -554,7 +554,7 @@ void nuSQUIDS::UpdateInteractions(){
         SQUIDS_POINTER_IS_ALIGNED(factors,preferred_alignment*sizeof(double));
         for(unsigned int e2=1; e2<ne; e2++){
           //the flux of the current flavor at e2
-          double flux_a_e2=projector*state[e2].rho[rho];
+          double flux_a_e2=projector*estate[e2].rho[rho];
           //premultiply factors which do not depend on the lower energy e1
           flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
@@ -578,8 +578,8 @@ void nuSQUIDS::UpdateInteractions(){
       squids::SU_vector& projector_tau_bar = evol_b1_proj[1][tau_flavor][0];
       
       for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
-        double nu_tau_flux     =     projector_tau*state[en].rho[0];
-        double nu_tau_bar_flux = projector_tau_bar*state[en].rho[1];
+        double nu_tau_flux     =     projector_tau*estate[en].rho[0];
+        double nu_tau_bar_flux = projector_tau_bar*estate[en].rho[1];
         if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
           continue;
         double dEn = delE[en-1];
@@ -647,7 +647,7 @@ void nuSQUIDS::UpdateInteractions(){
       projector_sum += evol_b1_proj[rho][2][0];
       ALIGNED_LOCAL_BUFFER(gr_factors,double,ne);
       for(unsigned int e2=1; e2<ne; e2++){
-        double flux=projector_e*state[e2].rho[rho];
+        double flux=projector_e*estate[e2].rho[rho];
         double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
         double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
         SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
@@ -701,7 +701,7 @@ void nuSQUIDS::UpdateInteractions(){
         //accumulate the contribution of each energy e2 to each lower energy
         for(unsigned int e2=1; e2<ne; e2++){
           //the flux of the current flavor at e2
-          double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*state[e2].rho[rho];
+          double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*estate[e2].rho[rho];
           //premultiply factors which do not depend on the lower energy e1
           flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
@@ -720,8 +720,8 @@ void nuSQUIDS::UpdateInteractions(){
       ALIGNED_LOCAL_BUFFER(tau_bar_decay_fluxes,double,ne);
       //we must use the actual projector for each energy, no shortcuts!
       for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
-        double nu_tau_flux     = evol_b1_proj[0][tau_flavor][en]*state[en].rho[0];
-        double nu_tau_bar_flux = evol_b1_proj[1][tau_flavor][en]*state[en].rho[1];
+        double nu_tau_flux     = evol_b1_proj[0][tau_flavor][en]*estate[en].rho[0];
+        double nu_tau_bar_flux = evol_b1_proj[1][tau_flavor][en]*estate[en].rho[1];
         if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
           continue;
         double dEn = delE[en-1];
@@ -770,7 +770,7 @@ void nuSQUIDS::UpdateInteractions(){
       unsigned int rho=(NT == both) ? 1 : 0;
       
       for(unsigned int e2=1; e2<ne; e2++){
-        double flux=evol_b1_proj[rho][0][e2]*state[e2].rho[rho];
+        double flux=evol_b1_proj[rho][0][e2]*estate[e2].rho[rho];
         double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
         double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
         SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
@@ -977,7 +977,7 @@ void nuSQUIDS::PositivizeFlavors(){
       for(unsigned int flv = 0; flv < numneu; flv++){
         double quantity = EvalFlavorAtNode(flv,ie,rho);
         if( quantity < 0){
-          state[ie].rho[rho] -= evol_b1_proj[rho][flv][ie]*quantity;
+          estate[ie].rho[rho] -= evol_b1_proj[rho][flv][ie]*quantity;
         }
       }
     }
@@ -1039,6 +1039,8 @@ void nuSQUIDS::EvolveState(){
         tmp1 = HI(ie,rho);
         //std::cout << "antes " << E_range[ie] << " " << state[ie].rho[rho] << std::endl;
         //std::cout << "hamiltonian " << tmp1 << std::endl;
+        //here we deliberately update state directly,
+        //rather than working on estate as we would is using GSL ODE evolution
         tmp2 = state[ie].rho[rho].UTransform(tmp1,gsl_complex_rect(0.,evolution_time));
         state[ie].rho[rho] = tmp2;
         //std::cout << "despues " << E_range[ie] << " " << tmp2 << std::endl;
