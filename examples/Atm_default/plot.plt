@@ -9,9 +9,13 @@ set ylabel "Cos(zenith)"
 set pm3d map
 splot "fluxes_flavor.txt" u 1:2:5
 
-
-set terminal postscript enhance eps color
-set output "plot.eps"
+set xrange [2.:6.]
+set terminal png size 800,600 enhanced font 'Verdana,10'
+set output "plot.png"
+#set terminal postscript enhance eps color
+#set output "plot.eps"
+#set terminal svg size 350,262 fname 'Verdana' fsize 10
+#set output "plot.svg"
 replot
 
 

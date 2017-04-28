@@ -86,8 +86,8 @@ int main()
   
   nus_atm.Set_CPPhase(0,2,0);
   if(numneu > 3){
-    nus_atm.Set_SquareMassDifference(3,1.);
-    nus_atm.Set_MixingAngle(1,3,0.5);
+    nus_atm.Set_SquareMassDifference(3,-1.);
+    nus_atm.Set_MixingAngle(1,3,0.160875);
   }
   std::cout << "End: setting mixing angles." << std::endl;
   
@@ -150,9 +150,12 @@ int main()
   for(double cz=czmin;cz<czmax;cz+=(czmax-czmin)/(double)Ncz){
     for(double lE=lEmin; lE<lEmax; lE+=(lEmax-lEmin)/(double)Nen){
       double E=pow(10.0,lE);
-      file << lE << " " << cz << " " << E;
+      file << lE - log10(units.GeV) << " " << cz << " " << E/units.GeV;
       for(int fl=0; fl<numneu; fl++){
-	file << " " <<  nus_atm.EvalFlavor(fl,cz, E);
+        file << " " <<  nus_atm.EvalFlavor(fl,cz, E, 0);
+      }
+      for(int fl=0; fl<numneu; fl++){
+        file << " " <<  nus_atm.EvalFlavor(fl,cz, E, 1);
       }
       file << std::endl;
     }
