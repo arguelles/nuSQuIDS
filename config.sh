@@ -241,6 +241,9 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--with-python-bindings/true/p'`
 	if [ "$TMP" ]; then PYTHON_BINDINGS=true; continue; fi
+
+	echo "config.sh: Unknown or malformed option '$var'" 1>&2
+	exit 1
 done
 
 if [ "$GSL_INCDIR" -a "$GSL_LIBDIR" ]; then
