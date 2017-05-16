@@ -242,6 +242,17 @@ do
 	TMP=`echo "$var" | sed -n 's/^--with-python-bindings/true/p'`
 	if [ "$TMP" ]; then PYTHON_BINDINGS=true; continue; fi
 
+	TMP=`echo "$var" | sed -n 's/^--with-boost=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then
+		BOOST_INCDIR="${TMP}/include";
+		BOOST_LIBDIR="${TMP}/lib";
+	continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--with-boost-libdir=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then BOOST_LIBDIR="$TMP"; continue; fi
+	TMP=`echo "$var" | sed -n 's/^--with-boost-incdir=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then BOOST_INCDIR="$TMP"; continue; fi
+
 	echo "config.sh: Unknown or malformed option '$var'" 1>&2
 	exit 1
 done
@@ -504,45 +515,32 @@ else
 fi
 
 if [ $PYTHON_BINDINGS ]; then
-  echo "Generating Python bindings makefile..."
-for var in "$@"
-do
-	TMP=`echo "$var" | sed -n 's/^--with-boost=\(.*\)$/\1/p'`
-	if [ "$TMP" ]; then
-		BOOST_INCDIR="${TMP}/include";
-		BOOST_LIBDIR="${TMP}/lib";
-	continue; fi
+	echo "Generating Python bindings makefile..."
 
-  TMP=`echo "$var" | sed -n 's/^--with-boost-libdir=\(.*\)$/\1/p'`
-  if [ "$TMP" ]; then BOOST_LIBDIR="$TMP"; continue; fi
-  TMP=`echo "$var" | sed -n 's/^--with-boost-incdir=\(.*\)$/\1/p'`
-  if [ "$TMP" ]; then BOOST_INCDIR="$TMP"; continue; fi
-done
+	if [ -z $BOOST_LIBDIR -a  -z $BOOST_INCDIR ]; then
+		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
+		exit 1
+	fi
+	if [ -z $BOOST_LIBDIR ]; then
+		echo "Error: Specify BOOST library path using  --with-boost-libdir."
+		exit 1
+	fi
+	if [ -z $BOOST_INCDIR ]; then
+		echo "Error: Specify BOOST include path using  --with-boost-incdir."
+		exit 1
+	fi
+	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python"
 
-  if [ -z $BOOST_LIBDIR -a  -z $BOOST_INCDIR ]; then
-    echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."  
-    exit 0
-  fi
-  if [ -z $BOOST_LIBDIR ]; then
-    echo "Error: Specify BOOST library path using  --with-boost-libdir."  
-    exit 0
-  fi
-  if [ -z $BOOST_INCDIR ]; then
-    echo "Error: Specify BOOST include path using  --with-boost-incdir."  
-    exit 0
-  fi
-  BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python" 
-
-  PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
-  PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
-  PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
-  PYTHONNUMPYCHECK=`python ./resources/check_numpy.py` 
-  if [ -z "$PYTHONNUMPYCHECK" ]; then
-    echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."  
-    exit 0
-  fi
-  PYTHONNUMPYINC=$PYTHONNUMPYCHECK
-  echo "
+	PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
+	PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
+	PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
+	PYTHONNUMPYCHECK=`python ./resources/check_numpy.py`
+	if [ -z "$PYTHONNUMPYCHECK" ]; then
+		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
+		exit 1
+	fi
+	PYTHONNUMPYINC=$PYTHONNUMPYCHECK
+	echo "
 # Compiler
 CC=$CC
 CXX=$CXX
