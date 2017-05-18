@@ -471,22 +471,21 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("year",&squids::Const::year)
   ;
 
-  /*
+  
   {
     scope outer
-    = class_<Body, std::shared_ptr<Body> >("Body", init<unsigned int,std::string>())
+    = class_<Body, std::shared_ptr<Body>, boost::noncopyable >("Body", no_init)
     .def("density",&Body::density)
     .def("ye",&Body::ye)
     ;
 
-    class_<Body::Track, std::shared_ptr<Body::Track> >("Track", init<double,double>())
+    class_<Body::Track, std::shared_ptr<Body::Track>, boost::noncopyable >("Track", no_init)
     .def("GetInitialX",&Body::Track::GetInitialX)
     .def("GetFinalX",&Body::Track::GetFinalX)
     .def("GetX",&Body::Track::GetX)
     .def("SetX",&Body::Track::SetX)
     ;
   }
-  */
 
   {
     scope outer
