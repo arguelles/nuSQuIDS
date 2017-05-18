@@ -368,7 +368,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("both",both)
   ;
 
-  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
+  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>())
     .def(init<std::string>())
     .def(init<unsigned int,NeutrinoType>())
     .def("Set_initial_state",wrap_Set_initial_state)
@@ -416,7 +416,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetNumRho",&nuSQUIDS::GetNumRho)
   ;
 
-  class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<double,double,unsigned int,double,double,unsigned int,unsigned int,NeutrinoType,bool,bool>())
+  class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>())
     .def(init<std::string>())
     .def("EvolveState",&nuSQUIDSAtm<>::EvolveState)
     .def("Set_TauRegeneration",&nuSQUIDSAtm<>::Set_TauRegeneration)
@@ -471,6 +471,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def_readonly("year",&squids::Const::year)
   ;
 
+  /*
   {
     scope outer
     = class_<Body, std::shared_ptr<Body> >("Body", init<unsigned int,std::string>())
@@ -485,16 +486,17 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("SetX",&Body::Track::SetX)
     ;
   }
+  */
 
   {
     scope outer
     = class_<Vacuum, bases<Body>, std::shared_ptr<Vacuum> >("Vacuum")
+    .def("density",&Vacuum::density)
+    .def("ye",&Vacuum::ye)
     ;
 
     class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >("Track", init<double>())
     .def(init<double,double>())
-    .def("density",&Vacuum::density)
-    .def("ye",&Vacuum::ye)
     .def("GetInitialX",&Vacuum::Track::GetInitialX)
     .def("GetFinalX",&Vacuum::Track::GetFinalX)
     .def("GetX",&Vacuum::Track::GetX)
@@ -508,6 +510,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   {
     scope outer
     = class_<ConstantDensity, bases<Body>, std::shared_ptr<ConstantDensity> >("ConstantDensity", init<double,double>())
+    .def("density",&ConstantDensity::density)
+    .def("ye",&ConstantDensity::ye)
     ;
 
     class_<ConstantDensity::Track, std::shared_ptr<ConstantDensity::Track> >("Track", init<double>())
