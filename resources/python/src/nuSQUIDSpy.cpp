@@ -597,7 +597,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   {
     scope outer
-    = class_<EarthAtm, bases<Body>, std::shared_ptr<EarthAtm> >("EarthAtm")
+    = class_<EarthAtm, bases<Body>, boost::noncopyable, std::shared_ptr<EarthAtm> >("EarthAtm")
     .def(init<std::string>())
     ;
 
