@@ -1107,7 +1107,7 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,3> ini_flux, Basis basis){
+    void Set_initial_state(const marray<double,3>& ini_flux, Basis basis=flavor){
       if(ini_flux.extent(0) != costh_array.extent(0))
         throw std::runtime_error("nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
       if(ini_flux.extent(1) != enu_array.extent(0))
@@ -1138,7 +1138,7 @@ class nuSQUIDSAtm {
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.
-    void Set_initial_state(marray<double,4> ini_flux, Basis basis){
+    void Set_initial_state(const marray<double,4>& ini_flux, Basis basis=flavor){
       if(ini_flux.extent(0) != costh_array.extent(0))
         throw std::runtime_error(
             "nuSQUIDSAtm::Error::First dimension of input array is incorrect.");
