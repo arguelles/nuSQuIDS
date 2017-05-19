@@ -72,96 +72,113 @@ struct marray_to_numpyarray {
   }
 };
 
-template<typename T,unsigned int DIM>
-static marray<T,DIM> numpyarray_to_marray(PyObject * iarray, NPY_TYPES type_num){
-  // es un array de numpy
-  if (! PyArray_Check(iarray) )
-  {
-    PyErr_SetString(PyExc_TypeError, "numpyarray_to_marray: Input is not a numpy array.");
-    boost::python::throw_error_already_set();
+template<unsigned int Dim>
+struct marray_from_python{
+  marray_from_python(){
+    boost::python::converter::registry::push_back(&convertible,
+                                                  &construct,
+                                                  boost::python::type_id<marray<double,Dim>>());
   }
-  // si es que fuera un array de numpy castearlo
-  //PyArrayObject* numpy_array = (PyArrayObject*) iarray;
-  // lets get the contiguos C-style array
-  PyArrayObject* numpy_array = PyArray_GETCONTIGUOUS((PyArrayObject*)iarray);
-
-  // revisemos que los tipos del array sean dobles o que
-  if ( PyArray_DESCR(numpy_array)->type_num != type_num )
-  {
-    if ( PyArray_DESCR(numpy_array)->type_num == NPY_LONG &&
-        PyArray_ITEMSIZE(numpy_array) == 4 && type_num == NPY_INT)
-    {
-      // numpy on 32 bits sets numpy.int32 to NPY_LONG. So its all ok.
+  
+  static void* convertible(PyObject* obj_ptr){
+    //accept only numpy arrays
+    if(!PyArray_Check(obj_ptr))
+      return(NULL);
+    PyArrayObject* numpy_array=PyArray_GETCONTIGUOUS((PyArrayObject*)obj_ptr);
+    unsigned int array_dim = PyArray_NDIM(numpy_array);
+    //require matching dimensions
+    if(array_dim!=Dim)
+      return(NULL);
+    NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
+    //require a sane type
+    switch(type){
+      case NPY_BOOL:
+      case NPY_INT8:
+      case NPY_INT16:
+      case NPY_INT32:
+      case NPY_INT64:
+      case NPY_UINT8:
+      case NPY_UINT16:
+      case NPY_UINT32:
+      case NPY_UINT64:
+      case NPY_FLOAT32:
+      case NPY_FLOAT64:
+        break;
+      default:
+        return(NULL);
     }
-    else
-    {
-      PyErr_SetString(PyExc_TypeError, "numpyarray_to_marray: numpy type is not the same as the input array type.");
-      boost::python::throw_error_already_set();
-    }
+    
+    return(obj_ptr);
   }
-
-  // arrays vacios
-  if (PyArray_SIZE(numpy_array) == 0){
-      PyErr_SetString(PyExc_TypeError,"numpyarray_to_marray: empty numpy array.");
-      boost::python::throw_error_already_set();
-  }
-
-  // create numpy iterator
-  NpyIter* iter = NpyIter_New(numpy_array, NPY_ITER_READONLY|
-                             NPY_ITER_EXTERNAL_LOOP|
-                             NPY_ITER_REFS_OK,
-                             NPY_KEEPORDER, NPY_NO_CASTING,
-                             NULL);
-
-  unsigned int array_dim = PyArray_NDIM(numpy_array);
-  assert(DIM == array_dim && "No matching dimensions.");
-
-  // get numpy array shape and create marray object
+  
+  static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data){
+    PyArrayObject* numpy_array=PyArray_GETCONTIGUOUS((PyArrayObject*)obj_ptr);
+    // get numpy array shape and create marray object
 #ifdef NPY_1_7_API_VERSION
-  npy_intp* array_shape = PyArray_SHAPE(numpy_array);
+    npy_intp* array_shape = PyArray_SHAPE(numpy_array);
 #else
-  npy_intp* array_shape = PyArray_DIMS(numpy_array);
+    npy_intp* array_shape = PyArray_DIMS(numpy_array);
 #endif
-  std::vector<size_t> dimensions;
-  for(unsigned int i = 0; i < array_dim; i++)
-    dimensions.push_back(array_shape[i]);
-
-  // construct output object
-  marray<T,DIM> oarray;
-  oarray.resize(dimensions);
-  auto it = oarray.begin();
-
-  NpyIter_IterNextFunc *iternext = NpyIter_GetIterNext(iter, NULL);
-  char** dataptr = NpyIter_GetDataPtrArray(iter);
-  npy_intp* strideptr = NpyIter_GetInnerStrideArray(iter);
-  npy_intp* sizeptr = NpyIter_GetInnerLoopSizePtr(iter);
-  npy_intp iop, nop = NpyIter_GetNOp(iter);
-
-  // magic to make the int work
-  bool magic = false;
-  if ( type_num == NPY_INT or type_num == NPY_LONG )
-    magic = true;
-
-  do{
-    char* data = *dataptr;
-    npy_intp count = *sizeptr;
-    npy_intp stride = *strideptr;
-
-    while (count--)
-    {
-      for (iop = 0; iop < nop; ++iop, data+=stride){
-        if (magic)
-          *it++ = *(T*)(reinterpret_cast<int*>(data));
-        else
-          *it++ = *(T*)(data);
+    std::vector<size_t> dimensions;
+    
+    unsigned int array_dim = PyArray_NDIM(numpy_array);
+    assert(Dim == array_dim && "Non-matching array dimensions.");
+    
+    for(unsigned int i = 0; i < Dim; i++)
+      dimensions.push_back(array_shape[i]);
+    
+    void* storage=((boost::python::converter::rvalue_from_python_storage<marray<double,Dim>>*)data)->storage.bytes;
+    new (storage)marray<double,Dim>;
+    data->convertible = storage;
+    marray<double,Dim>* oarray=(marray<double,Dim>*)storage;
+    
+    oarray->resize(dimensions);
+    auto it = oarray->begin();
+    
+    // create numpy iterator
+    NpyIter* iter = NpyIter_New(numpy_array, NPY_ITER_READONLY|
+                                NPY_ITER_EXTERNAL_LOOP|
+                                NPY_ITER_REFS_OK,
+                                NPY_KEEPORDER, NPY_NO_CASTING,
+                                NULL);
+    
+    NpyIter_IterNextFunc* iternext = NpyIter_GetIterNext(iter, NULL);
+    char** dataptr = NpyIter_GetDataPtrArray(iter);
+    npy_intp* strideptr = NpyIter_GetInnerStrideArray(iter);
+    npy_intp* sizeptr = NpyIter_GetInnerLoopSizePtr(iter);
+    npy_intp iop, nop = NpyIter_GetNOp(iter);
+    
+    NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
+    
+    do{
+      char* data = *dataptr;
+      npy_intp count = *sizeptr;
+      npy_intp stride = *strideptr;
+      
+      while (count--){
+        for (iop = 0; iop < nop; ++iop, data+=stride){
+          switch(type){
+            case NPY_BOOL: *it++ = *(bool*)data; break;
+            case NPY_INT8: *it++ = *(int8_t*)data; break;
+            case NPY_INT16: *it++ = *(int16_t*)data; break;
+            case NPY_INT32: *it++ = *(int32_t*)data; break;
+            case NPY_INT64: *it++ = *(int64_t*)data; break;
+            case NPY_UINT8: *it++ = *(uint8_t*)data; break;
+            case NPY_UINT16: *it++ = *(uint16_t*)data; break;
+            case NPY_UINT32: *it++ = *(uint32_t*)data; break;
+            case NPY_UINT64: *it++ = *(uint64_t*)data; break;
+            case NPY_FLOAT32: *it++ = *(float*)data; break;
+            case NPY_FLOAT64: *it++ = *(double*)data; break;
+            default:
+              throw std::runtime_error("Unsupported array data type");
+          }
+        }
       }
-    }
-  } while(iternext(iter));
-
-  NpyIter_Deallocate(iter);
-
-  return oarray;
-}
+    } while(iternext(iter));
+    
+    NpyIter_Deallocate(iter);
+  }
+};
 
 // nuSQUIDS wrap functions
 /*
@@ -172,52 +189,6 @@ static void wrap_WriteStateHDF5(nuSQUIDS* nusq, std::string path){
 */
 static void wrap_ReadStateHDF5(nuSQUIDS* nusq,std::string hdf5_filename,std::string group = "/", std::string cross_section_grp_loc = ""){
   nusq->ReadStateHDF5(hdf5_filename,group,cross_section_grp_loc);
-}
-
-static void wrap_Set_initial_state(nuSQUIDS* nusq, PyObject * array, Basis neutype){
-  if (! PyArray_Check(array) )
-  {
-    throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
-  }
-
-  PyArrayObject* numpy_array = (PyArrayObject*)array;
-  unsigned int array_dim = PyArray_NDIM(numpy_array);
-  NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
-
-  // things i think can cast ok to doubles
-  if (!( type == NPY_LONG or type == NPY_INT or type == NPY_SHORT or type == NPY_FLOAT or
-      type == NPY_DOUBLE or type == NPY_LONGDOUBLE or type == NPY_CFLOAT or type == NPY_CDOUBLE))
-    throw std::runtime_error("nuSQUIDSpy::Error:Input numpy array cannot be meaninfully casted into double.");
-
-  if ( array_dim == 1 ) {
-    marray<double,1> state = numpyarray_to_marray<double,1>(array, type);
-    nusq->Set_initial_state(state,neutype);
-  } else if ( array_dim == 2 ) {
-    marray<double,2> state = numpyarray_to_marray<double,2>(array, type);
-    nusq->Set_initial_state(state,neutype);
-  } else if ( array_dim == 3 ) {
-    marray<double,3> state = numpyarray_to_marray<double,3>(array, type);
-    nusq->Set_initial_state(state,neutype);
-  } else
-    throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
-}
-
-static void wrap_Set_initial_state_atm(nuSQUIDSAtm<>* nusq_atm, PyObject * array, Basis neutype){
-  if (! PyArray_Check(array) )
-  {
-    throw std::runtime_error("nuSQUIDSpy::Error:Input array is not a numpy array.");
-  }
-  PyArrayObject* numpy_array = (PyArrayObject*)array;
-  unsigned int array_dim = PyArray_NDIM(numpy_array);
-
-  if ( array_dim == 3 ) {
-    marray<double,3> state = numpyarray_to_marray<double,3>(array, NPY_DOUBLE);
-    nusq_atm->Set_initial_state(state,neutype);
-  } else if ( array_dim == 4 ) {
-    marray<double,4> state = numpyarray_to_marray<double,4>(array, NPY_DOUBLE);
-    nusq_atm->Set_initial_state(state,neutype);
-  } else
-    throw std::runtime_error("nuSQUIDS::Error:Input array has wrong dimenions.");
 }
 
 enum GSL_STEP_FUNCTIONS {
@@ -323,6 +294,9 @@ BOOST_PYTHON_FUNCTION_OVERLOADS(nuSQUIDS_HDF5Read_overload,wrap_ReadStateHDF5,2,
 // for nusquids atm
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
 
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDS_Set_initial_state,nuSQUIDS::Set_initial_state,1,2)
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(nuSQUIDSAtm_Set_initial_state,nuSQUIDSAtm<>::Set_initial_state,1,2)
+
 // nuSQUIDSpy module definitions
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
@@ -368,10 +342,16 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("both",both)
   ;
 
-  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS", init<marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>())
-    .def(init<std::string>())
-    .def(init<unsigned int,NeutrinoType>())
-    .def("Set_initial_state",wrap_Set_initial_state)
+  class_<nuSQUIDS, boost::noncopyable, std::shared_ptr<nuSQUIDS> >("nuSQUIDS",no_init)
+    .def(init<marray<double,1>,unsigned int>(args("E_vector","numneu")))
+    .def(init<marray<double,1>,unsigned int,NeutrinoType>(args("E_vector","numneu","NT")))
+    .def(init<marray<double,1>,unsigned int,NeutrinoType,bool>(args("E_vector","numneu","NT","iinteraction")))
+    .def(init<marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>(args("E_vector","numneu","NT","iinteraction","ncs")))
+    .def(init<std::string>(args("filename")))
+    .def(init<unsigned int,NeutrinoType>(args("numneu","NT")))
+    .def("Set_initial_state",(void(nuSQUIDS::*)(const marray<double,1>&, Basis))&nuSQUIDS::Set_initial_state,nuSQUIDS_Set_initial_state())
+    .def("Set_initial_state",(void(nuSQUIDS::*)(const marray<double,2>&, Basis))&nuSQUIDS::Set_initial_state,nuSQUIDS_Set_initial_state())
+    .def("Set_initial_state",(void(nuSQUIDS::*)(const marray<double,3>&, Basis))&nuSQUIDS::Set_initial_state,nuSQUIDS_Set_initial_state())
     .def("Set_Body",&nuSQUIDS::Set_Body, bp::arg("Body"))
     .def("Set_Track",&nuSQUIDS::Set_Track, bp::arg("Track"))
     .def("Set_E",&nuSQUIDS::Set_E, bp::arg("NeutrinoEnergy"))
@@ -390,7 +370,6 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvalFlavor",(double(nuSQUIDS::*)(unsigned int,double,unsigned int) const)&nuSQUIDS::EvalFlavor)
     .def("EvalMassAtNode",(double(nuSQUIDS::*)(unsigned int,unsigned int,unsigned int) const)&nuSQUIDS::EvalMassAtNode)
     .def("EvalFlavorAtNode",(double(nuSQUIDS::*)(unsigned int,unsigned int,unsigned int) const)&nuSQUIDS::EvalFlavorAtNode)
-    .def("GetERange",&nuSQUIDS::GetERange)
     .def("GetHamiltonian",&nuSQUIDS::GetHamiltonian)
     //.def("GetState",&nuSQUIDS::GetState)
     .def("Set_h_min",&nuSQUIDS::Set_h_min)
@@ -442,7 +421,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetNumRho",&nuSQUIDSAtm<>::GetNumRho)
     //.def("EvalMass",(double(nuSQUIDS::*)(unsigned int,double,unsigned int) const)&nuSQUIDS::EvalMass)
     .def("GetnuSQuIDS",(nuSQUIDS&(nuSQUIDSAtm<>::*)(unsigned int))&nuSQUIDSAtm<>::GetnuSQuIDS,boost::python::return_internal_reference<>())
-    .def("Set_initial_state",wrap_Set_initial_state_atm)
+    .def("Set_initial_state",(void(nuSQUIDSAtm<>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<>::Set_initial_state,nuSQUIDSAtm_Set_initial_state())
+    .def("Set_initial_state",(void(nuSQUIDSAtm<>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<>::Set_initial_state,nuSQUIDSAtm_Set_initial_state())
     .def("GetERange",&nuSQUIDSAtm<>::GetERange)
     .def("GetCosthRange",&nuSQUIDSAtm<>::GetCosthRange)
   ;
@@ -622,4 +602,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   to_python_converter< marray<double,3> , marray_to_numpyarray<3> >();
   to_python_converter< marray<double,4> , marray_to_numpyarray<4> >();
 
+  marray_from_python<1>();
+  marray_from_python<2>();
+  marray_from_python<3>();
+  marray_from_python<4>();
 }
