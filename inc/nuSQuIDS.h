@@ -656,11 +656,12 @@ protected:
     /// mass eigenstates.
     void Set_initial_state(const marray<double,2>& ini_state, Basis basis = flavor);
 
-    /// \brief Sets the initial state in the multiple energy mode when doing either neutrino or antineutrino only.
+    /// \brief Sets the initial state in the multiple energy mode when doing both neutrino and antineutrino.
     /// @param ini_state Initial neutrino state.
     /// @param basis Representation of the neutrino state either flavor or mass.
-    /// \details \c ini_state first dimension has length equal to \c ne (number of energy nodes), while
-    /// the second dimension has length equal to \c numneu (number of flavors). If the basis is
+    /// \details \c ini_state first dimension has length equal to \c ne (number of energy nodes). The second
+    /// dimension has to have size 2 and the first entry is for neutrinos while the second one for antineutrinos
+    /// Finally. the third dimension has length equal to \c numneu (number of flavors). If the basis is
     /// flavor then the entries are interpret as nu_e, nu_mu, nu_tau, nu_sterile_1, ..., nu_sterile_n,
     /// while if the mass basis is used then the first entries correspond to the active
     /// mass eigenstates.

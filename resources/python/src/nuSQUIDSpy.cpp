@@ -395,8 +395,11 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetNumRho",&nuSQUIDS::GetNumRho)
   ;
 
-  class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>())
-    .def(init<std::string>())
+  class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", no_init)
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType>(args("CosZenith_vector","E_vector","numneu","NT")))
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction")))
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","ncs")))
+    .def(init<std::string>(args("filename")))
     .def("EvolveState",&nuSQUIDSAtm<>::EvolveState)
     .def("Set_TauRegeneration",&nuSQUIDSAtm<>::Set_TauRegeneration)
     //.def("EvalFlavor",&nuSQUIDSAtm<>::EvalFlavor)
