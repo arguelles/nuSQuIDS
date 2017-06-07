@@ -454,7 +454,7 @@ examples/HDF5_Write_Read/read : $(DYN_PRODUCT) examples/HDF5_Write_Read/read.cpp
 	@$(CXX) $(EXMAPLES_FLAGS) examples/HDF5_Write_Read/read.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
-	@echo Compiling atmospheric exampe
+	@echo Compiling atmospheric example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp

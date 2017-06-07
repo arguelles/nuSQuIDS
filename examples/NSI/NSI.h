@@ -34,7 +34,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
     }
 
     squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
-      double CC = HI_prefactor*body->density(*track)*body->ye(*track);
+      double CC = HI_prefactor*current_density*current_ye;
 
       // // construct potential in flavor basis
       squids::SU_vector potential(nsun,hiBuffer.get());
@@ -83,6 +83,7 @@ class nuSQUIDSNSI: public nuSQUIDS {
   }
   
   void Set_mutau(double eps){
+    epsilon_mutau = eps;
     gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
     gsl_complex c {{ epsilon_mutau , 0.0 }};
     gsl_matrix_complex_set(M,2,1,c);
