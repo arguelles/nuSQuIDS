@@ -1,5 +1,5 @@
 try:
 	import numpy
-	print numpy.get_include()
+	print(numpy.get_include())
 except:
-	print "" 
+	print("")

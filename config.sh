@@ -153,6 +153,8 @@ CXX=${CXX-$GUESS_CXX}
 AR=${AR-$GUESS_AR}
 LD=${LD-$GUESS_LD}
 
+PYTHON_EXE="python"
+
 HELP="Usage: ./config.sh [OPTION]... 
 
 Installation directories:
@@ -185,6 +187,11 @@ For the python bindings the following flags are used:
   --with-python-bindings         enable python binding compilation
   --with-boost-incdir=DIR        use the copy of Boost in DIR
   --with-boost-libdir=DIR        use the copy of Boost in DIR
+  --with-boost=DIR               use the copy of Boost in DIR
+                                 assuming headers are in DIR/include
+                                 and libraries in DIR/lib
+  --python-bin=PYTHON_EXECUTABLE use this python executable
+                                 (default is 'python')
 
 Some influential environment variables:
 CC          C compiler command
@@ -252,6 +259,9 @@ do
 	if [ "$TMP" ]; then BOOST_LIBDIR="$TMP"; continue; fi
 	TMP=`echo "$var" | sed -n 's/^--with-boost-incdir=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then BOOST_INCDIR="$TMP"; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--python-bin=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then PYTHON_EXE=$TMP; continue; fi
 
 	echo "config.sh: Unknown or malformed option '$var'" 1>&2
 	exit 1
@@ -531,10 +541,10 @@ if [ $PYTHON_BINDINGS ]; then
 	fi
 	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python"
 
-	PYTHONVERSION=`python -c 'import sys; print str(sys.version_info.major)+"."+str(sys.version_info.minor)'`
-	PYTHONLIBPATH=`python -c 'import sys; import re; print [ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0];'`
-	PYTHONINCPATH=$PYTHONLIBPATH/../../include/python$PYTHONVERSION
-	PYTHONNUMPYCHECK=`python ./resources/check_numpy.py`
+	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
+	PYTHONLIBPATH=`${PYTHON_EXE} -c 'import sys; import re; print([ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0]);'`
+	PYTHONINCPATH=`find $PYTHONLIBPATH/../../include/ -name "python${PYTHONVERSION}*"`
+	PYTHONNUMPYCHECK=`${PYTHON_EXE} ./resources/check_numpy.py`
 	if [ -z "$PYTHONNUMPYCHECK" ]; then
 		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
 		exit 1
@@ -555,7 +565,7 @@ LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
 LDFLAGS+= -lpython${PYTHONVERSION}
 LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
-INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} -I../inc/
+INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../inc/
 INCCFLAGS+= -I${BOOST_INCDIR}
 INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
