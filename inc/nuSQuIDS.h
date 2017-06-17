@@ -1303,6 +1303,104 @@ class nuSQUIDSAtm {
       return(LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],phiM,phiP));
     }
 
+    /// \brief Returns the flavor composition at a given energy and zenith.
+    /// @param flv Neutrino flavor.
+    /// @param costh Cosine of the zenith.
+    /// @param enu Neutrino energy [eV].
+    /// @param rho Index of the equation, see details.
+    /// @param scale Scale is a float that sets the averaged oscillation scaled.
+    /// @param avr Is a bool vector of size of the numebr of neutirnos that signal which scaled has been averaged.
+    /// \details When NeutrinoType is \c both \c rho specifies wether one
+    /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
+    /// is done in the logarithm of the energy and cos(zenith).
+    double EvalFlavor(unsigned int flv,double costh,double enu,unsigned int rho,double scale,std::vector<bool> avr) const {
+      // here the energy enters in eV
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
+      if(not inusquidsatm)
+        throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+      if(not ( rho == 0 or rho == 1))
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor rho has to be 0 or 1.");
+      
+      if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
+      if( enu < *enu_array.begin() or enu > *enu_array.rbegin() )
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::neutrino energy out of bounds.(Emin = " +
+                                 std::to_string(*enu_array.begin()) +
+                                 ",Emax = " +
+                                 std::to_string(*enu_array.rbegin()) +
+                                 ", Enu = " + std::to_string(enu) + ")");
+      
+      auto cthit=std::lower_bound(costh_array.begin(),costh_array.end(),costh);
+      if(cthit==costh_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(cthit!=costh_array.begin())
+        cthit--;
+      size_t cth_M=std::distance(costh_array.begin(),cthit);
+      
+      /*double logE = log(enu);
+      auto logeit=std::lower_bound(log_enu_array.begin(),log_enu_array.end(),logE);
+      if(logeit==log_enu_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(logeit!=log_enu_array.begin())
+        logeit--;
+      size_t loge_M=std::distance(log_enu_array.begin(),logeit);*/
+      
+      auto eit=std::lower_bound(enu_array.begin(),enu_array.end(),enu);
+      if(eit==enu_array.end())
+        throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+      if(eit!=enu_array.begin())
+        eit--;
+      size_t loge_M=std::distance(enu_array.begin(),eit);
+      
+      //EarthAtm::Track track(acos(costh));
+      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
+      double delta_t_final = track.GetFinalX()-track.GetInitialX();
+      
+      // assuming offsets are zero
+      double delta_t_1 = nusq_array[cth_M].Get_t() - nusq_array[cth_M].Get_t_initial();
+      double delta_t_2 = nusq_array[cth_M+1].Get_t() - nusq_array[cth_M+1].Get_t_initial();
+      double delta_t_final_1 = nusq_array[cth_M].GetTrackFast().GetFinalX() - nusq_array[cth_M].GetTrackFast().GetInitialX();
+      double delta_t_final_2 = nusq_array[cth_M+1].GetTrackFast().GetFinalX() - nusq_array[cth_M+1].GetTrackFast().GetInitialX();
+      double t_inter = 0.5*(delta_t_final*delta_t_1/delta_t_final_1 + delta_t_final*delta_t_2/delta_t_final_2);
+      
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
+      
+      struct storage_type{
+        squids::SU_vector evol_proj, temp1, temp2;
+        storage_type(unsigned int dim):evol_proj(dim),temp1(dim),temp2(dim){}
+      };
+  #ifdef SQUIDS_THREAD_LOCAL
+      static SQUIDS_THREAD_LOCAL
+  #endif
+      storage_type storage(H0_at_enu.Dim());
+      // preevolution buffer
+      std::shared_ptr<double> evol_buffer = std::make_shared<double>(H0_at_enu.GetEvolveBufferSize());
+      
+      H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter,scale,avr);
+      storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(evol_buffer.get());
+      
+      //coefficients for energy interpolation
+      double f2=(enu-enu_array[loge_M])/(enu_array[loge_M+1]-enu_array[loge_M]);
+      double f1=1-f2;
+      
+      storage.temp1 =f1*nusq_array[cth_M  ].GetState(loge_M  ,rho);
+      storage.temp1+=f2*nusq_array[cth_M  ].GetState(loge_M+1,rho);
+
+      H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter - nusq_array[cth_M  ].Get_t(),scale,avr);
+      storage.temp2=storage.temp1.Evolve(evol_buffer.get());
+      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      
+      storage.temp1 =f1*nusq_array[cth_M+1].GetState(loge_M  ,rho);
+      storage.temp1+=f2*nusq_array[cth_M+1].GetState(loge_M+1,rho);
+      H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter - nusq_array[cth_M+1].Get_t(),scale,avr);
+      storage.temp2=storage.temp1.Evolve(evol_buffer.get());
+      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      
+      //perform angular interpolation
+      return(LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],phiM,phiP));
+    }
+
     /// \brief Writes the object into an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 into which save the object.
     /// \details All contents are saved to the \c root of the HDF5 file.
