@@ -43,6 +43,7 @@
 #include <memory>
 #include <map>
 #include <stdexcept>
+#include <vector>
 
 #include "H5Epublic.h"
 #include "H5Tpublic.h"
@@ -715,7 +716,7 @@ protected:
     /// @param rho Index of the equation, see details.
     /// @param scale scale upon which oscillations will be averaged out
     /// @param avg bool array which is true for all scales that were averaged out
-    double EvalMass(unsigned int flv,double enu,unsigned int rho,double scale,bool* avr) const;
+    double EvalMass(unsigned int flv,double enu,unsigned int rho,double scale,std::vector<bool>& avr) const;
 
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
     /// @param flv Neutrino flavor.
@@ -732,7 +733,7 @@ protected:
     /// @param rho Index of the equation, see details.
     /// @param scale scale upon which oscillations will be averaged out
     /// @param avg bool array which is true for all scales that were averaged out
-    double EvalFlavor(unsigned int flv,double enu,unsigned int rho,double scale,bool* avr) const;
+    double EvalFlavor(unsigned int flv,double enu,unsigned int rho,double scale,std::vector<bool>& avr) const;
 
     /// \brief Returns the mass composition in the single energy mode.
     /// @param flv Neutrino flavor.
@@ -1222,6 +1223,8 @@ class nuSQUIDSAtm {
         throw std::runtime_error("nuSQUIDSAtm::Error::State not initialized.");
       if(not inusquidsatm)
         throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
+      if(not ( rho == 0 or rho == 1))
+        throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor rho has to be 0 or 1.");
       
       if( costh < *costh_array.begin() or costh > *costh_array.rbegin())
         throw std::runtime_error("nuSQUIDSAtm::Error::EvalFlavor::cos(th) out of bounds.");
