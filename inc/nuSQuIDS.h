@@ -1309,7 +1309,7 @@ class nuSQUIDSAtm {
     /// @param enu Neutrino energy [eV].
     /// @param rho Index of the equation, see details.
     /// @param scale Scale is a float that sets the averaged oscillation scaled.
-    /// @param avr Is a bool vector of size of the numebr of neutirnos that signal which scaled has been averaged.
+    /// @param avr Is a bool vector of size of the number of neutrinos that signal which scaled has been averaged.
     /// \details When NeutrinoType is \c both \c rho specifies wether one
     /// is considering neutrinos (0) or antineutrinos (1). Bilinear interpolation
     /// is done in the logarithm of the energy and cos(zenith).
@@ -1375,8 +1375,7 @@ class nuSQUIDSAtm {
   #endif
       storage_type storage(H0_at_enu.Dim());
       // preevolution buffer
-      std::shared_ptr<double> evol_buffer = std::make_shared<double>(H0_at_enu.GetEvolveBufferSize());
-      
+      std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
       H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter,scale,avr);
       storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(evol_buffer.get());
       
