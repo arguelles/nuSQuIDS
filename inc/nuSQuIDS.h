@@ -1757,6 +1757,14 @@ class nuSQUIDSAtm {
     unsigned int Get_EvalThreads() const{
       return(evalThreads);
     }
+
+    /// \brief Stes Earth object to be use.
+    /// @param earth Shared pointer to Earth object.
+    void Set_EarthModel(std::shared_ptr<Earth> earth){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_Body(earth);
+      }
+    }
 };
 
 
