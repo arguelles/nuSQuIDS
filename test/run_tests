@@ -42,7 +42,12 @@ CLEANED_TEST_SUFFIX=".clean.cpp"
 # the subdirectory in which to stash produced files
 PRODUCT_DIR="products"
 
-COMPILE_COMMAND="$CXX -std=c++11 -I./ -L../lib -lnuSQuIDS -lSQuIDS -lhdf5 -lhdf5_hl -lgsl"
+# fetch any compilation flags set during library configuration
+if [ -f env_vars.sh ]; then
+	. ./env_vars.sh
+fi
+
+COMPILE_COMMAND="$CXX $CFLAGS $CXXFLAGS $LDFLAGS -I./ -L../lib"
 CLEAN_COMMAND_FILE="clean_fail.sed"
 
 NAME_FILTER_REGEX='\('$COMPILE_FAIL_FLAG'\)*'$TEST_SUFFIX'$'
@@ -52,13 +57,6 @@ PASS_LABEL="PASS"
 FAIL_LABEL="FAIL"
 EXPECTED_FAIL_LABEL="FAIL (Expected)"
 MISSING_REFERENCE_LABEL="NOT RUN (Reference output missing)"
-
-# set environment for dynamic linking
-if uname | grep -q 'Darwin' ; then
-    export DYLD_LIBRARY_PATH="../lib"
-else
-    export LD_LIBRARY_PATH="../lib"
-fi
 
 if [ $# -eq 0 ] ; then
 	# locate all tests

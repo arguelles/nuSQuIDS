@@ -524,6 +524,19 @@ else
 	echo '	@cp lib/hdf5.pc $(PREFIX)/lib/pkgconfig' >> ./Makefile
 fi
 
+echo "
+export CXX=\"${CXX}\"
+export CFLAGS=\"${CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS}\"
+export CXXFLAGS=\"${CXXFLAGS} -std=c++11\"
+export LDFLAGS=\"${LDFLAGS} ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS} -lnuSQuIDS\"
+" > test/env_vars.sh
+if uname | grep -q 'Darwin' ; then
+	printf "export DYLD_" >> test/env_vars.sh
+else
+	printf "export LD_" >> test/env_vars.sh
+fi
+echo "LIBRARY_PATH=\"../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
+
 if [ $PYTHON_BINDINGS ]; then
 	echo "Generating Python bindings makefile..."
 
