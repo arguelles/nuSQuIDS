@@ -1256,13 +1256,13 @@ double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho, double s
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
-  if ( basis == mass )
-    throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
   if ( EE < *E_range.begin() || EE > *E_range.rbegin() )
     throw std::runtime_error("nuSQUIDS::Error::Energy "+std::to_string(EE)+" outside of propagated energy range, ["
                              +std::to_string(*E_range.begin())+","+std::to_string(*E_range.rbegin())+"].");
   if (avr.size() != numneu)
     throw std::runtime_error("nuSQUIDS::Error::Average vector bool size must be the number of neutrinos.");
+  if ( basis == mass )
+    return b0_proj[flv]*GetIntermediateState(rho,EE);
   return GetExpectationValueD(b0_proj[flv], rho, EE, scale, avr);
 }
 
@@ -1271,13 +1271,13 @@ double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho, double 
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
   if ( rho != 0 and NT != both )
     throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
-  if ( basis == mass )
-    throw std::runtime_error("nuSQUIDS::Error::Use EvalMassAtNode. Interpolation is not recommended on this basis.");
   if ( EE < *E_range.begin() || EE > *E_range.rbegin() )
     throw std::runtime_error("nuSQUIDS::Error::Energy "+std::to_string(EE)+" outside of propagated energy range, ["
                              +std::to_string(*E_range.begin())+","+std::to_string(*E_range.rbegin())+"].");
   if (avr.size() != numneu)
     throw std::runtime_error("nuSQUIDS::Error::Average vector bool size must be the number of neutrinos.");
+  if ( basis == mass )
+    return b1_proj[rho][flv]*GetIntermediateState(rho,EE);
   return GetExpectationValueD(b1_proj[rho][flv], rho, EE, scale, avr);
 }
 
