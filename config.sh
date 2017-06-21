@@ -531,11 +531,15 @@ export CXXFLAGS=\"${CXXFLAGS} -std=c++11\"
 export LDFLAGS=\"${LDFLAGS} ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS} -lnuSQuIDS\"
 " > test/env_vars.sh
 if uname | grep -q 'Darwin' ; then
-	printf "export DYLD_" >> test/env_vars.sh
+	printf "export DYLD_LIBRARY_PATH=\"" >> test/env_vars.sh
+	if [ "$DYLD_LIBRARY_PATH" ]; then
+		printf "${DYLD_LIBRARY_PATH}:" >> test/env_vars.sh
+	fi
+	printf "/lib:/usr/lib:\${HOME}/lib:/usr/local/lib:" >> test/env_vars.sh
 else
-	printf "export LD_" >> test/env_vars.sh
+	printf "export LD_LIBRARY_PATH=\"" >> test/env_vars.sh
 fi
-echo "LIBRARY_PATH=\"../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
+echo "../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
 
 if [ $PYTHON_BINDINGS ]; then
 	echo "Generating Python bindings makefile..."
