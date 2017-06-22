@@ -1096,19 +1096,14 @@ void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
+      state[i].rho[r].SetAllComponents(0);
       if (basis == flavor){
-        state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < v.extent(0); j++)
-        {
           state[i].rho[r] += v[j]*b1_proj[r][j];
-        }
       }
       else if (basis == mass){
-        state[i].rho[r] = 0.0*b0_proj[0];
         for(int j = 0; j < v.extent(0); j++)
-        {
           state[i].rho[r] += v[j]*b0_proj[j];
-        }
       }
     }
   }
@@ -1146,18 +1141,14 @@ void nuSQUIDS::Set_initial_state(const marray<double,2>& v, Basis basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
+      state[i].rho[r].SetAllComponents(0);
       if (basis == flavor){
-        state[i].rho[r] = 0.0*b0_proj[0];
         for(unsigned int j = 0; j < numneu; j++)
-        {
           state[i].rho[r] += v[i][j]*b1_proj[r][j];
-        }
       }
       else if (basis == mass){
-        state[i].rho[r] = 0.0*b0_proj[0];
-        for(unsigned int j = 0; j < numneu; j++){
+        for(unsigned int j = 0; j < numneu; j++)
           state[i].rho[r] += v[i][j]*b0_proj[j];
-        }
       }
     }
   }
@@ -1200,17 +1191,14 @@ void nuSQUIDS::Set_initial_state(const marray<double,3>& v, Basis basis){
 
   for(unsigned int i = 0; i < ne; i++){
     for(unsigned int r = 0; r < nrhos; r++){
+      state[i].rho[r].SetAllComponents(0);
       if (basis == flavor){
-        state[i].rho[r].SetAllComponents(0);
-        for(unsigned int j = 0; j < numneu; j++){
+        for(unsigned int j = 0; j < numneu; j++)
           state[i].rho[r] += v[i][r][j]*b1_proj[r][j];
-        }
       }
       else if (basis == mass){
-        state[i].rho[r].SetAllComponents(0);
-        for(unsigned int j = 0; j < numneu; j++){
+        for(unsigned int j = 0; j < numneu; j++)
           state[i].rho[r] += v[i][r][j]*b0_proj[j];
-        }
       }
     }
   }
