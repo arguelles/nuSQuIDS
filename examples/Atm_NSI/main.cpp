@@ -53,32 +53,34 @@ int main()
 
   //Minimum and maximum values for the energy and cosine zenith, notice that the energy needs to have the 
   //units, if they are omitted the input is in eV.
-  double Emin=1.e2*units.GeV;
-  double Emax=1.e6*units.GeV;
+  double Emin=1.e0*units.GeV;
+  double Emax=1.e3*units.GeV;
   double czmin=-1;
   double czmax=0;
   //Value of epsilon_mutau
-  double epsilon_mutau=1e-2;
+  //double epsilon_mutau=1e-2;
+  double epsilon_mutau=0.01;
   //Declaration of the atmospheric object now with the nuSQUIDSNSI instead of the basic nuSQuIDS
   std::cout << "Begin: constructing nuSQuIDS-Atm object" << std::endl;
-  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(linspace(czmin,czmax,40),epsilon_mutau,logspace(Emin,Emax,100),numneu,both,true);
+  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(linspace(czmin,czmax,40),epsilon_mutau,logspace(Emin,Emax,600),numneu,both,false);
   std::cout << "End: constructing nuSQuIDS-Atm object" << std::endl;
 
   //Optionally you can access every one of the nuSQUIDSNSI objects in the array of zenith angles to 
   //for example set parameters, here is an example of a loop that sets the value of epsilon_mutau  
-  epsilon_mutau=2e-2;
   for(nuSQUIDSNSI& nsq : nus_atm.GetnuSQuIDS()){
     nsq.Set_mutau(epsilon_mutau);
   }
   
   std::cout << "Begin: setting mixing angles." << std::endl;
   // set mixing angles, mass differences and cp phases
-  nus_atm.Set_MixingAngle(0,1,0.563942);
+  nus_atm.Set_MixingAngle(0,1,0.59);
   nus_atm.Set_MixingAngle(0,2,0.154085);
-  nus_atm.Set_MixingAngle(1,2,0.785398);
+  //nus_atm.Set_MixingAngle(1,2,0.6847);
+  nus_atm.Set_MixingAngle(1,2,0.68479);
   
   nus_atm.Set_SquareMassDifference(1,7.65e-05);
-  nus_atm.Set_SquareMassDifference(2,0.00247);
+  //nus_atm.Set_SquareMassDifference(1,7.54e-05);
+  nus_atm.Set_SquareMassDifference(2,0.00243);
   
   nus_atm.Set_CPPhase(0,2,0);
   if(numneu > 3){
@@ -143,17 +145,18 @@ int main()
 
   //Writing to the file!  
   file << "# log10(E) cos(zenith) E flux_i . . . ." << std::endl;
-  for(double cz=czmin;cz<czmax;cz+=(czmax-czmin)/(double)Ncz){
+  //for(double cz=czmin;cz<czmax;cz+=(czmax-czmin)/(double)Ncz){
+  double cz = -1.;
     for(double lE=lEmin; lE<lEmax; lE+=(lEmax-lEmin)/(double)Nen){
       double E=pow(10.0,lE);
       file << lE << " " << cz << " " << E;
       for(int fl=0; fl<numneu; fl++){
-	file << " " <<  nus_atm.EvalFlavor(fl,cz, E);
+	file << " " <<  nus_atm.EvalFlavor(fl,cz, E,0) << " " << nus_atm.EvalFlavor(fl,cz, E,1);
       }
       file << std::endl;
     }
-    file << std::endl;
-  }
+    //file << std::endl;
+  //}
 
   //Code to ask if you want to run the plotting script..
   std::string plt;
