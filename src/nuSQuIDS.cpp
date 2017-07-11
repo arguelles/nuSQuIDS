@@ -259,7 +259,6 @@ void nuSQUIDS::InitializeInteractionVectors(){
   int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
   int_struct->sigma_GR.resize(std::vector<size_t>{rounded_ne});
   // initialize the tau decay and interaction array
-  int_struct->invlen_tau.resize(std::vector<size_t>{rounded_ne});
   int_struct->dNdE_tau_all.resize(std::vector<size_t>{ne,rounded_ne});
   int_struct->dNdE_tau_lep.resize(std::vector<size_t>{ne,rounded_ne});
 }
@@ -936,14 +935,6 @@ void nuSQUIDS::GetCrossSections(){
       }
     }
 
-    // initialize interaction lengths to zero
-    // tau decay length array
-    double tau_lifetime = params.tau_lifetime;
-    double tau_mass = params.tau_mass;
-    for(unsigned int e1 = 0; e1 < ne; e1++){
-        int_struct->invlen_tau[e1] = 1.0/(tau_lifetime*E_range[e1]*tau_mass);
-    }
-
     // load tau decay spectra
 
     // constructing dNdE_tau_lep/dNdE_tau_all
@@ -1608,10 +1599,6 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEnc",4,dXSdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsNC.data()));
     dset_id = H5LTmake_dataset(xs_group_id,"dNdEgr",2,&dXSdim[2],H5T_NATIVE_DOUBLE,static_cast<const void*>(dxsGR.data()));
 
-    // invlen_tau
-    hsize_t iltdim[1] {static_cast<hsize_t>(ne)};
-    dset_id = H5LTmake_dataset(xs_group_id,"invlentau",1,iltdim,H5T_NATIVE_DOUBLE,static_cast<const void*>(int_struct->invlen_tau.get_data()));
-
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2] {static_cast<hsize_t>(ne),
                            static_cast<hsize_t>(ne)};
@@ -2115,13 +2102,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
           int_struct->dNdE_GR[e1][e2]=dxsGR[e1*ne + e2];
       }
     }
-    // invlen_tau
-    hsize_t iltdim[1];
-    H5LTget_dataset_info(xs_grp,"invlentau", iltdim,NULL,NULL);
-    std::unique_ptr<double[]> invlentau(new double[iltdim[0]]);
-    H5LTread_dataset_double(xs_grp,"invlentau", invlentau.get());
-    for(unsigned int ie = 0; ie < ne; ie ++)
-      int_struct->invlen_tau[ie] = invlentau[ie];
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2];

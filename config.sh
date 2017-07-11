@@ -122,10 +122,10 @@ function ensure_found(){
 
 PREFIX=/usr/local
 
-VERSION_NUM=101000
+VERSION_NUM=101001
 VERSION=`echo $VERSION_NUM | awk '{
 	major = int($1/100000);
-	minor = ($1/100)%1000;
+	minor = int($1/100)%1000;
 	patch = $1%100;
 	print major"."minor"."patch;
 }'`

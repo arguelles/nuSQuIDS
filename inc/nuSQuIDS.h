@@ -103,7 +103,7 @@ protected:
     /// \brief Updates the interaction length arrays.
     ///
     /// Uses GetNucleonNumber() together with the stored cross section
-    /// information to update: nuSQUIDS#invlen_NC, nuSQUIDS#invlen_CC, nuSQUIDS#invlen_INT, and nuSQUIDS#invlen_tau.
+    /// information to update: nuSQUIDS#invlen_NC, nuSQUIDS#invlen_CC, and nuSQUIDS#invlen_INT.
     void UpdateInteractions();
 
     /// \brief Contains the energy nodes.
@@ -185,8 +185,6 @@ protected:
         /// \brief Glashow resonance cross section (electron antineutrino only)
         /// \details 1 entry per energy node, in natural units
         marray<double,1,aligned_allocator<double>> sigma_GR;
-        /// \brief Array that contains the inverse of the tau decay length for each energy node.
-        marray<double,1,aligned_allocator<double>> invlen_tau;
         /// \brief Array that contains the tau decay spectrum to all particles.
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
@@ -208,7 +206,6 @@ protected:
         sigma_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        invlen_tau(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         dNdE_tau_all(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         dNdE_tau_lep(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
         {}
@@ -224,7 +221,6 @@ protected:
           sigma_CC=other.sigma_CC;
           sigma_NC=other.sigma_NC;
           sigma_GR=other.sigma_GR;
-          invlen_tau=other.invlen_tau;
           dNdE_tau_all=other.dNdE_tau_all;
           dNdE_tau_lep=other.dNdE_tau_lep;
           return(*this);
@@ -241,7 +237,6 @@ protected:
           sigma_CC=std::move(other.sigma_CC);
           sigma_NC=std::move(other.sigma_NC);
           sigma_GR=std::move(other.sigma_GR);
-          invlen_tau=std::move(other.invlen_tau);
           dNdE_tau_all=std::move(other.dNdE_tau_all);
           dNdE_tau_lep=std::move(other.dNdE_tau_lep);
           return(*this);
@@ -259,7 +254,6 @@ protected:
                sigma_CC.size() != other.sigma_CC.size() or
                sigma_NC.size() != other.sigma_NC.size() or
                sigma_GR.size() != other.sigma_GR.size() or
-               invlen_tau.size() != other.invlen_tau.size() or
                dNdE_tau_all.size() != other.dNdE_tau_all.size() or
                dNdE_tau_lep.size() != other.dNdE_tau_lep.size()
              )
@@ -297,9 +291,6 @@ protected:
           if ( not std::equal(sigma_GR.begin(),sigma_GR.end(),other.sigma_GR.begin()) )
             return false;
 
-          if ( not std::equal(invlen_tau.begin(),invlen_tau.end(),other.invlen_tau.begin()) )
-            return false;
-
           if ( not std::equal(dNdE_tau_all.begin(),dNdE_tau_all.end(),other.dNdE_tau_all.begin()) )
             return false;
 
@@ -317,7 +308,6 @@ protected:
           dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),dNdE_GR(other.dNdE_GR),
           invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT),
           sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),sigma_GR(other.sigma_GR),
-          invlen_tau(other.invlen_tau),
           dNdE_tau_all(other.dNdE_tau_all),
           dNdE_tau_lep(other.dNdE_tau_lep)
         {}
@@ -326,7 +316,6 @@ protected:
           dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),dNdE_GR(std::move(other.dNdE_GR)),
           invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT)),
           sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),sigma_GR(std::move(other.sigma_GR)),
-          invlen_tau(std::move(other.invlen_tau)),
           dNdE_tau_all(std::move(other.dNdE_tau_all)),
           dNdE_tau_lep(std::move(other.dNdE_tau_lep))
         {}
@@ -478,7 +467,7 @@ protected:
     /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
     /// nuSQUIDS#dNdE_CC , nuSQUIDS#dNdE_NC , nuSQUIDS#sigma_CC , nuSQUIDS#sigma_NC ,
     /// nuSQUIDS#invlen_CC , nuSQUIDS#invlen_NC , nuSQUIDS#invlen_INT ,
-    /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep , nuSQUIDS#invlen_tau
+    /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep
     /// in int_struct.
     /// @see InitializeInteractionVectors
     void GetCrossSections();
