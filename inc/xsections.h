@@ -35,6 +35,7 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include <stdexcept>
+#include "SQuIDS/const.h"
 
 // neutrino cross sections
 
@@ -180,6 +181,7 @@ public:
   }
 
 private:
+  const squids::Const constants;
   double fermi_scale;
   ///W mass
   double M_W;
