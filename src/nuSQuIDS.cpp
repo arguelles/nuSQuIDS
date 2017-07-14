@@ -249,11 +249,6 @@ void nuSQUIDS::InitializeInteractionVectors(){
   int_struct->dNdE_NC.resize(std::vector<size_t>{nrhos,numneu,ne,rounded_ne});
   int_struct->dNdE_CC.resize(std::vector<size_t>{nrhos,numneu,ne,rounded_ne});
   int_struct->dNdE_GR.resize(std::vector<size_t>{ne,rounded_ne});
-  // inverse interaction lenghts
-  int_struct->invlen_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
-  int_struct->invlen_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
-  int_struct->invlen_GR.resize(std::vector<size_t>{rounded_ne});
-  int_struct->invlen_INT.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
   // initialize cross section arrays
   int_struct->sigma_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
   int_struct->sigma_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
@@ -335,9 +330,9 @@ squids::SU_vector nuSQUIDS::GammaRho(unsigned int ei,unsigned int index_rho) con
     if (not iinteraction)
       return squids::SU_vector(nsun);
 
-    squids::SU_vector V(evol_b1_proj[index_rho][0][ei]*(0.5*int_struct->invlen_INT[index_rho][0][ei]));
-    V += evol_b1_proj[index_rho][1][ei]*(0.5*int_struct->invlen_INT[index_rho][1][ei]);
-    V += evol_b1_proj[index_rho][2][ei]*(0.5*int_struct->invlen_INT[index_rho][2][ei]);
+    squids::SU_vector V(evol_b1_proj[index_rho][0][ei]*(0.5*int_state.invlen_INT[index_rho][0][ei]));
+    V += evol_b1_proj[index_rho][1][ei]*(0.5*int_state.invlen_INT[index_rho][1][ei]);
+    V += evol_b1_proj[index_rho][2][ei]*(0.5*int_state.invlen_INT[index_rho][2][ei]);
 
     return V;
 }
@@ -490,13 +485,25 @@ void nuSQUIDS::SetUpInteractionCache(){
 }
 
 void nuSQUIDS::UpdateInteractions(){
+  //make sure vectors are the right size
+  size_t rounded_ne=round_up_to_aligned(ne);
+  if(int_state.invlen_NC.extent(0)!=nrhos ||
+     int_state.invlen_NC.extent(1)!=numneu ||
+     int_state.invlen_NC.extent(2)!=rounded_ne){
+    int_state.invlen_NC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+    int_state.invlen_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+    int_state.invlen_GR.resize(std::vector<size_t>{rounded_ne});
+    int_state.invlen_INT.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+  }
+  
     double num_nuc = GetNucleonNumber();
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
           for(unsigned int e1 = 0; e1 < ne; e1++){
-              int_struct->invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
-              int_struct->invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
-              int_struct->invlen_INT[rho][flv][e1] = int_struct->invlen_NC[rho][flv][e1] + int_struct->invlen_CC[rho][flv][e1];
+              int_state.invlen_NC[rho][flv][e1] = int_struct->sigma_NC[rho][flv][e1]*num_nuc;
+              int_state.invlen_CC[rho][flv][e1] = int_struct->sigma_CC[rho][flv][e1]*num_nuc;
+              int_state.invlen_INT[rho][flv][e1] = int_state.invlen_NC[rho][flv][e1] + int_state.invlen_CC[rho][flv][e1];
+            //std::cout << rho << ' ' << flv << ' ' << e1 << ' ' << int_state.invlen_NC[rho][flv][e1]*params.meter << '\n';
           }
       }
     }
@@ -506,8 +513,8 @@ void nuSQUIDS::UpdateInteractions(){
       unsigned int rho = (NT == both) ? 1 : 0;
       double num_e = num_nuc*current_ye;
       double* sigma_GR_ptr=&int_struct->sigma_GR[0];
-      double* invlen_GR_ptr=&int_struct->invlen_GR[0];
-      double* invlen_INT_ptr=&int_struct->invlen_INT[rho][0][0];
+      double* invlen_GR_ptr=&int_state.invlen_GR[0];
+      double* invlen_INT_ptr=&int_state.invlen_INT[rho][0][0];
       SQUIDS_POINTER_IS_ALIGNED(sigma_GR_ptr,preferred_alignment*sizeof(double));
       SQUIDS_POINTER_IS_ALIGNED(invlen_GR_ptr,preferred_alignment*sizeof(double));
       SQUIDS_POINTER_IS_ALIGNED(invlen_INT_ptr,preferred_alignment*sizeof(double));
@@ -555,7 +562,7 @@ void nuSQUIDS::UpdateInteractions(){
           //the flux of the current flavor at e2
           double flux_a_e2=projector*estate[e2].rho[rho];
           //premultiply factors which do not depend on the lower energy e1
-          flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
+          flux_a_e2*=int_state.invlen_NC[rho][alpha_active][e2]*delE[e2-1];
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
           SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
           for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
@@ -582,8 +589,8 @@ void nuSQUIDS::UpdateInteractions(){
         if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
           continue;
         double dEn = delE[en-1];
-        double invlen_CC_tau     = int_struct->invlen_CC[0][tau_flavor][en];
-        double invlen_CC_tau_bar = int_struct->invlen_CC[1][tau_flavor][en];
+        double invlen_CC_tau     = int_state.invlen_CC[0][tau_flavor][en];
+        double invlen_CC_tau_bar = int_state.invlen_CC[1][tau_flavor][en];
         double nu_tau_flux_invlen_CC     =     nu_tau_flux*    invlen_CC_tau*dEn;
         double nu_tau_bar_flux_invlen_CC = nu_tau_bar_flux*invlen_CC_tau_bar*dEn;
         double* dNdE_CC_tau     = &int_struct->dNdE_CC[0][tau_flavor][en][0];
@@ -647,7 +654,7 @@ void nuSQUIDS::UpdateInteractions(){
       ALIGNED_LOCAL_BUFFER(gr_factors,double,ne);
       for(unsigned int e2=1; e2<ne; e2++){
         double flux=projector_e*estate[e2].rho[rho];
-        double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
+        double flux_invlen_en=flux*int_state.invlen_GR[e2]*delE[e2-1];
         double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
         SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e1=0; e1<e2; e1++)
@@ -702,7 +709,7 @@ void nuSQUIDS::UpdateInteractions(){
           //the flux of the current flavor at e2
           double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*estate[e2].rho[rho];
           //premultiply factors which do not depend on the lower energy e1
-          flux_a_e2*=int_struct->invlen_NC[rho][alpha_active][e2]*delE[e2-1];
+          flux_a_e2*=int_state.invlen_NC[rho][alpha_active][e2]*delE[e2-1];
           double* dNdE_ptr=&int_struct->dNdE_NC[rho][alpha_active][e2][0];
           SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
           for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++)
@@ -724,8 +731,8 @@ void nuSQUIDS::UpdateInteractions(){
         if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
           continue;
         double dEn = delE[en-1];
-        double invlen_CC_tau     = int_struct->invlen_CC[0][tau_flavor][en];
-        double invlen_CC_tau_bar = int_struct->invlen_CC[1][tau_flavor][en];
+        double invlen_CC_tau     = int_state.invlen_CC[0][tau_flavor][en];
+        double invlen_CC_tau_bar = int_state.invlen_CC[1][tau_flavor][en];
         double nu_tau_flux_invlen_CC     =     nu_tau_flux*    invlen_CC_tau*dEn;
         double nu_tau_bar_flux_invlen_CC = nu_tau_bar_flux*invlen_CC_tau_bar*dEn;
         double* dNdE_CC_tau     = &int_struct->dNdE_CC[0][tau_flavor][en][0];
@@ -770,7 +777,7 @@ void nuSQUIDS::UpdateInteractions(){
       
       for(unsigned int e2=1; e2<ne; e2++){
         double flux=evol_b1_proj[rho][0][e2]*estate[e2].rho[rho];
-        double flux_invlen_en=flux*int_struct->invlen_GR[e2]*delE[e2-1];
+        double flux_invlen_en=flux*int_state.invlen_GR[e2]*delE[e2-1];
         double* dNdE_GR_ptr=&int_struct->dNdE_GR[e2][0];
         SQUIDS_POINTER_IS_ALIGNED(dNdE_GR_ptr,preferred_alignment*sizeof(double));
         for(unsigned int e1=0; e1<e2; e1++)
@@ -2339,6 +2346,7 @@ delE(std::move(other.delE)),
 ncs(std::move(other.ncs)),
 tdc(std::move(other.tdc)),
 int_struct(std::move(other.int_struct)),
+int_state(std::move(other.int_state)),
 positivization_scale(other.positivization_scale),
 body(other.body),
 track(other.track),
@@ -2383,6 +2391,7 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   ncs = other.ncs;
   tdc = other.tdc;
   int_struct = std::move(other.int_struct);
+  int_state = std::move(other.int_state);
   positivization_scale = other.positivization_scale;
   body = other.body;
   track = other.track;

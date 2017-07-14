@@ -154,24 +154,6 @@ protected:
         /// \brief Glashow resonance differential cross section (electron antineutrino only
         /// \details Dimensions are initial and final energy node
         marray<double,2,aligned_allocator<double>> dNdE_GR;
-        /// \brief Array that contains the inverse of the neutrino charge current mean free path.
-        /// \details The array contents are in natural units (i.e. eV) and is update when
-        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
-        /// the second to the flavor, and the last one to the energy.
-        marray<double,3,aligned_allocator<double>> invlen_CC;
-        /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
-        /// \details The array contents are in natural units (i.e. eV) and is update when
-        /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
-        /// the second to the flavor, and the last one to the energy.
-        marray<double,3,aligned_allocator<double>> invlen_NC;
-        /// \brief Glashow resonance inverse interaction length (electron antineutrino only)
-        /// \details 1 entry per energy node
-        marray<double,1,aligned_allocator<double>> invlen_GR;
-        /// \brief Array that contains the inverse of the neutrino total mean free path.
-        /// \details The array contents are in natural units (i.e. eV) and is update when
-        /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
-        /// added together.
-        marray<double,3,aligned_allocator<double>> invlen_INT;
         /// \brief Array that contains the neutrino charge current cross section.
         /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
         /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
@@ -199,10 +181,6 @@ protected:
         dNdE_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         dNdE_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         dNdE_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        invlen_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        invlen_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        invlen_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        invlen_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
@@ -214,10 +192,6 @@ protected:
           dNdE_CC=other.dNdE_CC;
           dNdE_NC=other.dNdE_NC;
           dNdE_GR=other.dNdE_GR;
-          invlen_NC=other.invlen_NC;
-          invlen_CC=other.invlen_CC;
-          invlen_GR=other.invlen_GR;
-          invlen_INT=other.invlen_INT;
           sigma_CC=other.sigma_CC;
           sigma_NC=other.sigma_NC;
           sigma_GR=other.sigma_GR;
@@ -230,10 +204,6 @@ protected:
           dNdE_CC=std::move(other.dNdE_CC);
           dNdE_NC=std::move(other.dNdE_NC);
           dNdE_GR=std::move(other.dNdE_GR);
-          invlen_NC=std::move(other.invlen_NC);
-          invlen_CC=std::move(other.invlen_CC);
-          invlen_GR=std::move(other.invlen_GR);
-          invlen_INT=std::move(other.invlen_INT);
           sigma_CC=std::move(other.sigma_CC);
           sigma_NC=std::move(other.sigma_NC);
           sigma_GR=std::move(other.sigma_GR);
@@ -247,10 +217,6 @@ protected:
                dNdE_CC.size() != other.dNdE_CC.size() or
                dNdE_NC.size() != other.dNdE_NC.size() or
                dNdE_GR.size() != other.dNdE_GR.size() or
-               invlen_CC.size() != other.invlen_CC.size() or
-               invlen_NC.size() != other.invlen_NC.size() or
-               invlen_GR.size() != other.invlen_GR.size() or
-               invlen_INT.size() != other.invlen_INT.size() or
                sigma_CC.size() != other.sigma_CC.size() or
                sigma_NC.size() != other.sigma_NC.size() or
                sigma_GR.size() != other.sigma_GR.size() or
@@ -268,18 +234,6 @@ protected:
             return false;
 
           if ( not std::equal(dNdE_GR.begin(),dNdE_GR.end(),other.dNdE_GR.begin()) )
-            return false;
-
-          if ( not std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) )
-            return false;
-
-          if ( not std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) )
-            return false;
-
-          if ( not std::equal(invlen_GR.begin(),invlen_GR.end(),other.invlen_GR.begin()) )
-            return false;
-
-          if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
             return false;
 
           if ( not std::equal(sigma_CC.begin(),sigma_CC.end(),other.sigma_CC.begin()) )
@@ -306,7 +260,6 @@ protected:
         /// \brief Copy constructor operator
         InteractionStructure(InteractionStructure& other):
           dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),dNdE_GR(other.dNdE_GR),
-          invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT),
           sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),sigma_GR(other.sigma_GR),
           dNdE_tau_all(other.dNdE_tau_all),
           dNdE_tau_lep(other.dNdE_tau_lep)
@@ -314,15 +267,99 @@ protected:
         /// \brief Move constructor operator
         InteractionStructure(InteractionStructure&& other):
           dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),dNdE_GR(std::move(other.dNdE_GR)),
-          invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT)),
           sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),sigma_GR(std::move(other.sigma_GR)),
           dNdE_tau_all(std::move(other.dNdE_tau_all)),
           dNdE_tau_lep(std::move(other.dNdE_tau_lep))
         {}
     };
+  
+  /// \brief Contains the interaction information at the current position.
+  struct InteractionState {
+    /// \brief Array that contains the inverse of the neutrino charge current mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+    /// the second to the flavor, and the last one to the energy.
+    marray<double,3,aligned_allocator<double>> invlen_CC;
+    /// \brief Array that contains the inverse of the neutrino neutral current mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. The first dimension corresponds to the neutrino type,
+    /// the second to the flavor, and the last one to the energy.
+    marray<double,3,aligned_allocator<double>> invlen_NC;
+    /// \brief Glashow resonance inverse interaction length (electron antineutrino only)
+    /// \details 1 entry per energy node
+    marray<double,1,aligned_allocator<double>> invlen_GR;
+    /// \brief Array that contains the inverse of the neutrino total mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
+    /// added together.
+    marray<double,3,aligned_allocator<double>> invlen_INT;
+    
+    /// \brief Default constructor
+    InteractionState():
+    invlen_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+    invlen_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+    invlen_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+    invlen_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
+    {}
+    /// \brief Copy constructor
+    InteractionState(InteractionState& other):
+    invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),
+    invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT)
+    {}
+    /// \brief Move constructor
+    InteractionState(InteractionState&& other):
+    invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),
+    invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT))
+    {}
+    /// \brief Assignment operator
+    InteractionState& operator=(const InteractionState& other){
+      invlen_NC=other.invlen_NC;
+      invlen_CC=other.invlen_CC;
+      invlen_GR=other.invlen_GR;
+      invlen_INT=other.invlen_INT;
+      return(*this);
+    }
+    /// \brief Move assignment operator
+    InteractionState& operator=(InteractionState&& other){
+      invlen_NC=std::move(other.invlen_NC);
+      invlen_CC=std::move(other.invlen_CC);
+      invlen_GR=std::move(other.invlen_GR);
+      invlen_INT=std::move(other.invlen_INT);
+      return(*this);
+    }
+    /// \brief Equality operator
+    bool operator==(const InteractionState& other) const{
+      if (invlen_CC.size() != other.invlen_CC.size() or
+          invlen_NC.size() != other.invlen_NC.size() or
+          invlen_GR.size() != other.invlen_GR.size() or
+          invlen_INT.size() != other.invlen_INT.size())
+        return false;
+      
+      if ( not std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) )
+        return false;
+      
+      if ( not std::equal(invlen_NC.begin(),invlen_NC.end(),other.invlen_NC.begin()) )
+        return false;
+      
+      if ( not std::equal(invlen_GR.begin(),invlen_GR.end(),other.invlen_GR.begin()) )
+        return false;
+      
+      if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
+        return false;
+      // all is good - lets roll
+      return true;
+    }
+    /// \brief Inequality operator
+    bool operator!=(const InteractionState& other) const {
+      return not (*this==other);
+    }
+  };
+  
   protected:
     /// \brief Interaction struct that contains all cross section information tabulated.
     std::shared_ptr<InteractionStructure> int_struct;
+    /// \brief Current set of interaction information
+    InteractionState int_state;
 
     /// \brief Length upon which the neutrino fluxes will be positivized.
     double positivization_scale;
