@@ -78,6 +78,7 @@ void nuSQUIDS::init(double xini){
   //initialize SQUIDS
   ini(ne,numneu,1,0,xini);
   Set_CoherentRhoTerms(true);
+  Set_h(1.*params.km);
   Set_h_max(std::numeric_limits<double>::max() );
 
   //===============================
