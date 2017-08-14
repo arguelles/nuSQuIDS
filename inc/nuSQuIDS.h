@@ -1786,7 +1786,8 @@ class nuSQUIDSAtm {
 
     /// \brief Stes Earth object to be use.
     /// @param earth Shared pointer to Earth object.
-    void Set_EarthModel(std::shared_ptr<Earth> earth){
+    void Set_EarthModel(std::shared_ptr<EarthAtm> earth){
+      earth_atm=earth;
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_Body(earth);
       }
