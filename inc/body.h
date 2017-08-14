@@ -760,8 +760,10 @@ class EarthAtm: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
-    /// \brief Returns the radius of the Earth in natural units.
+    /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}
+    /// \brief Returns the neutrino production altitude in km.
+    double GetProductionAltitude() const {return atm_height;}
 };
 
   // type defining
