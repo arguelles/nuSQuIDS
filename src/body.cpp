@@ -29,9 +29,9 @@
 
 namespace nusquids{
 
-static squids::Const param;
-
 namespace {
+  
+squids::Const param;
 
 void addStringAttribute(hid_t object, std::string name, std::string contents){
   hid_t strtype = H5Tcopy(H5T_C_S1);
@@ -106,12 +106,12 @@ unsigned int readUIntAttribute(hid_t object, std::string name){
 */
 
 double Vacuum::density(const GenericTrack& track_input) const{
-            return 0.0;
-        }
+  return 0.0;
+}
 
 double Vacuum::ye(const GenericTrack& track_input) const{
-            return 1.0;
-        }
+  return 1.0;
+}
 
 bool Vacuum::IsConstantDensity() const { return true;}
 
@@ -144,12 +144,13 @@ std::shared_ptr<Vacuum::Track> Vacuum::Track::Deserialize(hid_t group){
 */
 
 // constructor
-ConstantDensity::ConstantDensity(double constant_density,double constant_ye):Body(),
-                                                                             constant_density(constant_density),
-                                                                             constant_ye(constant_ye)
-        {
-            BodyParams = {constant_density, constant_ye};
-        }
+ConstantDensity::ConstantDensity(double constant_density,double constant_ye):
+Body(),
+constant_density(constant_density),
+constant_ye(constant_ye)
+{
+  BodyParams = {constant_density, constant_ye};
+}
 
 void ConstantDensity::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
@@ -180,14 +181,14 @@ std::shared_ptr<ConstantDensity::Track> ConstantDensity::Track::Deserialize(hid_
 }
 
 double ConstantDensity::density(const GenericTrack& track_input) const
-        {
-            return constant_density;
-        }
+{
+  return constant_density;
+}
 
 double ConstantDensity::ye(const GenericTrack& track_input) const
-        {
-            return constant_ye;
-        }
+{
+  return constant_ye;
+}
 
 bool ConstantDensity::IsConstantDensity() const { return true;}
 
@@ -198,47 +199,31 @@ bool ConstantDensity::IsConstantDensity() const { return true;}
 */
 
 // constructor
-VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):Body()
-        {
-            assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_input.size() == density_input.size() && x_input.size() == ye_input.size());
-            arraysize = x_input.size();
+VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):
+Body(),x_arr(std::move(x_input)),density_arr(std::move(density_input)),ye_arr(std::move(ye_input)),
+inter_density(x_input,density_input),inter_ye(x_input,ye_input)
+{
+  assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_input.size() == density_input.size() && x_input.size() == ye_input.size());
+  arraysize = x_input.size();
 
-            x_min = x_input.front();
-            x_max = x_input.back();
+  x_min = x_input.front();
+  x_max = x_input.back();
 
-            x_arr = new double[arraysize];
-            density_arr = new double[arraysize];
-            ye_arr = new double [arraysize];
-
-            for(unsigned int i = 0; i < arraysize; i++){
-              x_arr[i] = x_input[i];
-              density_arr[i] = density_input[i];
-              ye_arr[i] = ye_input[i];
-            }
-
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,x_arr,density_arr,arraysize);
-
-            inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_ye_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_ye,x_arr,ye_arr,arraysize);
-
-            for(double xx : x_input)
-              BodyParams.push_back(xx);
-            for(double rho : density_input)
-              BodyParams.push_back(rho);
-            for(double ye : ye_input)
-              BodyParams.push_back(ye);
-        }
+  for(double xx : x_input)
+    BodyParams.push_back(xx);
+  for(double rho : density_input)
+    BodyParams.push_back(rho);
+  for(double ye : ye_input)
+    BodyParams.push_back(ye);
+}
 
 void VariableDensity::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(group, "x_arr", 1, dims.data(), x_arr);
-  H5LTmake_dataset_double(group, "density_arr", 1, dims.data(), density_arr);
-  H5LTmake_dataset_double(group, "ye_arr", 1, dims.data(), ye_arr);
+  H5LTmake_dataset_double(group, "x_arr", 1, dims.data(), x_arr.data());
+  H5LTmake_dataset_double(group, "density_arr", 1, dims.data(), density_arr.data());
+  H5LTmake_dataset_double(group, "ye_arr", 1, dims.data(), ye_arr.data());
 }
 
 std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
@@ -253,23 +238,23 @@ std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
 // track constructor
 
 double VariableDensity::density(const GenericTrack& track_input) const
-        {
-          double x = track_input.GetX()/param.cm;
-          if (x < x_min or x > x_max ){
-              return 0;
-          } else {
-              return gsl_spline_eval(inter_density,x,inter_density_accel);
-          }
-        }
+{
+  double x = track_input.GetX()/param.cm;
+  if (x < x_min or x > x_max ){
+    return 0;
+  } else {
+    return inter_density(x);
+  }
+}
 double VariableDensity::ye(const GenericTrack& track_input) const
-        {
-          double x = track_input.GetX()/param.cm;
-          if (x < x_min or x > x_max ){
-              return 0;
-          } else {
-              return gsl_spline_eval(inter_ye,x,inter_ye_accel);
-          }
-        }
+{
+  double x = track_input.GetX()/param.cm;
+  if (x < x_min or x > x_max ){
+    return 0;
+  } else {
+    return inter_ye(x);
+  }
+}
 
 void VariableDensity::Track::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
@@ -285,11 +270,7 @@ std::shared_ptr<VariableDensity::Track> VariableDensity::Track::Deserialize(hid_
   return std::make_shared<VariableDensity::Track>(x_,xini_,xend_);
 }
 
-VariableDensity::~VariableDensity(){
-  free(x_arr);
-  free(density_arr);
-  free(ye_arr);
-}
+VariableDensity::~VariableDensity(){}
 
 /*
 ----------------------------------------------------------------------
@@ -309,9 +290,9 @@ Earth::Earth(std::string filepath):Body()
   marray<double,2> earth_model = quickread(filepath);
   arraysize = earth_model.extent(0);
 
-  earth_radius = new double[arraysize];
-  earth_density = new double[arraysize];
-  earth_ye = new double[arraysize];
+  earth_radius.resize(arraysize);
+  earth_density.resize(arraysize);
+  earth_ye.resize(arraysize);
 
   for (unsigned int i=0; i < arraysize;i++){
     earth_radius[i] = earth_model[i][0];
@@ -326,16 +307,13 @@ Earth::Earth(std::string filepath):Body()
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
 
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
-
-  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_ye_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+  inter_density=AkimaSpline(earth_radius,earth_density);
+  inter_ye=AkimaSpline(earth_radius,earth_ye);
 }
 
-Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body()
+Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):
+Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
+inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 {
   assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
   // The Input file should have the radius specified from 0 to 1.
@@ -343,39 +321,21 @@ Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> y
   radius = 6371.0; // [km]
   arraysize = x.size();
 
-  earth_radius = new double[arraysize];
-  earth_density = new double[arraysize];
-  earth_ye = new double[arraysize];
-
-  for (unsigned int i=0; i < arraysize;i++){
-    earth_radius[i] = x[i];
-    earth_density[i] = rho[i];
-    earth_ye[i] = ye[i];
-  }
-
   x_radius_min = earth_radius[0];
   x_radius_max = earth_radius[arraysize-1];
   x_rho_min = earth_density[0];
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
-
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
-
-  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_ye_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
 }
 
 void Earth::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius);
-  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density);
-  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye);
+  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius.data());
+  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density.data());
+  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
 }
 
 std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
@@ -388,50 +348,40 @@ std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
 }
 
 double Earth::density(const GenericTrack& track_input) const
-        {
-            //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
-            const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
-            double xkm = track_earth.GetX()/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
+{
+  const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+  double xkm = track_earth.GetX()/param.km;
+  double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
 
-            if ( r/radius < x_radius_min ){
-              return x_rho_min;
-            }
-            else if ( r/radius > x_radius_max ) {
-              return x_rho_max;
-            }
-            else {
-              return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
-            }
-        }
+  if ( r/radius < x_radius_min ){
+    return x_rho_min;
+  }
+  else if ( r/radius > x_radius_max ) {
+    return x_rho_max;
+  }
+  else {
+    return inter_density(r/radius);
+  }
+}
 
 double Earth::ye(const GenericTrack& track_input) const
-        {
-            //std::shared_ptr<const Earth::Track> track_earth = std::static_pointer_cast<const Earth::Track >(track_input);
-            const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
-            double xkm = track_earth.GetX()/param.km;
-            double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
+{
+  const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+  double xkm = track_earth.GetX()/param.km;
+  double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
 
-            if ( r/radius < x_radius_min ){
-              return x_ye_min;
-            }
-            else if ( r/radius > x_radius_max ) {
-              return x_ye_max;
-            }
-            else {
-              return gsl_spline_eval(inter_ye,r/radius,inter_ye_accel);
-            }
-        }
-
-Earth::~Earth(){
-  free(earth_radius);
-  free(earth_density);
-  free(earth_ye);
-  gsl_spline_free(inter_density);
-  gsl_interp_accel_free(inter_density_accel);
-  gsl_spline_free(inter_ye);
-  gsl_interp_accel_free(inter_ye_accel);
+  if ( r/radius < x_radius_min ){
+    return x_ye_min;
+  }
+  else if ( r/radius > x_radius_max ) {
+    return x_ye_max;
+  }
+  else {
+    return inter_ye(r/radius);
+  }
 }
+
+Earth::~Earth(){}
 
 // track constructor
 void Earth::Track::Serialize(hid_t group) const {
@@ -451,7 +401,7 @@ std::shared_ptr<Earth::Track> Earth::Track::Deserialize(hid_t group){
 }
 
 void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
-    TrackParams.push_back(baseline);
+  TrackParams.push_back(baseline);
 }
 
 /*
@@ -469,57 +419,35 @@ Sun::Sun():Body()
   sun_model = quickread(SUN_MODEL_LOCATION);
   arraysize = sun_model.extent(0);
 
-  sun_radius = new double[arraysize];
-  sun_density = new double[arraysize];
-  sun_xh = new double[arraysize];
+  sun_radius.resize(arraysize);
+  sun_density.resize(arraysize);
+  sun_xh.resize(arraysize);
 
   for (unsigned int i=0; i < arraysize;i++){
-      sun_radius[i] = sun_model[i][1];
-      sun_density[i] = sun_model[i][3];
-      sun_xh[i] = sun_model[i][6];
+    sun_radius[i] = sun_model[i][1];
+    sun_density[i] = sun_model[i][3];
+    sun_xh[i] = sun_model[i][6];
   }
 
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
-
-  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_rxh_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
+  inter_density=AkimaSpline(sun_radius,sun_density);
+  inter_xh=AkimaSpline(sun_radius,sun_xh);
 }
 
-Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body()
+Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):
+Body(),sun_radius(std::move(x)),sun_density(std::move(rho)),sun_xh(std::move(xh)),
+inter_density(sun_radius,sun_density),inter_xh(sun_radius,sun_xh)
 {
   radius = 695980.0*param.km;
-
   arraysize = x.size();
-
-  sun_radius = new double[arraysize];
-  sun_density = new double[arraysize];
-  sun_xh = new double[arraysize];
-
-  for (unsigned int i=0; i < arraysize;i++){
-      sun_radius[i] = x[i];
-      sun_density[i] = rho[i];
-      sun_xh[i] = xh[i];
-  }
-
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
-
-  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_rxh_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
 }
 
 void Sun::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
-  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh);
+  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius.data());
+  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density.data());
+  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh.data());
 }
 std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
   unsigned int asize=readUIntAttribute(group,"arraysize");
@@ -531,51 +459,39 @@ std::shared_ptr<Sun> Sun::Deserialize(hid_t group){
 }
 
 double Sun::rdensity(double x) const{
-        // x is adimentional radius : x = 0 : center, x = 1 : radius
-            if (x < sun_radius[0]){
-                return sun_density[0];
-            } else if ( x > sun_radius[arraysize-1]){
-                return 0;
-            } else {
-                return gsl_spline_eval(inter_density,x,inter_density_accel);
-            }
-        }
+// x is adimentional radius : x = 0 : center, x = 1 : radius
+  if (x < sun_radius[0]){
+    return sun_density[0];
+  } else if ( x > sun_radius[arraysize-1]){
+    return 0;
+  } else {
+    return inter_density(x);
+  }
+}
 
 double Sun::rxh(double x) const{
-        // x is adimentional radius : x = 0 : center, x = 1 : radius
-            if (x < sun_radius[0]){
-                return sun_xh[0];
-            } else if ( x > sun_radius[arraysize-1]){
-                return 0;
-            } else {
-                return gsl_spline_eval(inter_rxh,x,inter_rxh_accel);
-            }
-        }
+// x is adimentional radius : x = 0 : center, x = 1 : radius
+  if (x < sun_radius[0]){
+    return sun_xh[0];
+  } else if ( x > sun_radius[arraysize-1]){
+    return 0;
+  } else {
+    return inter_xh(x);
+  }
+}
 
 double Sun::density(const GenericTrack& track_input) const
-        {
-            double r = track_input.GetX()/(radius);
-            return rdensity(r);
-        }
-double Sun::ye(const GenericTrack& track_input) const
-        {
-            double r = track_input.GetX()/(radius);
-            return 0.5*(1.0+rxh(r));
-        }
-
-Sun::~Sun(){
-  free(sun_radius);
-  free(sun_density);
-  free(sun_xh);
-  //free(sun_nele_radius);
-  //free(sun_nele);
-  gsl_spline_free(inter_density);
-  gsl_interp_accel_free(inter_density_accel);
-  gsl_spline_free(inter_rxh);
-  gsl_interp_accel_free(inter_rxh_accel);
-  //free(inter_nele);
-  //free(inter_nele_accel);
+{
+  double r = track_input.GetX()/(radius);
+  return rdensity(r);
 }
+double Sun::ye(const GenericTrack& track_input) const
+{
+  double r = track_input.GetX()/(radius);
+  return 0.5*(1.0+rxh(r));
+}
+
+Sun::~Sun(){}
 
 void Sun::Track::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
@@ -599,54 +515,32 @@ std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
 
 // constructor
 SunASnu::SunASnu():Body()
-        {
-            radius = 694439.0*param.km;
-
-            sun_model = quickread(SUN_MODEL_LOCATION);
-            arraysize = sun_model.extent(0);
-
-            sun_radius = new double[arraysize];
-            sun_density = new double[arraysize];
-            sun_xh = new double[arraysize];
-
-            for (unsigned int i=0; i < arraysize;i++){
-                sun_radius[i] = sun_model[i][1];
-                sun_density[i] = sun_model[i][3];
-                sun_xh[i] = sun_model[i][6];
-            }
-
-            inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_density_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
-
-            inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
-            inter_rxh_accel = gsl_interp_accel_alloc ();
-            gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
-        }
-
-SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):Body()
 {
-  radius = 695980.0*param.km;
+  radius = 694439.0*param.km;
 
-  arraysize = x.size();
+  sun_model = quickread(SUN_MODEL_LOCATION);
+  arraysize = sun_model.extent(0);
 
-  sun_radius = new double[arraysize];
-  sun_density = new double[arraysize];
-  sun_xh = new double[arraysize];
+  sun_radius.resize(arraysize);
+  sun_density.resize(arraysize);
+  sun_xh.resize(arraysize);
 
   for (unsigned int i=0; i < arraysize;i++){
-      sun_radius[i] = x[i];
-      sun_density[i] = rho[i];
-      sun_xh[i] = xh[i];
+    sun_radius[i] = sun_model[i][1];
+    sun_density[i] = sun_model[i][3];
+    sun_xh[i] = sun_model[i][6];
   }
 
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,sun_radius,sun_density,arraysize);
+  inter_density=AkimaSpline(sun_radius,sun_density);
+  inter_xh=AkimaSpline(sun_radius,sun_xh);
+}
 
-  inter_rxh = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_rxh_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_rxh,sun_radius,sun_xh,arraysize);
+SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):
+Body(),sun_radius(std::move(x)),sun_density(std::move(rho)),sun_xh(std::move(xh)),
+inter_density(sun_radius,sun_density),inter_xh(sun_radius,sun_xh)
+{
+  radius = 695980.0*param.km;
+  arraysize = x.size();
 }
 
 // track constructor
@@ -654,9 +548,9 @@ SunASnu::Track::Track(double x,double xini,double b_impact):
   Body::Track(x,xini,xini),
   radius_nu(694439.0*param.km),
   b_impact(b_impact)
-        {
-            xend = 2.0*sqrt(SQR(radius_nu)-SQR(b_impact));
-        }
+{
+  xend = 2.0*sqrt(SQR(radius_nu)-SQR(b_impact));
+}
 
 void SunASnu::Track::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
@@ -676,9 +570,9 @@ void SunASnu::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius);
-  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density);
-  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh);
+  H5LTmake_dataset_double(group, "sun_radius", 1, dims.data(), sun_radius.data());
+  H5LTmake_dataset_double(group, "sun_density", 1, dims.data(), sun_density.data());
+  H5LTmake_dataset_double(group, "sun_xh", 1, dims.data(), sun_xh.data());
 }
 
 std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
@@ -691,62 +585,52 @@ std::shared_ptr<SunASnu> SunASnu::Deserialize(hid_t group){
 }
 
 void SunASnu::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
-	TrackParams.push_back(b_impact);
+  TrackParams.push_back(b_impact);
 }
 
 double SunASnu::rdensity(double x) const{
-        // x is adimentional radius : x = 0 : center, x = 1 : radius
-            if (x < sun_radius[0]){
-                return sun_density[0];
-            } else if ( x > sun_radius[arraysize-1]){
-                return 0;
-            } else {
-                return gsl_spline_eval(inter_density,x,inter_density_accel);
-            }
-        }
+// x is adimentional radius : x = 0 : center, x = 1 : radius
+  if (x < sun_radius[0]){
+    return sun_density[0];
+  } else if ( x > sun_radius[arraysize-1]){
+    return 0;
+  } else {
+    return inter_density(x);
+  }
+}
 
 double SunASnu::rxh(double x) const{
-        // x is adimentional radius : x = 0 : center, x = 1 : radius
-            if (x < sun_radius[0]){
-                return sun_xh[0];
-            } else if ( x > sun_radius[arraysize-1]){
-                return 0;
-            } else {
-                return gsl_spline_eval(inter_rxh,x,inter_rxh_accel);
-            }
-        }
+// x is adimentional radius : x = 0 : center, x = 1 : radius
+  if (x < sun_radius[0]){
+    return sun_xh[0];
+  } else if ( x > sun_radius[arraysize-1]){
+    return 0;
+  } else {
+    return inter_xh(x);
+  }
+}
 
 double SunASnu::density(const GenericTrack& track_input) const
-        {
-            //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
-            const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
-            double x = track_sunasnu.GetX();
-            double b = track_sunasnu.b_impact;
+{
+  const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
+  double x = track_sunasnu.GetX();
+  double b = track_sunasnu.b_impact;
 
-            double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
+  double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
 
-            return rdensity(r);
-        }
+  return rdensity(r);
+}
 
 double SunASnu::ye(const GenericTrack& track_input) const
-        {
-            //std::shared_ptr<const SunASnu::Track> track_sunasnu = std::static_pointer_cast<const SunASnu::Track >(track_input);
-            const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
-            double x = track_sunasnu.GetX();
-            double b = track_sunasnu.b_impact;
-            double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
-            return 0.5*(1.0+rxh(r));
-        }
-
-SunASnu::~SunASnu(){
-  free(sun_radius);
-  free(sun_density);
-  free(sun_xh);
-  gsl_spline_free(inter_density);
-  gsl_interp_accel_free(inter_density_accel);
-  gsl_spline_free(inter_rxh);
-  gsl_interp_accel_free(inter_rxh_accel);
+{
+  const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
+  double x = track_sunasnu.GetX();
+  double b = track_sunasnu.b_impact;
+  double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
+  return 0.5*(1.0+rxh(r));
 }
+
+SunASnu::~SunASnu(){}
 
 /*
 ----------------------------------------------------------------------
@@ -756,34 +640,33 @@ SunASnu::~SunASnu(){
 
 // constructor
 EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
-        {
-        }
+{}
 
 // track constructor
 EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
 {
-            radius_nu = 6371.0*param.km;
-            atmheight = 22.*param.km;
+  radius_nu = 6371.0*param.km;
+  atmheight = 22.*param.km;
 
-            cosphi = cos(phi_input);
-            double sinsqphi = 1-cosphi*cosphi;
+  cosphi = cos(phi_input);
+  double sinsqphi = 1-cosphi*cosphi;
 
-            double R = radius_nu;
-            double r = atmheight;
+  double R = radius_nu;
+  double r = atmheight;
 
-            L = sqrt(SQR(R+r)-R*R*sinsqphi)-R*cosphi;
+  L = sqrt(SQR(R+r)-R*R*sinsqphi)-R*cosphi;
 
-            x = 0.0;
-            xini = 0.0;
-            xend = L;
+  x = 0.0;
+  xini = 0.0;
+  xend = L;
 
-            #ifdef EarthAtm_DEBUG
-                std::cout << "== Init Track ==" << std::endl;
-                std::cout << " phi = " << phi <<
-                ", cos(phi) = " << cosphi <<
-                ", L = " << radius_nu/param.km << std::endl;
-                std::cout << "==" << std::endl;
-            #endif
+  #ifdef EarthAtm_DEBUG
+      std::cout << "== Init Track ==" << std::endl;
+      std::cout << " phi = " << phi <<
+      ", cos(phi) = " << cosphi <<
+      ", L = " << radius_nu/param.km << std::endl;
+      std::cout << "==" << std::endl;
+  #endif
 }
 
 void EarthAtm::Track::Serialize(hid_t group) const {
@@ -804,9 +687,9 @@ void EarthAtm::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
   std::vector<hsize_t> dims {arraysize};
-  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius);
-  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density);
-  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye);
+  H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius.data());
+  H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density.data());
+  H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
 }
 
 std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
@@ -842,59 +725,57 @@ void EarthAtm::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 }
 
 double EarthAtm::density(const GenericTrack& track_input) const
-        {
-            const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
-            double xkm = track_earthatm.GetX()/param.km;
-            double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
-            double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+{
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+  double xkm = track_earthatm.GetX()/param.km;
+  double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+  double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
 
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
+  double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
-            #ifdef EarthAtm_DEBUG
-            cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
-                 << " x : " << xkm << " R : " << radius << endl;
-            #endif
+  #ifdef EarthAtm_DEBUG
+  cout << "r : " << r << " L : " << (track_earthatm->L/param.km)
+       << " x : " << xkm << " R : " << radius << endl;
+  #endif
 
-            double rel_r = r/earth_with_atm_radius;
+  double rel_r = r/earth_with_atm_radius;
 
-            if ( rel_r < x_radius_min ){
-              return x_rho_min;
-            }
-            else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
-              return x_rho_max;
-            }
-            else if ( rel_r > radius/earth_with_atm_radius ) {
-                double h = atm_height*(rel_r - radius/earth_with_atm_radius);
-                double h0 = 25.0;
-                return 1.05*exp(-h/h0);
-            } else {
-              std::lock_guard<std::mutex> lck(gsl_mut);
-              return gsl_spline_eval(inter_density,r/radius,inter_density_accel);
-            }
-        }
+  if ( rel_r < x_radius_min ){
+    return x_rho_min;
+  }
+  else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+    return x_rho_max;
+  }
+  else if ( rel_r > radius/earth_with_atm_radius ) {
+    double h = atm_height*(rel_r - radius/earth_with_atm_radius);
+    double h0 = 25.0;
+    return 1.05*exp(-h/h0);
+  } else {
+    return inter_density(r/radius);
+  }
+}
 
 double EarthAtm::ye(const GenericTrack& track_input) const
-        {
-            const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
-            double xkm = track_earthatm.GetX()/param.km;
-            double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
-            double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
-            double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
+{
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+  double xkm = track_earthatm.GetX()/param.km;
+  double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+  double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  double r = sqrt(SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm);
 
-            double rel_r = r/earth_with_atm_radius;
-            if ( rel_r < x_radius_min ){
-              return x_ye_min;
-            }
-            else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
-              return x_ye_max;
-            }
-            else if ( rel_r > radius/earth_with_atm_radius ){
-              return 0.494;
-            }else {
-              std::lock_guard<std::mutex> lck(gsl_mut);
-              return gsl_spline_eval(inter_ye,rel_r,inter_ye_accel);
-            }
-        }
+  double rel_r = r/earth_with_atm_radius;
+  if ( rel_r < x_radius_min ){
+    return x_ye_min;
+  }
+  else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+    return x_ye_max;
+  }
+  else if ( rel_r > radius/earth_with_atm_radius ){
+    return 0.494;
+  }else {
+    return inter_ye(rel_r);
+  }
+}
 
 EarthAtm::EarthAtm(std::string filepath):Body()
 {
@@ -905,14 +786,14 @@ EarthAtm::EarthAtm(std::string filepath):Body()
   marray<double,2> earth_model = quickread(filepath);
   arraysize = earth_model.extent(0);
 
-  earth_radius = new double[arraysize];
-  earth_density = new double[arraysize];
-  earth_ye = new double[arraysize];
+  earth_radius.resize(arraysize);
+  earth_density.resize(arraysize);
+  earth_ye.resize(arraysize);
 
   for (unsigned int i=0; i < arraysize;i++){
-      earth_radius[i] = earth_model[i][0];
-      earth_density[i] = earth_model[i][1];
-      earth_ye[i] = earth_model[i][2];
+    earth_radius[i] = earth_model[i][0];
+    earth_density[i] = earth_model[i][1];
+    earth_ye[i] = earth_model[i][2];
   }
 
   x_radius_min = earth_radius[0];
@@ -921,17 +802,14 @@ EarthAtm::EarthAtm(std::string filepath):Body()
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
-
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
-
-  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_ye_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
+	
+  inter_density=AkimaSpline(earth_radius,earth_density);
+  inter_ye=AkimaSpline(earth_radius,earth_ye);
 }
 
-EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):Body()
+EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):
+Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
+inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 {
   assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
   // The Input file should have the radius specified from 0 to 1.
@@ -941,41 +819,15 @@ EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<dou
   earth_with_atm_radius = radius + atm_height;
   arraysize = x.size();
 
-  earth_radius = new double[arraysize];
-  earth_density = new double[arraysize];
-  earth_ye = new double[arraysize];
-
-  for (unsigned int i=0; i < arraysize;i++){
-    earth_radius[i] = x[i];
-    earth_density[i] = rho[i];
-    earth_ye[i] = ye[i];
-  }
-
   x_radius_min = earth_radius[0];
   x_radius_max = earth_radius[arraysize-1];
   x_rho_min = earth_density[0];
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
-
-  inter_density = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_density_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_density,earth_radius,earth_density,arraysize);
-
-  inter_ye = gsl_spline_alloc(gsl_interp_akima,arraysize);
-  inter_ye_accel = gsl_interp_accel_alloc ();
-  gsl_spline_init (inter_ye,earth_radius,earth_ye,arraysize);
 }
 
-EarthAtm::~EarthAtm(){
-  free(earth_radius);
-  free(earth_density);
-  free(earth_ye);
-  gsl_spline_free(inter_density);
-  gsl_interp_accel_free(inter_density_accel);
-  gsl_spline_free(inter_ye);
-  gsl_interp_accel_free(inter_ye_accel);
-}
+EarthAtm::~EarthAtm(){}
 
 // body registration stuff
 
@@ -1020,4 +872,3 @@ NUSQUIDS_REGISTER_BODY(Earth);
 NUSQUIDS_REGISTER_BODY(EarthAtm);
 NUSQUIDS_REGISTER_BODY(Sun);
 NUSQUIDS_REGISTER_BODY(SunASnu);
-

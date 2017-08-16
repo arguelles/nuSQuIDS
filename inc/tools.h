@@ -26,13 +26,9 @@
 #define __TOOLS_H
 
 #include "version.h"
-#include <iostream>
-#include <fstream>
-#include <sstream>
+#include <algorithm>
 #include <string>
 #include <vector>
-#include <math.h>
-#include <stdexcept>
 #include "marray.h"
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_matrix.h>
@@ -65,6 +61,32 @@ void gsl_matrix_complex_conjugate(gsl_matrix_complex*);
 void gsl_matrix_complex_print(gsl_matrix_complex*);
 void gsl_matrix_complex_change_basis_UMUC(gsl_matrix_complex*, gsl_matrix_complex*);
 void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex*, gsl_matrix_complex*);
+	
+class AkimaSpline{
+private:
+    struct segment{
+        double x;
+        double a0, a1, a2, a3;
+        
+        double operator()(double x) const{
+            x-=this->x;
+            return((((a3*x)+a2)*x+a1)*x+a0);
+        }
+        operator double() const{ return(x); }
+    };
+    std::vector<segment> segments;
+public:
+    AkimaSpline(){}
+    AkimaSpline(const std::vector<double>& x, const std::vector<double>& y);
+    
+    double operator()(double x) const{
+        if(x<segments.front().x)
+            return(segments.front()(x));
+        auto seg_it=std::upper_bound(segments.begin(),segments.end(),x);
+        seg_it--;
+        return((*seg_it)(x));
+    }
+};
 
 } // close namespace
 

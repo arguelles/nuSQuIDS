@@ -253,11 +253,11 @@ class ConstantDensity: public Body{
 class VariableDensity: public Body{
   private:
     /// \brief Array of length \c arraysize containing spline position nodes.
-    double* x_arr;
+    std::vector<double> x_arr;
     /// \brief Array of length \c arraysize containing the density at each position nodes.
-    double* density_arr;
+    std::vector<double> density_arr;
     /// \brief Array of length \c arraysize containing the electron fraction at each position nodes.
-    double* ye_arr;
+    std::vector<double> ye_arr;
     /// \brief Size of array used to create spline.
     unsigned int arraysize;
 
@@ -266,15 +266,10 @@ class VariableDensity: public Body{
     /// \brief Maximum value of \c x_arr.
     double x_min;
 
-    /// \brief Density gsl spline.
-    gsl_spline * inter_density;
-    /// \brief Density gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_density_accel;
-
-    /// \brief Electron fraction gsl spline.
-    gsl_spline * inter_ye;
-    /// \brief Electron fraction gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_ye_accel;
+    /// \brief Density spline
+    AkimaSpline inter_density;
+    /// \brief Electron fraction spline
+    AkimaSpline inter_ye;
   public:
     /// \brief Constructor.
     /// @param x Vector containing position nodes in cm.
@@ -332,22 +327,18 @@ class Earth: public Body{
     /// \brief Radius of the Earth.
     double radius;
     /// \brief Earth radius position array
-    double * earth_radius;
+    std::vector<double> earth_radius;
     /// \brief Earth density array
-    double * earth_density;
+    std::vector<double> earth_density;
     /// \brief Earth electron fraction array
-    double * earth_ye;
+    std::vector<double> earth_ye;
     /// \brief Data arrays size
     unsigned int arraysize;
 
-    /// \brief Density gsl spline.
-    gsl_spline * inter_density;
-    /// \brief Density gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_density_accel;
-    /// \brief Electron fraction gsl spline.
-    gsl_spline * inter_ye;
-    /// \brief Electron fraction gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_ye_accel;
+    /// \brief Density spline
+    AkimaSpline inter_density;
+    /// \brief Electron fraction spline
+    AkimaSpline inter_ye;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -443,38 +434,22 @@ class Sun: public Body{
     /// \brief Array that contains all the Solar electron density parameters.
     marray<double,2> sun_model_nele;
     /// \brief Array of length \c arraysize containing spline position nodes.
-    double* sun_radius;
+    std::vector<double> sun_radius;
     /// \brief Array of length \c arraysize containing the density at position nodes.
-    double* sun_density;
+    std::vector<double> sun_density;
     /// \brief Array of length \c arraysize containing the hydrogen fraction at position nodes.
-    double* sun_xh;
-    // /// \brief Array of length \c arraysize_2 containing spline position nodes.
-    // double* sun_nele_radius;
-    // /// \brief Array of length \c arraysize_2 containing spline position nodes.
-    // double* sun_nele;
+    std::vector<double> sun_xh;
 
     /// \brief Size of \c sun_radius array.
     unsigned int arraysize;
-    // /// \brief Size of \c sun_nele_radius array.
-    //int arraysize_2;
 
     /// \brief Radius of the Sun.
     double radius;
 
-    /// \brief Density gsl spline.
-    gsl_spline * inter_density;
-    /// \brief Density gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_density_accel;
-
-    /// \brief Hidrogen fraction gsl spline.
-    gsl_spline * inter_rxh;
-    /// \brief Hidrogen fraction gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_rxh_accel;
-
-    // /// \brief Electron content gsl spline.
-    //gsl_spline * inter_nele;
-    // /// \brief Electron content gsl spline auxiliary pointer.
-    //gsl_interp_accel * inter_nele_accel;
+    /// \brief Density spline
+    AkimaSpline inter_density;
+    /// \brief Hydrogen fraction spline
+    AkimaSpline inter_xh;
 
     /// \brief Returns the density in g/cm^3 at a given radius fraction x
     /// @param x Radius fraction: 0:center, 1:surface.
@@ -549,11 +524,11 @@ class SunASnu: public Body{
     /// \brief Array that contains all the Solar model parameters.
     marray<double,2> sun_model;
     /// \brief Array of length \c arraysize containing spline position nodes.
-    double* sun_radius;
+    std::vector<double> sun_radius;
     /// \brief Array of length \c arraysize containing the density at position nodes.
-    double* sun_density;
+    std::vector<double> sun_density;
     /// \brief Array of length \c arraysize containing the hydrogen fraction at position nodes.
-    double* sun_xh;
+    std::vector<double> sun_xh;
 
     /// \brief Size of \c sun_radius array.
     unsigned int arraysize;
@@ -561,15 +536,10 @@ class SunASnu: public Body{
     /// \brief Radius of the Sun.
     double radius;
 
-    /// \brief Density gsl spline.
-    gsl_spline * inter_density;
-    /// \brief Density gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_density_accel;
-
-    /// \brief Hidrogen fraction gsl spline.
-    gsl_spline * inter_rxh;
-    /// \brief Hidrogen fraction gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_rxh_accel;
+    /// \brief Density spline
+    AkimaSpline inter_density;
+    /// \brief Hydrogen fraction spline
+    AkimaSpline inter_xh;
 
     /// \brief Returns the density in g/cm^3 at a given radius fraction x
     /// @param x Radius fraction: 0:center, 1:surface.
@@ -657,25 +627,18 @@ class EarthAtm: public Body{
     double earth_with_atm_radius;
 
     /// \brief Earth radius position array
-    double * earth_radius;
+    std::vector<double> earth_radius;
     /// \brief Earth density array
-    double * earth_density;
+    std::vector<double> earth_density;
     /// \brief Earth electron fraction array
-    double * earth_ye;
+    std::vector<double> earth_ye;
     /// \brief Data arrays size
     unsigned int arraysize;
-
-
-    /// \brief Density gsl spline.
-    gsl_spline * inter_density;
-    /// \brief Density gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_density_accel;
-    /// \brief Electron fraction gsl spline.
-    gsl_spline * inter_ye;
-    /// \brief Electron fraction gsl spline auxiliary pointer.
-    gsl_interp_accel * inter_ye_accel;
-    /// \brief mutex to ensure that only one thread accesses GSL structures at a time
-    mutable std::mutex gsl_mut;
+  
+    /// \brief Density spline
+	AkimaSpline inter_density;
+    /// \brief Electron fraction spline
+    AkimaSpline inter_ye;
 
     /// \brief Minimum radius.
     double x_radius_min;

@@ -21,8 +21,15 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-
 #include "tools.h"
+
+#include <cassert>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+
 #include <gsl/gsl_complex_math.h>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
@@ -84,10 +91,8 @@ int quickwrite(std::string filepath, marray<double,2>& tbl){
     // create and open file stream
     std::ofstream outfile(filepath.c_str());
 
-    if(!outfile){
-        std::cerr << "Error: file could not be created. Filepath " << filepath.c_str()<< std::endl;
-        exit(1);
-    }
+    if(!outfile)
+        throw std::runtime_error("Error: file could not be created: " + filepath);
 
     outfile.precision(15);
     for (unsigned int i=0; i < tbl.extent(0); i++){
@@ -96,9 +101,6 @@ int quickwrite(std::string filepath, marray<double,2>& tbl){
       }
       outfile << std::endl;
     }
-
-    outfile.close();
-
     return 0;
 }
 
@@ -204,6 +206,100 @@ void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_comp
     gsl_matrix_complex_free(U1);
     gsl_matrix_complex_free(U2);
     gsl_matrix_complex_free(T1);
+}
+    
+//Numerik-Algorithmen: Verfahren, Beispiele, Anwendungen
+//Engeln-M{\"u}llges, Gisela and Niederdrenk, Klaus and Wodicka, Reinhard
+//https://doi.org/10.1007/978-3-642-13473-9_11
+AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>& y){
+    assert(x.size()==y.size());
+    if(x.size()<3)
+        throw std::runtime_error("At least 3 points are required to consturct the Akima spline interpolation");
+    const unsigned int n=x.size();
+    
+    //a lambda, basically, but needs to be able to call itself recursively
+    struct mHelper{
+        const std::vector<double>& x;
+        const std::vector<double>& y;
+        const unsigned int n;
+        double operator()(int i) const{
+            const mHelper& m=*this;
+            if(i==-2)
+                return(3*m(0)-2*m(1));
+            if(i==-1)
+                return(2*m(0)-m(1));
+            if(i==n-1)
+                return(2*m(n-2)-m(n-3));
+            if(i==n)
+                return(3*m(n-2)-2*m(n-3));
+            return((y[i+1]-y[i])/(x[i+1]-x[i]));
+        }
+    } m{x,y,n};
+    
+    double L_ip1=-1, NE_ip1=-1;
+    double m_im2, m_im1, m_i, m_ip1, m_ip2;
+    for(int i=0; i<n-1; i++){
+        double h_i=x[i+1]-x[i];
+        if(h_i<0)
+            throw std::runtime_error("AkimaSpline: absissa values not ordered");
+        if(h_i==0)
+            throw std::runtime_error("AkimaSpline: absissa values not distinct");
+        
+        //We mostly resue m values from previous iterations, but the first
+        //iteration must start the process, and all subsequent iterations
+        //must compute the new m_{i+2}:
+        if(i==0){
+            m_im2=m(i-2);
+            m_im1=m(i-1);
+            m_i=m(i);
+            m_ip1=m(i+1);
+        }
+        m_ip2=m(i+2);
+        
+        double tRi;
+        {
+            double L_i, NE_i;
+            if(L_ip1>=0){ //take values recorded from last iteration
+                L_i=L_ip1;
+                NE_i=NE_ip1;
+            }
+            else{ //no previous values available
+                L_i=std::abs(m_im2-m_im1);
+                NE_i=L_i+std::abs(m_i-m_ip1);
+            }
+            if(NE_i>0){
+                double alpha=L_i/NE_i;
+                tRi=(1-alpha)*m_im1+alpha*m_i;
+            }
+            else
+                tRi=m_i;
+        }
+        double tLip1;
+        {
+            L_ip1=std::abs(m_im1-m_i);
+            NE_ip1=L_ip1+std::abs(m_ip1-m_ip2);
+            if(NE_ip1>0){
+                double alpha=L_ip1/NE_ip1;
+                tLip1=(1-alpha)*m_i+alpha*m_ip1;
+            }
+            else
+                tLip1=m(i);
+        }
+        
+        segment seg;
+        seg.x=x[i];
+        seg.a0=y[i];
+        seg.a1=tRi;
+        seg.a2=(3*m_i-2*tRi-tLip1)/h_i;
+        seg.a3=(tRi+tLip1-2*m_i)/(h_i*h_i);
+        segments.push_back(seg);
+        
+        //shift values for next iteration
+        m_im2=m_im1;
+        m_im1=m_i;
+        m_i=m_ip1;
+        m_ip1=m_ip2;
+    }
 }
 
 } // close namespace
