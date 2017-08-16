@@ -26,7 +26,7 @@
 #define H5Eset_auto_vers 2
 
 #include "nuSQuIDS.h"
-#include "aligned_alloc.h"
+#include <sstream>
 
 namespace nusquids{
 

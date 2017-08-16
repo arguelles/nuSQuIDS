@@ -119,7 +119,7 @@ public:
 		//align!
 		uint8_t offset=alignment-reinterpret_cast<size_type>(ptr)%alignment;
 		//Note that since align is a power of 2, align-1 forms a mask with the low
-		//align_pow bits set. It's negation will then preserve only the higher bits
+		//align_pow bits set. Its negation will then preserve only the higher bits
 		//of ptr, effectively flooring it to the nearest multiple of align. Adding
 		//align then preserves this alignment, and ensures that at least one byte 
 		//of padding is before ptr. 

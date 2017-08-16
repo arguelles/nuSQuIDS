@@ -39,11 +39,13 @@
 
 #include <algorithm>
 #include <cstring>
-#include <SQuIDS/SQuIDS.h>
+#include <iostream>
 #include <memory>
 #include <map>
 #include <stdexcept>
 #include <vector>
+
+#include <SQuIDS/SQuIDS.h>
 
 #include "H5Epublic.h"
 #include "H5Tpublic.h"
