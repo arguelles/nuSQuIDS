@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function check_pkgconfig(){
+check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
 	which pkg-config 2>&1 > /dev/null
@@ -11,7 +11,7 @@ function check_pkgconfig(){
 	CHECKED_PKGCONFIG=1
 }
 
-function find_package(){
+find_package(){
 	PKG=$1
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
@@ -41,7 +41,7 @@ function find_package(){
 	eval ${VAR_PREFIX}_LIBDIR=\"`pkg-config --variable=libdir $PKG`\"
 }
 
-function find_hdf5(){
+find_hdf5(){
 	PKG=hdf5
 	echo "Looking for $PKG..."
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
@@ -108,7 +108,40 @@ function find_hdf5(){
 	HDF5_FOUND=1
 }
 
-function ensure_found(){
+try_find_boost(){
+	GUESS_DIR=$1
+	PKG=boost
+	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
+	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
+	if [ "$TMP_FOUND" ]; then return; fi
+	echo "Looking for $PKG in $GUESS_DIR..."
+	POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
+	POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
+	for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
+		if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python.a -o -e $BOOST_LIBDIR/libboost_python.so \) ]; then
+			break
+		fi
+	done
+	if [ ! -d $BOOST_LIBDIR -o ! \( -e $BOOST_LIBDIR/libboost_python.a -o -e $BOOST_LIBDIR/libboost_python.so \) ]; then
+		echo " Unable to locate the boost_python libray in $GUESS_DIR"
+		return
+	fi
+	for BOOST_INCDIR in $POSSIBLE_BOOST_INCDIRS; do
+		if [ -d $BOOST_INCDIR -a -e $BOOST_INCDIR/boost/python.hpp ]; then
+			break
+		fi
+	done
+	if [ ! -d $BOOST_INCDIR -o ! $BOOST_INCDIR/boost/python.hpp ]; then
+		echo " Unable to locate boost/python.hpp in $GUESS_DIR"
+		return
+	fi
+	BOOST_CFLAGS="-I${BOOST_INCDIR}"
+	BOOST_LDFLAGS="-L${BOOST_LIBDIR} -lboost_python"
+	BOOST_FOUND=1
+	echo " Found boost in $GUESS_DIR"
+}
+
+ensure_found(){
 	PKG=$1
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
@@ -543,6 +576,23 @@ echo "../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.s
 
 if [ $PYTHON_BINDINGS ]; then
 	echo "Generating Python bindings makefile..."
+
+	if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
+		echo "Checking manually specified boost..."
+		if [ -d "$BOOST_INCDIR" \
+		  -a -d "$BOOST_LIBDIR" \
+		  -a -e "$BOOST_INCDIR/boost/python.hpp" \
+		  -a -e "$BOOST_LIBDIR/libboost_python.a" ]; then
+			BOOST_FOUND=1
+			BOOST_CFLAGS="-I$BOOST_INCDIR"
+			BOOST_LDFLAGS="-L$BOOST_LIBDIR -lboost_python"
+		else
+			echo "Warning: manually specifed boost not found; will attempt auto detection"
+		fi
+	fi
+
+	try_find_boost /usr
+	try_find_boost /usr/local
 
 	if [ -z $BOOST_LIBDIR -a  -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
