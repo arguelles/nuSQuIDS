@@ -136,7 +136,7 @@ try_find_boost(){
 		return
 	fi
 	BOOST_CFLAGS="-I${BOOST_INCDIR}"
-	BOOST_LDFLAGS="-L${BOOST_LIBDIR} -lboost_python"
+	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python"
 	BOOST_FOUND=1
 	echo " Found boost in $GUESS_DIR"
 }
@@ -585,7 +585,7 @@ if [ $PYTHON_BINDINGS ]; then
 		  -a -e "$BOOST_LIBDIR/libboost_python.a" ]; then
 			BOOST_FOUND=1
 			BOOST_CFLAGS="-I$BOOST_INCDIR"
-			BOOST_LDFLAGS="-L$BOOST_LIBDIR -lboost_python"
+			BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L$BOOST_LIBDIR -lboost_python"
 		else
 			echo "Warning: manually specifed boost not found; will attempt auto detection"
 		fi
@@ -606,7 +606,6 @@ if [ $PYTHON_BINDINGS ]; then
 		echo "Error: Specify BOOST include path using  --with-boost-incdir."
 		exit 1
 	fi
-	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python"
 
 	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	PYTHONLIBPATH=`${PYTHON_EXE} -c 'import sys; import re; print([ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0]);'`
@@ -633,7 +632,7 @@ LDFLAGS+= -lpython${PYTHONVERSION}
 LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
 INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../inc/
-INCCFLAGS+= -I${BOOST_INCDIR}
+INCCFLAGS+= ${BOOST_CFLAGS}
 INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
 
@@ -691,57 +690,6 @@ clean:
 	rm -f *.o ../lib/*.so ../lib/*.a
 ' >> resources/python/src/Makefile
 
-
-  echo "
-from distutils.core import setup
-from distutils.extension import Extension
-import os.path
-import sys
-
-if sys.platform == 'win32' or sys.platform == 'win64':
-    print 'Windows is not a supported platform.'
-    quit()
-
-else:
-    include_dirs = ['${PYTHONINCPATH}',
-                    '${PYTHONNUMPYINC}',
-                    '${SQUIDS_INCDIR}',
-                    '${PREFIX}/include',
-                    '${GSL_INCDIR}',
-                    '${HDF5_INCDIR}',
-                    '${BOOST_INCDIR}',
-                    '../inc/',
-                    '/usr/local/include']
-    libraries = ['python${PYTHONVERSION}','boost_python',
-                 'SQuIDS','nuSQuIDS',
-                 'gsl','gslcblas','m',
-                 'hdf5','hdf5_hl']
-
-    if sys.platform.startswith('linux'):
-      libraries.append('cxxrt')
-
-    library_dirs = ['${PYTHONLIBPATH}',
-                    '${PYTHONLIBPATH}/../',
-                    '${SQUIDS_LIBDIR}',
-                    '${PREFIX}/lib',
-                    '${GSL_LIBDIR}',
-                    '${HDF5_LIBDIR}',
-                    '${BOOST_LIBDIR}',
-                    '/usr/local/lib']
-
-files = ['nuSQUIDSpy.cpp']
-
-setup(name = 'nuSQUIDSpy',
-      ext_modules = [
-          Extension('nuSQUIDSpy',files,
-              library_dirs=library_dirs,
-              libraries=libraries,
-              include_dirs=include_dirs,
-              extra_compile_args=['-O3','-fPIC','-std=c++11','-Wno-unused-local-typedef'],
-              depends=[]),
-          ]
-      )
-" > resources/python/src/setup.py
 fi
 
 nusqpath=`pwd`
