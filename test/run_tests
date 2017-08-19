@@ -47,7 +47,7 @@ if [ -f env_vars.sh ]; then
 	. ./env_vars.sh
 fi
 
-COMPILE_COMMAND="$CXX -I../include $CFLAGS $CXXFLAGS $LDFLAGS -I./ -L../lib"
+COMPILE_FLAGS="-I../include $CFLAGS $CXXFLAGS $LDFLAGS -I./ -L../lib"
 CLEAN_COMMAND_FILE="clean_fail.sed"
 
 NAME_FILTER_REGEX='\('$COMPILE_FAIL_FLAG'\)*'$TEST_SUFFIX'$'
@@ -97,7 +97,7 @@ for TEST in $TESTS ; do
 		SHOULD_FAIL_COMPILE=`echo "$TEST" | grep "$COMPILE_FAIL_FLAG"`
 		if [ "$SHOULD_FAIL_COMPILE" ] ; then
 			# try to compile
-			RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $TEST -o ${PRODUCT_DIR}/${NAME} 2>&1 | grep -c -f $REF_OUTPUT`
+			RESULT=`${CXX} $TEST ${COMPILE_FLAGS} ${EXTRA_FLAGS} -o ${PRODUCT_DIR}/${NAME} 2>&1 | grep -c -f $REF_OUTPUT`
 			# check that the compiler printed the expected error message
 			if [ "$RESULT" -eq 0 ] ; then
 				REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (compilation did not produce required error)"
@@ -109,7 +109,7 @@ for TEST in $TESTS ; do
 				#but does it succeed if we remove the deliberately offending code?
 				CLEANED_TEST=${PRODUCT_DIR}/${NAME}${CLEANED_TEST_SUFFIX}
 				cat $TEST | sed -f ${CLEAN_COMMAND_FILE} > $CLEANED_TEST
-				RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $CLEANED_TEST -o ${PRODUCT_DIR}/${NAME} 2>&1 && ${PRODUCT_DIR}/${NAME}`
+				RESULT=`${CXX} $CLEANED_TEST ${COMPILE_FLAGS} ${EXTRA_FLAGS} -o ${PRODUCT_DIR}/${NAME} 2>&1 && ${PRODUCT_DIR}/${NAME}`
 				SUCCESS=$?
 				if [ "$SUCCESS" -ne 0 ] ; then
 					REPORT_ENTRY="$PRETTY_NAME : $FAIL_LABEL (failed to compile or run after cleaning)"
@@ -122,7 +122,7 @@ for TEST in $TESTS ; do
 			fi
 		else
 			# try to compile
-			RESULT=`${COMPILE_COMMAND} ${EXTRA_FLAGS} $TEST -o ${PRODUCT_DIR}/${NAME} 2>&1`
+			RESULT=`$CXX $TEST ${COMPILE_FLAGS} ${EXTRA_FLAGS} -o ${PRODUCT_DIR}/${NAME} 2>&1`
 			COMPILE_SUCCESS=$?
 			# check that compilation succeeded
 			if [ "$COMPILE_SUCCESS" -ne 0 ] ; then
@@ -183,20 +183,20 @@ NUM_FAIL=`grep -c ": $FAIL_LABEL" "$REPORT_FILE"`
 NUM_EXP_FAIL=`grep -c ": $EXPECTED_FAIL_LABEL" "$REPORT_FILE"`
 NUM_NOT_RUN=`grep -c ": $MISSING_REFERENCE_LABEL" "$REPORT_FILE"`
 # figure out whether to use plural endings or not
-if [[ "$NUM_TESTS" -ne "1" ]];then
+if [ "$NUM_TESTS" -ne "1" ] ;then
 	TEST_PLURAL="s"
 fi
-if [[ "$NUM_PASS" -ne "1" ]];then
+if [ "$NUM_PASS" -ne "1" ] ;then
 	PASS_PLURAL="es"
 fi
-if [[ "$NUM_FAIL" -ne "1" ]];then
+if [ "$NUM_FAIL" -ne "1" ];then
 	FAILURE_PLURAL="s"
 fi
-if [[ "$NUM_EXP_FAIL" -ge "1" ]];then
+if [ "$NUM_EXP_FAIL" -ge "1" ] ;then
 	EXPECTED_NOTE=" ($NUM_EXP_FAIL expected)"
 fi
-if [[ "$NUM_NOT_RUN" -ge "1" ]];then
-	if [[ "$NUM_NOT_RUN" -ne "1" ]];then
+if [ "$NUM_NOT_RUN" -ge "1" ] ;then
+	if [ "$NUM_NOT_RUN" -ne "1" ] ;then
 		NOT_RUN_PLURAL="s"
 	fi
 	NOT_RUN_NOTE=", $NUM_NOT_RUN test$NOT_RUN_PLURAL could not be run"
