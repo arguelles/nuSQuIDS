@@ -644,13 +644,11 @@ SOURCES = $(wildcard *.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 
 # Directories
-LIBDIR=$(PATH_nuSQUIDS)/lib
-INCDIR=$(PATH_nuSQUIDS)/inc
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
-INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
+INCnuSQUIDS=$(PATH_nuSQUIDS)/include
 
 LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQuIDS
-INCCFLAGS+= -I$(INCnuSQUIDS)
+INCCFLAGS+= -I$(INCnuSQUIDS) -I$(PATH_nuSQUIDSpy)/inc
 CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
 ' >> resources/python/src/Makefile
 

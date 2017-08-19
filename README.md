@@ -27,36 +27,88 @@ Additionally for compiling and using the python bindings:
 -Recommended:
 * ipython: http://ipython.org/
 
-Modified the make file and compaile the directory
-found in
-
-nuSQUIDS/resources/python/src/
-
-after successful compilation the bindings will be stored in
-
-nuSQUIDS/resources/python/bindings/
-
-Finally, modify your system PYTHONPATH:
-
-export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
-
 Documentation
 *************
 
-The latex and pdf files are included in nuSQuIDS/doc/ folder.
+The LaTeX and pdf files are included in nuSQuIDS/doc/ folder.
 
 Configuration
 *************
 
 The path for the GSL libraries can be specified by running:
 
-./config.sh --with-gsl-incdir=GSL_include_path --with-gsl-libdir-=GSL_library_path
+	./configure --with-gsl-incdir=GSL_include_path --with-gsl-libdir-=GSL_library_path
+
+or, assuming a standard installation into 'include' and 'lib' subdirectories within a common prefix:
+
+	./configure --with-gsl=GSL_prefix
 
 The path for the HDF5 libraries can be specified by running:
 
-./config.sh --with-hdf5-incdir=HDF5_include_path --with-hdf5-libdir=HDF5_library_path
+	./configure --with-hdf5-incdir=HDF5_include_path --with-hdf5-libdir=HDF5_library_path
+
+or more simply 
+
+	./configure --with-hdf5=HDF5_prefix
 
 Finally, the path for SQuIDS can be specified by:
 
-./config.sh --with-squids-incdir=SQuIDS_include_path --with-squids-libdir=SQuIDS_library_path
+	./configure --with-squids-incdir=SQuIDS_include_path --with-squids-libdir=SQuIDS_library_path
 
+or commonly just
+
+	./configure --with-squids=SQuIDS_prefix
+
+To compile the python interface it is additionally necessary to pass the 
+`--with-python-bindings` option to `configure`. Also, the boost python library, 
+a working python installation, and numpy must be available. The location of the
+boost library can be specified using:
+
+	./configure --with-boost-incdir=boost_include_path --with-boost-libdir-=boost_library_path
+
+or in simple cases
+
+	./configure --with-boost=boost_prefix
+
+The python executable (which will also be used to locate numpy) can be specified with:
+
+	./configure --python-bin=PYTHON_EXECUTABLE
+
+Once configuration is complete the library can be compiled by running:
+
+	make
+
+Unit tests to verify correct behavior can be run using:
+
+	make test
+
+A set of example programs demonstrating usage and functionality 
+can be compiled with the command:
+
+	make examples
+
+The resulting example executables can then be found in the various 
+subdirectories of `examples`
+
+Finally the library can be installed using:
+
+	make install
+
+By default this will attempt to install the library within /usr/local; 
+this can be changed by using the --prefix option when running configure:
+
+	./configure --prefix=$HOME
+
+Compiling the Python Interface
+******************************
+
+Even when configured the python interface is not built with the main library. 
+To compile it do the following:
+
+	cd resources/python/src/
+	make
+
+After successful compilation the bindings will be stored in `resources/python/bindings/`. 
+To make them available from within python, modify your PYTHONPATH:
+
+	export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
