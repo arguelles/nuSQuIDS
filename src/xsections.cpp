@@ -21,7 +21,7 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-#include "xsections.h"
+#include <nuSQuIDS/xsections.h>
 
 namespace nusquids{
 

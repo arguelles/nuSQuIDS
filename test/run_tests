@@ -47,7 +47,7 @@ if [ -f env_vars.sh ]; then
 	. ./env_vars.sh
 fi
 
-COMPILE_COMMAND="$CXX $CFLAGS $CXXFLAGS $LDFLAGS -I./ -L../lib"
+COMPILE_COMMAND="$CXX -I../include $CFLAGS $CXXFLAGS $LDFLAGS -I./ -L../lib"
 CLEAN_COMMAND_FILE="clean_fail.sed"
 
 NAME_FILTER_REGEX='\('$COMPILE_FAIL_FLAG'\)*'$TEST_SUFFIX'$'

@@ -23,7 +23,8 @@
 
 #include <vector>
 #include <iostream>
-#include "nuSQuIDS/nuSQuIDS.h"
+#include <fstream>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include "NSI.h"
 
 /*

@@ -399,7 +399,7 @@ Cflags: -I${includedir}
 echo "Generating version header..."
 sed -e "s|__NUSQUIDS_VERSION__|$VERSION_NUM|g" \
     -e "s|__NUSQUIDS_VERSION_STR__|$VERSION|g" \
-    < resources/version.h.in > inc/version.h
+    < resources/version.h.in > include/nuSQuIDS/version.h
 
 echo "Generating makefile..."
 echo "# Compiler
@@ -449,7 +449,7 @@ echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 
 echo '
 
-INCnuSQUIDS=$(PATH_nuSQUIDS)/inc
+INCnuSQUIDS=$(PATH_nuSQUIDS)/include
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
@@ -544,7 +544,7 @@ test: $(DYN_PRODUCT) $(STAT_PRODUCT)
 install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
 	@mkdir -p $(PREFIX)/include/nuSQuIDS
-	@cp $(INCnuSQUIDS)/*.h $(PREFIX)/include/nuSQuIDS
+	@cp $(INCnuSQUIDS)/nuSQuIDS/*.h $(PREFIX)/include/nuSQuIDS
 	@echo Installing libraries in $(PREFIX)/lib
 	@mkdir -p $(PREFIX)/lib
 	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) $(PREFIX)/lib
@@ -631,7 +631,7 @@ LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
 LDFLAGS+= -lpython${PYTHONVERSION}
 LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
-INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../inc/
+INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../include/
 INCCFLAGS+= ${BOOST_CFLAGS}
 INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
@@ -697,16 +697,16 @@ nusqpath=`pwd`
 echo '
 #ifndef __GLOBAL_H
 #define __GLOBAL_H
-' > inc/global.h
+' > include/nuSQuIDS/global.h
 echo "
 #define XSECTION_LOCATION \"$nusqpath/data/xsections/\"
 #define SUN_MODEL_LOCATION  \"$nusqpath/data/astro/bs05_agsop.dat\"
 #define SUN_MODEL_NELECTRON_LOCATION \"$nusqpath/data/astro/nele_bs05op.dat\"
 #define EARTH_MODEL_LOCATION \"$nusqpath/data/astro/EARTH_MODEL_PREM.dat\"
-" >> inc/global.h
+" >> include/nuSQuIDS/global.h
 echo '
 #endif
-' >> inc/global.h
+' >> include/nuSQuIDS/global.h
 
 echo "Done."
 echo "To build library, run the following: make

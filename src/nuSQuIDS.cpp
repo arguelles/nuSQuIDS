@@ -25,7 +25,7 @@
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
 
-#include "nuSQuIDS.h"
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <sstream>
 
 namespace nusquids{

@@ -23,7 +23,8 @@
 
 #include <vector>
 #include <iostream>
-#include "nuSQuIDS/nuSQuIDS.h"
+#include <fstream>
+#include <nuSQuIDS/nuSQuIDS.h>
 
 /*
  * This file demonstrates how use nuSQUIDS to propagate neutrinos

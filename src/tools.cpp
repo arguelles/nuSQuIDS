@@ -21,7 +21,7 @@
  *         chris.weaver@icecube.wisc.edu                                       *
  ******************************************************************************/
 
-#include "tools.h"
+#include <nuSQuIDS/tools.h>
 
 #include <cassert>
 #include <cmath>
@@ -31,8 +31,6 @@
 #include <stdexcept>
 
 #include <gsl/gsl_complex_math.h>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
 #include <gsl/gsl_blas.h>
 
 namespace nusquids{
@@ -214,7 +212,7 @@ void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_comp
 AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>& y){
     assert(x.size()==y.size());
     if(x.size()<3)
-        throw std::runtime_error("At least 3 points are required to consturct the Akima spline interpolation");
+        throw std::runtime_error("At least 3 points are required to construct the Akima spline interpolation");
     const unsigned int n=x.size();
     
     //a lambda, basically, but needs to be able to call itself recursively
