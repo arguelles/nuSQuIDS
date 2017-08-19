@@ -273,7 +273,7 @@ class VariableDensity: public Body{
   public:
     /// \brief Constructor.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     VariableDensity(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
@@ -360,14 +360,14 @@ class Earth: public Body{
     /// \details The input file should have three columns.
     /// The first one must run from zero to one representing
     /// the center and surface of the Earth respectively. The
-    /// second column must contain the Earth density in gr/cm^3 at
+    /// second column must contain the Earth density in g/cm^3 at
     /// a given position, while the third column must contain
     /// the electron fraction.
     Earth(std::string earthmodel);
     /// \brief Constructor in which the user provides, as vectors, the
     /// Earth properties.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
@@ -463,7 +463,7 @@ class Sun: public Body{
     /// \brief Constructor in which the user provides, as vectors, the
     /// Sun properties.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param xh Hydrogen fraction at each point.
     /// \pre All input vectors must be of equal size.
     Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
@@ -553,7 +553,7 @@ class SunASnu: public Body{
     /// \brief Constructor in which the user provides, as vectors, the
     /// Sun properties.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param xh Hydrogen fraction at each point.
     /// \pre All input vectors must be of equal size.
     SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
@@ -660,14 +660,14 @@ class EarthAtm: public Body{
     /// \details The input file should have three columns.
     /// The first one must run from zero to one representing
     /// the center and surface of the Earth respectively. The
-    /// second column must contain the Earth density in gr/cm^3 at
+    /// second column must contain the Earth density in g/cm^3 at
     /// a given position, while the third column must contain
     /// the electron fraction.
     EarthAtm(std::string earthmodel);
     /// \brief Constructor in which the user provides, as vectors, the
     /// Earth properties.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in gr/cm^3, at each of the nodes.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
