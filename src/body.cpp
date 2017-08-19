@@ -201,19 +201,19 @@ bool ConstantDensity::IsConstantDensity() const { return true;}
 // constructor
 VariableDensity::VariableDensity(std::vector<double> x_input,std::vector<double> density_input,std::vector<double> ye_input):
 Body(),x_arr(std::move(x_input)),density_arr(std::move(density_input)),ye_arr(std::move(ye_input)),
-inter_density(x_input,density_input),inter_ye(x_input,ye_input)
+inter_density(x_arr,density_arr),inter_ye(x_arr,ye_arr)
 {
-  assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_input.size() == density_input.size() && x_input.size() == ye_input.size());
-  arraysize = x_input.size();
+  assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_arr.size() == density_arr.size() && x_arr.size() == ye_arr.size());
+  arraysize = x_arr.size();
 
-  x_min = x_input.front();
-  x_max = x_input.back();
+  x_min = x_arr.front();
+  x_max = x_arr.back();
 
-  for(double xx : x_input)
+  for(double xx : x_arr)
     BodyParams.push_back(xx);
-  for(double rho : density_input)
+  for(double rho : density_arr)
     BodyParams.push_back(rho);
-  for(double ye : ye_input)
+  for(double ye : ye_arr)
     BodyParams.push_back(ye);
 }
 
@@ -315,11 +315,11 @@ Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> y
 Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
 inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 {
-  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
+  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && earth_radius.size() == earth_density.size() && earth_radius.size() == earth_ye.size());
   // The Input file should have the radius specified from 0 to 1.
   // where 0 is the center of the Earth and 1 is the surface.
   radius = 6371.0; // [km]
-  arraysize = x.size();
+  arraysize = earth_radius.size();
 
   x_radius_min = earth_radius[0];
   x_radius_max = earth_radius[arraysize-1];
@@ -438,7 +438,7 @@ Body(),sun_radius(std::move(x)),sun_density(std::move(rho)),sun_xh(std::move(xh)
 inter_density(sun_radius,sun_density),inter_xh(sun_radius,sun_xh)
 {
   radius = 695980.0*param.km;
-  arraysize = x.size();
+  arraysize = sun_radius.size();
 }
 
 void Sun::Serialize(hid_t group) const {
@@ -540,7 +540,7 @@ Body(),sun_radius(std::move(x)),sun_density(std::move(rho)),sun_xh(std::move(xh)
 inter_density(sun_radius,sun_density),inter_xh(sun_radius,sun_xh)
 {
   radius = 695980.0*param.km;
-  arraysize = x.size();
+  arraysize = sun_radius.size();
 }
 
 // track constructor
@@ -811,13 +811,13 @@ EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<dou
 Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
 inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 {
-  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && x.size() == rho.size() && x.size() == ye.size());
+  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && earth_radius.size() == earth_density.size() && earth_radius.size() == earth_ye.size());
   // The Input file should have the radius specified from 0 to 1.
   // where 0 is the center of the Earth and 1 is the surface.
   radius = 6371.0; // km
   atm_height = 22; // km
   earth_with_atm_radius = radius + atm_height;
-  arraysize = x.size();
+  arraysize = earth_radius.size();
 
   x_radius_min = earth_radius[0];
   x_radius_max = earth_radius[arraysize-1];
