@@ -116,7 +116,7 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 \label{sec:intro} 
 
 In recent decades a plethora of evidence that neutrinos change
-flavor as they propagate macroscopical distances due to the
+flavor as they propagate macroscopic distances due to the
 nonalignment of their mass and flavor eigenstates \citep{Mohapatra:qv, Gouvea:2013fj} has accumulated from
 solar \citep{Abe:2010hy, Borexino2014},
 atmospheric \citep{PhysRevD.91.072004,Richard:2015aua},
@@ -131,12 +131,12 @@ experimental results and related theoretical calculations the
 has been firmly established and the three mixing angles, which
 parametrize the lepton mixing matrix, together with the two squared
 mass differences, have been measured to good precision
-\citep{Gonzalez-Garcia:2014bfa}. Furthermore, it is the task of on-going 
+\citep{Gonzalez-Garcia:2014bfa}. It is the task of on-going 
 and future experiments to determine the neutrino mass ordering
 and the Dirac CP-violating phase \citep{Hewett:2012et,
   Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
 Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
-spectrum above 100GeV allowing new physics
+spectrum above 100 GeV allowing new physics
 models to be constrained \citep{Aartsen:2014gkd,TheIceCube:2016oqi}.
 The identification of high energy
 extraterrestrial neutrinos \citep{ Aartsen:2014gkd, Aartsen:2015rwa}
@@ -172,13 +172,13 @@ important they are no longer applicable. Furthermore, the ability to
 allow the user to incorporate new physics models or to change the
 propagation medium is also limited. {\ttf nuSQuIDS} seeks to
 address all of these problems by providing a highly customizable
-package, while at the same time remain numerically efficient.
+package, while at the same time remaining numerically efficient.
 
 The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we demonstrate the use of the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
 
 \section{Neutrino Oscillation Theory}
 \label{sec:theory} 
-In this section we are going to briefly review neutrino oscillations
+In this section we are briefly review neutrino oscillations
 using the density matrix formalism.
 We can represent the state of the neutrino ensemble, at an energy $E$
 and position $x$, using the density
@@ -264,7 +264,7 @@ So far we have only incorporated vacuum oscillations and matter
 effects through coherent interactions, but we now wish to extend this
 formalism to incorporate noncoherent interactions and collective
 neutrino behavior. In what follows we will remove the subindex $I$ and
-assume that all operators, unless specified, are on the interaction picture 
+assume that all operators, unless specified, are in the interaction picture. 
 This problem has been extensively discussed in the literature,
 \citep{Sigl:1992fn,Duan:2010tk,Strack:qd,Zhang:2013ay,
  Cirelli:mw,Blennow:2007tw,Arguelles:2012cf}, for definiteness we
@@ -282,8 +282,8 @@ The neutrino (antineutrino), $\rho$ $(\bar\rho)$, kinetic equations are
 \end{subequations}
 where $\Gamma$ and $\bar\Gamma$  are functions that incorporate the effect of attenuation due to
 noncoherent interactions, and $F$ and $\bar F$  are  functionals on
-$\rho$ and $\bar\rho$ that takes into account interactions between
-different energies for neutrinos and antineutrinos respectively. From
+$\rho$ and $\bar\rho$ that take into account interactions between
+different energies for neutrinos and antineutrinos, respectively. From
 now on we use the bar notation to refer to antiparticles.
 In {\ttf nuSQuIDS} the attenuation terms are
 
@@ -387,7 +387,7 @@ modes are
 where $\tilde \Gamma^\tau(E_{\tau})=\frac{E_{\tau}}{m_\tau}\tau_\tau$,
 in which $m_\tau$ is the $\tau$ mass and $\tau_\tau$ is the $\tau$
 lifetime, ``all'' and ``lep'' indicate the all and leptonic $\tau$
-decay modes respectively.
+decay modes, respectively.
 
 The first term in \eqref{eq:Fterm} and \eqref{eq:antiFterm} accounts for
 neutrino re-injection at lower energies coming from
@@ -396,18 +396,18 @@ interaction.
 The second and third term is the injection due to the $\tau$ decay
 in to $\nu_\tau$ and in the other flavors in the leptonic case: this
 is known as tau-regeneration. It is important to note that the latter
-terms couple neutrinos and antineutrinos propagation.
-Finally the last term in \eqref{eq:antiFterm} account for the
-neutrinos produces in the Glashow resonance due to $W^-$ decay.
+terms couple the propagation of neutrinos and antineutrinos.
+Finally, the last term in \eqref{eq:antiFterm} accounts for the
+neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
-In the code the energy dependency is treated in a discrete way, and
-the energy integrals are solved using discrete summations, for more
-details refer to \citep{SQUIDS}.
+In the code the energy dependence is treated in a discrete manner, and
+the energy integrals are solved using discrete summations. 
+For more details refer to \citep{SQUIDS}.
 
 \section{Description of the code} 
 \label{sec:code} 
 
-$\nu$-SQuIDS is a {\ttf C++} code build using the SQuIDS class and
+$\nu$-SQuIDS is a {\ttf C++} code built using the SQuIDS
 framework \citep{SQUIDS}. It is designed to propagate neutrinos
 through media while taking into account flavor oscillations and
 noncoherent interactions. 
@@ -415,7 +415,7 @@ noncoherent interactions.
 In order to allow the user to compute simple oscillation probabilities
 for a single energy the code has a simplified mode.
 In this mode the neutrino energy is fixed and only coherent interactions
-are implemented.
+are treated.
 In this case, only Eq. \eqref{eq:schrodinger} is relevant for the
 neutrino propagation, and the {\ttf nuSQuIDS} class implements {\ttf
   SQuIDS::H0} as in Eq. \eqref{eq:h0} and {\ttf SQuIDS::HI} as given
@@ -433,20 +433,25 @@ equations \eqref{eq:gammarhoa} and \eqref{eq:gammarhob}, and {\ttf
 \eqref{eq:antiFterm} $\tau$-regeneration is implemented assuming
 instantaneous $\tau$ decay.
 
-Even though the {\ttf nuSQuIDS} class implements all the necessary
-differential equations we must still specify the neutrino propagation
-environment, its trajectory, and the relevant cross sections.  For
-example, when interactions are considered the {\ttf nuSQuIDS} instance
+While the {\ttf nuSQuIDS} class implements all the necessary
+differential equations, one must also specify the neutrino propagation
+environment, propagation trajectory, and the relevant cross sections.  
+When interactions are considered the {\ttf nuSQuIDS} instance
 will automatically construct appropriate {\ttf NeutrinoCrossSections}
 and {\ttf TauDecaySpectra} objects to evaluate cross sections and
-$\tau$ physics respectively. On the other hand, the user must
+$\tau$ physics respectively, however, the user can also replace these
+default versions if desired. On the other hand, the user must
 explicitly specify the neutrino propagation medium and trajectory
 through relevant specialization of {\ttf Body} and {\ttf Body::Track}.
+Several implementations of {\ttf Body} and {\ttf Track} covering
+common physics cases are supplied with the library. 
 
 Finally, {\ttf nuSQuIDS} provides a set functions to evaluate the
 neutrino ensemble flavor and mass composition as well as the
 capability to store the system state in an HDF5 \citep{folk1999hdf5}
 file for later use.
+
+% TODO: mention setting mixing parameters used for propagation
 
 \input{body_track.tex}
 \input{cross_section_tau_decay.tex}
@@ -454,6 +459,7 @@ file for later use.
 \input{nusquidsatm_class.tex}
 \input{examples.tex}
 
+% TODO: section describing space and time complexity, benchmarks
 
 \section{Python Interface}
 
@@ -461,7 +467,10 @@ As the particle physics community has transition from {\ttfamily FORTRAN} to {\t
 
 \subsection{Installation}
 
-In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost-C++} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following commands to install the bindings
+In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following commands to install the bindings
+
+% TODO: this won't actually build or install the bindings
+% We don't even have an install target for the bindings; we might need/want to add one
 
 \begin{lstlisting}[language=Bash]
 ./config --with-python-bindings
@@ -473,7 +482,7 @@ After successful installation you can import the python bindings in the followin
 \begin{lstlisting}[language=Python]
 import nuSQUIDSpy as nsq
 \end{lstlisting}
-where here we have introduce the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extended the
+where here we have introduce the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extend the
 capabilities of nuSQuIDS in {\ttfamily Python} by means of the the {\ttfamily nuSQUIDSTools} python module. When 
 this module is loaded the nuSQuIDS functions and objects get overloaded with python only functionalities. In order to enable this, after loading the {\ttfamily nuSQUIDSpy} module, do
 
