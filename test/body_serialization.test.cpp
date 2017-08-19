@@ -166,8 +166,8 @@ int main(){
 
   // open groups
   hid_t sunasnu_group_id = H5Gcreate(file_id, "sunasnu", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  body_group_id = H5Gcreate(sun_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  track_group_id = H5Gcreate(sun_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body_group_id = H5Gcreate(sunasnu_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track_group_id = H5Gcreate(sunasnu_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   sunasnu.Serialize(body_group_id);
   sunasnut.Serialize(track_group_id);
@@ -192,8 +192,8 @@ int main(){
 
   // open groups
   hid_t earthatm_group_id = H5Gcreate(file_id, "earthatm", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  body_group_id = H5Gcreate(sun_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  track_group_id = H5Gcreate(sun_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body_group_id = H5Gcreate(earthatm_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track_group_id = H5Gcreate(earthatm_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   earthatm.Serialize(body_group_id);
   earthatmt.Serialize(track_group_id);
@@ -213,6 +213,7 @@ int main(){
   // closing file
   H5Fclose(file_id);
   H5close();
+
 
   return 0;
 }
