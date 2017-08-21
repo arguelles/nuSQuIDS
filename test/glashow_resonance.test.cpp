@@ -1,8 +1,6 @@
 #include <nuSQuIDS/xsections.h>
 #include <nuSQuIDS/nuSQuIDS.h>
-
 #include <SQuIDS/const.h>
-
 #include <SQuIDS/SUNalg.h>
 
 std::ostream& operator<<(std::ostream &f, const std::vector<double> &vec)
@@ -52,24 +50,16 @@ int main (int argc, char const *argv[])
 
   std::cout << "Evolving a nue_bar line spectrum at the Glashow resonance" << std::endl;
   const unsigned int numneu = 3;
-  const unsigned int num_steps = 151;
+  const unsigned int num_steps = 201;
   squids::Const units;
-  nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true);
+  std::shared_ptr<NullCrossSections> ndcs = std::make_shared<NullCrossSections>();
+  nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true,ndcs);
 
-  double phi = acos(-1);
-  std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
+  std::shared_ptr<ConstantDensity> const_dens = std::make_shared<ConstantDensity>(10.,0.5);
+  std::shared_ptr<ConstantDensity::Track> const_dens_track = std::make_shared<ConstantDensity::Track>(10000.*units.km);
 
-  squid.Set_Body(earth_atm);
-  squid.Set_Track(track_atm);
-
-  // set mixing angles and masses
-  squid.Set_MixingAngle(0,1,0.563942);
-  squid.Set_MixingAngle(0,2,0.154085);
-  squid.Set_MixingAngle(1,2,0.785398);
-
-  squid.Set_SquareMassDifference(1,7.65e-05);
-  squid.Set_SquareMassDifference(2,0.00247);
+  squid.Set_Body(const_dens);
+  squid.Set_Track(const_dens_track);
 
   squid.Set_IncludeOscillations(false);
   squid.Set_GlashowResonance(true);
@@ -77,7 +67,7 @@ int main (int argc, char const *argv[])
   squid.Set_TauRegeneration(false);
 
   // setup integration settings
-  squid.Set_h_max( 500.0*units.km );
+  squid.Set_h_max( 100.0*units.km );
   squid.Set_GSL_step(gsl_odeiv2_step_rkf45);
 
   squid.Set_rel_error(1.0e-25);
@@ -87,9 +77,13 @@ int main (int argc, char const *argv[])
   marray<double,3> inistate{num_steps,2,numneu};
   std::fill(inistate.begin(), inistate.end(), 0.);
   marray<double,1> E_range = squid.GetERange();
-  unsigned int e0 = 140;
+  for(unsigned int ie = 0; ie < E_range.size(); ie++){
+    inistate[ie][1][0] = 1./(E_range[ie]);
+  }
+
+  //unsigned int e0 = 140;
   //inistate[e0][1][0] = 1./(E_range[e0+1]-E_range[e0])*units.GeV;
-  inistate[e0][1][0] = 1./(E_range[e0+1]-E_range[e0]);
+  //inistate[e0][1][0] = 1./(E_range[e0+1]-E_range[e0]);
 
   // set the initial state
   squid.Set_initial_state(inistate,flavor);
@@ -99,16 +93,18 @@ int main (int argc, char const *argv[])
   std::cout << "Propagation done" << std::endl;
   std::ostream &output = std::cout;
   for (auto i=0; i < num_steps-1; i++) {
+    double ee = E_range[i];
     double de = (E_range[i+1]-E_range[i])/units.GeV;
     output << i << " ";
     output << E_range[i]/units.GeV << " ";
-    output << squid.EvalFlavorAtNode(0,i,0)*de << " ";
-    output << squid.EvalFlavorAtNode(1,i,0)*de << " ";
-    output << squid.EvalFlavorAtNode(2,i,0)*de << " ";
-    output << squid.EvalFlavorAtNode(0,i,1)*de << " ";
-    output << squid.EvalFlavorAtNode(1,i,1)*de << " ";
-    output << squid.EvalFlavorAtNode(2,i,1)*de << " ";
+    output << squid.EvalFlavorAtNode(0,i,0)*ee << " ";
+    output << squid.EvalFlavorAtNode(1,i,0)*ee << " ";
+    output << squid.EvalFlavorAtNode(2,i,0)*ee << " ";
+    output << squid.EvalFlavorAtNode(0,i,1)*ee << " ";
+    output << squid.EvalFlavorAtNode(1,i,1)*ee << " ";
+    output << squid.EvalFlavorAtNode(2,i,1)*ee << " ";
     output << std::endl;
+    /*
     for (auto flav=0; flav<3; flav++) {
       assert(squid.EvalFlavorAtNode(flav,i,0) == 0);
       // Extra interaction channel suppresses nue_bar more than other flavors
@@ -120,9 +116,9 @@ int main (int argc, char const *argv[])
       if (flav!=0 && squid.EvalFlavorAtNode(0,i,1)>0 && squid.EvalFlavorAtNode(flav,i,1)<=0){
         output << "Unexpected lack of flux: " << flav << ' ' << i
          << ' ' << squid.EvalFlavorAtNode(0,i,1) << ' ' << squid.EvalFlavorAtNode(flav,i,1) << std::endl;
-        //assert(squid.EvalFlavorAtNode(flav,i,1) > 0);
       }
     }
+    */
   }
 
   return 0;

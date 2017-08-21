@@ -62,7 +62,7 @@ class NeutrinoCrossSections{
     /// @param neutype Can be either neutrino or antineutrino.
     /// @param current Can be either CC or NC.
     virtual double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
-    /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+    /// \brief Returns the double differential cross section with respect to x and y.
     /// \details The cross section will be returned in cm^2 GeV^-1. As this cross sections is not requiered and thus not called by the program
     /// its implementation is optional.
     /// @param E Incident lepton energy.
@@ -75,6 +75,19 @@ class NeutrinoCrossSections{
       throw std::runtime_error("NeutrinoCrossSections::Error::DoubleDifferentialCrossSection is not implemented.");
       return 0;
     }
+};
+
+/// \class NullCrossSections
+/// \brief Simple class that defines a null cross section.
+class NullCrossSections: public NeutrinoCrossSections {
+  public :
+    NullCrossSections(){}
+    /// \brief Returns the total neutrino cross section
+    double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override { return 0;}
+    /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+    double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override { return 0;}
+    /// \brief Returns the double differential cross section with respect to x and y.
+    double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override { return 0;}
 };
 
 /// \class NeutrinoDISCrossSectionsFromTables
