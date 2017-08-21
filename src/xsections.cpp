@@ -22,6 +22,7 @@
  ******************************************************************************/
 
 #include <nuSQuIDS/xsections.h>
+#include <iostream>
 
 namespace nusquids{
 
@@ -35,12 +36,17 @@ double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, Neutrin
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
-  if ( Enu > Emax )
-    throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
+  if (Enu > Emax)
+    throw std::runtime_error("NeutrinoCrossSections::TotalCrossSection: Only DIS cross sections are included in a limited range. Interpolation re\
 quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
 
-  if ( Enu < Emin )
+  if (Enu < 10*GeV and Emin > 10*GeV) {
+    std::clog << "NeutrinoCrossSections::TotalCrossSection: Neglecting the neutrino cross section below 10 GeV." << std::endl;
     return std::numeric_limits<double>::min();
+  } else if (Enu < Emin) {
+    // use approximate linear scaling below Emin GeV which is a good approximation for DIS up to 10 GeV
+    return TotalCrossSection(Emin, flavor, neutype, current)*(Enu/Emin);
+  }
 
   // convert to GeV
   Enu /= GeV;

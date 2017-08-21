@@ -17,16 +17,22 @@ std::ostream& operator<<(std::ostream &f, const std::vector<double> &vec)
 double integrate_xs(double start, double stop, double step, double e0)
 {
   using namespace nusquids;
+  if(start>stop){
+    std::cout << "Integration stop is less than start." << std::endl;
+    return 0;
+  }
 
-  int nsteps=(stop-start)/step;
+  unsigned int nsteps=(stop-start)/step;
   double xs = 0;
   const squids::Const constants;
   GlashowResonanceCrossSection gr;
-  for (int i=0; i < nsteps; i++) {
+  for (unsigned int i=0; i < nsteps; i++) {
     double logE = start + step*i;
     double dE = pow(10., logE+step) - pow(10., logE);
     xs += gr.SingleDifferentialCrossSection(e0,pow(10., logE)*constants.GeV,
-                                            NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*dE;
+                                            NeutrinoCrossSections::electron,
+                                            NeutrinoCrossSections::antineutrino,
+                                            NeutrinoCrossSections::GR)*dE;
   }
   double scale = xs/gr.TotalCrossSection(e0,
    NeutrinoCrossSections::electron,
@@ -46,7 +52,7 @@ int main (int argc, char const *argv[])
 
   std::cout << "Evolving a nue_bar line spectrum at the Glashow resonance" << std::endl;
   const unsigned int numneu = 3;
-  const unsigned int num_steps = 150;
+  const unsigned int num_steps = 151;
   squids::Const units;
   nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true);
 
@@ -68,16 +74,14 @@ int main (int argc, char const *argv[])
   squid.Set_IncludeOscillations(false);
   squid.Set_GlashowResonance(true);
   squid.Set_PositivityConstrain(false);
+  squid.Set_TauRegeneration(false);
 
   // setup integration settings
   squid.Set_h_max( 500.0*units.km );
-  squid.Set_GSL_step(gsl_odeiv2_step_rk4);
+  squid.Set_GSL_step(gsl_odeiv2_step_rkf45);
 
-  //squid.Set_rel_error(1.0e-25);
-  //squid.Set_abs_error(1.0e-25);
-
-  squid.Set_rel_error(1.0e-10);
-  squid.Set_abs_error(1.0e-10);
+  squid.Set_rel_error(1.0e-25);
+  squid.Set_abs_error(1.0e-25);
 
   // construct the initial state
   marray<double,3> inistate{num_steps,2,numneu};
