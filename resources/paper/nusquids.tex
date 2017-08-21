@@ -13,6 +13,11 @@
 \usepackage{color}
 \usepackage{listings}
 
+\usepackage{titlesec}
+
+\setcounter{tocdepth}{4}
+\setcounter{secnumdepth}{4}
+
 \usepackage{tikz}
 \usetikzlibrary{trees}
 
@@ -82,11 +87,11 @@
 
 \title{$\nu$-SQuIDS: A toolbox for neutrino oscillations\tnoteref{t1}}
 
-\author[MIT]{Carlos Alberto Arg\"uelles}
+\author[MIT]{Carlos A. Arg\"uelles}
 \ead{caad@mit.edu}
 \author[ific]{Jordi Salvado}
 \ead{jsalvado@ific.uv.es}
-\author[UA]{Christopher Nils Weaver}
+\author[UA]{Christopher N. Weaver}
 \ead{chris.weaver@icecube.wisc.edu}
 \address[MIT]{Massachusetts Institute of Technology, Cambridge, MA 02139, USA}
 \address[UA]{Dept.~of Physics, University of Alberta, Edmonton,
@@ -176,7 +181,7 @@ package, while at the same time remaining numerically efficient.
 
 The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we demonstrate the use of the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
 
-\section{Neutrino Oscillation Theory}
+\section{Neutrino Oscillations}
 \label{sec:theory} 
 In this section we are briefly review neutrino oscillations
 using the density matrix formalism.
@@ -404,6 +409,12 @@ In the code the energy dependence is treated in a discrete manner, and
 the energy integrals are solved using discrete summations. 
 For more details refer to \citep{SQUIDS}.
 
+\section{Benchmark scenarios}
+
+\input{examples.tex}
+
+\section{Performance, and precision}
+
 \section{Description of the code} 
 \label{sec:code} 
 
@@ -457,7 +468,6 @@ file for later use.
 \input{cross_section_tau_decay.tex}
 \input{nusquids_class.tex}
 \input{nusquidsatm_class.tex}
-\input{examples.tex}
 
 % TODO: section describing space and time complexity, benchmarks
 

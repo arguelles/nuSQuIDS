@@ -81,10 +81,6 @@ int main (int argc, char const *argv[])
     inistate[ie][1][0] = 1./(E_range[ie]);
   }
 
-  //unsigned int e0 = 140;
-  //inistate[e0][1][0] = 1./(E_range[e0+1]-E_range[e0])*units.GeV;
-  //inistate[e0][1][0] = 1./(E_range[e0+1]-E_range[e0]);
-
   // set the initial state
   squid.Set_initial_state(inistate,flavor);
 
