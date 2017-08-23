@@ -32,12 +32,13 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
   nuSQUIDS nus(numneu,NT);
   nus.Set_Track(track);
   nus.Set_Body(body);
+  squids::Const units;
 
-  nus.Set_rel_error(1.0e-14);
-  nus.Set_abs_error(1.0e-14);
+  nus.Set_rel_error(1.0e-5);
+  nus.Set_abs_error(1.0e-5);
   nus.Set_Basis(interaction);
-  nus.Set_h(nus.units.km);
-  nus.Set_h_max(300.0*nus.units.km);
+  nus.Set_h(units.km);
+  nus.Set_h_max(300.0*units.km);
 
   switch (numneu){
     case 3:
@@ -74,7 +75,7 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
       for(double Enu : test_energies){
-        nus.Set_E(Enu*nus.units.GeV);
+        nus.Set_E(Enu*units.GeV);
         nus.Set_initial_state(ini_state,flavor);
         nus.EvolveState();
         std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
