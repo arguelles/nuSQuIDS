@@ -529,9 +529,11 @@ examples/Constant_density_layers/const_dens_layers : $(DYN_PRODUCT) examples/Con
 	@echo Compiling constant density layer example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/Constant_density_layers/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-.PHONY: clean test docs
+.PHONY: install uninstall clean test docs
 clean:
-	rm -rf $(PATH_nuSQUIDS)/build/*.o $(PATH_nuSQUIDS)/examples/*.exe $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT) $(PATH_nuSQUIDS)/bin/*
+	@echo Erasing generated files
+	@rm -f $(PATH_nuSQUIDS)/build/*.o
+	@rm -f $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT)
 
 doxygen:
 	@doxygen src/doxyfile
@@ -551,11 +553,22 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing config information in $(PREFIX)/lib/pkgconfig
 	@mkdir -p $(PREFIX)/lib/pkgconfig
 	@cp lib/nusquids.pc $(PREFIX)/lib/pkgconfig' >> ./Makefile
+
 if `pkg-config hdf5`; then
 :
 else
 	echo '	@cp lib/hdf5.pc $(PREFIX)/lib/pkgconfig' >> ./Makefile
 fi
+echo '
+uninstall:
+	@echo Removing headers from $(PREFIX)/include/nuSQuIDS
+	@rm -rf $(PREFIX)/include/nuSQuIDS
+	@echo Removing libraries from $(PREFIX)/lib
+	@rm -f $(PREFIX)/lib/$(DYN_PRODUCT)
+	@rm -f $(PREFIX)/lib/$(STAT_PRODUCT)
+	@echo Removing config information from $(PREFIX)/lib/pkgconfig
+	@rm -f $(PREFIX)/lib/pkgconfig/nusquids.pc
+' >> ./Makefile
 
 echo "
 export CXX=\"${CXX}\"
