@@ -74,20 +74,20 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
     marray<double,1> ini_state{numneu};
     for (int iflv = 0; iflv < numneu; iflv++)
       ini_state[iflv] = ( iflv==flv ? 1.0 : 0.0 );
-      for(double Enu : test_energies){
-        nus.Set_E(Enu*units.GeV);
-        nus.Set_initial_state(ini_state,flavor);
-        nus.EvolveState();
-        std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
-        for (int i = 0; i < numneu; i++){
-          double p = nus.EvalFlavor(i);
-          if ( p < 1.0e-8)
-            std::cout << 0.0 << " ";
-          else
-            std::cout << p << " ";
-        }
-        std::cout << std::endl;
+    for(double Enu : test_energies){
+      nus.Set_E(Enu*units.GeV);
+      nus.Set_initial_state(ini_state,flavor);
+      nus.EvolveState();
+      std::cout << body->GetName() << " " << flv << " [flv] " << Enu << " [GeV] ";
+      for (int i = 0; i < numneu; i++){
+        double p = nus.EvalFlavor(i);
+        if ( p < 1.0e-8)
+          std::cout << 0.0 << " ";
+        else
+          std::cout << p << " ";
       }
+      std::cout << std::endl;
+    }
   }
 }
 
