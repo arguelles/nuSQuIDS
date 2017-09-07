@@ -1,9 +1,9 @@
-#include <SMinit.h>
+#include <SolarModel.h>
 
 using namespace std;
 using namespace nusquids;
 
-void littlemermaid::splineinit(){
+void SolarModel::splineinit(){
 	string rad = datapath + SM + "/radial.dat";
 
 	marray<double,2> fluxR = quickread(rad);
@@ -40,7 +40,7 @@ void littlemermaid::splineinit(){
 	}
 }
 
-double littlemermaid::nuFlux(double R, double E, FluxType type) const{
+double SolarModel::nuFlux(double R, double E, FluxType type) const{
 	if (R > 1.0 || R < 0.0)
     	throw std::runtime_error("Invalid R, must be between Rmin and Rmax");
 	if (E < Emin || E > Emax){
@@ -58,20 +58,20 @@ double littlemermaid::nuFlux(double R, double E, FluxType type) const{
     }
 }
 
-double littlemermaid::eDensity(double R) const {
+double SolarModel::eDensity(double R) const {
 	if (R > 1.0 || R < 0.0){
     throw std::runtime_error("Invalid R, must be between 0 and 1.");
   }
 	return gsl_spline_eval(Rspline[Electron].get(),R*Rsun,Racc[Electron].get());
 }
 
-double littlemermaid::DMDensity(double R) const {
+double SolarModel::DMDensity(double R) const {
 	if (R > 1.0 || R < 0.0){
 		throw std::runtime_error("Invalid R, must be between 0 and 1.");
   }
 	return gsl_spline_eval(Rspline[DM].get(),R*Rsun,Racc[DM].get());
 }
 
-unsigned int littlemermaid::NumComp() const {
+unsigned int SolarModel::NumComp() const {
   return 8;
 }

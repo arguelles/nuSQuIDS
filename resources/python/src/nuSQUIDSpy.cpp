@@ -406,6 +406,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("EvalFlavor",(double(nuSQUIDSAtm<>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<>::EvalFlavor,
         nuSQUIDSAtm_EvalFlavor_overload(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
           "Reads an HDF5 file and loads the contents into the current object."))
+    .def("Set_EvalThreads",&nuSQUIDSAtm<>::Set_EvalThreads)
+    .def("Get_EvalThreads",&nuSQUIDSAtm<>::Get_EvalThreads)
     .def("Set_EarthModel",&nuSQUIDSAtm<>::Set_EarthModel)
     .def("WriteStateHDF5",&nuSQUIDSAtm<>::WriteStateHDF5)
     .def("ReadStateHDF5",&nuSQUIDSAtm<>::ReadStateHDF5)

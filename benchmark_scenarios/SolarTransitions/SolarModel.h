@@ -12,10 +12,10 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
 
-#include "marray.h"
-#include "tools.h"
+#include <nuSQuIDS/marray.h>
+#include <nuSQuIDS/tools.h>
 
-class littlemermaid {
+class SolarModel {
   public:
     /// \brief component settings
     enum FluxType {pp = 0, pep = 1, hep = 2, be7 = 3, b8 = 4, n13 = 5, o15 = 6, f17 = 7, Electron = 8, DM = 9};
@@ -51,7 +51,7 @@ class littlemermaid {
     ///\brief Spline initializer helper function
 		void splineinit();
 	public:
-		littlemermaid(std::string solarmodel):SM(solarmodel){
+		SolarModel(std::string solarmodel):SM(solarmodel){
       Racc.resize(num_components);Rspline.resize(num_components);
       Eacc.resize(num_components);Espline.resize(num_components);
       for(auto& racc : Racc){
@@ -69,7 +69,7 @@ class littlemermaid {
 		double DMDensity(double r) const;
     unsigned int NumComp() const;
 
-    //virtual ~littlemermaid();
+    //virtual ~SolarModel();
 };
 
 #endif
