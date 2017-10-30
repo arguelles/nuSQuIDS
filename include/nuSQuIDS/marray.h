@@ -35,7 +35,9 @@
 #include <functional>
 #include <numeric>
 #include <string>
+#include <sstream>
 #include <algorithm>
+#include <cmath>
 
 #include <iosfwd>
 
@@ -357,6 +359,37 @@ struct multidimensional_initializer<T,Rank,Allocator,1>{
 	}
 };
 	
+template<typename... > struct valid_types_impl { using type = void; };
+template<typename... Types> using valid_types = typename valid_types_impl<Types...>::type;
+	
+template<typename C, typename = void>
+struct is_index_container : std::false_type{};
+	
+//An index container is something we can iterate over, whose iterators refer to size_ts
+template<typename C>
+struct is_index_container<C,
+		valid_types<typename C::value_type
+		            ,decltype(std::declval<C>().size())
+		            ,decltype(std::declval<C>().begin())
+		            ,decltype(std::declval<C>().end())
+		>
+	>
+	: std::true_type{};
+	
+template<unsigned int a, unsigned int b>
+struct Max{
+	static constexpr unsigned int value=(a>b ? a : b);
+};
+	
+template<typename T, typename = void>
+struct is_marray : std::false_type{};
+template<typename T>
+struct is_marray<T,valid_types<decltype(T::marray_tag)>> : std::true_type{};
+
+//TODO: this really needs to go somewhere else
+struct no_init_tag{};
+static constexpr no_init_tag no_init={};
+	
 } //namespace detail
 
 template<typename T, unsigned int Rank, typename Alloc = std::allocator<T>>
@@ -374,6 +407,8 @@ public:
 	using pointer=typename allocator_traits::pointer;
 	using const_pointer=typename allocator_traits::const_pointer;
 	using size_type=size_t;
+	
+	enum{marray_tag};
 	
 private:
 	template<typename DerefType, typename DerivedType, typename PointerType=typename std::add_pointer<DerefType>::type>
@@ -636,6 +671,54 @@ public:
 		}
 	}
 	
+	///Construct an marray with a given size, whose contents will be default constructed
+	///\param dims the extents of the array in all of its dimensions
+	///\param alloc the allocator to be used by the array to obtain memory
+	template<typename IndexContainer,
+	         typename=typename std::enable_if<detail::is_index_container<IndexContainer>::value>::type>
+	explicit marray(const IndexContainer& dims, allocator_type alloc=allocator_type()):
+	total_size_and_alloc(compute_total_size(dims),alloc),
+	data(total_size()?allocator_traits::allocate(allocator(),total_size()):nullptr){
+		std::copy(dims.begin(),dims.end(),extents.begin());
+		size_type i=0;
+		try{
+			for(size_type end=total_size(); i!=end; i++)
+				allocator_traits::construct(allocator(),data+i);
+		}catch(...){
+			//if something went wrong destroy all of the already constructed objects
+			for(size_type j=0; j!=i; j++)
+				allocator_traits::destroy(alloc,data+j);
+			allocator_traits::deallocate(allocator(),data,total_size());
+			throw;
+		}
+	}
+	
+	///Construct an marray with the given size, leaving the contents unitinialized.
+	///Naturally this is only valid for types which do not require initialization,
+	///i.e. trivial types.
+	///\param dims the extents of the array in all of its dimensions
+	///\param alloc the allocator to be used by the array to obtain memory
+	explicit marray(std::initializer_list<size_type> dims, const detail::no_init_tag&, allocator_type alloc=allocator_type()):
+	total_size_and_alloc(compute_total_size(dims),alloc),
+	data(total_size()?allocator_traits::allocate(allocator(),total_size()):nullptr){
+		std::copy(dims.begin(),dims.end(),extents.begin());
+		static_assert(std::is_trivial<T>::value,"Only containers of trivial types can be constructed without initialization");
+	}
+	
+	///Construct an marray with the given size, leaving the contents unitinialized.
+	///Naturally this is only valid for types which do not require initialization,
+	///i.e. trivial types.
+	///\param dims the extents of the array in all of its dimensions
+	///\param alloc the allocator to be used by the array to obtain memory
+	template<typename IndexContainer,
+	typename=typename std::enable_if<detail::is_index_container<IndexContainer>::value>::type>
+	explicit marray(const IndexContainer& dims, const detail::no_init_tag&, allocator_type alloc=allocator_type()):
+	extents(dims),
+	total_size_and_alloc(compute_total_size(dims),alloc),
+	data(total_size()?allocator_traits::allocate(allocator(),total_size()):nullptr){
+		static_assert(std::is_trivial<T>::value,"Only containers of trivial types can be constructed without initialization");
+	}
+	
 	///Construct an marray with a given size and initialize its contents to given values
 	///\param dims the extents of the array in all of its dimensions
 	///\param init a nested set of initializer lists which define the contents of the array
@@ -755,6 +838,76 @@ public:
 	
 	const_subscript_type operator[](size_type i) const{
 		return(const_subscript_traits::make_subscript(data,extents,i));
+	}
+	
+	
+	
+	const_reference operator[](std::initializer_list<size_t> indices) const{
+		assert(indices.size()==Rank);
+		size_t offset=0;
+		//Since Rank>0 this is always a valid iterator, although it may be extents.end()
+		auto extentIt=extents.begin()+1, extentEnd=extents.end();
+		size_t stride=std::accumulate(extentIt,extentEnd,1,std::multiplies<size_type>());
+		for(size_t index : indices){
+			offset+=index*stride;
+			if(extentIt!=extentEnd){ //avoid undefined behavior on last iteration
+				stride/=*extentIt;
+				extentIt++;
+			}
+		}
+		return(*(data+offset));
+	}
+	
+	reference operator[](std::initializer_list<size_t> indices){
+		assert(indices.size()==Rank);
+		size_t offset=0;
+		//Since Rank>0 this is always a valid iterator, although it may be extents.end()
+		auto extentIt=extents.begin()+1, extentEnd=extents.end();
+		size_t stride=std::accumulate(extentIt,extentEnd,1,std::multiplies<size_type>());
+		for(size_t index : indices){
+			offset+=index*stride;
+			if(extentIt!=extentEnd){ //avoid undefined behavior on last iteration
+				stride/=*extentIt;
+				extentIt++;
+			}
+		}
+		return(*(data+offset));
+	}
+	
+	template<typename Container,
+	typename=typename std::enable_if<detail::is_index_container<Container>::value>::type>
+	reference operator[](Container indices){
+		assert(indices.size()==Rank);
+		size_t offset=0;
+		//Since Rank>0 this is always a valid iterator, although it may be extents.end()
+		auto extentIt=extents.begin()+1, extentEnd=extents.end();
+		size_t stride=std::accumulate(extentIt,extentEnd,1,std::multiplies<size_type>());
+		for(size_t index : indices){
+			offset+=index*stride;
+			if(extentIt!=extentEnd){ //avoid undefined behavior on last iteration
+				stride/=*extentIt;
+				extentIt++;
+			}
+		}
+		return(*(data+offset));
+	}
+	
+	template<typename Container,
+	typename=typename std::enable_if<detail::is_index_container<Container>::value>::type>
+	const_reference operator[](Container indices) const{
+		assert(indices.size()==Rank);
+		size_t offset=0;
+		//Since Rank>0 this is always a valid iterator, although it may be extents.end()
+		auto extentIt=extents.begin()+1, extentEnd=extents.end();
+		size_t stride=std::accumulate(extentIt,extentEnd,1,std::multiplies<size_type>());
+		for(size_t index : indices){
+			offset+=index*stride;
+			if(extentIt!=extentEnd){ //avoid undefined behavior on last iteration
+				stride/=*extentIt;
+				extentIt++;
+			}
+		}
+		return(*(data+offset));
 	}
 	
 	//TODO: noexcept condition is wrong if swap(allocator_type&,allocator_type&) is found via ADL
@@ -1022,6 +1175,102 @@ public:
 		std::copy_n(std::begin(new_extents),Rank,extents.begin());
 	}
 	
+		///\brief Compute the sum of all entries in the array.
+	///
+	///This function has no advantage over a the naive approach; it exists for
+	///uniformity with the more advanced overloads.
+	///\return The scalar sum of the array
+	value_type sum() const{
+		return(std::accumulate(begin(),end(),value_type(0),std::plus<value_type>()));
+	}
+	
+	//TODO: consider allocator of result array
+	///\brief Produce a new array by summing entries along one dimension
+	///\param dim The index of the dimension over which to sum.
+	///\return An marray with rank reduced by one.
+	marray<value_type,Rank-1> sum(size_t dim) const{
+		static_assert(Rank>1, "Single dimension sum cannot produce a rank 0 result; use the nullary sum()");
+		//copy all extents except the one projected out
+		std::array<size_type,Rank-1> sExtents;
+		for(size_t i=0,j=0; i<Rank; i++){
+			if(i!=dim)
+				sExtents[j++]=extents[i];
+		}
+		marray<value_type,Rank-1> s(sExtents);
+		std::fill(s.begin(),s.end(),value_type(0));
+		std::array<size_type,Rank-1> indices;
+		std::fill(indices.begin(),indices.end(),0);
+		size_t dummy_index=0;
+		size_t k=0;
+		for(auto it=begin(), endIt=end(); it!=endIt; it++){
+			s[indices]+=*it;
+			//this is messy
+			for(size_t i=Rank-1,j=Rank-2; ; i--){
+				if(i!=dim){
+					if(indices[j]<extents[i]-1){
+						indices[j--]++;
+						break;
+					}
+					indices[j--]=0;
+				}
+				else{
+					if(dummy_index<extents[i]-1){
+						dummy_index++;
+						break;
+					}
+					dummy_index=0;
+				}
+				if(i==0) break;
+			}
+		}
+		
+		return(s);
+	}
+	
+	//TODO: consider allocator of result array
+	///\brief Produce a new array by summing entries along one dimension, but
+	///       with the same rank as the original
+	///\param dim The index of the dimension over which to sum.
+	///\return An marray with the extent in the summed dimension reduced to one.
+	marray<value_type,Rank> sum_same_rank(size_t dim) const{
+		//copy all extents except the one projected out
+		std::array<size_type,Rank> sExtents;
+		for(size_t i=0,j=0; i<Rank; i++,j++){
+			if(i!=dim)
+				sExtents[j]=extents[i];
+			else //reduce the projected extent to one
+				sExtents[j]=1;
+		}
+		marray<value_type,Rank> s(sExtents);
+		std::fill(s.begin(),s.end(),value_type(0));
+		std::array<size_type,Rank> indices;
+		std::fill(indices.begin(),indices.end(),0);
+		size_t dummy_index=0;
+		for(auto it=begin(), endIt=end(); it!=endIt; it++){
+			s[indices]+=*it;
+			//this is messy
+			for(size_t i=Rank-1; ; i--){
+				if(i!=dim){
+					if(indices[i]<extents[i]-1){
+						indices[i]++;
+						break;
+					}
+					indices[i]=0;
+				}
+				else{
+					if(dummy_index<extents[i]-1){
+						dummy_index++;
+						break;
+					}
+					dummy_index=0;
+				}
+				if(i==0) break;
+			}
+		}
+		
+		return(s);
+	}
+	
 	iterator begin(){ return(iterator(this,0)); }
 	const_iterator begin() const{ return(const_iterator(this,0)); }
 	const_iterator cbegin() const{ return(const_iterator(this,0)); }
@@ -1048,6 +1297,7 @@ public:
 	///Get the size of the array in the given dimension
 	///\param dim the dimension to query
 	size_type extent(size_type dim) const{ return(extents[dim]); }
+	const std::array<size_type,Rank> get_extents() const{ return(extents); }
 	///Get the the total size of the array (the product of sizes in all dimensions)
 	size_type size() const noexcept{ return(total_size()); }
 	///Check whether the array is empty (has zero size)
@@ -1072,7 +1322,8 @@ private:
 	///Verify that an initializer list contains the correct number of sizes
 	///and multiply them all together to get the total represented size
 	///\param exts the putative list of sizes in all dimensions
-	static size_type compute_total_size(std::initializer_list<size_type> exts){
+	template<typename IndexContainer>
+	static size_type compute_total_size(const IndexContainer& exts){
 		if(exts.size()!=Rank)
 			throw std::logic_error("Incorrect number of dimensions used to initialize multidimensional array");
 		return(std::accumulate(exts.begin(),exts.end(),1UL,std::multiplies<size_type>()));
@@ -1129,6 +1380,21 @@ Iterator operator+(typename std::iterator_traits<Iterator>::difference_type n, c
 //----------------------------------
 // Arithmetic operations on marrays
 //----------------------------------
+
+//unary negation
+template<typename T, unsigned Rank>
+marray<T,Rank> operator-(marray<T,Rank>&& a){
+	for(auto it=a.begin(), end=a.end(); it!=end; it++)
+		*it=-*it;
+	return(a);
+}
+template<typename T, unsigned Rank>
+marray<T,Rank> operator-(const marray<T,Rank>& a){
+	return(-marray<T,Rank>(a));
+}
+
+//Assignment forms are only relevant when types and ranks match
+
 template<typename T, unsigned Rank>
 marray<T,Rank>& operator+=(marray<T,Rank>& a1, const marray<T,Rank>& a2){
 	assert(a1.size()==a2.size());
@@ -1144,11 +1410,6 @@ marray<T,Rank>&& operator+=(marray<T,Rank>&& a1, const marray<T,Rank>& a2){
 	for(auto i2=a2.begin(); i1!=end; i1++,i2++)
 		*i1+=*i2;
 	return(std::move(a1));
-}
-
-template<typename T, unsigned Rank>
-marray<T,Rank> operator+(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
-	return(marray<T,Rank>(a1)+=a2);
 }
 
 template<typename T, unsigned Rank>
@@ -1169,10 +1430,87 @@ marray<T,Rank>&& operator-=(marray<T,Rank>&& a1, const marray<T,Rank>& a2){
 }
 
 template<typename T, unsigned Rank>
-marray<T,Rank> operator-(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
-	return(marray<T,Rank>(a1)-=a2);
+marray<T,Rank>& operator*=(marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	assert(a1.size()==a2.size());
+	auto i1=a1.begin(), end=a1.end();
+	for(auto i2=a2.begin(); i1!=end; i1++,i2++)
+		*i1*=*i2;
+	return(a1);
+}
+template<typename T, unsigned Rank>
+marray<T,Rank>&& operator*=(marray<T,Rank>&& a1, const marray<T,Rank>& a2){
+	assert(a1.size()==a2.size());
+	auto i1=a1.begin(), end=a1.end();
+	for(auto i2=a2.begin(); i1!=end; i1++,i2++)
+		*i1*=*i2;
+	return(std::move(a1));
 }
 
+template<typename T, unsigned Rank>
+marray<T,Rank>& operator/=(marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	assert(a1.size()==a2.size());
+	auto i1=a1.begin(), end=a1.end();
+	for(auto i2=a2.begin(); i1!=end; i1++,i2++)
+		*i1/=*i2;
+	return(a1);
+}
+template<typename T, unsigned Rank>
+marray<T,Rank>&& operator/=(marray<T,Rank>&& a1, const marray<T,Rank>& a2){
+	assert(a1.size()==a2.size());
+	auto i1=a1.begin(), end=a1.end();
+	for(auto i2=a2.begin(); i1!=end; i1++,i2++)
+		*i1/=*i2;
+	return(std::move(a1));
+}
+
+//forms with scalars
+//addition
+template<typename T, unsigned Rank, typename U>
+marray<T,Rank>& operator+=(marray<T,Rank>& a, const U& f){
+	for(auto& i : a) i+=f;
+	return(a);
+}
+template<typename T, unsigned Rank, typename U>
+marray<T,Rank>&& operator+=(marray<T,Rank>&& a, const U& f){
+	for(auto& i : a) i+=f;
+	return(std::move(a));
+}
+
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
+marray<T,Rank> operator+(marray<T,Rank>& a, const U& f){
+	return(marray<T,Rank>(a)+=f);
+}
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
+marray<T,Rank> operator+(const U& f, marray<T,Rank>& a){
+	return(marray<T,Rank>(a)+=f);
+}
+
+//subtraction
+template<typename T, unsigned Rank, typename U>
+marray<T,Rank>& operator-=(marray<T,Rank>& a, const U& f){
+	for(auto& i : a) i-=f;
+	return(a);
+}
+template<typename T, unsigned Rank, typename U>
+marray<T,Rank>&& operator-=(marray<T,Rank>&& a, const U& f){
+	for(auto& i : a) i-=f;
+	return(std::move(a));
+}
+
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
+marray<T,Rank> operator-(marray<T,Rank>& a, const U& f){
+	return(marray<T,Rank>(a)-=f);
+}
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
+marray<T,Rank> operator-(const U& f, marray<T,Rank>& a){
+	return(marray<T,Rank>(-a)+=f);
+}
+
+//multiplication
 template<typename T, unsigned Rank, typename U>
 marray<T,Rank>& operator*=(marray<T,Rank>& a, const U& f){
 	for(auto& i : a) i*=f;
@@ -1184,11 +1522,13 @@ marray<T,Rank>&& operator*=(marray<T,Rank>&& a, const U& f){
 	return(std::move(a));
 }
 
-template<typename T, unsigned Rank, typename U>
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
 marray<T,Rank> operator*(marray<T,Rank>& a, const U& f){
 	return(marray<T,Rank>(a)*=f);
 }
-template<typename T, unsigned Rank, typename U>
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
 marray<T,Rank> operator*(const U& f, marray<T,Rank>& a){
 	return(marray<T,Rank>(a)*=f);
 }
@@ -1235,7 +1575,8 @@ marray<T,Rank>&& operator/=(marray<T,Rank>&& a, const U& f){
 	return(std::move(a));
 }
 
-template<typename T, unsigned Rank, typename U>
+template<typename T, unsigned Rank, typename U,
+typename=typename std::enable_if<!detail::is_marray<U>::value>::type>
 marray<T,Rank> operator/(marray<T,Rank>& a, const U& f){
 	return(marray<T,Rank>(a)/=f);
 }
@@ -1243,6 +1584,365 @@ template<typename T, unsigned Rank, typename U>
 marray<T,Rank> operator/(const U& f, marray<T,Rank>& a){
 	return(marray<T,Rank>(a)/=f);
 }
+
+namespace detail{
+	template<typename T, unsigned Rank>
+	marray<T,Rank> contruct_min_init(const std::array<size_t,Rank>& extents, std::true_type init_needed){
+		return(marray<T,Rank>(extents));
+	}
+	template<typename T, unsigned Rank>
+	marray<T,Rank> contruct_min_init(const std::array<size_t,Rank>& extents, std::false_type init_not_needed){
+		return(marray<T,Rank>(extents,no_init));
+	}
+}
+
+//Generic binary operation between marrays whose types, ranks, or sizes may not match
+template<typename T1, unsigned R1, typename T2, unsigned R2, typename F,
+		 typename OT=typename std::result_of<F(T1,T2)>::type, //output type
+         unsigned OR=detail::Max<R1,R2>::value //output rank
+>
+marray<OT,OR> applyOp(const marray<T1,R1>& m1, const marray<T2,R2>& m2, const F& op){
+	//compute the result extents, or yell at the user if the inputs cannot be reconciled
+	std::array<size_t,OR> resultExtents;
+	for(unsigned int i1=0,i2=0,j=0; j<OR; j++){
+		size_t extent=0;
+		if(i1==R1){
+			extent=m2.extent(R2-i2-1);
+			i2++;
+		}
+		else if(i2==R2){
+			extent=m1.extent(R1-i1-1);
+			i1++;
+		}
+		else{
+			size_t e1=m1.extent(R1-i1-1);
+			size_t e2=m2.extent(R2-i2-1);
+			if(e1==e2)
+				extent=e1;
+			else if(e1==1)
+				extent=e2;
+			else if(e2==1)
+				extent=e1;
+			else{
+				std::ostringstream ss;
+				ss << "Incompatible array shapes: \n";
+				ss << " array 1 dimension " << R1-i1-1 << " has extent " << e1 << '\n';
+				ss << " array 2 dimension " << R2-i2-1 << " has extent " << e2 << '\n';
+				throw std::logic_error(ss.str());
+			}
+			i1++;
+			i2++;
+		}
+		resultExtents[OR-j-1]=extent;
+	}
+	//allocate output
+	constexpr bool init_needed=!std::is_trivial<OT>::value;
+	marray<OT,OR> result=
+	  detail::contruct_min_init<OT,OR>(resultExtents,
+                                       std::integral_constant<bool,init_needed>());
+	
+	std::array<size_t,R1+1> in1; //indices into m1
+	std::array<size_t,R2+1> in2; //indices into m2
+	//result indices are implicit
+	std::fill(in1.begin(),in1.end(),0);
+	std::fill(in2.begin(),in2.end(),0);
+	auto it1=m1.begin();
+	auto it2=m2.begin();
+	
+	std::array<size_t,R1+1> ex1; //shifted extents of m1
+	std::array<size_t,R2+1> ex2; //shifted extents of m1
+	for(unsigned int i=0; i<R1; i++)
+		ex1[i+1]=m1.extent(i)-1;
+	for(unsigned int i=0; i<R2; i++)
+		ex2[i+1]=m2.extent(i)-1;
+	
+	std::array<size_t,R1> st1; //strides for m1
+	std::array<size_t,R2> st2; //strides for m2
+	{
+		size_t stride=1;
+		for(size_t i=0; i<R1; i++){
+			st1[i]=stride;
+			stride*=m1.extent(R1-i-1);
+		}
+		stride=1;
+		for(size_t i=0; i<R2; i++){
+			st2[i]=stride;
+			stride*=m2.extent(R2-i-1);
+		}
+	}
+	
+	//compute the contents of the result
+	for(auto it=result.begin(), endIt=result.end(); it!=endIt; it++){
+		*it=op(*it1,*it2);
+		
+		//update the indices
+		for(size_t i=0; i<OR; i++){
+			size_t d1=R1-i;
+			size_t d2=R2-i;
+			//if either index is beyond its corresponding rank,
+			//we must just need to work on the other
+			if(i>=R1){
+				if(in2[d2]<ex2[d2]){
+					in2[d2]++;
+					break;
+				}
+				in2[d2]=0;
+			}
+			else if(i>=R2){
+				if(in1[d1]<ex1[d1]){
+					in1[d1]++;
+					break;
+				}
+				in1[d1]=0;
+			}
+			else{ //both are in range
+				//successfully incrementing either index indicates completion
+				bool done=false;
+				//if an extent is one we always set the corresponding index to 0
+				if(ex1[d1]>0 && in1[d1]<ex1[d1]){
+					in1[d1]++;
+					done=true;
+				}
+				else
+					in1[d1]=0;
+				if(ex2[d2]>0 && in2[d2]<ex2[d2]){
+					in2[d2]++;
+					done=true;
+				}
+				else
+					in2[d2]=0;
+				if(done)
+					break;
+			}
+		}
+		//obtain new iterators
+		it1=m1.begin();
+		for(size_t i=0; i<R1; i++)
+			it1+=st1[i]*in1[R1-i];
+		it2=m2.begin();
+		for(size_t i=0; i<R2; i++)
+			it2+=st2[i]*in2[R2-i];
+	}
+	
+	//done
+	return(result);
+}
+
+namespace detail{
+	//Core functions for binary operations on arrays with mathcing types, ranks, and shapes.
+	//If the contained type is trivial initialization can be skipped, for a few percent of
+	//time saved. Otherwise, copy-construct from the left operand and use an assignment form.
+	#define same_shape_binary_op(name,op) \
+	template<typename T, unsigned Rank> \
+	marray<T,Rank> name ## _matching(const marray<T,Rank>& a1, const marray<T,Rank>& a2, std::true_type init_needed){ \
+		return(marray<T,Rank>(a1) op ## = a2); \
+	} \
+	template<typename T, unsigned Rank> \
+	marray<T,Rank> name ## _matching(const marray<T,Rank>& a1, const marray<T,Rank>& a2, std::false_type init_not_needed){ \
+		marray<T,Rank>r(a1.get_extents(),detail::no_init); \
+		auto i1=a1.cbegin(), i2=a2.cbegin(); \
+		for(auto& e : r) e=*i1++ op *i2++; \
+		return(r); \
+	}
+	
+	same_shape_binary_op(sum,+)
+	same_shape_binary_op(difference,-)
+	same_shape_binary_op(product,*)
+	same_shape_binary_op(quotient,/)
+	
+	#undef same_shape_binary_op
+}
+
+//Addition
+//Fully general case: different types or ranks
+template<typename T1, unsigned R1, typename T2, unsigned R2,
+         typename OT=decltype(std::declval<T1>()+std::declval<T2>()),
+         unsigned OR=detail::Max<R1,R2>::value //output rank
+        >
+marray<OT,OR> operator+(const marray<T1,R1>& a1, const marray<T2,R2>& a2){
+	return(applyOp(a1,a2,[](const T1& t1, const T2& t2){return(t1+t2);}));
+}
+
+//special case: same type, same rank
+template<typename T, unsigned Rank>
+marray<T,Rank> operator+(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	//if shapes match, use fast path
+	if(a1.get_extents()==a2.get_extents()){
+		constexpr bool init_needed=!std::is_trivial<T>::value;
+		return(detail::sum_matching(a1,a2,std::integral_constant<bool,init_needed>()));
+	}
+	//otherwise, use slow, general method
+	return(applyOp(a1,a2,[](const T& t1, const T& t2){return(t1+t2);}));
+}
+
+//Subtraction
+//Fully general case: different types or ranks
+template<typename T1, unsigned R1, typename T2, unsigned R2,
+         typename OT=decltype(std::declval<T1>()-std::declval<T2>()),
+         unsigned OR=detail::Max<R1,R2>::value //output rank
+        >
+marray<OT,OR> operator-(const marray<T1,R1>& a1, const marray<T2,R2>& a2){
+	return(applyOp(a1,a2,[](const T1& t1, const T2& t2){return(t1-t2);}));
+}
+
+//special case: same type, same rank
+template<typename T, unsigned Rank>
+marray<T,Rank> operator-(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	//if shapes match, use fast path
+	if(a1.get_extents()==a2.get_extents()){
+		constexpr bool init_needed=!std::is_trivial<T>::value;
+		return(detail::difference_matching(a1,a2,std::integral_constant<bool,init_needed>()));
+	}
+	//otherwise, use slow, general method
+	return(applyOp(a1,a2,[](const T& t1, const T& t2){return(t1-t2);}));
+}
+
+//Multiplication
+//Fully general case: different types or ranks
+template<typename T1, unsigned R1, typename T2, unsigned R2,
+         typename OT=decltype(std::declval<T1>()*std::declval<T2>()),
+         unsigned OR=detail::Max<R1,R2>::value //output rank
+        >
+marray<OT,OR> operator*(const marray<T1,R1>& a1, const marray<T2,R2>& a2){
+	return(applyOp(a1,a2,[](const T1& t1, const T2& t2){return(t1*t2);}));
+}
+
+//special case: same type, same rank
+template<typename T, unsigned Rank>
+marray<T,Rank> operator*(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	//if shapes match, use fast path
+	if(a1.get_extents()==a2.get_extents()){
+		constexpr bool init_needed=!std::is_trivial<T>::value;
+		return(detail::product_matching(a1,a2,std::integral_constant<bool,init_needed>()));
+	}
+	//otherwise, use slow, general method
+	return(applyOp(a1,a2,[](const T& t1, const T& t2){return(t1*t2);}));
+}
+
+//Division
+//Fully general case: different types or ranks
+template<typename T1, unsigned R1, typename T2, unsigned R2,
+         typename OT=decltype(std::declval<T1>()/std::declval<T2>()),
+         unsigned OR=detail::Max<R1,R2>::value //output rank
+        >
+marray<OT,OR> operator/(const marray<T1,R1>& a1, const marray<T2,R2>& a2){
+	return(applyOp(a1,a2,[](const T1& t1, const T2& t2){return(t1/t2);}));
+}
+
+//special case: same type, same rank
+template<typename T, unsigned Rank>
+marray<T,Rank> operator/(const marray<T,Rank>& a1, const marray<T,Rank>& a2){
+	//if shapes match, use fast path
+	if(a1.get_extents()==a2.get_extents()){
+		constexpr bool init_needed=!std::is_trivial<T>::value;
+		return(detail::quotient_matching(a1,a2,std::integral_constant<bool,init_needed>()));
+	}
+	//otherwise, use slow, general method
+	return(applyOp(a1,a2,[](const T& t1, const T& t2){return(t1/t2);}));
+}
+
+//fancy operations
+
+using std::cos;
+using std::sin;
+using std::tan;
+using std::acos;
+using std::asin;
+using std::atan;
+using std::cosh;
+using std::sinh;
+using std::tanh;
+using std::acosh;
+using std::asinh;
+using std::atanh;
+using std::exp;
+using std::exp2;
+using std::log;
+using std::log2;
+using std::log10;
+using std::sqrt;
+using std::cbrt;
+using std::erf;
+using std::erfc;
+using std::lgamma;
+using std::ceil;
+using std::floor;
+using std::trunc;
+using std::round;
+using std::abs;
+	
+#define UNARY_MARRAY_FUNC(fname) \
+template<typename T, unsigned R> \
+marray<T,R> fname(marray<T,R>&& a){ \
+	for(auto i=a.begin(), e=a.end(); i!=e; i++) \
+		*i=fname(*i); \
+	return(a); \
+} \
+template<typename T, unsigned R> \
+marray<T,R> fname(const marray<T,R>& a){ \
+	return(fname(marray<T,R>(a))); \
+}
+
+UNARY_MARRAY_FUNC(cos);
+UNARY_MARRAY_FUNC(sin);
+UNARY_MARRAY_FUNC(tan);
+UNARY_MARRAY_FUNC(acos);
+UNARY_MARRAY_FUNC(asin);
+UNARY_MARRAY_FUNC(atan);
+UNARY_MARRAY_FUNC(cosh);
+UNARY_MARRAY_FUNC(sinh);
+UNARY_MARRAY_FUNC(tanh);
+UNARY_MARRAY_FUNC(acosh);
+UNARY_MARRAY_FUNC(asinh);
+UNARY_MARRAY_FUNC(atanh);
+UNARY_MARRAY_FUNC(exp);
+UNARY_MARRAY_FUNC(exp2);
+UNARY_MARRAY_FUNC(log);
+UNARY_MARRAY_FUNC(log2);
+UNARY_MARRAY_FUNC(log10);
+UNARY_MARRAY_FUNC(sqrt);
+UNARY_MARRAY_FUNC(cbrt);
+UNARY_MARRAY_FUNC(erf);
+UNARY_MARRAY_FUNC(erfc);
+UNARY_MARRAY_FUNC(tgmama);
+UNARY_MARRAY_FUNC(lgamma);
+UNARY_MARRAY_FUNC(ceil);
+UNARY_MARRAY_FUNC(floor);
+UNARY_MARRAY_FUNC(trunc);
+UNARY_MARRAY_FUNC(round);
+UNARY_MARRAY_FUNC(abs);
+
+#undef UNARY_MARRAY_FUNC
+
+using std::atan2;
+using std::pow;
+using std::hypot;
+	
+#define BINARY_MARRAY_FUNC(fname) \
+template<typename T1, unsigned R1, typename T2, unsigned R2, \
+         typename OT=decltype(fname(std::declval<T1>(),std::declval<T2>())), \
+         unsigned OR=detail::Max<R1,R2>::value \
+        > \
+marray<OT,OR> fname(const marray<T1,R1>& a1, const marray<T2,R2>& a2){ \
+	return(applyOp(a1,a2,[](const T1& t1, const T2& t2){return(fname(t1,t2));})); \
+} \
+template<typename T, unsigned Rank> \
+marray<T,Rank> fname(const marray<T,Rank>& a1, const marray<T,Rank>& a2){ \
+	if(a1.get_extents()==a2.get_extents()){ \
+		marray<T,Rank> result(a1); \
+		for(auto ri=result.begin(),i1=a1.begin(),i2=a2.begin(),re=result.end; \
+			ri!=re; ri++,i1++,i2++) \
+			*ri=fname(*i1,*i2); \
+		return(result); \
+	} \
+	return(applyOp(a1,a2,[](const T& t1, const T& t2){return(fname(t1,t2));})); \
+}
+
+BINARY_MARRAY_FUNC(atan2);
+BINARY_MARRAY_FUNC(pow);
+BINARY_MARRAY_FUNC(hypot);
+
+#undef BINARY_MARRAY_FUNC
 
 } // end namespace nusquids
 
