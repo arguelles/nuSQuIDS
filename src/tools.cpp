@@ -243,7 +243,7 @@ AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>
         if(h_i==0)
             throw std::runtime_error("AkimaSpline: absissa values not distinct");
         
-        //We mostly resue m values from previous iterations, but the first
+        //We mostly reuse m values from previous iterations, but the first
         //iteration must start the process, and all subsequent iterations
         //must compute the new m_{i+2}:
         if(i==0){
@@ -298,6 +298,42 @@ AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>
         m_i=m_ip1;
         m_ip1=m_ip2;
     }
+}
+    
+template<>
+void addH5Attribute<std::string>(hid_t object, std::string name, const std::string& contents){
+    hid_t strtype = H5Tcopy(H5T_C_S1);
+    H5Tset_size(strtype, contents.size());
+    hsize_t dim=1;
+    hid_t dataspace_id = H5Screate_simple(1, &dim, NULL);
+    hid_t attribute_id = H5Acreate(object,name.c_str(),strtype,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
+    H5Awrite(attribute_id, strtype, &contents[0]);
+    H5Aclose(attribute_id);
+    H5Sclose(dataspace_id);
+};
+
+template<>
+void readH5Attribute<std::string>(hid_t object, std::string name, std::string& dest){
+    hid_t attribute_id = H5Aopen(object, name.c_str(), H5P_DEFAULT);
+    hid_t actualType = H5Aget_type(attribute_id);
+    H5T_class_t typeClass = H5Tget_class(actualType);
+    if(typeClass!=H5T_STRING){
+        H5Aclose(attribute_id);
+        H5Tclose(actualType);
+        throw std::runtime_error("Expected and actual data types for attribute '"+name+"' do not match");
+    }
+    
+    size_t size = H5Tget_size(actualType);
+    dest.resize(size);
+    
+    if(H5Aread(attribute_id, actualType, &dest[0])<0){
+        H5Aclose(attribute_id);
+        H5Tclose(actualType);
+        throw std::runtime_error("Failed to read attribute '"+name+"'");
+    }
+    
+    H5Aclose(attribute_id);
+    H5Tclose(actualType);
 }
 
 } // close namespace

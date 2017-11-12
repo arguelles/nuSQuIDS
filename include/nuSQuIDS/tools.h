@@ -32,6 +32,11 @@
 #include "marray.h"
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_matrix.h>
+#include "hdf5.h"
+#include "H5Apublic.h"
+#include "H5Dpublic.h"
+#include "H5Spublic.h"
+#include "H5Tpublic.h"
 
 namespace nusquids{
 
@@ -87,6 +92,118 @@ public:
         return((*seg_it)(x));
     }
 };
+	
+template<typename T>
+struct h5Datatype{};
+//not an exhaustive list; other types can be added if necessary
+template<> struct h5Datatype<int>{ static hid_t type(){ return H5T_NATIVE_INT; }};
+template<> struct h5Datatype<unsigned int>{ static hid_t type(){ return H5T_NATIVE_UINT; }};
+template<> struct h5Datatype<float>{ static hid_t type(){ return H5T_NATIVE_FLOAT; }};
+template<> struct h5Datatype<double>{ static hid_t type(){ return H5T_NATIVE_DOUBLE; }};
+
+template<typename T, unsigned int Rank, typename Alloc>
+void writeArrayH5(hid_t loc_id, std::string name, const marray<T,Rank,Alloc>& data, unsigned int compressLevel=0){
+    hid_t dType=h5Datatype<T>::type();
+    std::array<hsize_t,Rank> extents;
+    std::copy_n(data.get_extents().begin(),Rank,extents.begin());
+    hid_t dSpace=H5Screate_simple(Rank, &extents[0], nullptr);
+    hid_t plist_id=H5P_DEFAULT;
+    if(compressLevel){
+        assert(compressLevel<=9);
+        plist_id = H5Pcreate(H5P_DATASET_CREATE);
+        std::array<hsize_t,Rank> chunkDims;
+        unsigned long size=sizeof(T);
+        const unsigned long targetChunkSize=1UL<<16; //64KB seems like a good size
+        for(unsigned int i=Rank; i>0; i--){
+            if(size<targetChunkSize){
+                unsigned int dimi=targetChunkSize/size;
+                if(dimi>extents[i-1] || dimi==0)
+                    dimi=extents[i-1];
+                chunkDims[i-1]=dimi;
+                size*=chunkDims[i-1];
+            }
+            else
+                chunkDims[i-1]=1;
+        }
+        H5Pset_chunk(plist_id, Rank, &chunkDims[0]);
+        H5Pset_deflate(plist_id, compressLevel);
+    }
+    
+    hid_t dSet=H5Dcreate(loc_id, name.c_str(),dType,dSpace,H5P_DEFAULT,plist_id,H5P_DEFAULT);
+    herr_t err=H5Dwrite(dSet,dType,H5S_ALL,H5S_ALL,H5P_DEFAULT,&data.front());
+    
+    //need to close whether or not there's an error
+    if(compressLevel)
+        H5Pclose(plist_id);
+    H5Dclose(dSet);
+    H5Sclose(dSpace);
+    
+    if(err<0)
+        throw std::runtime_error("Failed to write marray to HDF5 (name: "
+                                 +name+" error: "+std::to_string(err)+")");
+}
+
+template<typename T, unsigned int Rank, typename Alloc>
+void readArrayH5(hid_t container, const std::string& name, marray<T,Rank,Alloc>& data){
+    hid_t array_id=H5Dopen2(container, name.c_str(), H5P_DEFAULT);
+    if(array_id<0)
+        throw std::runtime_error("Failed to open dataset '"+name+"'");
+    hid_t dType=h5Datatype<T>::type();
+    hid_t dSpace = H5Dget_space(array_id);
+    int raw_dim = H5Sget_simple_extent_ndims(dSpace);
+    if(raw_dim!=Rank)
+        throw std::runtime_error("Failed to read marray from HDF5: source array has rank "
+                                 +std::to_string(raw_dim)+" but target array has rank "
+                                 +std::to_string(Rank));
+    std::array<hsize_t,Rank> extents;
+    H5Sget_simple_extent_dims(dSpace,&extents[0],NULL);
+    H5Sclose(dSpace);
+    data.resize(extents);
+    herr_t err=H5Dread(array_id,dType,H5S_ALL,H5S_ALL,H5P_DEFAULT,&data.front());
+    H5Dclose(array_id);
+    if(err<0)
+        throw std::runtime_error("Failed to array data from HDF5");
+}
+
+template<typename T>
+void addH5Attribute(hid_t object, std::string name, const T& contents){
+    hid_t dtype=h5Datatype<T>::type();
+    hsize_t dim=1;
+    hid_t dataspace_id=H5Screate_simple(1, &dim, NULL);
+    hid_t attribute_id=H5Acreate(object,name.c_str(),dtype,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
+    H5Awrite(attribute_id,dtype,&contents);
+    H5Aclose(attribute_id);
+    H5Sclose(dataspace_id);
+};
+
+template<>
+void addH5Attribute<std::string>(hid_t object, std::string name, const std::string& contents);
+
+template<typename T>
+void readH5Attribute(hid_t object, std::string name, T& dest){
+    hid_t attribute_id=H5Aopen(object, name.c_str(), H5P_DEFAULT);
+    hid_t actualType=H5Aget_type(attribute_id);
+    hid_t expectedType=h5Datatype<T>::type();
+    
+    //TODO: this may be too harsh; it ignores whether conversion is possible
+    if(H5Tequal(actualType, expectedType)<=0){
+        H5Aclose(attribute_id);
+        H5Tclose(actualType);
+        throw std::runtime_error("Expected and actual data types for attribute '"+name+"' do not match");
+    }
+    
+    if(H5Aread(attribute_id, expectedType, &dest)<0){
+        H5Aclose(attribute_id);
+        H5Tclose(actualType);
+        throw std::runtime_error("Failed to read attribute '"+name+"'");
+    }
+    
+    H5Aclose(attribute_id);
+    H5Tclose(actualType);
+}
+
+template<>
+void readH5Attribute<std::string>(hid_t object, std::string name, std::string& dest);
 
 } // close namespace
 

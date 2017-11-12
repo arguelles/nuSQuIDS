@@ -23,6 +23,20 @@
 
 #include <nuSQuIDS/xsections.h>
 #include <iostream>
+#include <fstream>
+
+namespace{
+struct H5File{
+  hid_t id;
+  H5File(hid_t id):id(id){}
+  H5File(const H5File&)=delete;
+  H5File(H5File&& h):id(h.id){ h.id=0; }
+  H5File& operator=(const H5File&)=delete;
+  H5File& operator=(H5File&& h){ std::swap(id,h.id); return *this;};
+  ~H5File(){ H5Fclose(id); }
+  operator hid_t() const{ return(id); }
+};
+}
 
 namespace nusquids{
 
@@ -52,7 +66,12 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   Enu /= GeV;
 
   double logE = log(Enu);
-  return gsl_spline_eval(xs_inter[current][neutype][flavor],logE,xs_acc[current][neutype][flavor]);
+  double dlogE = logE_data_range[1]-logE_data_range[0];
+  size_t idx = static_cast<size_t>((logE-logE_data_range[0])/dlogE);
+  if(idx==div)
+    idx--;
+  const marray<double,3>& sigma=(current==CC ? s_CC_data : s_NC_data);
+  return(LinInter(logE,logE_data_range[idx],logE_data_range[idx+1],sigma[neutype][flavor][idx],sigma[neutype][flavor][idx+1]));
 }
 
 double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
@@ -61,7 +80,7 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
     return 0.0;
 
   if (E1 > Emax)
-    throw std::runtime_error("NeutrinoCrossSections::Init: Only DIS cross sections are included. Interpolation re\
+    throw std::runtime_error("NeutrinoCrossSections::SingleDifferentialCrossSection: Only DIS cross sections are included. Interpolation re\
 quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
   if (E1 < Emin)
     return std::numeric_limits<double>::min();
@@ -83,25 +102,25 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   //std::cout << E1 << " " << E2 << " " << loge_M1 << " " << loge_M2 << " " << div << std::endl;
   double phiMM,phiMP,phiPM,phiPP;
   if (current == CC){
-    phiMM = dsde_CC_data[loge_M1][loge_M2][neutype][flavor];
-    phiMP = dsde_CC_data[loge_M1][loge_M2+1][neutype][flavor];
+    phiMM = dsde_CC_data[neutype][flavor][loge_M1][loge_M2];
+    phiMP = dsde_CC_data[neutype][flavor][loge_M1][loge_M2+1];
     if ( loge_M1 == div-1 ){
       // we are at the boundary, cannot bilinearly interpolate
       return LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],
           phiMM,phiMP);
     }
-    phiPM = dsde_CC_data[loge_M1+1][loge_M2][neutype][flavor];
-    phiPP = dsde_CC_data[loge_M1+1][loge_M2+1][neutype][flavor];
+    phiPM = dsde_CC_data[neutype][flavor][loge_M1+1][loge_M2];
+    phiPP = dsde_CC_data[neutype][flavor][loge_M1+1][loge_M2+1];
   } else if (current == NC){
-    phiMM = dsde_NC_data[loge_M1][loge_M2][neutype][flavor];
-    phiMP = dsde_NC_data[loge_M1][loge_M2+1][neutype][flavor];
+    phiMM = dsde_NC_data[neutype][flavor][loge_M1][loge_M2];
+    phiMP = dsde_NC_data[neutype][flavor][loge_M1][loge_M2+1];
     if ( loge_M1 == div-1 ){
       // we are at the boundary, cannot bilinearly interpolate
       return LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],
           phiMM,phiMP);
     }
-    phiPM = dsde_NC_data[loge_M1+1][loge_M2][neutype][flavor];
-    phiPP = dsde_NC_data[loge_M1+1][loge_M2+1][neutype][flavor];
+    phiPM = dsde_NC_data[neutype][flavor][loge_M1+1][loge_M2];
+    phiPP = dsde_NC_data[neutype][flavor][loge_M1+1][loge_M2+1];
   } else
     throw std::runtime_error("nuSQUIDS::XSECTIONS::ERROR::Current type unkwown.");
 
@@ -110,14 +129,11 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
            LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],phiPM,phiPP));
 }
 
-void NeutrinoDISCrossSectionsFromTables::Init(){
-       std::string root = XSECTION_LOCATION ;
-       std::string filename_format = "_1e+11_1e+18_500.dat";
-
-       std::string filename_dsde_CC = root+"dsde_CC"+filename_format;
-       std::string filename_dsde_NC = root+"dsde_NC"+filename_format;
-       std::string filename_sigma_CC = root+"sigma_CC"+filename_format;
-       std::string filename_sigma_NC = root+"sigma_NC"+filename_format;
+void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
+       std::string filename_dsde_CC = root+"dsde_CC.dat";
+       std::string filename_dsde_NC = root+"dsde_NC.dat";
+       std::string filename_sigma_CC = root+"sigma_CC.dat";
+       std::string filename_sigma_NC = root+"sigma_NC.dat";
 
        // check if files exist for this energies and divisions
        if(
@@ -143,113 +159,125 @@ void NeutrinoDISCrossSectionsFromTables::Init(){
 
           // getting the raw data energy node values
           logE_data_range.resize(data_e_size);
-          for( int ie = 0; ie < data_e_size; ie ++){
+          for( int ie = 0; ie < data_e_size; ie ++)
             logE_data_range[ie] = log(sigma_CC_raw_data[ie][0]);
-          }
 
           Emin = sigma_CC_raw_data[0][0]*GeV;
           Emax = sigma_CC_raw_data[data_e_size-1][0]*GeV;
           div = data_e_size;
 
-
-          // allocate all gsl interpolators
-          xs_inter.resize(std::vector<size_t>{2,2,3});
-          for ( auto it = xs_inter.begin(); it != xs_inter.end(); it++){
-            *it = gsl_spline_alloc(gsl_interp_linear,data_e_size);
-          }
-          // allocate all gsl interpolators accelerators
-          xs_acc.resize(std::vector<size_t>{2,2,3});
-          for ( auto it = xs_acc.begin(); it != xs_acc.end(); it++){
-            *it = gsl_interp_accel_alloc();
-          }
-
-          // initialize gsl interpolators
-          // lets loop over active flavors, neutrinos/antineutrinos, and currents.
-          for ( Current current : std::vector<Current>{CC,NC}){
-            for ( NeutrinoType neutype : std::vector<NeutrinoType>{neutrino,antineutrino}){
-              for ( NeutrinoFlavor flavor : std::vector<NeutrinoFlavor>{electron,muon,tau}){
-                double sig_data[data_e_size];
-                for( unsigned int ie = 0; ie < data_e_size; ie ++){
-                  if ( current == CC )
-                    sig_data[ie] = sigma_CC_raw_data[ie][1+2*((int)flavor)+(int)neutype];
-                  else
-                    sig_data[ie] = sigma_NC_raw_data[ie][1+2*((int)flavor)+(int)neutype];
-                }
-                gsl_spline_init(xs_inter[current][neutype][flavor],logE_data_range.data(),sig_data,data_e_size);
-              }
-            }
-          }
-
           // convert raw data tables into formatted marrays
-          dsde_CC_data.resize(std::vector<size_t>{data_e_size,data_e_size,2,3});
-          dsde_NC_data.resize(std::vector<size_t>{data_e_size,data_e_size,2,3});
-          for (unsigned int e1 = 0; e1 < data_e_size; e1++){
-            for (unsigned int e2 = 0; e2 < data_e_size; e2++){
-              for ( NeutrinoType neutype : std::vector<NeutrinoType>{neutrino,antineutrino}){
-                for ( NeutrinoFlavor flavor : std::vector<NeutrinoFlavor>{electron,muon,tau}){
-                  dsde_CC_data[e1][e2][neutype][flavor] = dsde_CC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
-                  dsde_NC_data[e1][e2][neutype][flavor] = dsde_NC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
+          s_CC_data.resize(std::vector<size_t>{2,3,data_e_size});
+          s_NC_data.resize(std::vector<size_t>{2,3,data_e_size});
+          dsde_CC_data.resize(std::vector<size_t>{2,3,data_e_size,data_e_size});
+          dsde_NC_data.resize(std::vector<size_t>{2,3,data_e_size,data_e_size});
+          for(NeutrinoType neutype : {neutrino,antineutrino}){
+            for(NeutrinoFlavor flavor : {electron,muon,tau}){
+              for(unsigned int e1 = 0; e1 < data_e_size; e1++){
+                s_CC_data[neutype][flavor][e1] = sigma_CC_raw_data[e1][1+2*((int)flavor)+(int)neutype];
+                s_NC_data[neutype][flavor][e1] = sigma_NC_raw_data[e1][1+2*((int)flavor)+(int)neutype];
+                for (unsigned int e2 = 0; e2 < data_e_size; e2++){
+                  dsde_CC_data[neutype][flavor][e1][e2] = dsde_CC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
+                  dsde_NC_data[neutype][flavor][e1][e2] = dsde_NC_raw_data[e1*data_e_size+e2][2+2*(static_cast<int>(flavor))+static_cast<int>(neutype)];
                 }
               }
             }
           }
-
-          /*
-          // fill in interpolated cross section tables at the user provided nodes
-          marray<double,1> E_range_GeV = logspace(Emin/1.0e9,Emax/1.0e9,div);
-          unsigned int e_size = E_range_GeV.size();
-          // initialize differential cross section arrays
-          dsde_CC_tbl.resize(std::vector<size_t>{e_size,e_size,2,3});
-          dsde_NC_tbl.resize(std::vector<size_t>{e_size,e_size,2,3});
-          // initialize total cross section arrays
-          sigma_CC_tbl.resize(std::vector<size_t>{e_size,2,3});
-          sigma_NC_tbl.resize(std::vector<size_t>{e_size,2,3});
-
-          for (unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
-              double Enu1 = E_range_GeV[e1];
-              // differential cross section
-              for (int e2 = 0 ; e2 < e_size ; e2 ++){
-                  double Enu2 = E_range_GeV[e2];
-                  for ( NeutrinoType neutype : std::vector<NeutrinoType>{neutrino,antineutrino}){
-                    for ( NeutrinoFlavor flavor : std::vector<NeutrinoFlavor>{electron,muon,tau}){
-                      if ( e2 > e1 ) {
-                        dsde_NC_tbl[e1][e2][neutype][flavor] = 0.0;
-                        dsde_CC_tbl[e1][e2][neutype][flavor] = 0.0;
-                      } else {
-                        dsde_NC_tbl[e1][e2][neutype][flavor] = DifferentialCrossSection(Enu1,Enu2,flavor,neutype,NC);
-                        dsde_CC_tbl[e1][e2][neutype][flavor] = DifferentialCrossSection(Enu1,Enu2,flavor,neutype,CC);
-                      }
-                    }
-                  }
-              }
-                  // total cross section
-
-              for ( NeutrinoType neutype : std::vector<NeutrinoType>{neutrino,antineutrino}){
-                for ( NeutrinoFlavor flavor : std::vector<NeutrinoFlavor>{electron,muon,tau}){
-                  sigma_CC_tbl[e1][neutype][flavor] = TotalCrossSection(Enu1,flavor,neutype,CC);
-                  sigma_NC_tbl[e1][neutype][flavor] = TotalCrossSection(Enu1,flavor,neutype,NC);
-                }
-              }
-          }
-          */
   } else {
     throw std::runtime_error("nuSQUIDS::XSECTIONS::ERROR::Cross section files not found.");
   }
   // declare the object as initialized;
   is_init = true;
 }
-
-NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){
-  if(is_init){
-    // allocate all gsl interpolators
-    for ( auto it = xs_inter.begin(); it != xs_inter.end(); it++){
-      gsl_spline_free(*it);
+  
+NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(){
+  ReadText(XSECTION_LOCATION "DIS_");
+}
+    
+NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string path){
+  //If a single file, read HDF5
+  if(fexists(path)){
+    {
+      H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
+      readH5Attribute(h5file, "Emin", Emin);
+      readH5Attribute(h5file, "Emax", Emax);
+      readArrayH5(h5file, "s_CC", s_CC_data);
+      readArrayH5(h5file, "s_NC", s_NC_data);
+      readArrayH5(h5file, "dsDE_CC", dsde_CC_data);
+      readArrayH5(h5file, "dsDE_NC", dsde_NC_data);
     }
-    // allocate all gsl interpolators accelerators
-    for ( auto it = xs_acc.begin(); it != xs_acc.end(); it++){
-      gsl_interp_accel_free(*it);
-    }
+    //TODO: make sanity checking more user friendly
+    assert(dsde_CC_data.extent(2)==dsde_CC_data.extent(3));
+    assert(dsde_NC_data.extent(2)==dsde_NC_data.extent(3));
+    assert(dsde_CC_data.extent(2)==dsde_NC_data.extent(2));
+    assert(dsde_CC_data.extent(0)==2);
+    assert(dsde_NC_data.extent(0)==2);
+    assert(dsde_CC_data.extent(1)==3);
+    assert(dsde_NC_data.extent(1)==3);
+    
+    div=dsde_CC_data.extent(2);
+    unsigned int data_e_size=div;
+    auto raw_logE_data_range=logspace(Emin/GeV,Emax/GeV,div);
+    logE_data_range.resize(data_e_size);
+    std::transform(raw_logE_data_range.begin(),raw_logE_data_range.end(),logE_data_range.begin(),
+                   (double(*)(double))log);
+    is_init=true;
   }
+  else //otherwise, try to read several text files
+    ReadText(path);
+}
+
+NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){}
+    
+void NeutrinoDISCrossSectionsFromTables::WriteHDF(std::string path) const{
+  H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
+  addH5Attribute(h5file, "Emin", Emin);
+  addH5Attribute(h5file, "Emax", Emax);
+  writeArrayH5(h5file, "s_CC", s_CC_data, 0);
+  writeArrayH5(h5file, "s_NC", s_NC_data, 0);
+  writeArrayH5(h5file, "dsDE_CC", dsde_CC_data, 0);
+  writeArrayH5(h5file, "dsDE_NC", dsde_NC_data, 0);
+}
+  
+void NeutrinoDISCrossSectionsFromTables::WriteText(std::string basePath) const{
+  std::string filename_sigma_CC = basePath+"sigma_CC.dat";
+  std::string filename_sigma_NC = basePath+"sigma_NC.dat";
+  std::string filename_dsde_CC = basePath+"dsde_CC.dat";
+  std::string filename_dsde_NC = basePath+"dsde_NC.dat";
+  
+  auto writeTotal=[](const std::string& path, const marray<double,3>& data,
+                     const std::vector<double>& logEnergies, double GeV){
+    std::ofstream out(path);
+    for(size_t ie=0; ie<logEnergies.size(); ie++){
+      out << exp(logEnergies[ie]) << ' ';
+      for(size_t fl : {0,1,2}){
+        for(size_t pt : {0,1})
+          out << data[pt][fl][ie] << ' ';
+      }
+      out << '\n';
+    }
+  };
+  writeTotal(filename_sigma_CC,s_CC_data,logE_data_range,GeV);
+  writeTotal(filename_sigma_NC,s_NC_data,logE_data_range,GeV);
+  
+  auto writeDifferential=[](const std::string& path, const marray<double,4>& data,
+                            const std::vector<double>& logEnergies, double GeV){
+    std::ofstream out(path);
+    for(size_t ie1=0; ie1<logEnergies.size(); ie1++){
+      double e1=exp(logEnergies[ie1]);
+      for(size_t ie2=0; ie2<logEnergies.size(); ie2++){
+        double e2=exp(logEnergies[ie2]);
+        out << e1 << ' ' << e2 << ' ';
+        for(size_t fl : {0,1,2}){
+          for(size_t pt : {0,1})
+            out << data[pt][fl][ie1][ie2] << ' ';
+        }
+        out << '\n';
+      }
+    }
+  };
+  writeDifferential(filename_dsde_CC,dsde_CC_data,logE_data_range,GeV);
+  writeDifferential(filename_dsde_NC,dsde_NC_data,logE_data_range,GeV);
 }
   
 GlashowResonanceCrossSection::GlashowResonanceCrossSection(){

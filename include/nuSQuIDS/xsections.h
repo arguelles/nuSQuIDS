@@ -31,9 +31,6 @@
 #include "global.h"
 #include <string>
 #include <cmath>
-#include <math.h>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
 #include <stdexcept>
 #include "SQuIDS/const.h"
 
@@ -107,37 +104,102 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \brief GeV in eV
       const double GeV = 1.0e9;
 
-      /// \brief Stores the neutrino charge current differential cross section.
+      /// \brief The neutrino charged current total cross section
+      ///
+      ///Indices are neutrino/anti-neutrino, flavor, energy
+      marray<double,3> s_CC_data;
+      /// \brief The neutrino neutral current total cross section
+      ///
+      ///Indices are neutrino/anti-neutrino, flavor, energy
+      marray<double,3> s_NC_data;
+      /// \brief The neutrino charged current differential cross section.
+      ///
+      ///Indices are neutrino/anti-neutrino, flavor, incident energy, out-going energy
       marray<double,4> dsde_CC_data;
-      /// \brief Stores the neutrino neutral current differential cross section.
+      /// \brief The neutrino neutral current differential cross section.
+      ///
+      ///Indices are neutrino/anti-neutrino, flavor, incident energy, out-going energy
       marray<double,4> dsde_NC_data;
       /// \brief Stores the array of the log energies of the data tables.
       std::vector<double> logE_data_range;
 
-      /// \brief GSL interpolator for the total cross section.
-      marray<gsl_spline *,3> xs_inter;
-      /// \brief GSL interpolator accelerator for the total cross section.
-      marray<gsl_interp_accel *,3> xs_acc;
-
-      /// \brief Bilinear interpolator
+      /// \brief Linear interpolator
       /// \details Used by DifferentialCrossSectionl() to interpolate the differential cross section.
-      double LinInter(double,double,double,double,double) const;
+      /// \param x abscissa value at which to compute the interpolated function value
+      /// \param xM closest tabulated abscissa value smaller than x
+      /// \param xP closest tabulated abscissa value larger than x
+      /// \param yM tablated ordinate value at xM
+      /// \param yP tablated ordinate value at xP
+      double LinInter(double x,double xM,double xP,double yM,double yP) const;
       /// \brief Null Double Differential Cross section
       virtual double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override
       {
         return 0.;
       }
+      /// \brief Reads cross section data from a collection of text files
+      /// \param root the base file path
+      void ReadText(std::string root);
     public :
-      /// \brief Default constructor
-      // NeutrinoCrossSections(){};
       /// \brief Detauls destructor
       virtual ~NeutrinoDISCrossSectionsFromTables();
       /// \brief Constructor for a given energy range
       /// \details Calcualte all relevant cross section in the nodes setting a logarithmic scale
-      NeutrinoDISCrossSectionsFromTables(){Init();}
-      /// \brief Initializer for a given energy range
-      /// \details Calcualte all relevant cross section in the nodes setting a logarithmic scale
-      void Init();
+      NeutrinoDISCrossSectionsFromTables();
+      /// \brief Construct with data from the given file(s)
+      /// \details If the specified path is a file it will be assumed to be an
+      ///          HDF5 file, otherwise it must be a prefix of several text files
+      ///          with related names which contain the cross sections. All cross
+      ///          sections should be in units of cm^2 (or cm^2/GeV). 
+      ///
+      ///          If the input is an HDF5 file it must contain the following:
+      ///          - Two attributes `Emin` and `Emax` which specify the minimum
+      ///            and maximum tabulated energies, in eV, respectively. 
+      ///          - Two 3 dimensional datasets named `s_CC` and `s_NC` which 
+      ///            contain the total cross sections for all particle types, 
+      ///            flavors, and energies for charged current and neutral 
+      ///            current interactions, respectively. The first dimension of
+      ///            each dataset is indexed by particle type (neutrino or 
+      ///            antineutrino) and must have extent 2. The second dimension
+      ///            is indexed by flavor (0 = electron, 1 = muon, 2 = tau) and
+      ///            must have extent 3. The final dimension is indexed by 
+      ///            incoming neutrino energy and must have an extent of at 
+      ///            least 2. The energiesfor which the cross section is 
+      ///            tabulated must be logarthmically spaced. 
+      ///          - Two 4 dimensional tables named `dsDE_CC` and `dsDE_NC`
+      ///            which contain the differntial cross sections in out-going
+      ///            lepton energy for charged current and neutral interactions, 
+      ///            respectively. The first three dimensions are the same as 
+      ///            for the total cross section tables. The final dimension is
+      ///            indexed by the out-going lepton energy and must have the 
+      ///            same extent and correspond to the same energy values as the
+      ///            incoming neutrino dimension. 
+      ///
+      ///          If the output is not a single HDF5 file is must be aset of 
+      ///          text files whose names are the same except that they have the 
+      ///          suffixes:
+      ///          - 'sigma_CC.dat' for the total charged current cross section 
+      ///          - 'sigma_NC.dat' for the total neutral current cross section 
+      ///          - 'dsde_CC.dat' for the differential charged current cross section 
+      ///          - 'dsde_NC.dat' for the differential neutral current cross section 
+      ///
+      ///          The total cross section files must contain on each line first
+      ///          the energy _in GeV_ at which the cross sections are evaluated,
+      ///          then pairs of cross section values for all three flavors in 
+      ///          the order electron, muon, tau, with each pair consisting of
+      ///          the cross sections for neutrinos and antineutrinos. The energies
+      ///          must be the same in all files, must be listed in ascending 
+      ///          order, and must be logarithmically spaced. 
+      ///
+      ///          The differential cross section files must contain the data
+      ///          as the total cross section files, except that a column is 
+      ///          inserted after the first for the out-going lepton energy. The
+      ///          set of out-going energies must be the same as the incoming 
+      ///          energies, and the lines in the files must be lexicographically
+      ///          ordered by the two energies. 
+      /// \param path Either a path to a single HDF5 file which contains all
+      ///             cross section data, or the base path for a set of text
+      ///             files containing the various cross sections
+      NeutrinoDISCrossSectionsFromTables(std::string path);
 
       /// \brief Returns the total neutrino cross section
       /// \details Used to interpolate the total cross sections.
@@ -158,6 +220,13 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       double GetEmax() const {return Emax;}
       /// \brief Returns true if the object is initialized.
       bool IsInit() const {return is_init;}
+      /// \brief Write the cross sections to an HDF5 file
+      /// \param path the path to which the file should be written
+      void WriteHDF(std::string path) const;
+      /// \brief Write the cross sections to a set of text files
+      /// \param basePath the base path name for the output files;
+      ///                 suffixes will be automatically appended.
+      void WriteText(std::string basePath) const;
 };
 
 /// \class NeutrinoGRCrossSection
