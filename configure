@@ -536,8 +536,10 @@ clean:
 	@rm -f $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT)
 
 doxygen:
+	@mkdir -p ./docs
 	@doxygen src/doxyfile
 docs:
+	@mkdir -p ./docs
 	@doxygen src/doxyfile
 
 test: $(DYN_PRODUCT) $(STAT_PRODUCT)
