@@ -102,6 +102,7 @@ this can be changed by using the --prefix option when running configure:
 Compiling the Python Interface
 ------------------------------
 
+If you have activated the python interface by doing `--with-python-bindings` then proceed according to this instructions
 Even when configured the python interface is not built with the main library. 
 To compile it do the following:
 
