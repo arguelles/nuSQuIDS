@@ -1714,39 +1714,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using nuSQuIDS version " +
         std::to_string(nusquids_version) + " current version is " + std::to_string(NUSQUIDS_VERSION));
 
-  // read and set mixing parameters
-  for( unsigned int i = 0; i < numneu; i++ ){
-    for( unsigned int j = i+1; j < numneu; j++ ){
-      double th_value;
-      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
-      Set_MixingAngle(i,j,th_value);
-
-      double delta_value;
-      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
-      Set_CPPhase(i,j,delta_value);
-    }
-  }
-
-  for( unsigned int i = 1; i < numneu; i++ ){
-    double dm2_value;
-    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
-    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
-    Set_SquareMassDifference(i, dm2_value);
-  }
-
-  // reading energy
-  hsize_t dims[2];
-  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
-
-  ne = static_cast<unsigned int>(dims[0]);
-  std::unique_ptr<double[]> energy_data(new double[ne]);
-  H5LTread_dataset_double(group_id, "energies", energy_data.get());
-  E_range = marray<double,1>{ne};
-  for (unsigned int ie = 0; ie < ne; ie++)
-    E_range[ie] = energy_data[ie];
-
   // reading body and track
   if(nusquids_version>100000){
     std::string body_name = getStringAttribute(group_id,"body","name");
@@ -1781,15 +1748,20 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
 
     // setting body and track
     SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
-
     // set trayectory to current time
     track->SetX(x_current);
   }
 
-  // fetch material properties
-  current_ye = body->ye(*track);
-  current_density = body->density(*track);
-  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+  // reading energy
+  hsize_t dims[2];
+  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
+
+  ne = static_cast<unsigned int>(dims[0]);
+  std::unique_ptr<double[]> energy_data(new double[ne]);
+  H5LTread_dataset_double(group_id, "energies", energy_data.get());
+  E_range = marray<double,1>{ne};
+  for (unsigned int ie = 0; ie < ne; ie++)
+    E_range[ie] = energy_data[ie];
 
   // initializing nuSQUIDS
   if (ne == 1){
@@ -1800,13 +1772,48 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   else {
     init(E_range,squids_time_initial);
   }
+
+
+  // read and set mixing parameters
+  for( unsigned int i = 0; i < numneu; i++ ){
+    for( unsigned int j = i+1; j < numneu; j++ ){
+      double th_value;
+      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
+      Set_MixingAngle(i,j,th_value);
+
+      double delta_value;
+      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
+      Set_CPPhase(i,j,delta_value);
+    }
+  }
+
+  for( unsigned int i = 1; i < numneu; i++ ){
+    double dm2_value;
+    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
+    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
+    Set_SquareMassDifference(i, dm2_value);
+  }
+
   // reset current squids time
   Set_t(squids_time);
   // set time offset
   time_offset = squids_time - track->GetX();
 
+  // reinitialize projectors
+  iniProjectors();
+  // reinitizize H0
+  iniH0();
+
+  // fetch material properties
+  current_ye = body->ye(*track);
+  current_density = body->density(*track);
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+
   // evolve projectors to current time
   EvolveProjectors(squids_time);
+
   // reading state
   H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
   std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
@@ -1928,39 +1935,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using nuSQuIDS version " +
         std::to_string(nusquids_version) + " current version is " + std::to_string(NUSQUIDS_VERSION));
 
-  // read and set mixing parameters
-  for( unsigned int i = 0; i < numneu; i++ ){
-    for( unsigned int j = i+1; j < numneu; j++ ){
-      double th_value;
-      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
-      Set_MixingAngle(i,j,th_value);
-
-      double delta_value;
-      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
-      Set_CPPhase(i,j,delta_value);
-    }
-  }
-
-  for( unsigned int i = 1; i < numneu; i++ ){
-    double dm2_value;
-    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
-    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
-    Set_SquareMassDifference(i, dm2_value);
-  }
-
-  // reading energy
-  hsize_t dims[2];
-  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
-
-  ne = static_cast<unsigned int>(dims[0]);
-  std::unique_ptr<double[]> energy_data(new double[ne]);
-  H5LTread_dataset_double(group_id, "energies", energy_data.get());
-  E_range = marray<double,1>{ne};
-  for (unsigned int ie = 0; ie < ne; ie++)
-    E_range[ie] = energy_data[ie];
-
   // reading body and track
   if(nusquids_version>100000){
     std::string body_name = getStringAttribute(group_id,"body","name");
@@ -2000,10 +1974,16 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     track->SetX(x_current);
   }
 
-  // fetch material properties
-  current_ye = body->ye(*track);
-  current_density = body->density(*track);
-  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+  // reading energy
+  hsize_t dims[2];
+  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
+
+  ne = static_cast<unsigned int>(dims[0]);
+  std::unique_ptr<double[]> energy_data(new double[ne]);
+  H5LTread_dataset_double(group_id, "energies", energy_data.get());
+  E_range = marray<double,1>{ne};
+  for (unsigned int ie = 0; ie < ne; ie++)
+    E_range[ie] = energy_data[ie];
 
   // initializing nuSQUIDS
   if (ne == 1){
@@ -2014,13 +1994,47 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   else {
     init(E_range,squids_time_initial);
   }
+
+  // read and set mixing parameters
+  for( unsigned int i = 0; i < numneu; i++ ){
+    for( unsigned int j = i+1; j < numneu; j++ ){
+      double th_value;
+      std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
+      Set_MixingAngle(i,j,th_value);
+
+      double delta_value;
+      std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
+      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
+      Set_CPPhase(i,j,delta_value);
+    }
+  }
+
+  for( unsigned int i = 1; i < numneu; i++ ){
+    double dm2_value;
+    std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
+    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
+    Set_SquareMassDifference(i, dm2_value);
+  }
+
   // reset current squids time
   Set_t(squids_time);
   // set time offset
   time_offset = squids_time - track->GetX();
 
+  // reinitialize projectors
+  iniProjectors();
+  // reinitizize H0
+  iniH0();
+
+  // fetch material properties
+  current_ye = body->ye(*track);
+  current_density = body->density(*track);
+  HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+
   // evolve projectors to current time
   EvolveProjectors(squids_time);
+
   // reading state
   H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
   std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);

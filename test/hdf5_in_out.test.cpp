@@ -13,15 +13,25 @@ int main(){
 
   nuSQUIDS nus(logspace(1.e2*units.GeV,1.e6*units.GeV,60),3,neutrino,true);
 
+  // set mixing angles and phases to non default values
+  nus.Set_MixingAngle(0,1,0.1);
+  nus.Set_MixingAngle(0,2,0.1);
+  nus.Set_MixingAngle(1,2,0.1);
+  nus.Set_MixingAngle(1,3,0.1);
+  nus.Set_MixingAngle(2,3,0.1);
+
+  nus.Set_CPPhase(0,1,0.1);
+  nus.Set_CPPhase(0,2,0.1);
+  nus.Set_CPPhase(1,2,0.1);
+  nus.Set_CPPhase(1,3,0.1);
+  nus.Set_CPPhase(2,3,0.1);
+
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
   std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
 
   nus.Set_Body(earth_atm);
   nus.Set_Track(track_atm);
-
-  // set mixing angles and masses
-  nus.Set_MixingParametersToDefault();
 
   // setup integration settings
   nus.Set_h_max( 500.0*units.km );
