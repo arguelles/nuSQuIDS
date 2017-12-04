@@ -622,7 +622,12 @@ void nuSQUIDS::UpdateInteractions(){
         SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
         SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
 #ifdef __clang__ //clang needs a little help with this one
+//this pragma is only available in new enough clang versions, unfortunately, 
+//Apple screws up the version numbers in their copies, so this is rather messy
+#if (defined(__apple_build_version__) && __clang_major__>=7) || \
+    (!defined(__apple_build_version__) && (__clang_major__>3 || (__clang_major__==3 && __clang_minor__>=7)))
         #pragma clang loop vectorize(assume_safety)
+#endif
 #endif
         for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
           //Defer adding the leptonic decays to both the electron and muon sums
