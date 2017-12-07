@@ -46,7 +46,7 @@ double NeutrinoDISCrossSectionsFromTables::LinInter(double x,double xM, double x
 
 double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
                            NeutrinoType neutype, Current current) const{
-  // we assume that sterile neutrinos are trully sterile
+  // we assume that sterile neutrinos are truly sterile
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
 
@@ -191,7 +191,7 @@ void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
 }
   
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(){
-  ReadText(XSECTION_LOCATION "DIS_");
+  ReadText(XSECTION_LOCATION "nusigma_");
 }
     
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string path){
