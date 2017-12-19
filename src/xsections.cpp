@@ -190,8 +190,8 @@ void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
   is_init = true;
 }
   
-NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(){
-  ReadText(XSECTION_LOCATION "nusigma_");
+NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
+  NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms.h5"){
 }
     
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string path){

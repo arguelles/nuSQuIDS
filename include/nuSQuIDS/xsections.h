@@ -140,10 +140,8 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \param root the base file path
       void ReadText(std::string root);
     public :
-      /// \brief Detauls destructor
       virtual ~NeutrinoDISCrossSectionsFromTables();
-      /// \brief Constructor for a given energy range
-      /// \details Calcualte all relevant cross section in the nodes setting a logarithmic scale
+      /// \brief Default construct with built-in tables
       NeutrinoDISCrossSectionsFromTables();
       /// \brief Construct with data from the given file(s)
       /// \details If the specified path is a file it will be assumed to be an
@@ -166,7 +164,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       ///            least 2. The energiesfor which the cross section is 
       ///            tabulated must be logarthmically spaced. 
       ///          - Two 4 dimensional tables named `dsDE_CC` and `dsDE_NC`
-      ///            which contain the differntial cross sections in out-going
+      ///            which contain the differential cross sections in out-going
       ///            lepton energy for charged current and neutral interactions, 
       ///            respectively. The first three dimensions are the same as 
       ///            for the total cross section tables. The final dimension is
@@ -174,7 +172,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       ///            same extent and correspond to the same energy values as the
       ///            incoming neutrino dimension. 
       ///
-      ///          If the output is not a single HDF5 file is must be aset of 
+      ///          If the input is not a single HDF5 file is must be a set of 
       ///          text files whose names are the same except that they have the 
       ///          suffixes:
       ///          - 'sigma_CC.dat' for the total charged current cross section 
