@@ -1766,7 +1766,7 @@ class nuSQUIDSAtm {
       }
     }
   
-    /// \brief Ste the number of threads used for evolution.
+    /// \brief Set the number of threads used for evolution.
     ///
     /// \param nThreads the number of execution threads EvolveState should use.
     /// If zero, use an automatic, system defined number.
@@ -1793,6 +1793,18 @@ class nuSQUIDSAtm {
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_Body(earth);
       }
+    }
+  
+    /// \brief Returns the neutrino interaction cross sections
+    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections(){
+      return(ncs);
+    }
+    
+    /// \brief Sets the neutrino interaction cross sections
+    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs){
+      ncs=xs;
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.SetNeutrinoCrossSections(ncs);
     }
 };
 
