@@ -57,7 +57,6 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
-#define ManualTauReinjection
 //#define FixCrossSections
 
 //#define UpdateInteractions_DEBUG
