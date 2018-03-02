@@ -393,6 +393,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetBody",&nuSQUIDS::GetBody)
     .def("GetNumE",&nuSQUIDS::GetNumE)
     .def("GetNumRho",&nuSQUIDS::GetNumRho)
+    .def("Set_IncludeOscillations",&nuSQUIDS::Set_IncludeOscillations)
+    .def("Set_GlashowResonance",&nuSQUIDS::Set_GlashowResonance)
   ;
 
   class_<nuSQUIDSAtm<>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<>> >("nuSQUIDSAtm", no_init)
@@ -431,6 +433,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_initial_state",(void(nuSQUIDSAtm<>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<>::Set_initial_state,nuSQUIDSAtm_Set_initial_state())
     .def("GetERange",&nuSQUIDSAtm<>::GetERange)
     .def("GetCosthRange",&nuSQUIDSAtm<>::GetCosthRange)
+    .def("Set_IncludeOscillations",&nuSQUIDS::Set_IncludeOscillations)
+    .def("Set_GlashowResonance",&nuSQUIDS::Set_GlashowResonance)
   ;
 
 
