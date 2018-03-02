@@ -474,6 +474,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&Body::Track::GetFinalX)
     .def("GetX",&Body::Track::GetX)
     .def("SetX",&Body::Track::SetX)
+    .def("ReverseTrack",&Body::Track::ReverseTrack)
     ;
   }
 
@@ -490,6 +491,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&Vacuum::Track::GetFinalX)
     .def("GetX",&Vacuum::Track::GetX)
     .def("SetX",&Vacuum::Track::SetX)
+    .def("ReverseTrack",&Vacuum::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<Vacuum>, std::shared_ptr<Body> >();
@@ -509,6 +511,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&ConstantDensity::Track::GetFinalX)
     .def("GetX",&ConstantDensity::Track::GetX)
     .def("SetX",&ConstantDensity::Track::SetX)
+    .def("ReverseTrack",&ConstantDensity::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<ConstantDensity>, std::shared_ptr<Body> >();
@@ -526,6 +529,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&VariableDensity::Track::GetFinalX)
     .def("GetX",&VariableDensity::Track::GetX)
     .def("SetX",&VariableDensity::Track::SetX)
+    .def("ReverseTrack",&VariableDensity::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<VariableDensity>, std::shared_ptr<Body> >();
@@ -544,6 +548,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&Earth::Track::GetFinalX)
     .def("GetX",&Earth::Track::GetX)
     .def("SetX",&Earth::Track::SetX)
+    .def("ReverseTrack",&Earth::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<Earth>, std::shared_ptr<Body> >();
@@ -561,6 +566,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&Sun::Track::GetFinalX)
     .def("GetX",&Sun::Track::GetX)
     .def("SetX",&Sun::Track::SetX)
+    .def("ReverseTrack",&Sun::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<Sun>, std::shared_ptr<Body> >();
@@ -578,6 +584,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&SunASnu::Track::GetFinalX)
     .def("GetX",&SunASnu::Track::GetX)
     .def("SetX",&SunASnu::Track::SetX)
+    .def("ReverseTrack",&SunASnu::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<SunASnu>, std::shared_ptr<Body> >();
@@ -595,6 +602,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)
     .def("SetX",&EarthAtm::Track::SetX)
+    .def("ReverseTrack",&EarthAtm::Track::ReverseTrack)
     ;
 
     implicitly_convertible< std::shared_ptr<EarthAtm>, std::shared_ptr<Body> >();
