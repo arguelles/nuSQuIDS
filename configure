@@ -188,7 +188,7 @@ LD=${LD-$GUESS_LD}
 
 PYTHON_EXE="python"
 
-HELP="Usage: ./config.sh [OPTION]... 
+HELP="Usage: ./configure [OPTION]... 
 
 Installation directories:
   --prefix=PREFIX         install files in PREFIX
