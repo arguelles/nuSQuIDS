@@ -32,6 +32,7 @@
 #include "marray.h"
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_matrix.h>
+#include <gsl/gsl_integration.h>
 #include "hdf5.h"
 #include "H5Apublic.h"
 #include "H5Dpublic.h"
@@ -44,29 +45,99 @@ namespace nusquids{
 /// \brief Checks if a file exist..
 /// @param filename File which exist to check.
 bool fexists(const std::string filename);
+
 /// \brief Reads and return the values from a file as a bidimensional array.
 /// @param filename Filename to read.
 marray<double,2> quickread(const std::string filename);
+
 /// \brief Writes a bidimensional array onto a file.
 /// @param filename Filename to write onto.
 /// @param array Array to write onto file.
 int quickwrite(const std::string filename,const marray<double,2>& array);
+
 /// \brief Construct a linear space
 /// @param min Minimum value in the linear span.
 /// @param max Maximum value in the linear span.
 /// @param samples Number of samples to generate.
 marray<double,1> linspace(double min,double max,unsigned int samples);
+
 /// \brief Construct a logarithmic space.
 /// @param min Minimum value in the logarithmic span.
 /// @param max Maximum value in the logarithmic span.
 /// @param samples Number of samples to generate.
 marray<double,1> logspace(double min,double max,unsigned int samples);
-// additional GSL-like tools
-void gsl_matrix_complex_conjugate(gsl_matrix_complex*);
-void gsl_matrix_complex_print(gsl_matrix_complex*);
-void gsl_matrix_complex_change_basis_UMUC(gsl_matrix_complex*, gsl_matrix_complex*);
-void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex*, gsl_matrix_complex*);
-	
+
+/// \brief Calculate the complex conjugate of a matrix.
+/// @param matrix Matrix to conjugate.
+void gsl_matrix_complex_conjugate(gsl_matrix_complex* matrix);
+
+/// \brief Print to std::cout a gsl complex matrix.
+/// @param matrix Matrix to print.
+void gsl_matrix_complex_print(gsl_matrix_complex* matrix);
+
+/// \brief Perform a unitary rotation.
+/// @param U Rotation to apply.
+/// @param matrix Matrix to print.
+void gsl_matrix_complex_change_basis_UMUC(gsl_matrix_complex* U, gsl_matrix_complex* matrix);
+
+/// \brief Perform a unitary rotation.
+/// @param U Rotation to apply.
+/// @param matrix Matrix to print.
+void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_complex* matrix);
+
+///\class
+///\brief Container for GSL workspace to be use with the integrators.
+class IntegrateWorkspace {
+private:
+
+public:
+    gsl_integration_workspace* ws;
+    IntegrateWorkspace(size_t limit) {
+        ws=gsl_integration_workspace_alloc(limit);
+    }
+    ~IntegrateWorkspace() {
+        gsl_integration_workspace_free(ws);
+    }
+};
+
+///\brief One dimensional integral using GSL.
+/// @param ws GSL integration workspace.
+/// @param f Function to integrate.
+/// @param a Lower integration limit.
+/// @param b Upper integration limit.
+/// @param acc Accuracy parameter.
+/// @param max_iter Maximum number of iterations to perform the integral.
+template<typename FunctionType>
+double integrate(IntegrateWorkspace& ws, FunctionType f, double a, double b, double acc=1e-7, unsigned int max_iter=5000){
+    double (*wrapper)(double,void*)=[](double x, void* params){
+        FunctionType& f=*static_cast<FunctionType*>(params);
+        return(f(x));
+    };
+
+    double result, error;
+    gsl_function F;
+    F.function = wrapper;
+    F.params = &f;
+
+    gsl_integration_qags(&F, a, b, 0, acc, max_iter, ws.ws, &result, &error);
+
+    return(result);
+}
+
+///\brief One dimensional integral using GSL.
+/// @param f Function to integrate.
+/// @param a Lower integration limit.
+/// @param b Upper integration limit.
+/// @param acc Accuracy parameter.
+/// @param max_iter Maximum number of iterations to perform the integral.
+template<typename FunctionType>
+double integrate(FunctionType f, double a, double b, double acc=1e-7, unsigned int max_iter=5000){
+    IntegrateWorkspace ws(5000);
+    return integrate(ws, a, b, acc, max_iter);
+}
+
+///\class
+///\brief Akima spline implementation
 class AkimaSpline{
 private:
     struct segment{
