@@ -575,7 +575,8 @@ public:
 	struct iterator_type : public iterator_base<DerefType,iterator_type<DerefType>>{
 	private:
 		using base_type=iterator_base<DerefType,iterator_type<DerefType>>;
-		friend base_type;
+		template<typename DummyType> struct dummy{typedef DummyType type;};
+		friend typename dummy<base_type>::type;
 		friend class marray;
 	public:
 		using base_type::base_type;
@@ -605,7 +606,8 @@ public:
 	struct reverse_iterator_type : public iterator_base<DerefType,reverse_iterator_type<DerefType>>{
 	private:
 		using base_type=iterator_base<DerefType,reverse_iterator_type<DerefType>>;
-		friend base_type;
+		template<typename DummyType> struct dummy{typedef DummyType type;};
+		friend typename dummy<base_type>::type;
 		friend class marray;
 	public:
 		using base_type::base_type;
