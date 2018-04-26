@@ -35,7 +35,7 @@
 #include "taudecay.h"
 #include "marray.h"
 #include "aligned_alloc.h"
-#include "nuSQuIDS/ThreadPool.h"
+#include "ThreadPool.h"
 
 #include <algorithm>
 #include <cstring>

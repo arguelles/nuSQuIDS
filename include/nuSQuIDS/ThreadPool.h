@@ -23,8 +23,8 @@ freely, subject to the following restrictions:
 //https://github.com/progschj/ThreadPool/
 //Retrieved 2017-04-09
 
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#ifndef NUSQ_THREAD_POOL_H
+#define NUSQ_THREAD_POOL_H
 
 #include <vector>
 #include <queue>
