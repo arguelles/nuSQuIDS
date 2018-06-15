@@ -434,8 +434,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("Set_initial_state",(void(nuSQUIDSAtm<>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<>::Set_initial_state,nuSQUIDSAtm_Set_initial_state())
     .def("GetERange",&nuSQUIDSAtm<>::GetERange)
     .def("GetCosthRange",&nuSQUIDSAtm<>::GetCosthRange)
-    .def("Set_IncludeOscillations",&nuSQUIDS::Set_IncludeOscillations)
-    .def("Set_GlashowResonance",&nuSQUIDS::Set_GlashowResonance)
+    .def("Set_IncludeOscillations",&nuSQUIDSAtm<>::Set_IncludeOscillations)
+    .def("Set_GlashowResonance",&nuSQUIDSAtm<>::Set_GlashowResonance)
   ;
 
 
