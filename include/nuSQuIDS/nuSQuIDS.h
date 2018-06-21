@@ -1042,6 +1042,7 @@ class nuSQUIDSAtm {
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param ncs Cross section object.
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes>
     nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args):
@@ -1072,6 +1073,49 @@ class nuSQUIDSAtm {
 
       inusquidsatm = true;
     }
+
+    /// \brief Basic constructor.
+    /// @param earth_ptr shared pointer to EarthAtm object.
+    /// @param costh_array One dimensional array containing zenith angles to be calculated.
+    /// @param energy_min Minimum neutrino energy value [ev].
+    /// @param energy_max Maximum neutrino energy value [eV].
+    /// @param energy_div Number of energy divisions.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param ncs Cross section object.
+    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    template<typename... ArgTypes>
+    nuSQUIDSAtm(std::shared_ptr<EarthAtm> earthatm, marray<double,1> costh_array, ArgTypes&&... args):
+    costh_array(costh_array),
+    evalThreads(1)
+    {
+      gsl_rng_env_setup();
+      const gsl_rng_type * T_gsl = gsl_rng_default;
+      r_gsl = gsl_rng_alloc (T_gsl);
+
+      earth_atm = earthatm;
+      for(double costh : costh_array)
+        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
+
+      for(unsigned int i = 0; i < costh_array.extent(0); i++){
+        nusq_array.emplace_back(args...);
+        nusq_array.back().Set_Body(earth_atm);
+        nusq_array.back().Set_Track(track_array[i]);
+      }
+      ncs=nusq_array.front().GetNeutrinoCrossSections();
+
+      enu_array = nusq_array.front().GetERange();
+      log_enu_array.resize(std::vector<size_t>{enu_array.size()});
+      //std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
+      //               [](int enu) { return log(enu); });
+      for(unsigned int ie = 0 ; ie < enu_array.size(); ie++)
+        log_enu_array[ie] = log(enu_array[ie]);
+
+      inusquidsatm = true;
+    }
+
+
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
