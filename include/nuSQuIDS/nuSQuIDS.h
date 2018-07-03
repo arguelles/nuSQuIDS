@@ -1468,9 +1468,10 @@ class nuSQUIDSAtm {
 
     /// \brief Reads the object from an HDF5 file.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
+    /// @param load_cross_sections If true the cross sections will be loaded -- if interactions are on --, else no cross section will be loaded.
     /// \details All contents are assumed to be saved to the \c root of the HDF5 file.
     /// @see WriteStateHDF5
-    void ReadStateHDF5(std::string hdf5_filename){
+    void ReadStateHDF5(std::string hdf5_filename, bool load_cross_sections = true){
       hid_t file_id,group_id,root_id;
       // create HDF5 file
       file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -1513,8 +1514,9 @@ class nuSQUIDSAtm {
         if(i==0){
           // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),"crosssections");
-          if(nsq.iinteraction)
+          if(nsq.iinteraction and load_cross_sections)
             int_struct = nsq.GetInteractionStructure();
+          else int_struct = nullptr;
         } else {
           // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);

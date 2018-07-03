@@ -1843,7 +1843,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
 
   if(iinteraction) {
     if ( iis == nullptr ){
-      throw std::runtime_error("nuSQUIDS::ReadStateHDF5::No interaction structure provided.");
+      interactions_initialized = false;
     } else {
       int_struct = iis;
       nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
