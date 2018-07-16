@@ -1022,7 +1022,7 @@ void nuSQUIDS::EvolveState(){
     Set_h((-1.0)*Get_h());
   }
 
-  if ( body->IsConstantDensity() and not iinteraction ){
+  if ( (body->IsConstantDensity() and not iinteraction) and allowConstantDensityOscillationOnlyEvolution ){
     // when only oscillations are considered and the density is constant
     // we can ju st rotate the system to the propagation eigenstates
     use_full_hamiltonian_for_projector_evolution = true;
@@ -2286,6 +2286,10 @@ void nuSQUIDS::Set_ProgressBar(bool opt){
 
 void nuSQUIDS::Set_IncludeOscillations(bool opt){
   ioscillations = opt;
+}
+
+void nuSQUIDS::Set_AllowConstantDensityOscillationOnlyEvolution(bool opt){
+  allowConstantDensityOscillationOnlyEvolution = opt;
 }
 
 std::shared_ptr<Track> nuSQUIDS::GetTrack(){

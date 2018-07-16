@@ -458,6 +458,8 @@ protected:
     bool iglashow = false;
     /// \brief Boolean that signals that positivization will be enforced.
     bool positivization = false;
+    /// \brief Boolean that allows to use fast constant density evolution technique.
+    bool allowConstantDensityOscillationOnlyEvolution = false;
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Integer to keep track of the progress bar evolution.
@@ -781,6 +783,10 @@ protected:
     /// \brief Toggles neutrino oscillations on and off.
     /// \param opt If \c true neutrino oscillations will be considered.
     void Set_IncludeOscillations(bool opt);
+
+    /// \brief Toggles if non-hard processes constant density fast evolution will be used.
+    /// \param opt If \c true fast evolution will be attempted on constatnt density.
+    void Set_AllowConstantDensityOscillationOnlyEvolution(bool opt);
 
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
@@ -1749,6 +1755,15 @@ class nuSQUIDSAtm {
         nsq.Set_IncludeOscillations(opt);
       }
     }
+
+    /// \brief Toggles if non-hard processes constant density fast evolution will be used.
+    /// \param opt If \c true fast evolution will be attempted on constatnt density.
+    void Set_AllowConstantDensityOscillationOnlyEvolution(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_AllowConstantDensityOscillationOnlyEvolution(opt);
+      }
+    }
+
 
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
