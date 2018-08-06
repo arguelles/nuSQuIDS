@@ -131,9 +131,9 @@ double integrate(IntegrateWorkspace& ws, FunctionType f, double a, double b, dou
 /// @param acc Accuracy parameter.
 /// @param max_iter Maximum number of iterations to perform the integral.
 template<typename FunctionType>
-double integrate(FunctionType f, double a, double b, double acc=1e-7, unsigned int max_iter=5000){
-    IntegrateWorkspace ws(5000);
-    return integrate(ws, a, b, acc, max_iter);
+double integrate(FunctionType f, double a, double b, double acc=1e-7, unsigned int max_iter=5000, size_t memory_alloc = 5000){
+    IntegrateWorkspace ws(memory_alloc);
+    return integrate(ws, f, a, b, acc, max_iter);
 }
 
 ///\class
