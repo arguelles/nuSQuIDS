@@ -5,9 +5,13 @@
 #include <SQuIDS/SUNalg.h>
 #include <gsl/gsl_complex_math.h>
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_eigen.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/marray.h>
+
 #include "SolarModel.h"
 
+/*
 template<typename FunctionType>
 double integrate(FunctionType f, double a, double b){
 	double (*wrapper)(double,void*)=[](double x, void* params){
@@ -26,15 +30,22 @@ double integrate(FunctionType f, double a, double b){
 
 	return(result);
 }
+*/
 
-class SOP: public nuSQuIDS {
+class SOP: public nusquids::nuSQUIDS {
   private:
     /// \brief solar model object
     std::shared_ptr<SolarModel> solar_model = nullptr;
+//    /// \brief number of neutrino flavors.
+//    const unsigned int numneu = 3;
+    /// \brief flavors
+    enum flavors {nue = 0,numu = 1,nutau = 2};
+    enum specifies {neutrino = 0,antineutrino = 1};
   protected:
     squids::SU_vector Hamiltonian(double E, double r) const;
   public:
-    SOP(unsigned int numneu): nuSQuIDS(numneu){}
+    SOP(unsigned int numneu): nusquids::nuSQUIDS(numneu){}
+    SOP(): SOP(3){}
 
     void SetSolarModel(std::shared_ptr<SolarModel> solar_model_){
       solar_model = solar_model_;

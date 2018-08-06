@@ -1,11 +1,11 @@
-#include <solar_probabilities.h>
+#include "SolarProbabilities.h"
 
 using namespace squids;
 using namespace nusquids;
 
 double SOP::SolarOscillationProbability(double E,double r) const {
-  if (params == nullptr)
-    throw std::runtime_error("No oscillation parameters set");
+  //if (params == nullptr)
+  //  throw std::runtime_error("No oscillation parameters set");
   if (solar_model == nullptr)
     throw std::runtime_error("No solar model set");
 
@@ -13,6 +13,8 @@ double SOP::SolarOscillationProbability(double E,double r) const {
   auto eigensyst = h.GetEigenSystem();
   // order according to eigenvalues
   gsl_eigen_hermv_sort(eigensyst.first.get(),eigensyst.second.get(),GSL_EIGEN_SORT_VAL_ASC);
+
+  auto UPMNS = GetTransformationMatrix();
 
   double osc_prob = 0;
   for(unsigned int i = 0; i < numneu; i++){
@@ -23,10 +25,12 @@ double SOP::SolarOscillationProbability(double E,double r) const {
 }
 
 SU_vector SOP::Hamiltonian(double E, double r) const {
+
   double electron_number_density = solar_model->eDensity(r);
   SU_vector H = DM2*(1./(2.*E));
+  double CC_prefactor = HI_constants;// defined in nusquids
   double CC = CC_prefactor*electron_number_density;
-  H += CC*b1_proj[nue];
+  H += CC*b1_proj[neutrino][nue];
 
   return std::move(H);
 }

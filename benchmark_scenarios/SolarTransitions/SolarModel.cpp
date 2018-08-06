@@ -1,4 +1,4 @@
-#include <SolarModel.h>
+#include "SolarModel.h"
 
 using namespace std;
 using namespace nusquids;
