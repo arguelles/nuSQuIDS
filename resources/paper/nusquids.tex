@@ -89,22 +89,30 @@
 
 \author[MIT]{Carlos A. Arg\"uelles}
 \ead{caad@mit.edu}
-\author[ific]{Jordi Salvado}
-\ead{jsalvado@ific.uv.es}
+\author[UB]{Jordi Salvado}
+\ead{jsalvado@icc.ub.edu}
 \author[UA]{Christopher N. Weaver}
 \ead{chris.weaver@icecube.wisc.edu}
 \address[MIT]{Massachusetts Institute of Technology, Cambridge, MA 02139, USA}
 \address[UA]{Dept.~of Physics, University of Alberta, Edmonton,
   Alberta, Canada T6G 2E1} 
-\address[ific]{Instituto de F\'isica Corpuscular, Universidad de
-  Valencia CSIC, Valencia 46071, Spain}
+\address[UB]{Departament de F\'isica Qu\`antica i Astrofísica and Institut de Ciencies del Cosmos,
+Universitat de Barcelona, Diagonal 647, E-08028 Barcelona, Spain}
 
 \tnotetext[t1]{The code can be found in \url{https://github.com/arguelles/nuSQuIDS}}
 \journal{arXiv}
 %\journal{Computer Physics Communications}
 
 \begin{abstract}
-The Neutrino Simple Quantum Integro-Differential Solver ($\nu$-SQuIDS) is a C++ code based on SQuIDS that propagates an ensemble of neutrinos through a given media, e.g. Sun, Earth, Vacuum, etc, while considering, in a consistent way, the effect of neutrino oscillations, with coherent matter interactions, and non coherent interactions. The code has been design to be accurate and flexible, while at the same time maintain excellent performance. Furthermore, the user can easily change the neutrino oscillation parameters, propagation medium, and incorporate new oscillation physics. 
+The Neutrino Simple Quantum Integro-Differential Solver ($\nu$-SQuIDS)
+is a C++ code based on SQuIDS that propagates an ensemble of neutrinos
+through a given media. Neutrino oscillation calculations relevant to
+current and next generation experiments are implemented. In doing so
+we account for coherent and non-coherent neutrino interactions in
+different media such as the Sun, Earth, Vacuum, or others.
+The code has been design to be accurate and flexible, while at the
+same time maintain good performance. It has a modular design that
+allows the user to incorporate new physics in novel scenarios. 
 \end{abstract}
 
 \begin{keyword}
@@ -122,10 +130,10 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 
 In recent decades a plethora of evidence that neutrinos change
 flavor as they propagate macroscopic distances due to the
-nonalignment of their mass and flavor eigenstates \citep{Mohapatra:qv, Gouvea:2013fj} has accumulated from
-solar \citep{Abe:2010hy, Borexino2014},
-atmospheric \citep{PhysRevD.91.072004,Richard:2015aua},
-accelerator \citep{PhysRevLett.112.181801,
+non-alignment of their mass and flavor eigenstates~\citep{Mohapatra:qv, Gouvea:2013fj} has accumulated from
+solar~\citep{Abe:2010hy, Borexino2014},
+atmospheric~\citep{PhysRevD.91.072004,Richard:2015aua},
+accelerator~\citep{PhysRevLett.112.181801,
   PhysRevD.93.051104,PhysRevLett.116.151806, PhysRevLett.110.251801}, and
 reactor \citep{An:2013zwz,Abe:2015rcp, Kim:2016yvm} experiments.
 Thanks to these remarkable
