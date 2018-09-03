@@ -134,7 +134,7 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 
 In recent decades a plethora of evidence that neutrinos change
 flavor as they propagate macroscopic distances due to the
-non-alignment of their mass and flavor eigenstates~\citep{Mohapatra:qv, Pontecorvo:1967fh} has accumulated from
+non-alignment of their mass and flavor eigenstates has accumulated from
 solar~\citep{Abe:2010hy, Borexino2014},
 atmospheric~\citep{PhysRevD.91.072004,Richard:2015aua},
 accelerator~\citep{PhysRevLett.112.181801,
@@ -144,18 +144,16 @@ Thanks to these remarkable
 experimental results and related theoretical calculations the
   neutrino-mass induced flavor oscillation paradigm
 \citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,
-  Akhmedov:1999uz,Balantekin:2013kc, GonzalezGarcia:2007ib}
+  Akhmedov:1999uz,Balantekin:2013kc, GonzalezGarcia:2007ib,Mohapatra:qv, Gouvea:2013fj}
 has been firmly established and the three mixing angles, which
-parametrize the lepton mixing matrix, together with the two squared
-mass differences, have been measured to good precision
-\citep{Gonzalez-Garcia:2014bfa}. It is the task of on-going 
+parametrize the lepton mixing matrix, together with the two squared-mass differences, have been measured to good precision\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It is the task of on-going 
 and future experiments to determine the neutrino mass ordering
-and the Dirac CP-violating phase \citep{Hewett:2012et,
+and the CP-violating phase \citep{Hewett:2012et,
   Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
 Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
 spectrum above 100 GeV allowing new physics
-models to be constrained \citep{Aartsen:2014gkd,TheIceCube:2016oqi}.
-The identification of high energy
+models to be constrained~\citep{Aartsen:2014gkd,TheIceCube:2016oqi}, where the Earth is no longer transparent to neutrinos~\citep{Donini:2018tsg}.
+The identification of high-energy
 extraterrestrial neutrinos \citep{ Aartsen:2014gkd, Aartsen:2015rwa}
 has opened the possibility of exploring new physics at these energies as well
 \citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc}. 
@@ -164,34 +162,40 @@ Matter effects play a fundamental role in the explanation of solar
 neutrinos \citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of new flavor
 changing neutrino interactions \citep{Barger:1991ae, Roulet:1991sm, GonzalezGarcia:2011my,
   Gonzalez-Garcia:2013usa, Pospelov:2011dp, Kopp:2014nosterile,
-  Maltoni:2015kca}.
+  Maltoni:2015kca,Esteban:2018ppq}.
 Even though most of the data can be explained in the standard three
 neutrino framework, some puzzling anomalies still remain
-\citep{LSND,Mention:2011rr,MiniBoone:2012dn}. These may be explained
+\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm, Ko:2016owz, Ashenfelter:2018iov, Abreu:2018pxg, Dentler:2018sju}. These may be explained
 by introducing new light neutrino states \citep{kopp2013sterile,
-  Collin:2016rao, Abazajian:2012rf} and other new physics
+  Collin:2016rao, Abazajian:2012rf,Blennow:2018hto} and other new physics
 \citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
 Also, the interplay between cosmology and neutrino
 oscillation has been widely studied in the literature
 \citep{Bergstrom:2014fqa, Giusarma:2016phn,
-  Dasgupta:2013la,Hernandez:2016kel,Arguelles:2016uwb}. 
-% the following sentence doesn't really make sense:
-In general, neutrino physics constitutes an excellent proof for
-fundamental physics \citep{Hewett:2012et}.
+  Dasgupta:2013la,Hernandez:2016kel,Arguelles:2016uwb,Song:2018zyl,Chu:2018gxk}. 
+In counclusion, neutrinos are good proves to perform 
+fundamental physics tests~\citep{Hewett:2012et,Aartsen:2017ibm,Mewes:2018cze,Barenboim:2017vlc}.
 
 Tools are needed to accurately and reliably compute neutrino
-oscillation phenomenology, i.e. vacuum oscillation and matter
-interactions. In particular, when only neutrino
-oscillations are important libraries such as {\ttf GLoBES}
-\citep{Huber:2007ji}, {\ttf Prob3++} \citep{prob3pp, Calland:2013vaa},  and {\ttf
-  nuCRAFT} \citep{Wallraff:2014vl} are available. Unfortunately, when non-coherent interactions are
+propagation.
+When the only effect of propagation is neutrino oscillations libraries such as {\ttf GLoBES}
+\citep{Huber:2007ji}, {\ttf Prob3++} \citep{prob3pp, Calland:2013vaa},
+and {\ttf nuCRAFT} \citep{Wallraff:2014vl} are
+available. Unfortunately, when non-coherent interactions are 
 important they are no longer applicable. Furthermore, the ability to
 allow the user to incorporate new physics models or to change the
 propagation medium is also limited. {\ttf nuSQuIDS} seeks to
 address all of these problems by providing a highly customizable
 package, while at the same time remaining numerically efficient.
 
-The rest of the paper is organized as follows: in section \ref{sec:theory} we review neutrino oscillation theory and establish notation; in section \ref{sec:code} we describe the code; in section \ref{sec:examples} we demonstrate the use of the code and test it in benchmark scenarios. Finally, section \ref{sec:conclu} presents concluding remarks.
+The rest of the paper is organized as follows: in section
+\ref{sec:theory} we review neutrino oscillation theory; in section
+\ref{sec:benchmark} we show the use of the code in typical
+scenarios; in section \ref{sec:performance} we show the performance of
+the library; in section \ref{sec:test} we describe the unit tests that
+are provided with the library; in section \ref{sec:code} we describe
+the main classes and structure of the code. Finally, section
+\ref{sec:conclu} presents concluding remarks.
 
 \section{Neutrino Oscillations}
 \label{sec:theory} 
@@ -422,6 +426,7 @@ the energy integrals are solved using discrete summations.
 For more details refer to \citep{SQUIDS}.
 
 \section{Benchmark scenarios}
+\label{sec:benchmark} 
 
 \subsection{Solar neutrino transitions}
 
@@ -437,8 +442,10 @@ For more details refer to \citep{SQUIDS}.
 \input{examples.tex}
 
 \section{Performance, and precision}
+\label{sec:performance} 
 
 \section{Test suite}
+\label{sec:tests} 
 
 \section{Description of the code} 
 \label{sec:code} 
