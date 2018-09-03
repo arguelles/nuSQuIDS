@@ -199,30 +199,33 @@ the main classes and structure of the code. Finally, section
 
 \section{Neutrino Oscillations}
 \label{sec:theory} 
-In this section we are briefly review neutrino oscillations
+In this section we briefly review neutrino oscillations
 using the density matrix formalism.
-We can represent the state of the neutrino ensemble, at an energy $E$
-and position $x$, using the density
-matrix, i.e. in the weak-interaction flavor eigenstate basis
+We can represent the state of a neutrino ensemble at an energy $E$
+and position $x$ using the density matrix. In the weak-interaction flavor-eigenstate basis
 $\{\ket{\nu_\alpha}\}$  it can be written as
-
 \begin{equation}
 \rho(E,x) = \sum_\alpha \phi_\alpha(E,x) \ket{\nu_\alpha}\bra{\nu_\alpha} , 
 \label{eq:state}
 \end{equation}
-where $\phi_\alpha$ specifies the flavor content. Another important
-basis is the mass eigenstates $\{ \ket{\nu_i}  \}$, which are the
-eigenstate of the propagation in vacuum and are related to the former by
+where $\phi_\alpha$ specifies the flux of flavor $\alpha$.
+These eigenstates can be related with the mass eigenstates,  $\{ \ket{\nu_i}  \}$, by
 \begin{equation}
 \ket{\nu_\alpha} = \sum_i U^*_{\alpha i} \ket{\nu_i} ,
 \label{eq:changebasis}
 \end{equation}
-where $U$ is known as the Pontecorvo-Maki-Nakagawa-Sakata (PMNS)
-mixing matrix. For antineutrinos the relation is the same as in
+where $U$ is a unitary matrix known as the Pontecorvo-Maki-Nakagawa-Sakata (PMNS)
+matrix or neutral lepton mixing matrix. For antineutrinos the relation
+is the same as in 
 \eqref{eq:changebasis} with $U \to U^*$.
-It is customary to parametrize the mixing matrix $U$
-with mixing angles, $\{\theta_{ij}\}$, and CP phases, $\{ \delta_{ij}
-\}$, for example when considering the standard three flavor paradigm
+It is customary to parametrize $U$ as a product of complex rotations,
+\begin{equation}
+\label{eq:mixing}
+U(\theta_{ij}\delta_{ij})=R_{N-1\, N} R_{N-2\, N} ... R_{45} R_{35} R_{25} R_{15}
+R_{34} R_{24} R_{14} R_{23} R_{13} R_{12}, 
+\end{equation}
+determined by angles, $\{\theta_{ij}\}$, and phases, $\{ \delta_{ij}
+\}$. When considering the standard three flavor paradigm
 the following parametrization is often used
 \begin{equation}
 U
@@ -235,9 +238,9 @@ s_{12}s_{23} -c_{12}c_{23}s_{13}e^{i\delta_{13}} & - c_{12} s_{23} - s_{12} c_{2
 \,,
 \label{eq:U}
 \end{equation}
-where $c_{ij} = \cos \theta_{ij}$, $s_{ij} = \sin \theta_{ij}$. In the
+where $c_{ij} \equiv \cos \theta_{ij}$, $s_{ij} \equiv \sin \theta_{ij}$. In the
 three flavor scenario we use the aforementioned parametrization (with
-values from \citep{Gonzalez-Garcia:2014bfa}) and when more flavors are
+values from \citep{Esteban:2016qun}) and when more flavors are
 considered we used the prescription given in
 \cite{SQUIDS}. Furthermore, the neutrino ensemble propagation is
 described by the following quantum Von Neumann equation \footnote{We set $c = \hbar = 1$.} 
