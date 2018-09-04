@@ -1,35 +1,37 @@
 
 
 \section{Examples}
-\label{sec:examples} 
-All the examples are located in different sub-folders inside a folder
-called {\ttf examples}, the examples can be compiled using the
-general make file, {\ttf make examples}.
-Some of the examples contain a Gnuplot script to plot the output file,
-the text files with the values are also generated and can be plotted
-with any other plotting tool.
-In the following we present one by one the examples.
+\label{sec:examples}
+To help the user to apply the library in concrete scenarios we provide
+a set o examples. These examples are located in different sub-folders inside a folder
+called {\ttf examples}. An specific example can be compiled using the
+makefile by running {\ttf make examples example\_name}, omitting the
+name compiles all the examples. 
+Some of the examples contain a {\ttf Gnuplot} script to plot the output file.
 
 \subsection{Single energy \textnormal{({\ttf examples/Single\_energy})}}
 \label{sec:single}
 This example illustrates the use of the simplified mode to compute the
-propagation of the neutrinos for a single energy mode, notice that
-this can not be accurate at high energies but is a good approximation
-for many of the neutrinos oscillation cases.
+propagation of the neutrinos for a single energy. 
 
-In the following we will go though the different lines in the main
-function of the example.
+In the following we will go though the main file of the example.
+First we construct the nusquids object using the signature that
+requires only the number of flavors and to specify if its
+neutrino or antineutrino type.
 
-First we need to construct the nusquids object with some parameters,
-in this case we put 3 neutrinos and tell that the particle is
-neutrino({\ttf neutrino}).
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
   nuSQUIDS nus(3,neutrino);
 \end{lstlisting}
 
-In the following function we set the value of the paramters, we put
+In the following function we set the value of the oscillation paramters, we put
 the value for the mixing angles in radians, the value for the mass
-square difference and a value for the CP face.
+square difference in electron-volt squared and a value for the CP
+phase in radians.
+In order to do so we use the {\ttf Set\_MixingAngle} member function
+whose first two arguments are the indices of the rotation  starting
+from zero. Similarly for the CP phase function.
+In the case of the square mass difference we use the first argument is
+the mass eigenvalue index and the second the value.
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
@@ -42,20 +44,27 @@ square difference and a value for the CP face.
   nus.Set_CPPhase(0,2,0.0);
 \end{lstlisting}
 
-We declare  a structure that contains all the physical units and
+We declare a structure that contains all the physical units and
 constants we will need. 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   squids::Const units;
 \end{lstlisting}
 
-This lines sets the energy of the neutrino that we want to propagate.
+This line sets the energy of the neutrino to be propagate.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   nus.Set_E(10.0*units.GeV);
 \end{lstlisting}
 
-In this lines we define the object in which we are going to propagate
-the neutrino, in this case is the earth and the path is a path
-parametrized by the zenith angle, for more details \ref{sec:body}
+In these lines we define the medium in which we are going to propagate
+the neutrino. In this example we will use the earth and specify the
+path by the zenith angle, see~\ref{sec:body} for more details.
+
+These are separate objects in the code, in this example we construct
+an atmospheric earth object, {\ttf earth_atm}, which contains the
+earth geometry and density. We also construct a trajectory in the
+earth for a zenith angle {\ttf phi}, {\ttf earth_atm_track}. Finally
+we set these objects to nuSQuIDS.
+
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   double phi = acos(-1.0);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
@@ -64,9 +73,12 @@ parametrized by the zenith angle, for more details \ref{sec:body}
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
 \end{lstlisting}
-Now we set the initial flavor, in this case we put {\ttf\{0,1,0\}}
-that we sat in flavor basis to the nuSQUIDS i.e. we are setting the
-stat to a muon initial state.
+
+Now we set the initial neutrino flavor. In this example we start with
+a muon neutrino represented by an {\ttf marray} of length {\ttf
+  \{3\}}, corresponding to the number of flavors, and with value given
+by {\ttf\{0,1,0\}}.
+
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   marray<double,1> ini_state({3},{0,1,0});
