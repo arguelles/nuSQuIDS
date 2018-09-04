@@ -10,6 +10,7 @@ double SOP::SolarOscillationProbability(double E,double r) const {
     throw std::runtime_error("No solar model set");
 
   SU_vector h = Hamiltonian(E,r);
+  h.RotateToB0(params);
   auto eigensyst = h.GetEigenSystem();
   // order according to eigenvalues
   gsl_eigen_hermv_sort(eigensyst.first.get(),eigensyst.second.get(),GSL_EIGEN_SORT_VAL_ASC);
@@ -49,7 +50,7 @@ double SOP::PeeSquare(double E) const{
                 }
               }
               return sum_flux;
-          },0.,1.)*normalization;
+          },0.,0.99,1e-3)*normalization;
 }
 
 double SOP::RadialIntegratedFluxes(double E) const{
@@ -64,5 +65,5 @@ double SOP::RadialIntegratedFluxes(double E) const{
                 }
               }
               return sum_flux;
-          },0.,1.);
+          },0.,0.99,1e-3);
 }

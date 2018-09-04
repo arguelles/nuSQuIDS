@@ -41,8 +41,9 @@ void SolarModel::splineinit(){
 }
 
 double SolarModel::nuFlux(double R, double E, FluxType type) const{
-	if (R > 1.0 || R < 0.0)
+	if (R > 1.0 || R < 0.0){
     	throw std::runtime_error("Invalid R, must be between Rmin and Rmax");
+  }
 	if (E < Emin || E > Emax){
 		return 0.0;
   	}
