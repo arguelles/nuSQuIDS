@@ -428,8 +428,7 @@ Finally, the last term in \eqref{eq:antiFterm} accounts for the
 neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
 
-
-%% ejemplos de codigo
+%%ejemplos de codigo
 \input{examples.tex}
 
 \section{Performance, and precision}
@@ -447,24 +446,102 @@ In the following we list the tests that are provided with a brief
 description of what they test.
 
 \begin{itemize}
-\item {\ttf test/atmospheric\_he.test}
-\item {\ttf test/atmospheric\_osc.test}
-\item {\ttf test/body\_serialization.test}
-\item {\ttf test/constant\_density\_osc\_prob.test}
-\item {\ttf test/constant\_opacity.test}
-\item {\ttf test/constant\_opacity\_with\_nc.test}
-\item {\ttf test/cross\_section\_consistency.test}
-\item {\ttf test/earth\_osc\_prob.test}
-\item {\ttf test/glashow\_resonance.test}
-\item {\ttf test/hdf5\_atm\_in\_out.test}
-\item {\ttf test/hdf5\_in\_out.test}
-\item {\ttf test/move\_assig.test}
-\item {\ttf test/mul\_energy\_constructor.test}
-\item {\ttf test/time\_reversal.test}
-\item {\ttf test/tools\_integrator.test}
-\item {\ttf test/track\_concatenate\_hdf5.test}
-\item {\ttf test/track\_concatenate.test}
+  
 \item {\ttf test/vacuum\_osc\_prob.test}
+  
+  Tests that propagation with only oscillation of
+  neutrinos in vacuum is equal to the analytic solution.
+
+\item {\ttf test/constant\_density\_osc\_prob.test}
+  
+  Tests that propagation with only oscillation of
+  neutrinos in constant density is equal to the analytic solution.
+
+\item {\ttf test/constant\_opacity.test}
+  
+  Tests that propagation on a constant density with no oscillation and
+  neglecting regeneration from neutral current or tau decay matches
+  the expected expnential behavior.
+  
+\item {\ttf test/constant\_opacity\_with\_nc.test}
+  
+  Tests that propagation on a constant density with no oscillation 
+  matches an independent numerical solution.  
+  
+\item {\ttf test/atmospheric\_he.test}
+
+  Tests that the high-energy propagation without oscillation of
+  neutrinos from the atmosphere does not give negative or {\ttf nan} values.
+
+\item {\ttf test/atmospheric\_osc.test}
+  
+  Tests that propagation with only oscillation of
+  neutrinos from the atmosphere does not give negative or {\ttf nan}
+  values.
+  
+\item {\ttf test/body\_serialization.test}
+  
+  It checks that writing a body in to the hdf5 file and reading it
+  back does not alter the body.  
+
+\item {\ttf test/cross\_section\_consistency.test}
+  
+  Check that the differential cross section add with numerical error
+  the total cross section.
+  
+\item {\ttf test/earth\_osc\_prob.test}
+  
+  Test that three and four neutrinos oscillation probability over a
+  1000km baseline in multiple and single energy modes matches with the
+  numerical error to reference independent calculation.
+  
+\item {\ttf test/glashow\_resonance.test}
+  
+  Checks that Glashow resonance integrated differential cross-section
+  matches with the total cross-section and that is used while propagating. 
+  
+\item {\ttf test/hdf5\_atm\_in\_out.test}
+  
+  It checks that writing a nuSQuIDs atmospheric object into a hdf5 file and reading it
+  back does not alter the object and recovers all the properties.
+
+  
+\item {\ttf test/hdf5\_in\_out.test}
+  
+  It checks that writing a nuSQuIDs object into a hdf5 file and reading it
+  back does not alter the object and recovers all the properties.
+
+\item {\ttf test/move\_assig.test}
+  
+  Checks that constructor of a nuSQuIDS object from an rvalue nuSQuIDS object works.
+  
+\item {\ttf test/mul\_energy\_constructor.test}
+  
+  Checks that the multiple energy constructor works.
+  
+\item {\ttf test/time\_reversal.test}
+  
+  Checks that propagating a neutrino and propagating again backwards
+  in time returns to the original state.
+  
+\item {\ttf test/tools\_integrator.test}
+  
+  Checks that the provided one dimensional integrate function works
+  with in the numerical error.
+  
+\item {\ttf test/track\_concatenate\_hdf5.test}
+  
+  Checks that propagating by concatenating a series of tracks in
+  vacuum and writing and reading that state a every step is the same
+  as propagating with a single track with the total length. 
+  
+  
+\item {\ttf test/track\_concatenate.test}
+  
+  Checks that propagating by concatenating a series of tracks in
+  vacuum is the same as propagating with a single track with the total length. 
+  
+
 \end{itemize}
 
 
