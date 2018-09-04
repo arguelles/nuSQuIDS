@@ -428,18 +428,6 @@ Finally, the last term in \eqref{eq:antiFterm} accounts for the
 neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
 
-\section{Benchmark scenarios}
-\label{sec:benchmark} 
-
-\subsection{Solar neutrino transitions}
-
-\subsection{Short baseline neutrino oscillations}
-
-\subsection{Long baseline accelerator neutrino oscillations}
-
-\subsection{Atmospheric neutrino oscillations}
-
-\subsection{Astrophysical neutrino transport}
 
 %% ejemplos de codigo
 \input{examples.tex}
@@ -448,7 +436,37 @@ neutrinos produced in the Glashow resonance due to $W^-$ decay.
 \label{sec:performance} 
 
 \section{Test suite}
-\label{sec:tests} 
+\label{sec:tests}
+A test suit is provided with the library to warranty the right
+performance in different systems or after any modification of the
+code. All the test are located in the folder {\ttf nuSQuIDS/test}
+And they can be run using the provided script {\ttf test/run\_tests}.
+A single test can be run adding the name as and argument to the script
+command.
+In the following we list the tests that are provided with a brief
+description of what they test.
+
+\begin{itemize}
+\item {\ttf test/atmospheric\_he.test}
+\item {\ttf test/atmospheric\_osc.test}
+\item {\ttf test/body\_serialization.test}
+\item {\ttf test/constant\_density\_osc\_prob.test}
+\item {\ttf test/constant\_opacity.test}
+\item {\ttf test/constant\_opacity\_with\_nc.test}
+\item {\ttf test/cross\_section\_consistency.test}
+\item {\ttf test/earth\_osc\_prob.test}
+\item {\ttf test/glashow\_resonance.test}
+\item {\ttf test/hdf5\_atm\_in\_out.test}
+\item {\ttf test/hdf5\_in\_out.test}
+\item {\ttf test/move\_assig.test}
+\item {\ttf test/mul\_energy\_constructor.test}
+\item {\ttf test/time\_reversal.test}
+\item {\ttf test/tools\_integrator.test}
+\item {\ttf test/track\_concatenate\_hdf5.test}
+\item {\ttf test/track\_concatenate.test}
+\item {\ttf test/vacuum\_osc\_prob.test}
+\end{itemize}
+
 
 \section{Description of the code} 
 \label{sec:code} 

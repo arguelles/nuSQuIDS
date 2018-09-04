@@ -1,4 +1,6 @@
-\section{Code Examples} 
+
+
+\section{Examples}
 \label{sec:examples} 
 All the examples are located in different sub-folders inside a folder
 called {\ttf examples}, the examples can be compiled using the
@@ -8,8 +10,7 @@ the text files with the values are also generated and can be plotted
 with any other plotting tool.
 In the following we present one by one the examples.
 
-
-\subsection{Single Energy \textnormal{({\ttf examples/Single\_energy})}}
+\subsection{Single energy \textnormal{({\ttf examples/Single\_energy})}}
 \label{sec:single}
 This example illustrates the use of the simplified mode to compute the
 propagation of the neutrinos for a single energy mode, notice that
@@ -241,7 +242,6 @@ And we write the propagated fluxes in a file called {\ttf
 In fig.\ref{fig:multimode} we show the plot produced by the plotting
 script for the case with sterile neutrino (3+1).
 
-
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
 
 In this example we basically illustrate the use of the functions to
@@ -282,7 +282,7 @@ constructor that construct directly the object for a given file name.
 \end{lstlisting}
 
 
-\subsection{Use and Construct Bodies \textnormal{({\ttf
+\subsection{Construct and use Bodies \textnormal{({\ttf
       examples/Bodies})}}
 One of the main classes in the nuSQUIDS library is the body and track
 classes, these have to be always defined since they define the media
@@ -535,6 +535,8 @@ the same nuSQUIDS object.
 \end{enumerate}
 
 
+\subsection{Modify the cross sections}
+
 \subsection{ Cross Sections \textnormal{({\ttf
       examples/Xsections})}}
 
@@ -616,8 +618,7 @@ section object and construct the nusquids using that.
 \end{figure}
 
 
-
-\subsection{ Constant Density Layers \textnormal{({\ttf
+\subsection{ Constant density multiple layers \textnormal{({\ttf
       examples/Constant\_density\_layers})}}
 Since the constant density allows us to do very fast computation using
 the diagonalization of the full Hamiltonian here we show an example
@@ -667,7 +668,10 @@ and track and evolve every layer.
 
 Finally we write the output for the different fluxes in flavor in a text file.
 
-\subsection{ Non Standard Neutrino Interaction \textnormal{({\ttf
+
+\subsection{Solar transition}
+
+\subsection{ BSM extension: Non-Standard  Interaction \textnormal{({\ttf
       examples/NSI})}}
 Neutrino oscillations are a good probe for new physics, in this
 example we illustrate an example of constructing a derived class of
@@ -865,7 +869,16 @@ fluxes in a text file.
 In the folder there is a script that allows to plot the output text
 file.
 
-\subsection{ Atmospheric Mode \textnormal{({\ttf
+
+\subsection{BSM extension:  Sterile neutrinos \textnormal{({\ttf examples/Steriles})}}
+
+\subsection{BSM extension: Lorentz Violation \textnormal{({\ttf examples/LV})}}
+
+\subsection{BSM extension: Neutrino Decay \textnormal{({\ttf examples/ND})}}
+
+\subsection{Astrophysical neutrinos: de-coherent limit}
+
+\subsection{Atmospheric Mode: Standard \textnormal{({\ttf
       examples/Atm\_default})}}
 In this example we show how to use the atmospheric mode, this mode is
 compact way to treat set of nuSQUIDS objects distributed in zenith, this
@@ -954,9 +967,7 @@ for more details.
 \end{lstlisting}
 
 
-
-\subsection{ Atmospheric With Derived nuSQUIDS Class \textnormal{({\ttf
-      examples/Atm\_NSI})}}
+\subsection{Atmospheric Mode: BSM \textnormal{({\ttf examples/Atm\_BSM})}}
 
 The Atmospheric mode is done in a way that can be used not only with
 the basic nuSQUIDS class but also with derived classes. In this
@@ -981,5 +992,3 @@ nuSQUIDS derive object, in this case for the NSI {\ttf
   epsilon\_mutau,Emin,Emax,100,numneu,both,true,true}. This structure
 will hold for any derive nuSQUIDS class.
 
-
- 
