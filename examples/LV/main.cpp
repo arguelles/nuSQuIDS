@@ -44,7 +44,7 @@ int main()
   //number of neutrinos
   unsigned int numneu=3;
   //Value for the epsilon mutau
-  double re_c_mutau =1.0e-20*units.eV;
+  double re_c_mutau =1.0e-23*units.GeV;
   //minimum and maximum energy
   double Emin=1.e1*units.GeV;
   double Emax=1.e3*units.GeV;
@@ -56,10 +56,12 @@ int main()
   gsl_complex zero {0.0*units.eV,0.0*units.eV};
   LVParameters null {zero, zero};
   nus_std.Set_LV_OpMatrix(null);
+  nus_lv.Set_LV_EnergyPower(0.0);
 
   gsl_complex cmutau {re_c_mutau*units.eV,0.0*units.eV};
   LVParameters non_null_lv{ zero, cmutau };
   nus_lv.Set_LV_OpMatrix(non_null_lv);
+  nus_lv.Set_LV_EnergyPower(0.0);
 
   //Setting up the propagation medium and track. For the track the number provided is the baseline.
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
