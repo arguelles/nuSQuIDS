@@ -22,25 +22,18 @@
  * density in every layer of the standard earth model.
  */
 
-
-namespace nusquids{
-
+namespace nusquids {
 
 class EarthMod: public EarthAtm{
 public:
-  //void constructor
-  EarthMod(){}
   //Constructor rescaling the densities in every layer
   EarthMod(std::string earthmodel, double frho1, double frho2 , double frho3);
+  //Constructor rescaling the densities in every layer with default PREM.
+  EarthMod(double frho1, double frho2 , double frho3):EarthMod(static_cast<std::string>(EARTH_MODEL_LOCATION),frho1,frho2,frho3){};
   //This function sets the values that weight the different layers in the of the PREM model
-  void  Mod(double frho1, double frho2, double frho3);  
+  void  Mod(double frho1, double frho2, double frho3);
 };
-  
 
-  
-
-}
-
-
+} // close nusquids namespace
 
 #endif

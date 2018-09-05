@@ -215,7 +215,7 @@ int main()
   std::cout << "**************************************************" << std::endl;
   std::cout << "***** Earth Modified Atmospheric Neutrino Osc ****" << std::endl;
 
-  std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>();
+  std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>(0.1,0.1,0.1);
   std::shared_ptr<EarthMod::Track> earth_mod_track = std::make_shared<EarthMod::Track>(phi);
   
   earth_mod->Mod(0.1,0.1,0.1);
@@ -453,11 +453,6 @@ int main()
     }
     std::cout << std::endl;
   }
-
-
-
-
-
 
   return 0;
 }
