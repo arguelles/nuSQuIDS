@@ -428,6 +428,7 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Bodies/bodies \
             examples/Xsections/xsections \
             examples/NSI/nsi \
+            examples/LV/lv \
             examples/Atm_BSM/atm_bsm\
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
@@ -521,6 +522,10 @@ examples/Xsections/xsections : $(DYN_PRODUCT) examples/Xsections/main.cpp build/
 examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
 	@echo Compiling non-standard interaction example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/LV/lv : $(DYN_PRODUCT) examples/LV/main.cpp
+	@echo Compiling Lorentz Violation example
+	@$(CXX) $(EXMAPLES_FLAGS) examples/LV/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Atm_BSM/atm_bsm: $(DYN_PRODUCT) examples/Atm_BSM/main.cpp
 	@echo Compiling atmospheric with beyond standard model physics example

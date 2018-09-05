@@ -61,38 +61,15 @@ class nuSQUIDSLV: public nuSQUIDS {
 
 
     squids:: SU_vector HI(unsigned int ie,unsigned int irho) const {
-      double ye = body->ye(*track);
-      double density = body->density(*track);
-
-      double CC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density*ye;
-      double NC;
-
-      if (ye < 1.0e-10){
-        NC = params.sqrt2*params.GF*params.Na*pow(params.cm,-3)*density;
-      }
-      else {
-        NC = CC*(-0.5*(1.0-ye)/ye);
-      }
-
-      // construct standard potential in flavor basis
-      squids::SU_vector potential = (CC+NC)*evol_b1_proj[irho][0][ie];
-      potential += (NC)*(evol_b1_proj[irho][1][ie]);
-      potential += (NC)*(evol_b1_proj[irho][2][ie]);
-
+      squids::SU_vector potential = nuSQUIDS::HI(ie, irho);
       double sign = 1;
       if ((irho == 1 and NT==both) or NT==antineutrino){
           // antineutrino matter potential flips sign
-          potential *= (-1.0);
           sign*=(-1);
       }
-
       // ================= HERE WE ADD THE NEW PHYSICS ===================
       potential += sign*pow(E_range[ie],n_)*LVP_evol[ie]; // <- super important line here is where all the physics is set
       // ================= HERE WE ADD THE NEW PHYSICS ===================
-
-      if (basis == mass){
-        potential += H0_array[ie];
-      }
       return potential;
     }
   public:
