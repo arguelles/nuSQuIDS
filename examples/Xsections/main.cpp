@@ -42,7 +42,7 @@ int main()
   const unsigned int numneu = 3;
 
   double Emin= 1.0*units.GeV;
-  double Emax=1.e6*units.GeV;
+  double Emax=1.e3*units.GeV;
 
   //Declaration of the nuSQUIDS object, the arguments are:
   //(1). Minimum energy
@@ -53,7 +53,7 @@ int main()
   //(6). Energy logarithmic scale? 
   //(7). Scattering non coherent interactions. 
   //(8). neutrino cross section object.
-  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<NeutrinoDISCrossSectionsFromTablesExtended>();
+  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<LinearCrossSections>();
   nuSQUIDS nus(logspace(Emin,Emax,200),numneu,neutrino,true,ncs);
   
   //Here we define the trajectory that the particle follows and the object for more examples
