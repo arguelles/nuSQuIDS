@@ -1075,7 +1075,7 @@ class nuSQUIDSAtm {
     }
 
     /// \brief Basic constructor.
-    /// @param earth_ptr shared pointer to EarthAtm object.
+    /// @param earthatm shared pointer to EarthAtm object.
     /// @param costh_array One dimensional array containing zenith angles to be calculated.
     /// @param energy_min Minimum neutrino energy value [ev].
     /// @param energy_max Maximum neutrino energy value [eV].
@@ -1114,8 +1114,6 @@ class nuSQUIDSAtm {
 
       inusquidsatm = true;
     }
-
-
 
     /// \brief Constructor from a HDF5 filepath.
     /// @param hdf5_filename Filename of the HDF5 to use for construction.
