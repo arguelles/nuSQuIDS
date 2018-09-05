@@ -626,14 +626,17 @@ the GSL libraries can be used.
   nus.Set_rel_error(1.0e-5);
   nus.Set_abs_error(1.0e-5);
 \end{lstlisting}
-We set to true the progress bar, this will show in the screen the
+
+We set to true the progress bar to show in the screen the
 progress of the computation.
+
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_ProgressBar(true);
 \end{lstlisting}
+
 We can ask nuSQUIDS to give back an array that contains the energy
-values, we use this here to fill the multiple array to set the initial
-state for the system, in this case a $E^{-2}$ powerlaw for the muon
+values, we use this here to fill a multiple array with the initial
+state of the system, in this case a $E^{-2}$ power-law for the muon
 flavor.
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -647,12 +650,16 @@ flavor.
   }
   nus.Set_initial_state(inistate,flavor);
 \end{lstlisting}
+
 Here we evolve the state.
+
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.EvolveState();
 \end{lstlisting}
+
 And we write the propagated fluxes in a file called {\ttf
   flux\_flavor.txt}, after that we ask to run the plotting script.
+
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   std::ofstream file("fluxes_flavor.txt");
   
@@ -691,9 +698,9 @@ script for the case with sterile neutrino (3+1).
 
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
 
-In this example we basically illustrate the use of the functions to
+In this example we illustrate the use of the functions to
 read and write {\ttf .hdf5} files. The content of the file is the full
-information in the system, that means all the configuration
+information of the system, that means all the configuration
 parameters, body, track, position in the track and also all the
 density matrix information. This allows for example to save the system
 in the middle of the propagation and read it later to keep
