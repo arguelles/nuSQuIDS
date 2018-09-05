@@ -550,20 +550,19 @@ propagation is done by calling the function {\ttf nus.EvolveState()}
 
 
 \subsection{Multiple Energy \textnormal{({\ttf examples/Multiple\_energy})}}
-This is a more realistic example where  we have in to account
-a full energy spectrum for an ensemble of neutrinos. The full spectrum
-calculation allows us to have in to account more interactions such as
-charged and neutral current scattering interaction that may change the
-neutrino energy. In the following we describe the lines in the main function
-of the examples.
+This is a more realistic example where we consider an ensemble of
+neutrinos in an energy range. With this setup
+we can model the neutrino energy and flavor changes.
+For example interactions such as charged and neutral current.
+In the following we describe the code for the example.
 
-As before we construct the Const object to have a set of useful physical constants.
+As before we construct the Const object to have a set of useful physical parameters.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   squids::Const units;
 \end{lstlisting}
 
 In the following we allow the possibility of choosing to compute
-the propagation for 3 active neutrinos or 3 active plus one sterile.
+the propagation for three active neutrinos or three active and one sterile.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   std::cout << "(3) Three Active Neutrinos, " << "(4) 3+1 Three Active and One Sterile Neutrino" << std::endl;
@@ -574,20 +573,19 @@ the propagation for 3 active neutrinos or 3 active plus one sterile.
   }
 \end{lstlisting}
 
-In the next line we construct the nuSQUIDS object. In this case, for the
-multiple energy, we need to give more arguments that in the
-order that they appear are: minimum energy ($1GeV$), maximum
-energy ($10^4GeV$), number of energy bins (200), number of flavor
-states ({\ttf numneu}= 3 or 4), neutrino or
-anti-neutrino case ({\ttf neutrino}), logarithmic energy scale ({\ttf
-  true}), and scattering interactions ({\ttf false}).
-
+In the next line, we construct the nuSQUIDS object. For the
+multiple energy constructor we need to provide the following arguments:
+list of neutrino energy nodes
+(\lstinline[columns=fixed,breaklines=true]{logspace(1.*units.GeV,1.e4*units.GeV,200)}),
+number of neutrino flavors ({\ttf numneu}= 3 or 4), neutrino or
+anti-neutrino type ({\ttf neutrino}), and non-coherent scattering
+interactions ({\ttf false}). 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
   label = ex:sin1,firstnumber=last]
-  nuSQUIDS nus(1.*units.GeV,1.e4*units.GeV,200,numneu,neutrino,true,false);
+  nuSQUIDS nus(logspace(1.*units.GeV,1.e4*units.GeV,200),numneu,neutrino,false);
 \end{lstlisting}
 
-As in the single energy mode we should define the body and the path
+As in the single energy mode we must define the body and the path
 where neutrinos will propagate.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
@@ -599,8 +597,9 @@ where neutrinos will propagate.
   nus.Set_Track(track_atm);
 \end{lstlisting}
 
-We also set the neutrino oscillation parameters, in the case we choose an sterile neutrino we
-set a mixing of $0.1$ and $\Delta m^2=0.1eV$.
+We also set the neutrino oscillation parameters and if a sterile
+neutrino is considered we set it's parameters to $\theta_{24}=0.1$ and
+$\Delta m_{41}^2=0.1{\rm eV}^2$.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
   nus.Set_MixingAngle(0,2,0.154085);
@@ -615,9 +614,9 @@ set a mixing of $0.1$ and $\Delta m^2=0.1eV$.
   }
 \end{lstlisting}
 
-In the next we set up some of the integration parameters, the maximum
-step for the GSL and the stepper we what to use, all the steppers in
-the GSL libraries can be used.
+Next we set some of the integration parameters: the maximum
+step for the evolution,  the GSL stepper algorithm (all the steppers in
+the GSL libraries can be used), maximum relative and absolute error.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_h_max( 500.0*units.km );
@@ -626,17 +625,17 @@ the GSL libraries can be used.
   nus.Set_abs_error(1.0e-5);
 \end{lstlisting}
 
-We set to true the progress bar to show in the screen the
-progress of the computation.
+We set to {\ttf true} the progress bar options in order to display the
+progress of the propagation.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_ProgressBar(true);
 \end{lstlisting}
 
-We can ask nuSQUIDS to give back an array that contains the energy
-values, we use this here to fill a multiple array with the initial
-state of the system, in this case a $E^{-2}$ power-law for the muon
-flavor.
+We can ask nuSQUIDS to give back the array containing the values of
+the energy nodes. We use this here to fill a multiple array with the initial
+state of the system; in this case a $E^{-2}$ power-law for the muon
+flavor and zero for the others.
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   marray<double,1> E_range = nus.GetERange();
@@ -656,8 +655,8 @@ Here we evolve the state.
   nus.EvolveState();
 \end{lstlisting}
 
-And we write the propagated fluxes in a file called {\ttf
-  flux\_flavor.txt}, after that we ask to run the plotting script.
+Finally we write the propagated fluxes in a file called {\ttf
+  flux\_flavor.txt} and after that we ask to run the plotting script.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   std::ofstream file("fluxes_flavor.txt");
@@ -692,29 +691,28 @@ And we write the propagated fluxes in a file called {\ttf
   \caption{Output for the multiple energy mode with sterile neutrino (3+1)} 
 \end{figure}
  
-In fig.\ref{fig:multimode} we show the plot produced by the plotting
-script for the case with sterile neutrino (3+1).
+In fig.\ref{fig:multimode} we show the results of running this example
+for the case with sterile neutrino.
 
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
 
 In this example we illustrate the use of the functions to
-read and write {\ttf .hdf5} files. The content of the file is the full
-information of the system, that means all the configuration
-parameters, body, track, position in the track and also all the
-density matrix information. This allows for example to save the system
-in the middle of the propagation and read it later to keep
-evolving. Another important fact is that if we save the system using
-this when we read it again we can compute any quantum mechanical
-observable for the saved density matrix.
+read and write {\ttf HDF5} files. The file contains the full
+information of the system: all settings, body, track (including
+current position in the track), and the density matrix at each node.
+This serialization allows to save the system
+in the middle of a complex propagation and read it later to continue
+the calculation. Saving the system using this and loading it from
+the file restores the system to the saved state allowing the user to
+compute any quantum mechanical observable.
 
-This example is basically the same as the multiple energy example by
-splited in two parts, one that computes the evolution ans save the
-state of the system ({\ttf write.cpp}) and another that reads the
-state and extract the flavor fluxes and put them in a text file ({\ttf
+This example is based upon the multiple energy example but
+split in two parts. The first part computes the evolution and saves the
+state of the system ({\ttf write.cpp}). The second reads the
+state,  extract the flavor fluxes, and  prints them to a file ({\ttf
   read.cpp}).
 
-In the following we will show the lines to save and load the hdf5
-files.
+In the following we describe lines that are relevant for reading and writing.
 
 In the file {\ttf write.cpp} we save the system before and after the
 evolution.
@@ -726,7 +724,7 @@ evolution.
 \end{lstlisting}
 
 And in order to recover that in the {\ttf read.cpp} file we use the
-constructor that construct directly the object for a given file name.
+constructor that takes as an argument the name of the file.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -735,71 +733,74 @@ constructor that construct directly the object for a given file name.
 \end{lstlisting}
 
 
-\subsection{Construct and use Bodies \textnormal{({\ttf
+\subsection{Construction and use of bodies \textnormal{({\ttf
       examples/Bodies})}}
-One of the main classes in the nuSQUIDS library is the body and track
-classes, these have to be always defined since they define the media
-where the neutrinos will propagate. 
+\label{sec:body}
+One of the main classes in the nuSQUIDS library are the body and the
+track. These two do not have defaults in the code and always needs to
+be specified.
 In this example we show how to use the objects already implemented in
 the library and also how to create some objects from the classes
 already defined.
 
-In the folder {\ttf examples/Bodies/} the {\ttf main.cpp} file
-contains the main function of the examples, that uses all the already
-existing objects in nuSQUIDS and the example new modified object
-defined in the heather and implementation files {\ttf exBody.h} and
-{\ttf exBody.cpp}.
+The folder {\ttf examples/Bodies/} contains a new body an track
+definitions in the files {\ttf exBody.h} and {\ttf exBody.cpp}.
+It also contains the file {\ttf main.cpp} whose main function 
+uses all the already existing objects in nuSQUIDS and the new objects
+of these examples.
 
-\subsubsection{Construct a derived Body}
 
-Here is an example of hot to define a derived object for the EarthAtm
-body, in this simple case the object is just an earth model with some
+\subsubsection{Construct a derived body}
+
+Here is an example of how to define a derived object of the EarthAtm
+body. In this simple case the object is just an earth model with some
 parameters that weight the relative densities in the different layers
-of the earth, inner core, outer core, and mantel.
+of the Earth's inner core, outer core, and mantel.
 
-In order to implement that we have to be in the {\ttf nusquids} namespace and we define a
-new class called {\ttf EarthMod} which is a derived class of {\ttf
-  EarthAtm}, this means this new class we have all the properties,
-values and function of the other class. 
+In order to implement it we suggest to do it inside the {\ttf nusquids}
+namespace. We define a new class called {\ttf EarthMod}, which is a derived class of {\ttf
+  EarthAtm}. Because of this the new class will have all the properties,
+values, and functions of the parent class. 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1]
-
 namespace nusquids{
 
 class EarthMod: public EarthAtm{
 public:
 \end{lstlisting}
-Here we define the main constructors that implement the changes,
-basically we weight the inner core, outer core and mantle using the
-values given by, {\ttf double frho1}, {\ttf double frho2}, {\ttf
-  double frho3}
+
+Our object constructors requires the following inputs:
+based earth model file name ({\ttf earthmodel}), inner core weight
+({\ttf frho1}), outer core weight ({\ttf frho2}), mantle weight ({\ttf
+  frho3}).
+
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
-  EarthMod(){}
-  EarthMod(std::string earthmodel, double frho1, double frho2 , double
+  EarthMod(std::string earthmodel, double frho1, double frho2, double
   frho3);
 \end{lstlisting}
 The function {\ttf Mod} allows to change the parameters ones the
 object is already defined.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   void  Mod(double frho1, double frho2, double frho3);
 };
 
 \end{lstlisting}
 
-\subsubsection{Use of the Bodies}
+The implementation of the functions that set the density arrays with
+the modified values are given in the files {\ttf exBody.cpp}.
 
-In this part we will describe what is implemented in the {\ttf
-  main.cpp} file.
+\subsubsection{Use of the bodies}
+
+In this part we will describe what is implemented in {\ttf
+  main.cpp}.
 This file defines a nuSQUIDS object and sets different bodies and
-tracks, for everyone of these it evolve the system and shows the
+tracks. For each of these it evolves the system and shows the
 probabilities in the screen.
-For simplicity we use the single energy mode, \ref{sec:single}, but the use of the body
-and track would be exactly the same for the multiple energy case.
+For simplicity we use the single energy mode sec.~\ref{sec:single}, but the use of the body
+and track would be the same for the multiple energy case.
 
-First we construct the nuSQUIDS object for 3 neutrinos we set the
-oscillation parameters and the energy of the neutrino that we
-propagate.
+First we construct the nuSQUIDS object for three neutrinos, then we set the
+oscillation parameters and the neutrino energy.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -810,32 +811,31 @@ propagate.
   nus.Set_SquareMassDifference(1,7.65e-05);
   nus.Set_SquareMassDifference(2,0.00247);
   nus.Set_CPPhase(0,2,0.0);
-
   squids::Const units;
-
   nus.Set_E(10.0*units.GeV);
 \end{lstlisting}
 
 \begin{enumerate}
 \item {\ttf Earth}
 
-The first example is the {\ttf Earth} body, in this case the track is
+The first example is the {\ttf Earth} body. In this case the track is
 parametrized by the baseline of the experiment. Here we define the
-body and track.
+body and track. For the track we need to specify the initial and final
+position as well as the baseline. 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   double baseline = 500.0*units.km;
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
   std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(0.0,baseline,baseline);
 \end{lstlisting}
-And we set the Body and Track to the nusquids object.
+And we set the Body and Track to the nuSQuIDS object.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_Body(earth);
   nus.Set_Track(earth_track);
 \end{lstlisting}
 
-We first set the initial state of the system, and print the state in
+We first set the initial state of the system and print the state in
 the screen.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -850,7 +850,7 @@ the screen.
     }
     std::cout << std::endl;
   }
-
+\end{lstlisting}
 We set the numerical error and maximum step for the GSL integrator.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -863,7 +863,6 @@ Finally we evolve the state and print in the screen the final state of
 the system.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   nus.EvolveState();
   std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
@@ -874,12 +873,12 @@ the system.
     std::cout << std::endl;
   }
 \end{lstlisting}
-This last steps in the code are the same in all the examples and we
-are ommiting that for the following cases, we are only going to go though the
-declaration of the body an track. 
+These last steps in the code are the same in all the bodies examples and we
+are omitting this for the next cases.
+
 \item {\ttf EarthAtm}
 
-In this example we use the {\ttf EarthAtm} body. In this case the
+In this example we use the {\ttf EarthAtm} body. The
 track is defined by the zenith angle of the trajectory.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -893,16 +892,16 @@ track is defined by the zenith angle of the trajectory.
 
 \item {\ttf earth\_mod}
 
-Case with the modified earth object we construct as a derived object
-of EarthAtm. As before the track is deffined by the zenith angle of
-the trajectory, in this case we construct the object and then we rescale
-all the earth density by a factor $0.1$, finally we set the body an track to nuSQUIDS. 
+  In this case we use the modified earth object.
+  As before the track is deffined by the zenith angle of
+  the trajectory. In the constructor we set all the weight to $0.1$.
+  Finally we set the body an track to nuSQUIDS.
+  
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   double phi = acos(-1.0);
-  std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>();
+  std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>(0.1,0.1,0.1);
   std::shared_ptr<EarthMod::Track> earth_mod_track = std::make_shared<EarthMod::Track>(phi);  
-  earth_mod->Mod(0.1,0.1,0.1);
 
   nus.Set_Body(earth_mod);
   nus.Set_Track(earth_mod_track);
@@ -911,8 +910,8 @@ all the earth density by a factor $0.1$, finally we set the body an track to nuS
 
 \item {\ttf VariableDensity}
 
-In this case we set a variable density body and a track of $200km$
-First we define the density, position and electron fraction arrays
+In this case we use the variable density body and a track of $200{\rm km}$
+First we define the density, position, and electron fraction arrays
 with the corresponding values.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -930,9 +929,9 @@ with the corresponding values.
   }
 \end{lstlisting}
 
-Now we construct the body and the track using, the constructor for the
-variable density takes as an input the vectors with the
-values. Finally like before we set the body ant the track to nuSQUIDS.
+Now we construct the body and the track. The constructor for the
+variable density takes as an input the position, density, and electron
+fraction vectors. Finally, like before, we set the body and the track in nuSQUIDS.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 
@@ -946,8 +945,8 @@ values. Finally like before we set the body ant the track to nuSQUIDS.
 \item {\ttf Vacuum}
 
 This is a trivial case where the density and electron fraction are
-zero, we only need to give the baseline as an argument to construct
-the track. In the example we set the baseline to $500km$.
+zero. We only need to give the baseline as an argument to construct
+the track. In this example we set the baseline to $500{\rm km}$.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -961,13 +960,13 @@ the track. In the example we set the baseline to $500km$.
 
 \item {\ttf ConstantDensity}
 
-Case with constant density, in this case a analytic approximation is
-used to propagate the neutrinos, the full Hamiltonian of the system is
-diagonalized and exponentiated. This allows to solve very fast the
-oscillations even when the matter potential is large.
+In the case of constant density an analytic approximation can be
+used to propagate the neutrinos if non-coherent interactions are
+disabled in the construction of the nuSQuIDS object. The full
+Hamiltonian of the system is diagonalized and exponentiated. 
 
-We set the density to $100g/cm^3$ the electron fraction to 0.3 and the
-baseline for the propagation to $500km$.
+We set the density to $100{\rm g/cm}^3$, the electron fraction to $0.3$, and the
+baseline to $500{\rm km}$.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 
@@ -980,26 +979,21 @@ baseline for the propagation to $500km$.
   nus.Set_Body(constdens);
   nus.Set_Track(track_constdens);
 \end{lstlisting}
-
-Notice that the system sets the nusquids in the mass basis in order to
-do the approximation, that can produce problems in the future uses of
-the same nuSQUIDS object.
-
 \end{enumerate}
-
 
 \subsection{Modify the cross sections}
 
 \subsection{ Cross Sections \textnormal{({\ttf
       examples/Xsections})}}
 
-One of the strong sides of nuSquids is the possibility of adding in a
-consistent way the non coherent interaction, the physical quantity
-that encodes how often this scattering interaction are happening
-between the neutrinos and the media is the cross section and is all in
-the cross section class.
+One of the important features of nuSQuIDS is the possibility of handling in a
+consistent way the non-coherent interactions with the oscillation
+behavior. The physical quantity that encodes how often this scattering
+interaction happen between the neutrinos and the media is the cross
+section.
+This information is organized and stored in the cross-section class.
 
-In this example we show a very basic extension of the standard
+In this example we show a simple extension of the default
 cross section class in a way that extends the values to low energies, 
 in the region where the cross section can be very well approximated by
 zero.
@@ -1078,9 +1072,9 @@ the diagonalization of the full Hamiltonian here we show an example
 where we concatenate the evolution of the neutrinos through different
 layers of constant density.
 
-First we construct the different layers, the first is $100km$ in
+First we construct the different layers: The first is $100km$ in
 vacuum, the second $50km$ in matter with density $3.5g/cm^3$ and
-$y_e=0.5$ and finally $200km$ in matter with density $10g/cm^3$ and
+$y_e=0.5$, and finally $200km$ in matter with density $10g/cm^3$ and
 $y_e=0.1$.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1099,7 +1093,7 @@ $y_e=0.1$.
 
 \end{lstlisting}
 
-Now in order to evolve the system, we should set the corresponding body
+Now in order to evolve the system we set the corresponding body
 and track and evolve every layer.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1119,29 +1113,34 @@ and track and evolve every layer.
 
 \end{lstlisting}
 
-Finally we write the output for the different fluxes in flavor in a text file.
+Finally we write the output for the different flavor fluxes in a text file.
 
 
 \subsection{Solar transition}
 
+
+
+
+
 \subsection{ BSM extension: Non-Standard  Interaction \textnormal{({\ttf
       examples/NSI})}}
-Neutrino oscillations are a good probe for new physics, in this
-example we illustrate an example of constructing a derived class of
-nusquids in order to add some new physics modification, similarly can
-be done in any other new physics scenario.
+Neutrino oscillations are a good prove for new physics. In this
+example we illustrate how to construct a derived class of
+nusquids adding new physics modification. The procedure is similar to
+other new physics setups.
 
-The implementation of the {\ttf nuSQUIDSNSI} is done in {\ttf NSI.h}.
-First we will go trough the implementation to see what needs to be
+The implementation of {\ttf nuSQUIDSNSI} is done in {\ttf NSI.h}.
+We will go trough the implementation to see what needs to be
 added to be base class nuSQUIDS.
-Some new variables are needed to implement the NSI matter potential,
-We declare a {\ttf SU\_vector} called {\ttf NSI} that is the matter
-potential, because we are working in the interaction picture we need
-to define a matter potential that is accordingly rotated with $H_0$ for
-every energy, this would be stored in {\ttf NSI\_evol}.
+
+First we declare the NSI matter potential as a {\ttf SU\_vector}
+called {\ttf NSI}\. Since we are working in the interaction picture we need
+to define a matter potential rotated with $H_0$ for every energy node.
+This will be stored in {\ttf NSI\_evol}.
+
 {\ttf HI\_prefactor} contains all the numerical factor in front of the
 operator and {\ttf epsilon\_mutau} is the strength of the NSI non flavor
-diagonal term, notice that we have the NSI diagonal contribution to
+diagonal term. Notice that we set the NSI diagonal contribution to
 zero.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1158,9 +1157,10 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
 \end{lstlisting}
 
-Before computing any derivative or r.h.s of the differential equation
-we should have the NSI operator in the interaction picture. We add
-this in prederive.
+Before computing any derivative in the r.h.s of the differential equation
+we should have the NSI operator in the interaction picture. We compute
+this for every node in prederive.
+
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 
@@ -1172,8 +1172,8 @@ this in prederive.
 
 \end{lstlisting}
 
-This functions are auxiliary functions that allow the nuSQuIDSNSI to
-save all the new information that defines the new derived object in
+This  auxiliary functions allow the nuSQuIDSNSI to
+save the new information that defines the new derived object in
 the hdf5 files.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1194,9 +1194,9 @@ the hdf5 files.
 
 \end{lstlisting}
 
-And probably the most important part, where we compute the value of
-the matter potential i.e. {\ttf HI}, notice at the end the different
-sign for neutrinos and antineutrinos.
+Here we overload the {\ttf HI} function where we return the full
+matter potential.
+
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 
@@ -1219,16 +1219,16 @@ sign for neutrinos and antineutrinos.
 
 \end{lstlisting}
 
-In the public function we have the constructor, first calls the
-nuSQUIDS constructor and after sets up the standard oscillation
+The constructor first calls the
+nuSQUIDS constructor and after sets the standard oscillation
 paramters and the NSI operator.  
+
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   public:
-  nuSQUIDSNSI(double epsilon_mutau, double Emin,double Emax,int Esize,int numneu, NeutrinoType NT,
-	      bool elogscale,bool iinteraction,double th01=0.563942, double th02=0.154085, 
-	      double th12=0.785398) : nuSQUIDS(Emin,Emax,Esize,numneu,NT,elogscale,iinteraction),
+  nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange,int numneu, NeutrinoType NT,
+	      bool iinteraction,double th01=0.563942, double th02=0.154085,
+	      double th12=0.785398) : nuSQUIDS(Erange,numneu,NT,iinteraction),
 				      hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
   {
     assert(numneu == 3);
@@ -1255,11 +1255,11 @@ paramters and the NSI operator.
     
     HI_prefactor = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
   }
-
+  
 \end{lstlisting}
 
-This last function set the value of {\ttf epsilon\_mutau}, changing the
-value of the {\ttf SU\_vector NSI} accordingly 
+This last function sets the value of {\ttf epsilon\_mutau} changing the
+value of the {\ttf SU\_vector NSI} accordingly. 
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -1278,9 +1278,9 @@ value of the {\ttf SU\_vector NSI} accordingly
 \end{lstlisting}
 
 
-In the main function in {\ttf main.cpp} we use the new NSI in a
+In {\ttf main.cpp} we use the new NSI in a
 multiple energy mode. In order to see the effect of having NSI we
-propagate the case with {\ttf  epsilon\_mutau=0} and {\ttf
+propagate with {\ttf  epsilon\_mutau=0} and {\ttf
   epsilon\_mutau=1e-2}. 
 
 
@@ -1288,11 +1288,12 @@ propagate the case with {\ttf  epsilon\_mutau=0} and {\ttf
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 
   double eps_mutau=1.0e-2;
-  nuSQUIDSNSI nus(eps_mutau,Emin,Emax,200,numneu,antineutrino,true,false);
-  nuSQUIDSNSI nus_zero(0.0,Emin,Emax,200,numneu,antineutrino,true,false);
+  nuSQUIDSNSI nus(eps_mutau,logspace(Emin,Emax,200),numneu,antineutrino,false);
+  nuSQUIDSNSI nus_zero(0.0,logspace(Emin,Emax,200),numneu,antineutrino,false);
+
 \end{lstlisting}
 
-After setting all the parameters we propagate both cases, and put both
+After setting the parameters we propagate both cases, and put both
 fluxes in a text file.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1323,8 +1324,6 @@ In the folder there is a script that allows to plot the output text
 file.
 
 
-\subsection{BSM extension:  Sterile neutrinos \textnormal{({\ttf examples/Steriles})}}
-
 
 \subsection{BSM extension: Lorentz Violation \textnormal{({\ttf examples/LV})}}
 
@@ -1332,21 +1331,19 @@ file.
 \subsection{BSM extension: Neutrino Decay \textnormal{({\ttf examples/ND})}}
 
 
-\subsection{Astrophysical neutrinos: de-coherent limit}
-
 
 \subsection{Atmospheric Mode: Standard \textnormal{({\ttf
       examples/Atm\_default})}}
-In this example we show how to use the atmospheric mode, this mode is
-a compact way to treat set of nuSQUIDS objects distributed in zenith, this
-allows us to treat the problem of propagating the full, energy and
+In this example we show how to use the atmospheric mode. This mode is
+a compact way to treat a set of nuSQUIDS objects distributed in zenith that
+allows us to solve the problem of propagating the full, energy and
 zenith dependent, atmospheric neutrino flux trough the earth.
 
 First we construct the nuSQUIDSAtm object. The paremeters we are
 setting is the range of cosine of the zenith angle from $-1$ to $0.2$
 and in energies from $10GeV$ to $1e6GeV$, we chose 40 nodes in zenith.
-Notice that the parameters after the zenith information are the same
-than the basic nuSQUIDS object.
+After setting the zenith array the rest of the arguments are the same
+as the basic nuSQUIDS object.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1356,13 +1353,13 @@ than the basic nuSQUIDS object.
   double czmin=-1;
   double czmax=0;
 
-  nuSQUIDSAtm<> nus_atm(czmin,czmax,40,Emin,Emax,100,numneu,both,true,interactions);
+  nuSQUIDSAtm<> nus_atm(linspace(czmin,czmax,40),logspace(Emin,Emax,100),numneu,both,interactions);
 
 \end{lstlisting}
 
-In this case we have to give the initial state also depending on
-zenith, here we fill the array with and set the initial state of the
-system. The function {\ttf flux\_function} would be the corresponding
+In this case we need to set the initial state also depending on
+zenith. We fill the multi-dimensional array with the initial state of the
+system where the function {\ttf flux\_function} would be the corresponding
 atmospheric flux.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1384,18 +1381,15 @@ atmospheric flux.
 
 \end{lstlisting}
 
-
 To evolve the full state we call
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
 nus_atm.EvolveState();
-
 \end{lstlisting}
 
-Finally we save the flux in a output text file, notice that the
-atmospheric mode has an interpolation implemented, therefore you can
+Finally we save the flux in a text file. The
+atmospheric mode has an interpolation implemented that allows to
 evaluate the flux at any flavor, energy, and zenith. See \ref{sec:atm}
 for more details.
 \ref{sec:atm}.
