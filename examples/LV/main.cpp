@@ -128,12 +128,12 @@ int main()
 
   std::ofstream file("fluxes_flavor.txt");
 
-  file << "# log10(E) E flux_NSI_i flux_noNSI_i . . . ." << std::endl;
+  file << "# log10(E) E flux_LV_i flux_noLV_i . . . ." << std::endl;
   for(double lE=lEmin; lE<lEmax; lE+=(lEmax-lEmin)/(double)Nen){
     double E=pow(10.0,lE);
     file << lE << " " << E << " ";
     for(int fl=0; fl<numneu; fl++){
-      file << " " <<  nus_std.EvalFlavor(fl, E) << " " <<  nus_lv.EvalFlavor(fl, E);
+      file << " " <<  nus_lv.EvalFlavor(fl, E) << " " <<  nus_std.EvalFlavor(fl, E);
     }
     file << std::endl;
   }
