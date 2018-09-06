@@ -695,7 +695,7 @@ In fig.\ref{fig:multimode} we show the results of running this example
 for the case with sterile neutrino.
 
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
-
+\label{sec:readwrite}
 In this example we illustrate the use of the functions to
 read and write {\ttf HDF5} files. The file contains the full
 information of the system: all settings, body, track (including
@@ -1115,30 +1115,31 @@ and track and evolve every layer.
 Finally, we write the output for the different flavor fluxes in a text file.
 
 
-\subsection{BSM extension: Non-Standard  Interaction \textnormal{({\ttf
+\subsection{BSM extension: Non-Standard  Interaction (NSI) \textnormal{({\ttf
       examples/NSI})}}
-Neutrino oscillations are a good prove for new physics. In this
-example we illustrate how to construct a derived class of
-nusquids adding new physics modification. The procedure is similar to
-other new physics setups.
+\label{sec:NSI}
+In this example we illustrate how to construct a derived class of
+nuSQuIDS including a new physics term. This procedure is similar to
+other new physics setups~\ref{sec:LV}.
 
-The implementation of {\ttf nuSQUIDSNSI} is done in {\ttf NSI.h}.
+The implementation of {\ttf nuSQUIDSNSI} class is in {\ttf NSI.h}.
 We will go trough the implementation to see what needs to be
-added to be base class nuSQUIDS.
+added to be base class.
 
-First we declare the NSI matter potential as a {\ttf SU\_vector}
-called {\ttf NSI}\. Since we are working in the interaction picture we need
-to define a matter potential rotated with $H_0$ for every energy node.
-This will be stored in {\ttf NSI\_evol}.
+First, we declare the NSI matter potential as a {\ttf SU\_vector}
+called {\ttf NSI}. By default nuSQuIDS  works in the interaction
+picture, thus every term we add to the hamiltonian has to be properly
+evolved with $H_0$. Since $H_0$ depends on the energy to do this in
+every node. For optimization we will compute and store the evolved NSI
+term in a vector of {\ttf SU\_vector} objects called {\ttf NSI\_evol}.
 
-{\ttf HI\_prefactor} contains all the numerical factor in front of the
-operator and {\ttf epsilon\_mutau} is the strength of the NSI non flavor
-diagonal term. Notice that we set the NSI diagonal contribution to
-zero.
+The {\ttf HI\_prefactor} contains all the numerical factors multiplying the
+operator and {\ttf epsilon\_mutau} is the strength of the NSI $\mu$-$\tau$ 
+non-diagonal component. Notice that we set all other NSI
+contributions to zero.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-
 class nuSQUIDSNSI: public nuSQUIDS {
   private:
     squids::SU_vector NSI;
@@ -1150,28 +1151,31 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
 \end{lstlisting}
 
-Before computing any derivative in the r.h.s of the differential equation
-we should have the NSI operator in the interaction picture. We compute
-this for every node in prederive.
+As we said before we need to compute the NSI operator in the
+interaction picture prior to adding it to the r.h.s. of the
+differential equation. We compute this for every energy node in the
+{\ttf AddToPreDerive} function. This function is called inside the
+{\ttf PreDerive} function before evaluating the derivatives to allow
+the user to pre-compute terms used in the derivative.
+The evolution of the NSI term by $H_0$ is done by the {\ttf
+  SU\_vector::Evolve} member. This function is optimized and performs
+the evolution of the operator analytically.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
     void AddToPreDerive(double x){
       for(int ei = 0; ei < ne; ei++){
         NSI_evol[ei] = NSI.Evolve(H0_array[ei],(x-Get_t_initial()));
       }
     }
-
 \end{lstlisting}
 
-This  auxiliary functions allow the nuSQuIDSNSI to
-save the new information that defines the new derived object in
-the hdf5 files.
+The following auxiliary member functions allow {\ttf nuSQUIDSNSI} to
+save the new physics parameters into the hdf5 files when the
+{\ttf WriteStateHDF5} is called~\ref{sec:readwrite}.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
     void AddToReadHDF5(hid_t hdf5_loc_id){
       // here we read the new parameters now saved in the HDF5 file
       hid_t nsi = H5Gopen(hdf5_loc_id, "nsi", H5P_DEFAULT);
@@ -1184,18 +1188,15 @@ the hdf5 files.
       H5Gcreate(hdf5_loc_id, "nsi", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       H5LTset_attribute_double(hdf5_loc_id, "nsi","mu_tau",&epsilon_mutau, 1);
     }
-
 \end{lstlisting}
 
-Here we overload the {\ttf HI} function where we return the full
-matter potential.
+Here we overload the {\ttf HI} function where we return the nuSQuIDS
+matter potential plus the new NSI contribution.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
     squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
       double CC = HI_prefactor*body->density(*track)*body->ye(*track);
-
 
       squids::SU_vector potential(nsun,hiBuffer.get());
 
@@ -1209,20 +1210,21 @@ matter potential.
           throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
       }
     }
-
 \end{lstlisting}
 
 The constructor first calls the
-nuSQUIDS constructor and after sets the standard oscillation
-paramters and the NSI operator.  
+nuSQUIDS constructor and then sets the oscillation
+paramters and the NSI operator.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   public:
-  nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange,int numneu, NeutrinoType NT,
-	      bool iinteraction,double th01=0.563942, double th02=0.154085,
-	      double th12=0.785398) : nuSQUIDS(Erange,numneu,NT,iinteraction),
-				      hiBuffer(new double[nsun*nsun]),epsilon_mutau(epsilon_mutau)
+  nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange,
+              int numneu, NeutrinoType NT, bool iinteraction,
+              double th01=0.563, double th02=0.154, double th12=0.785):
+              nuSQUIDS(Erange,numneu,NT,iinteraction),
+	      hiBuffer(new double[nsun*nsun]),
+              epsilon_mutau(epsilon_mutau)
   {
     assert(numneu == 3);
     // defining a complex matrix M which will contain our flavor
@@ -1248,15 +1250,17 @@ paramters and the NSI operator.
     
     HI_prefactor = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
   }
-  
 \end{lstlisting}
 
-This last function sets the value of {\ttf epsilon\_mutau} changing the
-value of the {\ttf SU\_vector NSI} accordingly. 
+The next function sets the value of {\ttf epsilon\_mutau} changing the
+ {\ttf SU\_vector NSI} object accordingly. We construct the {\ttf
+   SU\_vector} operator as a complex GSL matrix that represents the
+ operator in the flavor basis. Since nuSQuIDS solves the propagation
+ in the basis where $H_0$ is diagonal, i.e. the mass basis, we rotate
+ the NSI operator to the mass basis by calling {\ttf RotateToB1}.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-  
   void Set_mutau(double eps){
     gsl_matrix_complex * M = gsl_matrix_complex_calloc(3,3);
     gsl_complex c {{ epsilon_mutau , 0.0 }};
@@ -1266,32 +1270,26 @@ value of the {\ttf SU\_vector NSI} accordingly.
     NSI.RotateToB1(params);
     gsl_matrix_complex_free(M);
   }
- 
-  
 \end{lstlisting}
 
-
 In {\ttf main.cpp} we use the new NSI in a
-multiple energy mode. In order to see the effect of having NSI we
-propagate with {\ttf  epsilon\_mutau=0} and {\ttf
+multiple energy mode. In order to compare the oscillation
+probabilities with and without NSI we construct two instances {\ttf
+  nuSQUIDSNSI} with {\ttf  epsilon\_mutau=0} and {\ttf
   epsilon\_mutau=1e-2}. 
-
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   double eps_mutau=1.0e-2;
   nuSQUIDSNSI nus(eps_mutau,logspace(Emin,Emax,200),numneu,antineutrino,false);
   nuSQUIDSNSI nus_zero(0.0,logspace(Emin,Emax,200),numneu,antineutrino,false);
-
 \end{lstlisting}
 
-After setting the parameters we propagate both cases, and put both
-fluxes in a text file.
+In the next lines we propagate both objects and print both
+fluxes in a file.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   nus.EvolveState();
   nus_zero.EvolveState();
 
@@ -1310,7 +1308,6 @@ fluxes in a text file.
     }
     file << std::endl;
   }
-
 \end{lstlisting}
 
 In the folder there is a script that allows to plot the output text
@@ -1319,6 +1316,56 @@ file.
 
 \subsection{BSM extension: Lorentz Violation \textnormal{({\ttf
       examples/LV})}}
+The Lorentz symmetry is a well established property of space-time.
+As a fundamental symmetry it should be tested and neutrino
+oscillations prove part of the parameter space.
+
+The example is technically the same as the non-standard interactions,
+but we add a couple of features illustrate good practices.
+
+As before the new term is added in to {\ttf HI}. For this particular
+physics case the effect is positive for neutrinos and negative for
+antineutrinos. This can be implemented using the integer {\ttf irho}
+which labels neutrinos with $0$ and antineutrinos with $1$.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+  squids:: SU_vector HI(unsigned int ie,unsigned int irho) const {
+    squids::SU_vector potential = nuSQUIDS::HI(ie, irho);
+    double sign = 1;
+    if ((irho == 1 and NT==both) or NT==antineutrino){
+      // antineutrino matter potential flips sign
+      sign*=(-1);
+    }
+    // ===== HERE WE ADD THE NEW PHYSICS =====
+    potential += sign*pow(E_range[ie],n_)*LVP_evol[ie]; 
+    // ===== HERE WE ADD THE NEW PHYSICS =====
+    return potential;
+  }
+\end{lstlisting}
+
+The parameters of the Lorentz violating term is set by the function
+{\ttf Set\_LV\_OpMatrix}. In doing that the oscillation parameters are
+used to rotate to the mass basis. Therefore any change done in the
+oscillation parameters after setting the LV term will be inconsistent.
+In order to prevent inconsistencies we overload the function that sets
+the mixing parameters {\ttf Set\_MixingAngle} and the phases {\ttf
+  Set\_CPPhase} turning the label {\ttf lv\_parameters\_set} to {\ttf
+  false} and forcing the need to call {\ttf Set\_LV\_OpMatrix} again.
+This enforces the order of the set functions calls.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle){
+      nuSQUIDS::Set_MixingAngle(i,j,angle);
+      lv_parameters_set = false;
+    }
+
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle){
+      nuSQUIDS::Set_CPPhase(i,j,angle);
+      lv_parameters_set = false;
+    }
+\end{lstlisting}
 
 
 \subsection{Atmospheric Mode: Standard \textnormal{({\ttf
