@@ -909,7 +909,7 @@ protected:
     ///              must be larger than \c i.
     /// @param angle Angle to use in radians.
     /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
-    void Set_MixingAngle(unsigned int i, unsigned int j,double angle);
+    virtual void Set_MixingAngle(unsigned int i, unsigned int j,double angle);
 
     /// \brief Returns the mixing angle th_ij in radians.
     /// @param i the (zero-based) index of the first state
@@ -924,7 +924,7 @@ protected:
     ///              must be larger than \c i.
     /// @param angle Phase to use in radians.
     /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
-    void Set_CPPhase(unsigned int i, unsigned int j,double angle);
+    virtual void Set_CPPhase(unsigned int i, unsigned int j,double angle);
 
     /// \brief Returns the CP phase of the ij-rotation in radians.
     /// @param i the (zero-based) index of the first state
@@ -938,7 +938,7 @@ protected:
     ///              must be larger than \c 0.
     /// @param sq Square mass difference in eV^2.
     /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
-    void Set_SquareMassDifference(unsigned int i, double sq);
+    virtual void Set_SquareMassDifference(unsigned int i, double sq);
 
     /// \brief Returns the square mass difference between state-i and the first mass eigenstate.
     /// @param i the (zero-based) index of the first state
