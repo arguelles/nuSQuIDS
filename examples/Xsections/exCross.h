@@ -25,10 +25,13 @@ namespace nusquids {
 
 class LinearCrossSections : public NeutrinoCrossSections {
   private:
+    const squids::Const units;
     const double GF = 1.16639e-23; // eV^-2
     const double mp = 938.272e6; // proton mass eV
+    const double CC_to_NC; // proportion of CC to NC which goes from 0 to 1.
   public :
-    LinearCrossSections(){}
+    LinearCrossSections(double CC_to_NC):CC_to_NC(CC_to_NC){assert( CC_to_NC <= 1.0  && CC_to_NC >= 0.0 );}
+    LinearCrossSections():LinearCrossSections(0.5){}
     double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
     double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
   };

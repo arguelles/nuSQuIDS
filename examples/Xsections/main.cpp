@@ -53,8 +53,13 @@ int main()
   //(6). Energy logarithmic scale? 
   //(7). Scattering non coherent interactions. 
   //(8). neutrino cross section object.
-  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<LinearCrossSections>();
+  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<LinearCrossSections>(0.0);
+  std::shared_ptr<NeutrinoCrossSections> ncs_more_nc=std::make_shared<LinearCrossSections>(1.0);
+
   nuSQUIDS nus(logspace(Emin,Emax,200),numneu,neutrino,true,ncs);
+  nus.Set_IncludeOscillations(false);
+  nuSQUIDS nus_more_nc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_more_nc);
+  nus_more_nc.Set_IncludeOscillations(false);
   
   //Here we define the trajectory that the particle follows and the object for more examples
   // of how construct a track and object look body_track example.
@@ -68,23 +73,21 @@ int main()
   nus.Set_Body(earth_atm);
   nus.Set_Track(track_atm);
 
-
-  // set mixing angles and masses
-  nus.Set_MixingAngle(0,1,0.563942);
-  nus.Set_MixingAngle(0,2,0.154085);
-  nus.Set_MixingAngle(1,2,0.785398);
-  nus.Set_SquareMassDifference(1,7.65e-05);
-  nus.Set_SquareMassDifference(2,0.00247);
-
-  //Here we set the maximum size for the integration step, important for fast or sharp variations of the density.
-  nus.Set_h_max( 200.0*units.km );
+  nus_more_nc.Set_Body(earth_atm);
+  nus_more_nc.Set_Track(track_atm);
 
   //Setting the numerical precision of gsl integrator.
-  nus.Set_rel_error(1.0e-6);
-  nus.Set_abs_error(1.0e-6);
+  nus.Set_rel_error(1.0e-8);
+  nus.Set_abs_error(1.0e-8);
   nus.Set_GSL_step(gsl_odeiv2_step_rk4);
+
+  nus_more_nc.Set_rel_error(1.0e-8);
+  nus_more_nc.Set_abs_error(1.0e-8);
+  nus_more_nc.Set_GSL_step(gsl_odeiv2_step_rk4);
+
   //Set true the progress bar during the evolution.
   nus.Set_ProgressBar(true);
+  nus_more_nc.Set_ProgressBar(true);
 
   //Construct the initial state
   //E_range is an array that contains all the energies.
@@ -99,11 +102,13 @@ int main()
       }
   }
 
-
   //Set the initial state in nuSQuIDS object
   nus.Set_initial_state(inistate,flavor);
+  nus_more_nc.Set_initial_state(inistate,flavor);
+
   //Propagate the neutrinos in the earth for the path defined in path
   nus.EvolveState();
+  nus_more_nc.EvolveState();
 
   //In this part we will save the values in a txt file to be able to plot or manipulate later.
   //Notice that this is not going to have all the information about the quantum evolution, for that 
@@ -115,13 +120,14 @@ int main()
   int Nen = 10000;
   double lEmin=log10(Emin/units.GeV);
   double lEmax=log10(Emax/units.GeV);
-  
+
   file << "# log10(E) E flux_i fluxRatio_i . . . ." << std::endl;
   for(double lE=lEmin; lE<lEmax; lE+=(lEmax-lEmin)/(double)Nen){
     double E=pow(10.0,lE)*units.GeV;
     file << lE << " " << E << " ";
     for(int fl=0; fl<numneu; fl++){
       file << " " <<  nus.EvalFlavor(fl, E) << " " <<  nus.EvalFlavor(fl, E)/(N0*pow(E,-2));
+      file << " " <<  nus_more_nc.EvalFlavor(fl, E) << " " <<  nus_more_nc.EvalFlavor(fl, E)/(N0*pow(E,-2));
     }
     file << std::endl;
   }
@@ -131,8 +137,6 @@ int main()
   std::cin >> plt;
   if(plt=="yes" || plt=="y")
     return system("./plot.plt");
-
-
 
   return 0;
 }
