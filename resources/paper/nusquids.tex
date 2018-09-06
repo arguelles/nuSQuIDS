@@ -981,7 +981,7 @@ baseline to $500{\rm km}$.
 \end{lstlisting}
 \end{enumerate}
 
-\subsection{ Cross Sections \textnormal{({\ttf
+\subsection{Cross Sections \textnormal{({\ttf
       examples/Xsections})}}
 
 One of the important features of nuSQuIDS is the possibility of handling in a
@@ -1067,20 +1067,20 @@ We can see the final to initial flux ratios for both cases in fig~\ref{fig:cross
 \end{figure}
 
 
-\subsection{ Constant density multiple layers \textnormal{({\ttf
+\subsection{Constant density multiple layers \textnormal{({\ttf
       examples/Constant\_density\_layers})}}
 Since the constant density allows us to do very fast computation using
 the diagonalization of the full Hamiltonian here we show an example
 where we concatenate the evolution of the neutrinos through different
 layers of constant density.
 
-First we construct the different layers: The first is $100km$ in
-vacuum, the second $50km$ in matter with density $3.5g/cm^3$ and
-$y_e=0.5$, and finally $200km$ in matter with density $10g/cm^3$ and
-$y_e=0.1$.
+We construct three different layers: first $100{\rm km}$ in
+vacuum, second $50{\rm km}$ in matter with density $3.5{\rm g/cm}^3$ and
+ electron fraction $0.5$, and finally $200{\rm km}$ in matter with
+ density $10{\rm g/cm}^3$ and electron fraction $0.1$.
+ 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-
   const double layer_1 = 100.*units.km;
   std::shared_ptr<Vacuum> vacuum = std::make_shared<Vacuum>();
   std::shared_ptr<Vacuum::Track> track_env0 = std::make_shared<Vacuum::Track>(layer_1);
@@ -1092,18 +1092,16 @@ $y_e=0.1$.
   const double layer_3 = 200.*units.km;
   std::shared_ptr<ConstantDensity> constdens_env2 = std::make_shared<ConstantDensity>(10.,0.1);
   std::shared_ptr<ConstantDensity::Track> track_env2 = std::make_shared<ConstantDensity::Track>(layer_3);
-
 \end{lstlisting}
 
 Now in order to evolve the system we set the corresponding body
 and track and evolve every layer.
+
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-
   nus.Set_Body(vacuum);
   nus.Set_Track(track_env0);
   nus.EvolveState();
-
 
   nus.Set_Body(constdens_env1);
   nus.Set_Track(track_env1);
@@ -1112,19 +1110,12 @@ and track and evolve every layer.
   nus.Set_Body(constdens_env2);
   nus.Set_Track(track_env2);
   nus.EvolveState();
-
 \end{lstlisting}
 
-Finally we write the output for the different flavor fluxes in a text file.
+Finally, we write the output for the different flavor fluxes in a text file.
 
 
-\subsection{Solar transition}
-
-
-
-
-
-\subsection{ BSM extension: Non-Standard  Interaction \textnormal{({\ttf
+\subsection{BSM extension: Non-Standard  Interaction \textnormal{({\ttf
       examples/NSI})}}
 Neutrino oscillations are a good prove for new physics. In this
 example we illustrate how to construct a derived class of
@@ -1326,12 +1317,8 @@ In the folder there is a script that allows to plot the output text
 file.
 
 
-
-\subsection{BSM extension: Lorentz Violation \textnormal{({\ttf examples/LV})}}
-
-
-\subsection{BSM extension: Neutrino Decay \textnormal{({\ttf examples/ND})}}
-
+\subsection{BSM extension: Lorentz Violation \textnormal{({\ttf
+      examples/LV})}}
 
 
 \subsection{Atmospheric Mode: Standard \textnormal{({\ttf
