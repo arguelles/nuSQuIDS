@@ -124,6 +124,16 @@ class nuSQUIDSLV: public nuSQUIDS {
       n_ = n;
     }
 
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle){
+      nuSQUIDS::Set_MixingAngle(i,j,angle);
+      lv_parameters_set = false;
+    }
+
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle){
+      nuSQUIDS::Set_CPPhase(i,j,angle);
+      lv_parameters_set = false;
+    }
+
     void dump_probabilities() const {
       for(unsigned int ie = 0; ie < ne; ie++){
         std::cout << E_range[ie] << ' ';

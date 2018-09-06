@@ -53,6 +53,23 @@ int main()
   nuSQUIDSLV nus_lv(logspace(Emin,Emax,200),numneu,antineutrino,false);
   nuSQUIDSLV nus_std(logspace(Emin,Emax,200),numneu,antineutrino,false);
 
+  //Set mixing angles and masses
+  nus_std.Set_MixingAngle(0,1,0.563942);
+  nus_std.Set_MixingAngle(0,2,0.154085);
+  nus_std.Set_MixingAngle(1,2,0.785398);
+
+  nus_std.Set_SquareMassDifference(1,7.65e-05);
+  nus_std.Set_SquareMassDifference(2,0.00247);
+
+  nus_lv.Set_MixingAngle(0,1,0.563942);
+  nus_lv.Set_MixingAngle(0,2,0.154085);
+  nus_lv.Set_MixingAngle(1,2,0.785398);
+
+  nus_lv.Set_SquareMassDifference(1,7.65e-05);
+  nus_lv.Set_SquareMassDifference(2,0.00247);
+
+  //Lorentz violation parameters
+
   gsl_complex zero {0.0*units.eV,0.0*units.eV};
   LVParameters null {zero, zero};
   nus_std.Set_LV_OpMatrix(null);
@@ -72,21 +89,6 @@ int main()
 
   nus_lv.Set_Body(earth);
   nus_lv.Set_Track(track);
-
-  //Set mixing angles and masses
-  nus_std.Set_MixingAngle(0,1,0.563942);
-  nus_std.Set_MixingAngle(0,2,0.154085);
-  nus_std.Set_MixingAngle(1,2,0.785398);
-
-  nus_std.Set_SquareMassDifference(1,7.65e-05);
-  nus_std.Set_SquareMassDifference(2,0.00247);
-
-  nus_lv.Set_MixingAngle(0,1,0.563942);
-  nus_lv.Set_MixingAngle(0,2,0.154085);
-  nus_lv.Set_MixingAngle(1,2,0.785398);
-
-  nus_lv.Set_SquareMassDifference(1,7.65e-05);
-  nus_lv.Set_SquareMassDifference(2,0.00247);
 
   //Setup integration settings
   nus_std.Set_rel_error(1.0e-15);
