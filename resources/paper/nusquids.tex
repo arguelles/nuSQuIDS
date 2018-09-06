@@ -981,8 +981,6 @@ baseline to $500{\rm km}$.
 \end{lstlisting}
 \end{enumerate}
 
-\subsection{Modify the cross sections}
-
 \subsection{ Cross Sections \textnormal{({\ttf
       examples/Xsections})}}
 
@@ -991,77 +989,81 @@ consistent way the non-coherent interactions with the oscillation
 behavior. The physical quantity that encodes how often this scattering
 interaction happen between the neutrinos and the media is the cross
 section.
+nuSQuIDS it has implemented two kind of interactions: charge and
+neutral current. In the case of charge current we have in to account
+the neutrinos produced by the decay of short lived charged particles
+such as $\tau$ and $W^\pm$. For the neutral current we always include
+the outgoing neutrino.
+Other particles produced in the interactions such as hadrons or long
+lived charged leptons are ignored along the evolution.
 This information is organized and stored in the cross-section class.
+This class requires the user to provide the total cross-section for
+each flavor and current in units of cm$^2$. It also requires to
+specify the single differential neutrinos cross sections with respect to
+the outgoing neutrino energy in units of cm$^2$/GeV. 
 
-In this example we show a simple extension of the default
-cross section class in a way that extends the values to low energies, 
-in the region where the cross section can be very well approximated by
-zero.
+nuSQuIDS includes by default deep inelastic neutrino nucleon
+cross-sections as well as neutrino electron
+cross-sections~\citep{Gandhi:1998ri, CooperSarkar:2011pa}.
 
-The new derived class for the extended cross section is in the header
-{\ttf exCross.h} and the implementation file {\ttf exCross.cpp}, the
-main file is an example using this new cross section in the multiple
-energy mode.
+In this example construct a new cross section object to be used by
+nuSQuIDS instead of the default one.
+Every cross section must be a class of {\ttf NeutrinoCrossSections}
+and implement at least two member functions:
+{\ttf SingleDifferentialCrossSection} and {\ttf TotalCrossSection}.
 
-The new derived class {\ttf
-  NeutrinoDISCrossSectionsFromTablesExtended} its just the same class
-as {\ttf NeutrinoDISCrossSectionsFromTables} but returning zero for
-the Total and differential cross sections when the energy is lower
-than the lowest energy in the tables.
 
-Here we define the constructor, the {\ttf TotalCrossSection} and {\ttf SingleDifferentialCrossSection}
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-  
-  class NeutrinoDISCrossSectionsFromTablesExtended : public NeutrinoDISCrossSectionsFromTables {
+  class LinearCrossSections : public NeutrinoCrossSections {
+    private:
+    const squids::Const units;
+    const double GF = 1.16639e-23; // eV^-2
+    const double mp = 938.272e6; // proton mass eV
+    const double CC_to_NC; // proportion of CC to NC which goes from 0 to 1.
     public :
-    NeutrinoDISCrossSectionsFromTablesExtended():NeutrinoDISCrossSectionsFromTables(){}
+    LinearCrossSections(double CC_to_NC):CC_to_NC(CC_to_NC){assert( CC_to_NC <= 1.0  && CC_to_NC >= 0.0 );}
+    LinearCrossSections():LinearCrossSections(0.5){}
     double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
     double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
-  };
+  };  
  
 \end{lstlisting}
 
-The implementation file is just.
-\begin{lstlisting}[frame=leftline, numbers =
+In this example we use a toy total cross section that scales linearly with
+the neutrino energy and the corresponding differential cross sections
+linear in the outgoing neutrino energy; see implementation in {\ttf
+  exCross.cpp}. We also allow to change the proportion charge to
+neutral current at the construction of the object.
+
+
+We construct two cross section objects: one with only charge current  interactions
+{\ttf ncs\_cc} and another with only neutral current {\ttf
+  ncs\_nc}. Then we construct the corresponding nuSQuIDS objects {\ttf nus\_cc} and {\ttf nus\_nc}.
+We also disable neutrino oscillations in this example by means of the
+option {\ttf Set\_IncludeOscillations(false)}.
+
+\begin{lstlisting}[frame=leftline, numbers =  
   left,breaklines=true,label = ex:sin1]
-  double NeutrinoDISCrossSectionsFromTablesExtended::TotalCrossSection(
-  double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-    if (not (flavor == electron or flavor == muon or flavor == tau))
-      return 0.0;
-    if (Enu < Emin)
-      return std::numeric_limits<double>::min();
-    else
-      return NeutrinoDISCrossSectionsFromTables::TotalCrossSection(Enu, flavor, neutype, current);
-  }
-  
-  double NeutrinoDISCrossSectionsFromTablesExtended::SingleDifferentialCrossSection(double
-  E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-    if (not (flavor == electron or flavor == muon or flavor == tau))
-      return 0.0;
-    if (E1 < Emin || E2<Emin)
-      return std::numeric_limits<double>::min();
-    else
-      return NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(E1, E2, flavor, neutype, current);
-  }
- 
+  std::shared_ptr<NeutrinoCrossSections> ncs_cc=std::make_shared<LinearCrossSections>(0.0);
+  std::shared_ptr<NeutrinoCrossSections> ncs_nc=std::make_shared<LinearCrossSections>(1.0);
+
+  nuSQUIDS nus_cc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_cc);
+  nus_cc.Set_IncludeOscillations(false);
+  nuSQUIDS nus_nc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_nc);
+  nus_nc.Set_IncludeOscillations(false);
 \end{lstlisting}
 
-In order to use that in the main function we construct the new cross
-section object and construct the nusquids using that.
 
-\begin{lstlisting}[frame=leftline, numbers =
-  left,breaklines=true,label = ex:sin1]
-  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<NeutrinoDISCrossSectionsFromTablesExtended>();
-  nuSQUIDS nus(Emin,Emax,200,numneu,neutrino,true,true,ncs);
-\end{lstlisting}
-
+We can see the final to initial flux ratios for both cases in fig~\ref{fig:crossext}.
 
 \begin{figure}[h!]
   \label{fig:crossext}
   \centering
   \includegraphics[width=0.7\textwidth]{fig/crossext.eps} 
-  \caption{New low energy extended cross sections example} 
+  \caption{Final to initial flux ratio as a function of the logarithm
+    of the neutrino energy for the example toy cross sections with
+    only charged current and only neutral current.} 
 \end{figure}
 
 
