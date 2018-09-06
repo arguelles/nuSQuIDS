@@ -1370,37 +1370,39 @@ This enforces the order of the set functions calls.
 
 \subsection{Atmospheric Mode: Standard \textnormal{({\ttf
       examples/Atm\_default})}}
+\label{sec:atmexample}
 In this example we show how to use the atmospheric mode. This mode is
-a compact way to treat a set of nuSQUIDS objects distributed in zenith that
-allows us to solve the problem of propagating the full, energy and
-zenith dependent, atmospheric neutrino flux trough the earth.
+a compact way to treat a set of nuSQUIDS objects distributed in
+zenith.
+This allows us to propagate the energy-zenith dependent atmospheric
+neutrino flux thought the Earth.
 
-First we construct the nuSQUIDSAtm object. The paremeters we are
-setting is the range of cosine of the zenith angle from $-1$ to $0.2$
-and in energies from $10GeV$ to $1e6GeV$, we chose 40 nodes in zenith.
-After setting the zenith array the rest of the arguments are the same
-as the basic nuSQUIDS object.
+First, we construct the nuSQUIDSAtm object. The parameters of the
+constructors are the list of cosine of the zenith angle values ({\ttf
+  linspace(czmin,czmax,40)}) and the following arguments as the
+multiple energy constructor.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-
   double Emin=1.e1*units.GeV;
   double Emax=1.e6*units.GeV;
   double czmin=-1;
   double czmax=0;
 
   nuSQUIDSAtm<> nus_atm(linspace(czmin,czmax,40),logspace(Emin,Emax,100),numneu,both,interactions);
-
 \end{lstlisting}
 
-In this case we need to set the initial state also depending on
-zenith. We fill the multi-dimensional array with the initial state of the
+In this case the initial state is marray of rank four with double values.  
+The first index is for the zenith, the second for the energy, the
+third for particle type (neutrino or antineutrino), and the last one
+for the neutrino flavor.
+
+In this example we fill the multi-dimensional array with the initial state of the
 system where the function {\ttf flux\_function} would be the corresponding
 atmospheric flux.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   marray<double,4> inistate{nus_atm.GetNumCos(),nus_atm.GetNumE(),2,numneu};
   std::fill(inistate.begin(),inistate.end(),0);
   for ( int ci = 0 ; ci < nus_atm.GetNumCos(); ci++){
@@ -1412,27 +1414,24 @@ atmospheric flux.
       }
     }
   }
-
   nus_atm.Set_initial_state(inistate,flavor);
-
 \end{lstlisting}
 
-To evolve the full state we call
+To evolve the full state we call as always {\ttf EvolveState}. 
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
 nus_atm.EvolveState();
 \end{lstlisting}
 
-Finally we save the flux in a text file. The
+Finally, we evaluate as print the flux in a file. The
 atmospheric mode has an interpolation implemented that allows to
-evaluate the flux at any flavor, energy, and zenith. See \ref{sec:atm}
+evaluate the flux at any flavor, energy, and cosine-zenith. See \ref{sec:atm}
 for more details.
-\ref{sec:atm}.
+
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   int Nen=700;
   int Ncz=100;
   double lEmin=log10(Emin);
@@ -1450,38 +1449,29 @@ for more details.
     }
     file << std::endl;
   }
-
 \end{lstlisting}
 
 
-\subsection{Atmospheric Mode: BSM \textnormal{({\ttf examples/Atm\_BSM})}}
+\subsection{Atmospheric mode: BSM \textnormal{({\ttf examples/Atm\_BSM})}}
+\label{sec:atmBSM}
+The atmospheric mode is implemented such  that it can be used with any
+nuSQUIDS derived class. In this example we use the atmospheric mode
+with the NSI nuSQUIDS extension shown in the NSI example~\ref{sec:NSI}.
 
-The Atmospheric mode is done in a way that can be used not only with
-the basic nuSQUIDS class but also with derived classes. In this
-example we use the atmospheric mode but with the NSI nuSQUIDS
-extension shown in the NSI example.
-
-In the folder we add the {\ttf NSI.h} file, this file is exactly the
-same as in the NSI example, and the main file is essentially the same as
-the atmospheric default mode example with the following changes.
+In the folder we include a copy of the NSI header file {\ttf NSI.h}.
+The main file is essentially the same as the atmospheric default mode
+example with the following changes.
+The class type template argument is the nuSQuIDS derived class. The
+constructor takes list of cosine zenith angle values and then the
+derived class constructor arguments. 
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
-
   double epsilon_mutau=1e-2;
-  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(czmin,czmax,40,epsilon_mutau,Emin,Emax,100,numneu,both,true,true);
-
+  nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(linspace(czmin,czmax,40),epsilon_mutau,logspace(Emin,Emax,100),numneu,both,true);
 \end{lstlisting}
 
-notice that in this example the arguments are always, first the zenith
-arguments {\ttf czmin, czmax, 40} and second the arguments of the
-nuSQUIDS derive object, in this case for the NSI {\ttf
-  epsilon\_mutau,Emin,Emax,100,numneu,both,true,true}. This structure
-will hold for any derive nuSQUIDS class.
-
-
-
-\section{Performance, and precision}
+\section{Performance and precision}
 \label{sec:performance} 
 
 \section{Test suite}
