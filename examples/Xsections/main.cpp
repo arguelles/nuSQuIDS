@@ -53,14 +53,14 @@ int main()
   //(6). Energy logarithmic scale? 
   //(7). Scattering non coherent interactions. 
   //(8). neutrino cross section object.
-  std::shared_ptr<NeutrinoCrossSections> ncs=std::make_shared<LinearCrossSections>(0.0);
-  std::shared_ptr<NeutrinoCrossSections> ncs_more_nc=std::make_shared<LinearCrossSections>(1.0);
+  std::shared_ptr<NeutrinoCrossSections> ncs_cc=std::make_shared<LinearCrossSections>(0.0);
+  std::shared_ptr<NeutrinoCrossSections> ncs_nc=std::make_shared<LinearCrossSections>(1.0);
 
-  nuSQUIDS nus(logspace(Emin,Emax,200),numneu,neutrino,true,ncs);
-  nus.Set_IncludeOscillations(false);
-  nuSQUIDS nus_more_nc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_more_nc);
-  nus_more_nc.Set_IncludeOscillations(false);
-  
+  nuSQUIDS nus_cc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_cc);
+  nus_cc.Set_IncludeOscillations(false);
+  nuSQUIDS nus_nc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_nc);
+  nus_nc.Set_IncludeOscillations(false);
+
   //Here we define the trajectory that the particle follows and the object for more examples
   // of how construct a track and object look body_track example.
   //zenith angle, neutrinos crossing the earth
@@ -70,28 +70,28 @@ int main()
   //Definition of the track, in encodes the trajectory inside the body, here is declared with the zenith angle.
   std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
   //We set this in the nusSQuID object.
-  nus.Set_Body(earth_atm);
-  nus.Set_Track(track_atm);
+  nus_cc.Set_Body(earth_atm);
+  nus_cc.Set_Track(track_atm);
 
-  nus_more_nc.Set_Body(earth_atm);
-  nus_more_nc.Set_Track(track_atm);
+  nus_nc.Set_Body(earth_atm);
+  nus_nc.Set_Track(track_atm);
 
   //Setting the numerical precision of gsl integrator.
-  nus.Set_rel_error(1.0e-8);
-  nus.Set_abs_error(1.0e-8);
-  nus.Set_GSL_step(gsl_odeiv2_step_rk4);
+  nus_cc.Set_rel_error(1.0e-8);
+  nus_cc.Set_abs_error(1.0e-8);
+  nus_cc.Set_GSL_step(gsl_odeiv2_step_rk4);
 
-  nus_more_nc.Set_rel_error(1.0e-8);
-  nus_more_nc.Set_abs_error(1.0e-8);
-  nus_more_nc.Set_GSL_step(gsl_odeiv2_step_rk4);
+  nus_nc.Set_rel_error(1.0e-8);
+  nus_nc.Set_abs_error(1.0e-8);
+  nus_nc.Set_GSL_step(gsl_odeiv2_step_rk4);
 
   //Set true the progress bar during the evolution.
-  nus.Set_ProgressBar(true);
-  nus_more_nc.Set_ProgressBar(true);
+  nus_cc.Set_ProgressBar(true);
+  nus_nc.Set_ProgressBar(true);
 
   //Construct the initial state
   //E_range is an array that contains all the energies.
-  marray<double,1> E_range = nus.GetERange();
+  marray<double,1> E_range = nus_cc.GetERange();
   //Array that contains the initial state of the system, fist component is energy and second every one of the flavors
   marray<double,2> inistate{E_range.size(),numneu};
   double N0 = 1.0e18;
@@ -103,12 +103,12 @@ int main()
   }
 
   //Set the initial state in nuSQuIDS object
-  nus.Set_initial_state(inistate,flavor);
-  nus_more_nc.Set_initial_state(inistate,flavor);
+  nus_cc.Set_initial_state(inistate,flavor);
+  nus_nc.Set_initial_state(inistate,flavor);
 
   //Propagate the neutrinos in the earth for the path defined in path
-  nus.EvolveState();
-  nus_more_nc.EvolveState();
+  nus_cc.EvolveState();
+  nus_nc.EvolveState();
 
   //In this part we will save the values in a txt file to be able to plot or manipulate later.
   //Notice that this is not going to have all the information about the quantum evolution, for that 
@@ -126,8 +126,8 @@ int main()
     double E=pow(10.0,lE)*units.GeV;
     file << lE << " " << E << " ";
     for(int fl=0; fl<numneu; fl++){
-      file << " " <<  nus.EvalFlavor(fl, E) << " " <<  nus.EvalFlavor(fl, E)/(N0*pow(E,-2));
-      file << " " <<  nus_more_nc.EvalFlavor(fl, E) << " " <<  nus_more_nc.EvalFlavor(fl, E)/(N0*pow(E,-2));
+      file << " " <<  nus_cc.EvalFlavor(fl, E) << " " <<  nus_cc.EvalFlavor(fl, E)/(N0*pow(E,-2));
+      file << " " <<  nus_nc.EvalFlavor(fl, E) << " " <<  nus_nc.EvalFlavor(fl, E)/(N0*pow(E,-2));
     }
     file << std::endl;
   }
