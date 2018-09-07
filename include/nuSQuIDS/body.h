@@ -273,10 +273,10 @@ class VariableDensity: public Body{
   public:
     /// \brief Constructor.
     /// @param x Vector containing position nodes in cm.
-    /// @param rho Density, in g/cm^3, at each of the nodes.
+    /// @param density Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
-    VariableDensity(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    VariableDensity(std::vector<double> x,std::vector<double> density,std::vector<double> ye);
     /// \brief Destructor.
     ~VariableDensity();
 
@@ -699,7 +699,7 @@ class EarthAtm: public Body{
         /// \brief Construct trajectory.
         /// @param x current position [eV^-1].
         /// @param phi Zenith angle in radians.
-        Track(double x_,double phi):Track(phi){x=x_;};
+        Track(double x_,double phi):Track(phi){x=x_; assert(x >= 0 && x <= L);};
         /// \brief Construct trajectory.
         /// @param phi Zenith angle in radians.
         Track(double phi);
