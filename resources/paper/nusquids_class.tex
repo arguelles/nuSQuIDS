@@ -1,96 +1,156 @@
 \subsection{nuSQUIDS}
 
-This object is an specialization of the {\ttf SQUIDS} class \citep{SQUIDS} that implements the
-differential equations as described in Sec. \ref{sec:theory}. In particular, it is used to specify the propagation {\ttf Body} and its associated {\ttf Track}. Moreover it uses the {\ttf NeutrinoCrossSections} and {\ttf TauDecaySpectra} in order to evaluate the neutrino cross sections and $\tau$ decay spectra; the latter is only used then {\it $\tau$} regeneration is enabled. Furthermore, it enables the user to modify the neutrino oscillation parameters as well as the differential equation numerical precision. Finally, it also has the capability to create and read HDF5 files that store the program results and configuration.
+This object is an specialization of the {\ttf SQUIDS} class~\citep{SQUIDS} that implements the
+differential equations as described in Sec.~\ref{sec:theory}. In
+particular, it is used to specify the propagation {\ttf Body} and its
+associated {\ttf Track}. Moreover, it uses the {\ttf
+  NeutrinoCrossSections} and {\ttf TauDecaySpectra} in order to
+evaluate the neutrino cross sections and $\tau$ decay spectra; the
+latter is only used then {\it $\tau$} regeneration is
+enabled. Furthermore, it enables the user to modify the neutrino
+oscillation parameters as well as the differential equation numerical
+precision. Finally, it also has the capability to create and read HDF5
+files that store the program results and configuration. 
 
 \subsubsection{Constructors}
 
 \begin{itemize}
-\item Standard void constructor.
+\item Default constructor.
   \begin{lstlisting}
     nuSQUIDS();
   \end{lstlisting}
+\item Move constructor.
+  \begin{lstlisting}
+    nuSQUIDS(nuSQUIDS&&);
+  \end{lstlisting}
+Constructs a {\ttf nuSQUIDS} object from an r-value reference.  
 \item Single energy mode constructor.
   \begin{lstlisting}
     nuSQUIDS(unsigned int numneu, NeutrinoType NT);
   \end{lstlisting}
 This constructor and initialization function initializes {\ttfamily nuSQUIDS} in the
-{\it single energy mode}. {\ttfamily numneu} specifies the number of neutrino flavors which can go from 2 to 6, while {\ttfamily NT} can be set to  {\ttfamily neutrino} or {\ttfamily antineutrino}.
+single energy mode. {\ttfamily numneu} specifies the number of
+neutrino flavors which can go from two to six, while {\ttfamily NT} can be
+set to  {\ttfamily neutrino} or {\ttfamily antineutrino}. 
 \item Multiple energy mode constructor.
   \begin{lstlisting}
-    nuSQUIDS(double Emin,double Emax,unsigned int Esize,
-             unsigned int numneu,NeutrinoType NT,
-             bool elogscale=true,bool iinteraction=false, 
-             std::shared_ptr<NeutrinoCrossSections> ncs=nullptr);
+    nuSQUIDS(marray<double,1> E_vector,
+    unsigned int numneu,NeutrinoType NT = both,
+    bool iinteraction = false,
+    std::shared_ptr<NeutrinoCrossSections> ncs = nullptr)
   \end{lstlisting}
 This constructor and initialization function initializes {\ttfamily nuSQUIDS} in the
-{\it multiple energy mode}. {\ttfamily Emin}, {\ttfamily Emax} and {\ttfamily Esize} define the energy nodes to be used spaced in either {\ttfamily logaritmic} or {\ttfamily linear} scales depending on the value of {\ttfamily elogscale (true or false)}. Furthermore, {\ttfamily numneu} specifies the number of neutrino flavors which can go from 2 to 6, while {\ttfamily NT} can be set to  {\ttfamily neutrino} or {\ttfamily antineutrino} or {\ttfamily both}. Furthermore, {\ttfamily iinteraction} toggles the neutrino interactions {\ttfamily on (true)} and {\ttfamily off (false)}. Finally, when neutrino interactions are enable {\ttfamily nfs} will be use to calculate neutrino interaction cross sections; if none is supplied {\ttfamily NeutrinoDISCrossSectionsFromTables} instance will be created and used.
+multiple energy mode. We need to provide the following arguments:
+list of neutrino energy nodes
+(\lstinline[columns=fixed,breaklines=true]{E_vector}),
+number of neutrino flavors ({\ttf numneu}), neutrino or
+anti-neutrino type ({\ttf NT}),  non-coherent scattering
+interactions ({\ttf iinteraction}), and neutrino cross section object
+pointer ({\ttf ncs}).  
+
 \item Constructing from a $\nu$SQuIDS-HDF5 file
   \begin{lstlisting}
-    nuSQUIDS(std::string hdf5_filename, std::string grp="/");
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/",
+    std::shared_ptr<InteractionStructure> int_struct = nullptr)
   \end{lstlisting}
 This constructor initializes {\ttfamily nuSQUIDS} from a 
-previously generated $\nu$SQuIDS-HDF5 file. The result {\ttfamily nuSQUIDS} 
-object will be given in {\it single} or {\it multiple} energy mode depending on the 
-HDF5 file configuration. {\ttfamily filepath} must specify the full path of the HDF5 file. Furthermore,
-{\ttfamily grp} specifies the location on the HDF5 file structure where the object will be saved; by default
-it will be saved on the {\ttfamily root} of the HDF5 file.
-\item Constructing from a $\nu$SQuIDS-HDF5 object
-  \begin{lstlisting}
-    nuSQUIDS(nuSQUIDS&&);
-  \end{lstlisting}
-Construct a {\ttfamily nuSQUIDS} object from an existing {\ttfamily nuSQUIDS} object through
-the {\ttfamily move} operator.
+previously generated $\nu$SQuIDS HDF5 file. {\ttfamily filepath} must
+specify the full path of the HDF5 file, {\ttfamily grp} specifies the
+location on the HDF5 file structure where the object will be saved (by default
+it will be saved on the {\ttfamily root} of the HDF5 file), and {\ttf
+  int\_struct} can specify the cross-section object instead of loading it from
+the file.
 \end{itemize}
 
 \subsubsection{Functions}
 
-Brief description of the {\ttfamily nuSQUIDS} public functions.\\
-
-\underline{\textbf{Functions to evaluate flavor and mass composition}}
+\textbf{Functions to evaluate flavor and mass composition}
 
 \begin{itemize}
 \item Flavor composition evaluator (single energy mode)
   \begin{lstlisting}
-    double EvalFlavor(unsigned int flv) const
+    double EvalFlavor(unsigned int flv) const;
   \end{lstlisting}
-Returns the content a given neutrino flavor specified by {\ttfamily flv} ({\ttfamily 0 = $e$}, {\ttfamily 1 = $\mu$}, {\ttfamily 2 = $\tau$}, ...). This function can only be use in the {\it single energy mode}.
+Returns the content a given neutrino flavor specified by {\ttfamily
+  flv} ({\ttfamily 0 = $e$}, {\ttfamily 1 = $\mu$}, {\ttfamily 2 =
+  $\tau$}, ...). This function can only be use in the single energy
+mode. 
 \item Flavor composition evaluator (multiple energy mode)
   \begin{lstlisting}
     double EvalFlavorAtNode(unsigned int flv, unsigned int ie, 
                             unsigned int rho=0) const;
     double EvalFlavor(unsigned int flv, double enu,
                       unsigned int rho=0) const;
+    double EvalFlavor(unsigned int flv,double enu,
+                      unsigned int rho,double scale,
+                      std::vector<bool>& avr) const;
   \end{lstlisting}
-{\ttfamily EvalFlavorAtNode} returns the content a given neutrino flavor specified by {\ttfamily flv} ({\ttfamily 0 = $e$}, {\ttfamily 1 = $\mu$}, {\ttfamily 2 = $\tau$, ...}) at an energy node {\ttfamily ie}. Furthermore, {\ttfamily EvalFlavor} returns the approximate content of a given flavor for a specific neutrino energy  {\ttf enu} by interpolating in the interaction basis. In each function, when considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
+{\ttfamily EvalFlavorAtNode} returns the content a given neutrino
+flavor specified by {\ttfamily flv} ({\ttfamily 0 = $e$}, {\ttfamily 1
+  = $\mu$}, {\ttfamily 2 = $\tau$, ...}) at an energy node {\ttfamily
+  ie}. Furthermore, {\ttfamily EvalFlavor} returns the approximate
+content of a given flavor for a specific neutrino energy  {\ttf enu}
+by interpolating in the interaction basis. In each function, when
+considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles
+between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
+The last function gets two additional arguments: an {\ttf scale} such
+that all $H_0$ induced oscillation frequencies larger than this scale
+will be averaged and a vector of booleans which entries will be set to
+true if the corresponding oscillations frequencies have been averaged
+out.
+
+
 \item Mass composition evaluator (single energy mode)
   \begin{lstlisting}
     double EvalMass(unsigned int eig) const;
   \end{lstlisting}
-Returns the content a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}). This function can only be use in the {\it single energy mode}.
+Returns the content a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}). This function can only be use in the  single energy mode.
 \item Mass composition evaluator (multiple energy mode)
   \begin{lstlisting}
     double EvalMassAtNode(unsigned int eig, unsigned int ie,
                            unsigned int rho=0) const;
     double EvalMass(unsigned int eig, double enu,
                      unsigned int rho=0) const;
+    double EvalMass(unsigned int flv,double enu,
+                    unsigned int rho,double scale,
+                    std::vector<bool>& avr) const;
   \end{lstlisting}
-{\ttfamily EvalMassAtNode} returns the content a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}) at an energy node {\ttfamily ie}. Furthermore, {\ttfamily EvalMass} returns the approximate content of a given mass eigenstate for a specific neutrino energy  {\ttf enu} by interpolating in the interaction basis. In each function, when considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
-\item Evolve $\nu$ state
+{\ttfamily EvalMassAtNode} returns the content a given neutrino mass
+eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$},
+{\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}) at an energy
+node {\ttfamily ie}. Furthermore, {\ttfamily EvalMass} returns the
+approximate content of a given mass eigenstate for a specific neutrino
+energy  {\ttf enu} by interpolating in the interaction basis. In each
+function, when considering  {\ttf  NT = both}, the parameter {\ttf
+  rho} toggles between {\ttf neutrino (0)} and {\ttf antineutrino
+  (1)}. The last function gets two additional arguments: an {\ttf scale} such
+that all $H_0$ induced oscillation frequencies larger than this scale
+will be averaged and a vector of booleans which entries will be set to
+true if the corresponding oscillations frequencies have been averaged
+out.
+\end{itemize}
+
+\textbf{Functions to evolve the neutrino ensemble}
+
+\begin{itemize}
+\item Evolve state
   \begin{lstlisting}
     void EvolveState();
   \end{lstlisting}
-Once the neutrino propagation problem has been setup this function evolves the neutrino state (in either {\it single} energy or {\it multiple} energy mode) from its initial position to its final position specify by the {\ttfamily track}.
+Once the neutrino propagation problem has been setup this function
+evolves the neutrino state from its initial position to its final
+position specified by the {\ttfamily track}. 
 \end{itemize}
 
-\underline{\textbf{Functions obtain properties of the nuSQUIDS object as well as the state}}
+\textbf{Functions obtain properties of the nuSQUIDS object as well as the state}
 
 \begin{itemize}
 \item Get energy nodes values
   \begin{lstlisting}
     marray<double,1> GetERange() const;
   \end{lstlisting}
-  Returns a one dimensional array containing the energy nodes positions given in natural units, i.e. eV.
+  Returns a one dimensional array containing the energy nodes
+  positions given in eV. 
   \item Get number of energy nodes
   \begin{lstlisting}
     unsigned int GetNumE() const;
@@ -103,16 +163,15 @@ Once the neutrino propagation problem has been setup this function evolves the n
   Returns the number of neutrino flavors.
   \item Get Hamiltonian at current position
   \begin{lstlisting}
-    SU_vector GetHamiltonian(std::shared_ptr<Track> track,
-                             unsigned int ie, 
+    SU_vector GetHamiltonian(unsigned int ie, 
                              unsigned int rho = 0);
   \end{lstlisting}
-  Returns the {\ttf SU\_vector} that represents the (anti)neutrino Hamiltonian at a position
-  specified by a {\ttf Track} and at a given energy node {\ttf ie}. Furthermore, {\ttf rho} 
-  specifies whether the neutrino or antineutrino Hamiltonian is returned.
+  Returns the {\ttf SU\_vector} that represents the (anti)neutrino
+  Hamiltonian at the current position, at a given energy node {\ttf
+    ie}, and  {\ttf rho} specifies whether the neutrino or antineutrino.
   \item Get the state of the system 
   \begin{lstlisting}
-    SU_vector GetState(unsigned int ie, unsigned int rho = 0) const;
+      const squids::SU_vector& GetState(unsigned int ei,unsigned int rho = 0) const;
   \end{lstlisting}
   Returns the {\ttf SU\_vector} that represents the (anti)neutrino state at given energy node {\ttf ie}. 
   Furthermore, {\tt rho} specifies whether the neutrino or antineutrino state is returned.

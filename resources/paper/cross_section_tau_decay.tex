@@ -117,28 +117,23 @@ Fro the {\ttf HDF5} cross-section format see table.~ref{tab:cross}
   \label{fig:nusquids_cross_section_hdf5}
 \end{figure}
 
-To construct the cross-section objects for the different options the
-constructors can be called as follows.
-
-\begin{lstlisting}
-  NeutrinoDISCrossSectionsFromTables csh5('./csms.h5');
-  NeutrinoDISCrossSectionsFromTables cstxt('./nusigma_');
-\end{lstlisting}
 
 \subsubsection{Constructors}
 
 \begin{itemize}
-\item Standard void constructor.
+\item Default constructor.
   \begin{lstlisting}
     NeutrinoDISCrossSectionsFromTables();
   \end{lstlisting}
-This constructor calculate and store the cross sections on
-logarithmically spaced energy nodes between {\ttfamily Emin} and
-{\ttfamily Emax} with {\ttfamily Esize} divisions. For the total cross
-section {\ttfamily gsl\_spline} \citep{gough2009gnu} is used to
-interpolate in neutrino energy, where as for the differential cross
-section simple bilinear interpolation has been implemented. 
+  This constructor load the defaults {\ttf csms.h5} file
 \end{itemize}
+
+The files to load the different cross-sections can be specified
+explicitly as follows. 
+\begin{lstlisting}
+  NeutrinoDISCrossSectionsFromTables csh5('./csms.h5');
+  NeutrinoDISCrossSectionsFromTables cstxt('./nusigma_');
+\end{lstlisting}
 
 \subsubsection{Functions}
 
@@ -148,28 +143,34 @@ section simple bilinear interpolation has been implemented.
     double TotalCrossSection(double Enu,
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
-  \end{lstlisting}
-     Returns the total cross section at an energy {\ttf Enu}, neutrino flavor {\ttf flavor}, neutrino type: {\ttf neutype}, and
-     {\ttf current} can be either {\ttf NC} or {\ttf CC} for neutral or charge current DIS cross sections.        
+      \end{lstlisting}
+      
+  Returns the total cross section at an energy {\ttf Enu} in eV, neutrino
+  flavor {\ttf flavor}, neutrino type: {\ttf neutype}, and {\ttf
+    current} can be either {\ttf NC} or {\ttf CC} for neutral or
+  charge current DIS cross sections. Using a linear interpolation in
+  the logarithm of the neutrino energy. 
+     
 \item Single differential cross sections              
   \begin{lstlisting}
     double SingleDifferentialCrossSection(double E1, double E2,
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-      Function that given an incident neutrino energy ({\ttf E1}) in GeV an outgoing lepton energy ({\ttf E2}), as well as neutrino flavor,
-       type, and process, returns the differential cross section with respect to the outgoing lepton energy in ${\rm cm}^2 {\rm GeV}^{-1}$. 
-       In order to calculate the cross section from the table linear interpolation in log of the parameters is used.
+      Function that given an incident neutrino energy ({\ttf E1}) in eV an outgoing lepton energy ({\ttf E2}), as well as neutrino flavor,
+       type, and process, returns the differential cross section with
+       respect to the outgoing lepton energy in ${\rm cm}^2/{\rm
+         GeV}$. Using a bi-linear interpolation. 
 \end{itemize}
 
 \subsubsection{GlashowResonanceCrossSection}
 
-This class implements the formulas in \citep{GhandiReno} in order to calculate the electron antineutrino Glashow resonance cross section contribution.
+This class implements the formulas in~\citep{GhandiReno} in order to calculate the electron antineutrino Glashow resonance cross section contribution.
 
 \subsubsection{Constructors}
 
 \begin{itemize}
-\item Standard void constructor.
+\item Default constructor.
   \begin{lstlisting}
     GlashowResonanceCrossSection();
   \end{lstlisting}
@@ -184,7 +185,7 @@ This class implements the formulas in \citep{GhandiReno} in order to calculate t
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-     Returns the total cross section at an energy {\ttf Enu}, neutrino flavor {\ttf flavor}, and neutrino type: {\ttf neutype}.
+     Returns the total cross section in cm$^2$ at an energy {\ttf Enu} in eV, neutrino flavor {\ttf flavor}, and neutrino type: {\ttf neutype}.
      If the flavor is not electron and neutrino type is not antineutrino it returns zero.              
 \item Single differential cross sections
   \begin{lstlisting}
@@ -192,69 +193,84 @@ This class implements the formulas in \citep{GhandiReno} in order to calculate t
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-  Returns the single differential cross section at an energy {\ttf Enu}, neutrino flavor {\ttf flavor}, 
-  and neutrino type: {\ttf neutype}.
+  Returns the single differential cross section in cm$^2$/GeV for an incident neutrinos energy ({\ttf
+    E1}) in eV an outgoing neutrinos energy ({\ttf E2}) in eV, neutrino flavor ({\ttf flavor}), 
+  and neutrino type ({\ttf neutype}).
      If the flavor is not electron and neutrino type is not antineutrino it returns zero.   
       
 \end{itemize}
 
 \subsection{TauDecaySpectra}
 
-This object can be query to obtain $\tau$ decay physics into leptons and hadrons. The formulas implemented in this class were taken from \citep{Dutta:2000jv} and are implemented in natural units. It is only used when $\tau$-regeneration is activated and it returns the following quantities on the energy nodes
+This object can be query to obtain $\tau$ decay physics into leptons
+and hadrons. The formulas implemented in this class were taken
+from~\citep{Dutta:2000jv}. It is only used when $\tau$-regeneration is
+activated and it returns the following quantities on the energy
+nodes, 
 \begin{equation}
-\frac{dN^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu} , \frac{d\bar{N}^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu} 
+\frac{dN^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu} {\rm ~~and~~ }
+\frac{d\bar{N}^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu},
 \label{eqn:tau-dist}
 \end{equation}
-i.e. the neutrino and antineutrino spectral distributions from $\tau$ leptonic and hadronic decay modes.
+i.e. the neutrino and antineutrino spectral distributions from $\tau$
+leptonic and hadronic decay modes. 
 
 \subsubsection{Constructors and Initializing Functions}
 
 \begin{itemize}
-\item Standard void constructor.
+\item Default constructor.
   \begin{lstlisting}
     TauDecaySpectra();
   \end{lstlisting}
 \item Constructor and initializing function with memory reservation.
   \begin{lstlisting}
-    TauDecaySpectra(marray<double,1> E\_range);
-    void Init(marray<double,1> E\_range);
+    TauDecaySpectra(marray<double,1> E_range);
+    void Init(marray<double,1> E_range);
   \end{lstlisting}
-This constructor and initialization functions calculate and store the $\tau$ decay spectra on nodes specified by the one dimensional array {\ttf E\_range}.
+This constructor and initialization functions calculate and store the
+$\tau$ decay spectra on nodes specified by the one dimensional array
+{\ttf E\_range} in eV.
 \end{itemize}
 
 \subsubsection{Functions}
 
-The following functions assume that the $\tau$ and $\bar{\tau}$ have the same decay distribution.
+The following functions assume that the $\tau$ and $\bar{\tau}$ have
+the same decay distribution. 
 
 \begin{itemize}
-\item (Anti)Neutrino spectra with respect to neutrino energy
+\item (Anti)Neutrino spectra with respect to neutrino energy.
   \begin{lstlisting}
     double dNdEnu_All(int e1,int e2) const;
   \end{lstlisting}
-  Returns neutrino decay spectra evaluated between energy nodes  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons or hadrons.
+  Returns neutrino decay spectra evaluated from energy node
+  {\ttfamily e1} to energy node {\ttfamily e2} when $\tau$ decays into
+  leptons or hadrons.  
   \begin{lstlisting}
     double dNdEnu_Lep(int e1,int e2) const;
   \end{lstlisting}
-  Returns neutrino decay spectra evaluated between energy nodes  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons.
-\item (Anti)Neutrino spectra with respect to $\tau$ energy
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons. 
+\item (Anti)Neutrino spectra with respect to $\tau$ energy.
   \begin{lstlisting}
     double dNdEle_All(int e1,int e2) const;
   \end{lstlisting}
-    Returns neutrino decay spectra evaluated between energy nodes  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons or hadrons. with
-    respect to the initial $\tau$ energy.
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons
+  or hadrons with respect to the initial $\tau$ energy.
   \begin{lstlisting}
     double dNdEle_Lep(int e1,int e2) const;
   \end{lstlisting}
-     Returns neutrino decay spectra evaluated between energy nodes  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons. with
-    respect to the initial $\tau$ energy.
-\item Get the $\tau$ branching ratio to leptons
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into
+  leptons with respect to the initial $\tau$ energy.
+\item Get the $\tau$ branching ratio to leptons.
   \begin{lstlisting}
     double GetTauToLeptonBranchingRatio() const;
   \end{lstlisting}
-    Returns the $\tau$ branching ratio to leptons.
-\item Get the $\tau$ branching ratio to hadrons
+  Returns the $\tau$ branching ratio to leptons.
+\item Get the $\tau$ branching ratio to hadrons.
   \begin{lstlisting}
     double GetTauToHadronBranchingRatio() const;
   \end{lstlisting}
-    Returns the $\tau$ branching ratio to hadrons.
+  Returns the $\tau$ branching ratio to hadrons.
 \end{itemize}
