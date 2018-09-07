@@ -1,11 +1,10 @@
 \subsection{NeutrinoCrossSections}
 
-This object can be query to obtain neutrino cross section information used when considering neutrino interactions. The {\ttf NeutrinoCrossSections} is a base abstract class, which the user has to subclass and implement the relevant neutrino cross section for the problem at hand. In particular, one has to specify the total cross section per flavor and per interaction (charge and neutral current) as well as the single differential cross sections with respect to the outgoing lepton energy.
+This object can be query to obtain neutrino cross section information used when considering neutrino non-coherent interactions. The {\ttf NeutrinoCrossSections} is a base abstract class, which the user has to subclass and implement the relevant neutrino cross section for the problem at hand. The user must specify the total cross section per flavor and per interaction type (charge and neutral current), as well as the single differential cross sections with respect to the outgoing neutrino energy.
 
 \subsubsection{NeutrinoCrossSections}
 
-{\underline Public Members}
-
+First, we define enumerations to lable flavor, neutrino, and interaction type.
 \begin{itemize}
   \item {\ttf NeutrinoFlavor}
   \begin{lstlisting}
@@ -25,7 +24,7 @@ This object can be query to obtain neutrino cross section information used when 
   and Glashow resonant interactions ({\ttf GR}).
 \end{itemize}
 
-{\underline Public Abstract Virtual Functions}
+Second we list the public abstract virtual functions.
 
 \begin{itemize}
   \item Total cross section
@@ -34,7 +33,9 @@ This object can be query to obtain neutrino cross section information used when 
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-  Abstract virtual function that given a neutrino energy ({\ttf Enu}) in GeV, as well as neutrino flavor, type, and process, returns the 
+  Abstract virtual function that given a neutrino energy ({\ttf Enu})
+  in eV, neutrino flavor ({\ttf flavor}, neutrino type ({\ttf
+    neutype}), and interaction type ({\ttf current}) returns the 
   total cross section in ${\rm cm}^2$.
   \item Single differential cross section
   \begin{lstlisting}
@@ -42,8 +43,12 @@ This object can be query to obtain neutrino cross section information used when 
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-  Abstract virtual function that given an incident neutrino energy ({\ttf E1}) in GeV an outgoing lepton
-   energy ({\ttf E2}), as well as neutrino flavor, type, and process, returns the differential cross section with respect to the outgoing lepton energy in ${\rm cm}^2 {\rm GeV}^{-1}$.
+  Abstract virtual function that given an incident neutrino energy
+  ({\ttf E1}) in eV, outgoing neutrino energy ({\ttf E2}) in eV,
+  neutrino flavor ({\ttf flavor}, neutrino type ({\ttf neutype}), and
+  interaction type ({\ttf current}) returns the differential cross
+  section with respect to the outgoing neutrino energy in ${\rm
+    cm}^2{\rm GeV}^{-1}$.  
   \item Double differential cross section
   \begin{lstlisting}
     virtual double DoubleDifferentialCrossSection(double E, 
@@ -51,13 +56,54 @@ This object can be query to obtain neutrino cross section information used when 
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-  Virtual function such that given the neutrino energy, Bjorken-x, and y ought to return the double
-   differential cross section. Its implementation is no required to run {\ttf nuSQUIDS} and by default when evaluated, unless overwritten, it will throw an error.
+  Virtual function such that given the neutrino energy ({\ttf E}),
+  Bjorken-x ({\ttf x}), and y ({\ttf y}) should to return the double
+   differential cross section. Its implementation is no required to
+   run {\ttf nuSQUIDS} and by default when evaluated, unless
+   overwritten, it will throw an error. 
 \end{itemize}
 
 \subsubsection{NeutrinoDISCrossSectionsFromTables}
 
-This class uses precalculated deep inelastic cross section tables which are provided by {\ttf nuSQuIDS} The given cross sections are a pQCD calculation using the CTEQ6 parton distributions functions on an isoscalar target . They are valid for $E_\nu > O({\rm 10 GeV}) $. Furthermore, the $\nu_e$ and $\nu_\mu$ cross sections are the same, where as the $\nu_\tau$ includes the $\tau$ final state mass suppression; the same holds true for the respective antineutrino cross sections. The cross sections are loaded from tables included in {\ttfamily nuSQUIDS/data/generate/}. 
+This class uses precalculated deep inelastic cross section tables
+which are provided by {\ttf nuSQuIDS}.
+In the code two different cross-sections are available:
+{\ttf csms.h5} is a perturbative QCD next-to-leading order calculation using the HERA
+parton distributions functions~\cite{Chekanov:2002pv} on an iso-scalar
+target~\cite{CooperSarkar:2011pa}. {\ttf nusigma}~\cite{nusigma} is a first order QCD
+calculation using the {\ttf CTEQ6} parton distribution functions on an
+iso-scalar target. In the {\ttf csms} calculation the mass of the tau
+is neglected thus the neutrinos cross section is the same for all
+flavors; this is not the case for the {\ttf nusigma} calculation.
+Both correspond to deep inelastic scattering which is the dominant
+neutrino interaction with nucleons above $O({\rm 10~GeV})$. 
+
+The cross sections are loaded from tables included in
+{\ttfamily nuSQUIDS/data/xsections/}.
+The cross section object can be constructed from a single {\ttf hdf5}
+file that contains both single and total cross sections or by a set of
+four text files. The four text files have to end with the suffixes
+{\ttf dsde\_CC.dat}, {\ttf dsde\_NC.dat}, {\ttf sigma\_CC.dat}, and
+{\ttf sigma\_NC.dat}.
+The text files contain the following columns:
+For the total cross-sections neutrino energy in GeV, electron neutrino 
+cross sections, electron anti-neutrino cross-section, muon neutrino
+cross sections, muon anti-neutrino cross-section, tau neutrino
+cross sections, and tau anti-neutrino cross-section. All the cross
+section values are in cm$^2$.
+For the single differential cross-sections incident neutrino energy in
+GeV, outgoing neutrino energy in GeV, electron neutrino 
+differential cross sections, differential electron anti-neutrino cross-section, muon neutrino
+differential cross sections, muon anti-neutrino differential cross-section, tau neutrino
+differential cross sections, and tau anti-neutrino differential
+cross-section. All the differential cross-section values are in cm$^2$GeV$^{-1}$.
+
+
+\begin{lstlisting}
+  NeutrinoDISCrossSectionsFromTables x(``./csms.h5'')
+  NeutrinoDISCrossSectionsFromTables x(``./nusigma_'')
+\end{lstlisting}
+
 
 \subsubsection{Constructors}
 
@@ -66,7 +112,12 @@ This class uses precalculated deep inelastic cross section tables which are prov
   \begin{lstlisting}
     NeutrinoDISCrossSectionsFromTables();
   \end{lstlisting}
-This constructor calculate and store the cross sections on logarithmically spaced energy nodes between {\ttfamily Emin} and {\ttfamily Emax} with {\ttfamily Esize} divisions. For the total cross section {\ttfamily gsl\_spline} \citep{gough2009gnu} is used to interpolate in neutrino energy, where as for the differential cross section simple bilinear interpolation has been implemented.
+This constructor calculate and store the cross sections on
+logarithmically spaced energy nodes between {\ttfamily Emin} and
+{\ttfamily Emax} with {\ttfamily Esize} divisions. For the total cross
+section {\ttfamily gsl\_spline} \citep{gough2009gnu} is used to
+interpolate in neutrino energy, where as for the differential cross
+section simple bilinear interpolation has been implemented. 
 \end{itemize}
 
 \subsubsection{Functions}
