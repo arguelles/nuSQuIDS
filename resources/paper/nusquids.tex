@@ -1591,10 +1591,10 @@ description of what they test.
 $\nu$-SQuIDS is a {\ttf C++} code built using the SQuIDS
 framework \citep{SQUIDS}. It is designed to propagate neutrinos
 through media while taking into account flavor oscillations and
-noncoherent interactions. 
+non-coherent interactions. 
 
 In order to allow the user to compute simple oscillation probabilities
-for a single energy the code has a simplified mode.
+for a single neutrino energy the code has a simplified mode.
 In this mode the neutrino energy is fixed and only coherent interactions
 are treated.
 In this case, only Eq. \eqref{eq:schrodinger} is relevant for the
@@ -1616,20 +1616,20 @@ instantaneous $\tau$ decay.
 
 While the {\ttf nuSQuIDS} class implements all the necessary
 differential equations, one must also specify the neutrino propagation
-environment, propagation trajectory, and the relevant cross sections.  
+environment, propagation trajectory, and the relevant cross-sections.  
 When interactions are considered the {\ttf nuSQuIDS} instance
 will automatically construct appropriate {\ttf NeutrinoCrossSections}
 and {\ttf TauDecaySpectra} objects to evaluate cross sections and
-$\tau$ physics respectively, however, the user can also replace these
-default versions if desired. On the other hand, the user must
+$\tau$ physics respectively. However, the user can also replace these
+default versions if desired. The user must
 explicitly specify the neutrino propagation medium and trajectory
 through relevant specialization of {\ttf Body} and {\ttf Body::Track}.
 Several implementations of {\ttf Body} and {\ttf Track} covering
 common physics cases are supplied with the library. 
 
 Finally, {\ttf nuSQuIDS} provides a set functions to evaluate the
-neutrino ensemble flavor and mass composition as well as the
-capability to store the system state in an HDF5 \citep{folk1999hdf5}
+neutrino ensemble flavor and mass composition. The code also have the
+capability to store the system state in an HDF5~\citep{folk1999hdf5}
 file for later use.
 
 % TODO: mention setting mixing parameters used for propagation
