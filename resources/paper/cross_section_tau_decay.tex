@@ -9,7 +9,7 @@ First, we define enumerations to lable flavor, neutrino, and interaction type.
   \item {\ttf NeutrinoFlavor}
   \begin{lstlisting}
     enum NeutrinoFlavor {electron = 0, muon = 1, tau = 2, sterile = 3};
-  \end{lstlisting}
+ \end{lstlisting}
   Enumeration that is used to specify the neutrino flavor.
   \item {\ttf NeutrinoType}
   \begin{lstlisting}
@@ -96,30 +96,34 @@ GeV, outgoing neutrino energy in GeV, electron neutrino
 differential cross sections, differential electron anti-neutrino cross-section, muon neutrino
 differential cross sections, muon anti-neutrino differential cross-section, tau neutrino
 differential cross sections, and tau anti-neutrino differential
-cross-section. All the differential cross-section values are in cm$^2$GeV$^{-1}$.
+cross-section. All the differential cross-section values are in cm$^2/$GeV.
+Fro the {\ttf HDF5} cross-section format see table.~ref{tab:cross}
 
 \begin{figure}[htb]
-\centering
-\begin{tikzpicture}[%
-  grow via three points={one child at (0.5,-0.7) and
-  two children at (0.5,-0.7) and (0.5,-1.4)},
-  edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
-  \node {{\ttf csms.h5}}
+  \label{cross}
+  \centering
+  \begin{tikzpicture}[%
+    grow via three points={one child at (0.5,-0.7) and
+      two children at (0.5,-0.7) and (0.5,-1.4)},
+    edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+    \node {{\ttf csms.h5}}
     child { node [label=right:{Neutrino charge current differential spectrum (${\rm cm^2/GeV}$).}]  {\ttf dsDE\_CC}}
     child { node [label=right:{Neutrino neutral current differential spectrum (${\rm cm^2/GeV}$).}] {\ttf dsDE\_NC}}
-    child { node [label=right:{Total neutral current neutrino cross section (${\rm cm^2}$).}]{\ttf s\_CC}}
-    child { node [label=right:{Total charge current neutrino cross section (${\rm cm^2}$).}] {\ttf s\_NC}}
+    child { node [label=right:{Total charge current neutrino cross section (${\rm cm^2}$).}]{\ttf s\_CC}}
+    child { node [label=right:{Total neutral current neutrino cross section (${\rm cm^2}$).}] {\ttf s\_NC}}
     ;
-\end{tikzpicture}
-\caption{HDF5 cross section format.}
-\label{fig:nusquids_cross_section_hdf5}
+  \end{tikzpicture}
+  \caption{HDF5 cross section format.}
+  \label{fig:nusquids_cross_section_hdf5}
 \end{figure}
 
-\begin{lstlisting}
-  NeutrinoDISCrossSectionsFromTables x(``./csms.h5'')
-  NeutrinoDISCrossSectionsFromTables x(``./nusigma_'')
-\end{lstlisting}
+To construct the cross-section objects for the different options the
+constructors can be called as follows.
 
+\begin{lstlisting}
+  NeutrinoDISCrossSectionsFromTables csh5('./csms.h5');
+  NeutrinoDISCrossSectionsFromTables cstxt('./nusigma_');
+\end{lstlisting}
 
 \subsubsection{Constructors}
 
