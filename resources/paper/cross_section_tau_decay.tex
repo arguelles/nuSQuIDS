@@ -98,6 +98,22 @@ differential cross sections, muon anti-neutrino differential cross-section, tau 
 differential cross sections, and tau anti-neutrino differential
 cross-section. All the differential cross-section values are in cm$^2$GeV$^{-1}$.
 
+\begin{figure}[htb]
+\centering
+\begin{tikzpicture}[%
+  grow via three points={one child at (0.5,-0.7) and
+  two children at (0.5,-0.7) and (0.5,-1.4)},
+  edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+  \node {{\ttf csms.h5}}
+    child { node [label=right:{Neutrino charge current differential spectrum (${\rm cm^2/GeV}$).}]  {\ttf dsDE\_CC}}
+    child { node [label=right:{Neutrino neutral current differential spectrum (${\rm cm^2/GeV}$).}] {\ttf dsDE\_NC}}
+    child { node [label=right:{Total neutral current neutrino cross section (${\rm cm^2}$).}]{\ttf s\_CC}}
+    child { node [label=right:{Total charge current neutrino cross section (${\rm cm^2}$).}] {\ttf s\_NC}}
+    ;
+\end{tikzpicture}
+\caption{HDF5 cross section format.}
+\label{fig:nusquids_cross_section_hdf5}
+\end{figure}
 
 \begin{lstlisting}
   NeutrinoDISCrossSectionsFromTables x(``./csms.h5'')

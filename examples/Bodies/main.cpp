@@ -217,6 +217,7 @@ int main()
 
   std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>(0.1,0.1,0.1);
   std::shared_ptr<EarthMod::Track> earth_mod_track = std::make_shared<EarthMod::Track>(phi);
+  earth_mod->Mod(0.1,0.1,0.1);
   
   nus.Set_Body(earth_mod);
   nus.Set_Track(earth_mod_track);
@@ -253,7 +254,6 @@ int main()
     }
     std::cout << std::endl;
   }
-
 
   /*
    * Example 4

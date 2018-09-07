@@ -4,7 +4,6 @@
 
 namespace nusquids{
 
-
 static squids::Const param;
 
 /*
@@ -13,14 +12,13 @@ static squids::Const param;
 ----------------------------------------------------------------------
 */
 
-
   void EarthMod::Mod(double frho1, double frho2, double frho3){
     marray<double,2> earth_model = quickread(static_cast<std::string>(EARTH_MODEL_LOCATION));
     size_t arraysize = earth_model.extent(0);
     earth_radius.resize(arraysize);
     earth_density.resize(arraysize);
     earth_ye.resize(arraysize);
-    
+
     for (unsigned int i=0; i < arraysize;i++){
       double d=1;
       if(i<39)
@@ -29,7 +27,7 @@ static squids::Const param;
         d=frho2;
       else if (i>=110 && i<201)
         d=frho3;
-      
+
       earth_radius[i] = earth_model[i][0];
       earth_density[i] = d*earth_model[i][1];
       earth_ye[i] = earth_model[i][2];
