@@ -147,9 +147,19 @@ ensure_found(){
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
 	if [ "$TMP_FOUND" ]; then return; fi
 	#not found
-	echo "Error: $PKG not installed or not registered with pkg-config" 1>&2
 	lowername=`echo $PKG | tr [A-Z] [a-z]`
-	echo "Please specify location using the --with-"$lowername" flag" 1>&2
+
+	TMP_INCDIR=`eval echo "$"${VAR_PREFIX}_INCDIR`
+	TMP_LIBDIR=`eval echo "$"${VAR_PREFIX}_LIBDIR`
+	if [ "$TMP_INCDIR" -a "$TMP_LIBDIR" ]; then
+		echo "Error: $PKG not found in $TMP_INCDIR and $TMP_LIBDIR or with pkg-config" 1>&2
+		echo "Please verify that the path given to --with-${lowername} is correct" 1>&2
+	else
+		echo "Error: $PKG not installed or not registered with pkg-config" 1>&2
+		echo "Please specify location using the --with-${lowername} flag" 1>&2
+	fi
+	unset TMP_INCDIR
+	unset TMP_LIBDIR
 	exit 1
 }
 
