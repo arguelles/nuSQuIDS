@@ -22,8 +22,8 @@
  ******************************************************************************/
 
 
-#ifndef __TOOLS_H
-#define __TOOLS_H
+#ifndef NUSQUIDS_TOOLS_H
+#define NUSQUIDS_TOOLS_H
 
 #include "version.h"
 #include <algorithm>

@@ -22,8 +22,8 @@
  ******************************************************************************/
 
 
-#ifndef __nuSQUID_H
-#define __nuSQUID_H
+#ifndef NUSQUIDS_nuSQUIDS_H
+#define NUSQUIDS_nuSQUIDS_H
 
 #if __cplusplus < 201103L
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11

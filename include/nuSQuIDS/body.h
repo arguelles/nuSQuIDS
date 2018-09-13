@@ -22,8 +22,8 @@
  ******************************************************************************/
 
 
-#ifndef __BODY_H
-#define __BODY_H
+#ifndef NUSQUIDS_BODY_H
+#define NUSQUIDS_BODY_H
 
 #if __cplusplus < 201103L
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
