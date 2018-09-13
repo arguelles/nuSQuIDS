@@ -22,8 +22,8 @@
  ******************************************************************************/
 
 
-#ifndef __TAUDECAY_H
-#define __TAUDECAY_H
+#ifndef NUSQUIDS_TAUDECAY_H
+#define NUSQUIDS_TAUDECAY_H
 
 #include "version.h"
 #include "tools.h"

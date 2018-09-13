@@ -713,8 +713,8 @@ fi
 nusqpath=`pwd`
 
 echo '
-#ifndef __GLOBAL_H
-#define __GLOBAL_H
+#ifndef NUSQUIDS_GLOBAL_H
+#define NUSQUIDS_GLOBAL_H
 ' > include/nuSQuIDS/global.h
 echo "
 #define XSECTION_LOCATION \"$nusqpath/data/xsections/\"

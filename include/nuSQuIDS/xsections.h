@@ -22,8 +22,8 @@
  ******************************************************************************/
 
 
-#ifndef __XSECTIONS_H
-#define __XSECTIONS_H
+#ifndef NUSQUIDS_XSECTIONS_H
+#define NUSQUIDS_XSECTIONS_H
 
 #include "version.h"
 #include "tools.h"
