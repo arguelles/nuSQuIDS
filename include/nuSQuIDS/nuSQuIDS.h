@@ -766,6 +766,18 @@ protected:
 
     /// \brief Returns the mass composition in the single energy mode.
     /// @param flv Neutrino flavor.
+    /// @param scale scale upon which oscillations will be averaged out
+    /// @param avg bool array which is true for all scales that were averaged out
+    double EvalMass(unsigned int flv, double scale, std::vector<bool>& avr) const;
+
+    /// \brief Returns the flavor composition in the single energy mode.
+    /// @param flv Neutrino flavor.
+    /// @param scale scale upon which oscillations will be averaged out
+    /// @param avg bool array which is true for all scales that were averaged out
+    double EvalFlavor(unsigned int flv, double scale, std::vector<bool>& avr) const;
+
+    /// \brief Returns the mass composition in the single energy mode.
+    /// @param flv Neutrino flavor.
     double EvalMass(unsigned int flv) const;
 
     /// \brief Returns the flavor composition in the single energy mode.
@@ -775,7 +787,7 @@ protected:
     /// \brief Toggles tau regeneration on and off.
     /// \param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt);
-  
+
     /// \brief Toggles the effect of the Glashow resonance on and off.
     /// \param opt If \c true resonant W^- production will be considered.
     void Set_GlashowResonance(bool opt);
