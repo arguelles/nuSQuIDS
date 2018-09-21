@@ -432,7 +432,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Atm_BSM/atm_bsm\
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
-						examples/Constant_density_layers/const_dens_layers
+						examples/Constant_density_layers/const_dens_layers \
+						examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
 
 CXXFLAGS= -std=c++11
 
@@ -484,6 +485,10 @@ build/%.o : src/%.cpp
 examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/main.cpp
 	@echo Compiling single energy example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio : $(DYN_PRODUCT) examples/Astrophysical_neutrino_flavor_ratio/main.cpp
+	@echo Compiling astrophysical neutrino flavor ratio example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Astrophysical_neutrino_flavor_ratio/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
 	@echo Compiling multiple energy example

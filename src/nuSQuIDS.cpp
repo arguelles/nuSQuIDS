@@ -1293,6 +1293,42 @@ double nuSQUIDS::EvalFlavorAtNode(unsigned int flv, unsigned int ei, unsigned in
   return GetExpectationValue(b1_proj[rho][flv], rho, ei);
 }
 
+double nuSQUIDS::EvalMass(unsigned int flv, double scale, std::vector<bool>& avr) const{
+  if(state == NULL)
+    throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
+  if(not inusquids)
+    throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
+  if ( not ienergy )
+    throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
+  if( ne != 1 )
+    throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
+  if( flv >= nsun )
+    throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
+
+  if(basis == mass)
+    return b0_proj[flv]*state[0].rho[0];
+  return GetExpectationValue(b0_proj[flv], 0, 0, scale, avr);
+}
+
+double nuSQUIDS::EvalFlavor(unsigned int flv, double scale, std::vector<bool>& avr) const{
+  if(state == NULL)
+    throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
+  if(not inusquids)
+    throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
+  if ( not ienergy )
+    throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
+  if( ne != 1 )
+    throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
+  if( flv >= nsun )
+    throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
+
+  if(basis == mass)
+    return b1_proj[0][flv]*state[0].rho[0];
+  if(use_full_hamiltonian_for_projector_evolution)
+    return evol_b1_proj[0][flv][0]*state[0].rho[0];
+  return GetExpectationValue(b1_proj[0][flv], 0, 0, scale, avr);
+}
+
 double nuSQUIDS::EvalMass(unsigned int flv) const{
   if(state == NULL)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
