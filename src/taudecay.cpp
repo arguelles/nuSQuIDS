@@ -119,8 +119,8 @@ TauDecaySpectra::TauDecaySpectra(){}
 
 void TauDecaySpectra::SetParameters(){
   TauPolarization = -1.0;
-  RPion = SQR(0.07856),RRho = SQR(0.43335),RA1 = SQR(0.70913);
-  BrLepton = 0.18,BrPion = 0.12,BrRho = 0.26,BrRA1 = 0.13,BrHadron = 0.13;
+  RPion = SQR(0.07856); RRho = SQR(0.43335); RA1 = SQR(0.70913);
+  BrLepton = 0.18; BrPion = 0.12; BrRho = 0.26; BrRA1 = 0.13; BrHadron = 0.13;
 }
 
 TauDecaySpectra::TauDecaySpectra(marray<double,1> E_range){

@@ -32,7 +32,7 @@ struct H5File{
   H5File(const H5File&)=delete;
   H5File(H5File&& h):id(h.id){ h.id=0; }
   H5File& operator=(const H5File&)=delete;
-  H5File& operator=(H5File&& h){ std::swap(id,h.id); return *this;};
+  H5File& operator=(H5File&& h){ std::swap(id,h.id); return *this;}
   ~H5File(){ H5Fclose(id); }
   operator hid_t() const{ return(id); }
 };

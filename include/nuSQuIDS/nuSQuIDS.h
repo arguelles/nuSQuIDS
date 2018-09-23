@@ -126,7 +126,7 @@ protected:
   
     ///aligned arrays should be aligned to at least this many items
     constexpr static size_t preferred_alignment=4;
-    constexpr static size_t log2(size_t n) {
+    constexpr static uint8_t log2(size_t n) {
       return((n>1) ? log2(n/2)+1 : 0);
     }
     constexpr static size_t round_up_to_aligned(size_t n){
@@ -179,7 +179,7 @@ protected:
         marray<double,2,aligned_allocator<double>> dNdE_tau_lep;
         /// \brief Default constructor
         InteractionStructure():
-        dNdE_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_CC(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
         dNdE_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         dNdE_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
@@ -1499,7 +1499,7 @@ class nuSQUIDSAtm {
 
       // read the zenith range dimension
       hsize_t costhdims[1];
-      H5LTget_dataset_info(group_id, "zenith_angles", costhdims, NULL, NULL);
+      H5LTget_dataset_info(group_id, "zenith_angles", costhdims, nullptr, nullptr);
 
       double data[costhdims[0]];
       H5LTread_dataset_double(group_id, "zenith_angles", data);
@@ -1508,7 +1508,7 @@ class nuSQUIDSAtm {
         costh_array[i] = data[i];
 
       hsize_t energydims[1];
-      H5LTget_dataset_info(group_id, "energy_range", energydims, NULL, NULL);
+      H5LTget_dataset_info(group_id, "energy_range", energydims, nullptr, nullptr);
 
       double enu_data[energydims[0]];
       H5LTread_dataset_double(group_id, "energy_range", enu_data);

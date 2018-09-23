@@ -227,7 +227,7 @@ void readArrayH5(hid_t container, const std::string& name, marray<T,Rank,Alloc>&
                                  +std::to_string(raw_dim)+" but target array has rank "
                                  +std::to_string(Rank));
     std::array<hsize_t,Rank> extents;
-    H5Sget_simple_extent_dims(dSpace,&extents[0],NULL);
+    H5Sget_simple_extent_dims(dSpace,&extents[0],nullptr);
     H5Sclose(dSpace);
     data.resize(extents);
     herr_t err=H5Dread(array_id,dType,H5S_ALL,H5S_ALL,H5P_DEFAULT,&data.front());
@@ -240,7 +240,7 @@ template<typename T>
 void addH5Attribute(hid_t object, std::string name, const T& contents){
     hid_t dtype=h5Datatype<T>::type();
     hsize_t dim=1;
-    hid_t dataspace_id=H5Screate_simple(1, &dim, NULL);
+    hid_t dataspace_id=H5Screate_simple(1, &dim, nullptr);
     hid_t attribute_id=H5Acreate(object,name.c_str(),dtype,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
     H5Awrite(attribute_id,dtype,&contents);
     H5Aclose(attribute_id);
