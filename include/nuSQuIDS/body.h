@@ -119,7 +119,7 @@ class Body{
           }
           /// Should be implemented by derived classes to append their
           /// additional parameters to TrackParams
-          virtual void FillDerivedParams(std::vector<double>& TrackParams) const{};
+          virtual void FillDerivedParams(std::vector<double>& TrackParams) const{}
     };
     /// \brief Return the density at a given trajectory object.
     virtual double density(const Track&) const {return 0.0;}
@@ -161,11 +161,11 @@ class Vacuum: public Body {
         /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){}
         /// \brief Rectilinear trajectory from xini to xend.
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double xini,double xend):Track(xini,xini,xend){};
+        Track(double xini,double xend):Track(xini,xini,xend){}
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
@@ -217,11 +217,11 @@ class ConstantDensity: public Body{
         /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){}
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
-        Track(double xini,double xend):Track(xini,xini,xend){};
+        Track(double xini,double xend):Track(xini,xini,xend){}
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
@@ -293,11 +293,11 @@ class VariableDensity: public Body{
         /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){}
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
-        Track(double xini,double xend):Track(xini,xini,xend){};
+        Track(double xini,double xend):Track(xini,xini,xend){}
         /// \brief Construct a trajectory of distance xend.
         /// @param xend Final position in eV^-1.
         /// \details In this case initial position is assumed 0.
@@ -390,12 +390,12 @@ class Earth: public Body{
         /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double x,double xini,double xend,double baseline):Body::Track(x,xini,xend),baseline(baseline){};
+        Track(double x,double xini,double xend,double baseline):Body::Track(x,xini,xend),baseline(baseline){}
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
         /// @param baseline Baseline of experiment in eV^-1.
-        Track(double xini,double xend,double baseline):Track(xini,xini,xend,baseline){};
+        Track(double xini,double xend,double baseline):Track(xini,xini,xend,baseline){}
         /// \brief Construct a trajectory where the neutrino travels a distance given by baseline.
         /// @param baseline Traverse distance in eV^-1.
         /// \details In this case \c xini = 0, \c xend = \c baseline.
@@ -484,12 +484,12 @@ class Sun: public Body{
         /// @param x current position [eV^-1].
         /// @param xini Initial position [eV^-1].
         /// @param xend Final position [eV^-1].
-        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){}
         /// \brief Construct a trajectory between an initial position and final position.
         /// @param xini Initial position in eV^-1.
         /// @param xend Final position in eV^-1.
         /// \details The trajectory is measured from the sun center which is set to zero.
-        Track(double xini,double xend):Track(xini,xini,xend){};
+        Track(double xini,double xend):Track(xini,xini,xend){}
         /// \brief Construct a trajectory from the sun center to a final position.
         /// @param xend Final position in eV^-1.
         /// \details The trajectory is measured from the sun center which is set to zero.
@@ -585,7 +585,7 @@ class SunASnu: public Body{
         /// @param b_impact impact parameter in eV^-1.
         /// \details The trajectory baseline is determined by the impact parameter and starts
         /// at \c xini, and ends when the neutrino exits the sun.
-        Track(double xini,double b_impact):Track(xini,xini,b_impact){};
+        Track(double xini,double b_impact):Track(xini,xini,b_impact){}
         /// \brief Construct a for a given impact parameter.
         /// @param b_impact_ impact parameter in eV^-1.
         /// \details The trajectory baseline is determined by the impact parameter and starts
@@ -697,7 +697,7 @@ class EarthAtm: public Body{
         Track();
       public :
         /// \brief Construct trajectory.
-        /// @param x current position [eV^-1].
+        /// @param x_ current position [eV^-1].
         /// @param phi Zenith angle in radians.
         Track(double x_,double phi):Track(phi){x=x_; assert(x >= 0 && x <= L);};
         /// \brief Construct trajectory.

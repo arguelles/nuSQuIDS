@@ -305,7 +305,7 @@ void addH5Attribute<std::string>(hid_t object, std::string name, const std::stri
     hid_t strtype = H5Tcopy(H5T_C_S1);
     H5Tset_size(strtype, contents.size());
     hsize_t dim=1;
-    hid_t dataspace_id = H5Screate_simple(1, &dim, NULL);
+    hid_t dataspace_id = H5Screate_simple(1, &dim, nullptr);
     hid_t attribute_id = H5Acreate(object,name.c_str(),strtype,dataspace_id,H5P_DEFAULT,H5P_DEFAULT);
     H5Awrite(attribute_id, strtype, &contents[0]);
     H5Aclose(attribute_id);

@@ -122,22 +122,15 @@ class TauDecaySpectra{
     /// energy for leptonic channels.
     marray<double,2> dNdEle_Lep_tbl;
 
-    /// \brief Minimum energy in the array.
-    double Emin;
-    /// \brief Maximum energy in the array.
-    double Emax;
-    /// \brief Number of energy divisions.
-    unsigned int div;
   public :
     /// \brief Detault empty constructor.
     TauDecaySpectra();
     /// \brief Constructor for a given energy range.
-    /// \brief Initializer for a given energy range.
-    /// @param Energy nodes where the cross section will be calculated. [eV]
+    /// @param E_range Energy nodes where the cross section will be calculated. [eV]
     /// \details Construct the tables on a rectangular grid given by E_range X E_range.
     TauDecaySpectra(marray<double,1> E_range);
     /// \brief Initializer for a given energy range.
-    /// @param Energy nodes where the cross section will be calculated. [eV]
+    /// @param E_range Energy nodes where the cross section will be calculated. [eV]
     /// \details Construct the tables on a rectangular grid given by E_range X E_range.
     void Init(marray<double,1> E_range);
 

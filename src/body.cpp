@@ -44,6 +44,8 @@ void addStringAttribute(hid_t object, std::string name, std::string contents){
   H5Sclose(dataspace_id);
 }
 
+//not currently used
+/*
 std::string readStringAttribute(hid_t object, std::string name){
   hid_t strtype = H5Tcopy(H5T_C_S1);
   hid_t attribute_id = H5Aopen(object,name.c_str(),H5P_DEFAULT);
@@ -57,6 +59,7 @@ std::string readStringAttribute(hid_t object, std::string name){
   H5Aclose(attribute_id);
   return std::string(char_out.get());
 }
+*/
 
 void addDoubleAttribute(hid_t object, std::string name, double value){
   hsize_t dim=1;

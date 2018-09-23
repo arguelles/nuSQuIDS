@@ -998,11 +998,11 @@ void nuSQUIDS::Set_PositivityConstrainStep(double step){
 
 void nuSQUIDS::EvolveState(){
   // check for BODY and TRACK status
-  if ( body == NULL )
+  if ( body == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::BODY is a NULL pointer");
   if (not ibody )
     throw std::runtime_error("nuSQUIDS::Error::Body not initialized");
-  if ( track == NULL )
+  if ( track == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::TRACK is a NULL pointer");
   if ( not itrack )
     throw std::runtime_error("nuSQUIDS::Error::TRACK is not initialized");
@@ -1294,7 +1294,7 @@ double nuSQUIDS::EvalFlavorAtNode(unsigned int flv, unsigned int ei, unsigned in
 }
 
 double nuSQUIDS::EvalMass(unsigned int flv, double scale, std::vector<bool>& avr) const{
-  if(state == NULL)
+  if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
@@ -1311,7 +1311,7 @@ double nuSQUIDS::EvalMass(unsigned int flv, double scale, std::vector<bool>& avr
 }
 
 double nuSQUIDS::EvalFlavor(unsigned int flv, double scale, std::vector<bool>& avr) const{
-  if(state == NULL)
+  if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
@@ -1330,7 +1330,7 @@ double nuSQUIDS::EvalFlavor(unsigned int flv, double scale, std::vector<bool>& a
 }
 
 double nuSQUIDS::EvalMass(unsigned int flv) const{
-  if(state == NULL)
+  if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
@@ -1347,7 +1347,7 @@ double nuSQUIDS::EvalMass(unsigned int flv) const{
 }
 
 double nuSQUIDS::EvalFlavor(unsigned int flv) const{
-  if(state == NULL)
+  if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS not initialized.");
@@ -1452,11 +1452,11 @@ squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
 }
 
 void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc, bool overwrite) const{
-  if ( body == NULL )
+  if ( body == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::BODY is a NULL pointer");
   if (not ibody )
     throw std::runtime_error("nuSQUIDS::Error::Body not initialized");
-  if ( track == NULL )
+  if ( track == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::TRACK is a NULL pointer");
   if ( not itrack )
     throw std::runtime_error("nuSQUIDS::Error::TRACK is not initialized");
@@ -1469,7 +1469,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     save_cross_section = false;
 
   // this lines supress HDF5 error messages
-  H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  H5Eset_auto (H5E_DEFAULT,nullptr, nullptr);
 
   hid_t file_id,group_id,root_id;
   hid_t dset_id;
@@ -1505,10 +1505,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
 
   // write mixing parameters
   hsize_t dim[1]{1};
-  H5LTmake_dataset(group_id,"basic",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(group_id,"mixingangles",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(group_id,"CPphases",1,dim,H5T_NATIVE_DOUBLE,0);
-  H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,0);
+  H5LTmake_dataset(group_id,"basic",1,dim,H5T_NATIVE_DOUBLE,nullptr);
+  H5LTmake_dataset(group_id,"mixingangles",1,dim,H5T_NATIVE_DOUBLE,nullptr);
+  H5LTmake_dataset(group_id,"CPphases",1,dim,H5T_NATIVE_DOUBLE,nullptr);
+  H5LTmake_dataset(group_id,"massdifferences",1,dim,H5T_NATIVE_DOUBLE,nullptr);
 
   H5LTset_attribute_int(group_id, "basic","numneu",(const int*)&numneu, 1);
   int auxint = static_cast<int>(NT);
@@ -1676,7 +1676,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   // give control to the user and temporary restore HDF5 error messages
   //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
   AddToWriteHDF5(user_parameters_id);
-  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
 
   // close root group
   H5Gclose ( root_id );
@@ -1775,12 +1775,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
     hsize_t dimbody[1];
     H5LTget_attribute_uint(group_id,"body","ID",&body_id);
 
-    H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+    H5LTget_dataset_info(group_id,"body", dimbody,nullptr,nullptr);
     double body_params[dimbody[0]];
     H5LTread_dataset_double(group_id,"body", body_params);
 
     hsize_t dimtrack[1];
-    H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+    H5LTget_dataset_info(group_id,"track", dimtrack ,nullptr,nullptr);
     std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
     H5LTread_dataset_double(group_id,"track", track_params.get());
 
@@ -1795,7 +1795,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
 
   // reading energy
   hsize_t dims[2];
-  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
+  H5LTget_dataset_info(group_id, "energies", dims, nullptr, nullptr);
 
   ne = static_cast<unsigned int>(dims[0]);
   std::unique_ptr<double[]> energy_data(new double[ne]);
@@ -1856,11 +1856,11 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   EvolveProjectors(squids_time);
 
   // reading state
-  H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"neustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
   H5LTread_dataset_double(group_id,"neustate", neudata.get());
 
-  H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"aneustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> aneudata(new double[dims[0]*dims[1]]);
   H5LTread_dataset_double(group_id,"aneustate", aneudata.get());
 
@@ -1897,7 +1897,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<Int
   hid_t user_parameters_id = H5Gopen(group_id, "user_parameters", H5P_DEFAULT);
   //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
   AddToReadHDF5(user_parameters_id);
-  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
   H5Gclose(user_parameters_id);
 
   // close HDF5 file
@@ -1996,12 +1996,12 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     hsize_t dimbody[1];
     H5LTget_attribute_uint(group_id,"body","ID",&body_id);
 
-    H5LTget_dataset_info(group_id,"body", dimbody,NULL,NULL);
+    H5LTget_dataset_info(group_id,"body",dimbody,nullptr,nullptr);
     double body_params[dimbody[0]];
     H5LTread_dataset_double(group_id,"body", body_params);
 
     hsize_t dimtrack[1];
-    H5LTget_dataset_info(group_id,"track", dimtrack ,NULL,NULL);
+    H5LTget_dataset_info(group_id,"track",dimtrack,nullptr,nullptr);
     std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
     H5LTread_dataset_double(group_id,"track", track_params.get());
 
@@ -2017,7 +2017,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
   // reading energy
   hsize_t dims[2];
-  H5LTget_dataset_info(group_id, "energies", dims, NULL, NULL);
+  H5LTget_dataset_info(group_id, "energies", dims, nullptr, nullptr);
 
   ne = static_cast<unsigned int>(dims[0]);
   std::unique_ptr<double[]> energy_data(new double[ne]);
@@ -2077,11 +2077,11 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   EvolveProjectors(squids_time);
 
   // reading state
-  H5LTget_dataset_info(group_id,"neustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"neustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
   H5LTread_dataset_double(group_id,"neustate", neudata.get());
 
-  H5LTget_dataset_info(group_id,"aneustate", dims,NULL,NULL);
+  H5LTget_dataset_info(group_id,"aneustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> aneudata(new double[dims[0]*dims[1]]);
   H5LTread_dataset_double(group_id,"aneustate", aneudata.get());
 
@@ -2114,7 +2114,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     // sigma_CC and sigma_NC
 
     hsize_t XSdim[3];
-    H5LTget_dataset_info(xs_grp,"sigmacc", XSdim,NULL,NULL);
+    H5LTget_dataset_info(xs_grp,"sigmacc", XSdim,nullptr,nullptr);
 
     std::unique_ptr<double[]> xsCC(new double[XSdim[0]*XSdim[1]*XSdim[2]]);
     H5LTread_dataset_double(xs_grp,"sigmacc", xsCC.get());
@@ -2132,7 +2132,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
     // dNdE_CC and dNdE_NC
     hsize_t dXSdim[4];
-    H5LTget_dataset_info(xs_grp,"dNdEcc", dXSdim,NULL,NULL);
+    H5LTget_dataset_info(xs_grp,"dNdEcc", dXSdim,nullptr,nullptr);
 
     std::unique_ptr<double[]> dxsCC(new double[dXSdim[0]*dXSdim[1]*dXSdim[2]*dXSdim[3]]);
     H5LTread_dataset_double(xs_grp,"dNdEcc", dxsCC.get());
@@ -2168,7 +2168,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
     // dNdE_tau_all,dNdE_tau_lep
     hsize_t dNdEtaudim[2];
-    H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,NULL,NULL);
+    H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
     
     std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
     H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
@@ -2197,7 +2197,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   hid_t user_parameters_id = H5Gopen(group_id, "user_parameters", H5P_DEFAULT);
   //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
   AddToReadHDF5(user_parameters_id);
-  //H5Eset_auto (H5E_DEFAULT,NULL, NULL);
+  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
   H5Gclose(user_parameters_id);
 
   // close HDF5 file
@@ -2272,7 +2272,6 @@ void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, 
         {
           std::cerr << "nuSQUIDS::SetBodyTrack : unknown body/track" << std::endl;
           exit(1);
-          break;
         }
     }
 }
@@ -2405,6 +2404,7 @@ E_range(std::move(other.E_range)),
 delE(std::move(other.delE)),
 ncs(std::move(other.ncs)),
 tdc(std::move(other.tdc)),
+NT(other.NT),
 int_struct(std::move(other.int_struct)),
 int_state(std::move(other.int_state)),
 positivization_scale(other.positivization_scale),
@@ -2431,8 +2431,7 @@ iglashow(other.iglashow),
 positivization(other.positivization),
 progressbar(other.progressbar),
 progressbar_count(other.progressbar_count),
-progressbar_loop(other.progressbar_loop),
-NT(other.NT)
+progressbar_loop(other.progressbar_loop)
 {
   other.inusquids=false; //other is no longer usable, since we stole its contents
 }

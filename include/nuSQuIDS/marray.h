@@ -1203,7 +1203,6 @@ public:
 		std::array<size_type,Rank-1> indices;
 		std::fill(indices.begin(),indices.end(),0);
 		size_t dummy_index=0;
-		size_t k=0;
 		for(auto it=begin(), endIt=end(); it!=endIt; it++){
 			s[indices]+=*it;
 			//this is messy
