@@ -731,7 +731,7 @@ double EarthAtm::density(const GenericTrack& track_input) const
   double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
   double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
-  double r = (r2>0 ? sqrt(r) : 0);
+  double r = (r2>0 ? sqrt(r2) : 0);
 
   double rel_r = r/earth_with_atm_radius;
   if ( rel_r < x_radius_min ){
@@ -756,7 +756,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
   double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
-  double r = (r2>0 ? sqrt(r) : 0);
+  double r = (r2>0 ? sqrt(r2) : 0);
 
   double rel_r = r/earth_with_atm_radius;
   if ( rel_r < x_radius_min ){
