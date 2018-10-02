@@ -1379,7 +1379,7 @@ This enforces the order of the set functions calls.
     }
 \end{lstlisting}
 
-\subsection{Decoherence or averaged oscillations \textnormal{({\ttf
+\subsection{Decoherence or averaged oscillations\\ \textnormal{({\ttf
       examples/Astrophysical\_neutrino\_flavor\_ratio})}}
 
 This file demonstrates how to the astrophysical flavo ratio by means
@@ -1779,13 +1779,13 @@ equivalent to the trajectory ($\vec{r}(x)$) and the current position ($x$).
 In the context of the code, the two main virtual functions that the
 user should provide in order to define a non-trivial {\ttf Body} are:
 \begin{itemize}
-\item[$\circ$] 
+\item 
   \begin{lstlisting}
     virtual double density(std::shared_ptr<Track>);
   \end{lstlisting}
 This function returns the density in ${\rm g}/{\rm cm}^3$ for a
 given {\ttf Track} position.
-\item[$\circ$] 
+\item 
   \begin{lstlisting}
     virtual double ye(std::shared_ptr<Track>);
   \end{lstlisting}
@@ -1796,7 +1796,7 @@ In order to allow the user to store the information of the
 object the following members are important,
 
 \begin{itemize}
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     std::vector<double> BodyParams;
   \end{lstlisting}
@@ -1804,7 +1804,7 @@ object the following members are important,
   needed to compute the density and electron fraction from the parameter
   {\ttf x}.
   
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     bool is_constant_density = false;
   \end{lstlisting}  
@@ -1815,47 +1815,50 @@ object the following members are important,
 Other public function of the {\ttf Body} object are,
 
 \begin{itemize}
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     virtual void Serialize(hid_t group) const=0;
   \end{lstlisting}
   This is an abstract function whose argument is an HDF5 location
   where the user should store the body properties.
 
-  \item[$\circ$]  
+  \item  
   \begin{lstlisting}
     static std::shared_ptr<Body> Deserialize(hid_t group);
   \end{lstlisting}
   This is an abstract function whose argument is an HDF5 location
   with the body information to be used for the user to recover the body.
   
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     unsigned int GetId() const {return 0;}
   \end{lstlisting}
   It returns the Id of the body which is hard coded by the user.
 
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     std::string GetName() const {return name;}
   \end{lstlisting}
   It returns the name of the object which is hard coded by the user.
 
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
-    const std::vector<double>& GetBodyParams() const { return BodyParams;}
+    const std::vector<double>& GetBodyParams() const
+    { return BodyParams;}
   \end{lstlisting}
   It returns a constant reference to the vector of parameter that define body. 
   
-  \item[$\circ$]  
+  \item  
   \begin{lstlisting}
-    virtual bool IsConstantDensity() const {return is_constant_density;}
+    virtual bool IsConstantDensity() const
+    {return is_constant_density;}
   \end{lstlisting}
   It returns true or false if its a constant density body.
   
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
-    virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
+    virtual void SetIsConstantDensity(bool icd)
+    {is_constant_density = icd;}
   \end{lstlisting}
   Set true or false the constant density. 
 \end{itemize}
@@ -1867,17 +1870,17 @@ evolution parameter values, by default in units of eV$^{-1}$
 %
 %
 \begin{itemize}
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
   double x;
   \end{lstlisting}
   Current position.
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     double xini;
   \end{lstlisting}
   Initial position.
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     double xend;
   \end{lstlisting}
@@ -1887,67 +1890,70 @@ evolution parameter values, by default in units of eV$^{-1}$
 And the following public functions are provided,
 %
 \begin{itemize}
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
-    Track(double x,double xini, double xend): x(x), xini(xini),xend(xend) {}
+    Track(double x,double xini, double xend):
+    x(x), xini(xini),xend(xend) {}
   \end{lstlisting}
   Constructor where we specify current, initial, and final positions. 
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
-    Track(double xini, double xend): Track(xini,xini,xend) {}
+    Track(double xini, double xend):
+    Track(xini,xini,xend) {}
   \end{lstlisting}
   Constructor where we specify initial and final positions. The
   current position is set to the initial. 
-  \item[$\circ$]  
+  \item  
   \begin{lstlisting}
     virtual void Serialize(hid_t group) const=0;
   \end{lstlisting}
   This is an abstract function whose argument is an HDF5 location
   where the user should store the track properties.
-  \item[$\circ$]  
+  \item  
   \begin{lstlisting}
     static std::shared_ptr<Body::Track> Deserialize(hid_t group);
   \end{lstlisting}
   This is an abstract function whose argument is an HDF5 location
   with the track information to be used for the user to recover the track.
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     void SetX(double y);
   \end{lstlisting}
   Sets the current position along the trajectory.  
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     double GetX() const;
   \end{lstlisting}
   Returns the current value of the evolution parameter {\ttf x}.
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     double GetInitialX() const;
   \end{lstlisting}    
   Returns the initial value of the evolution parameter {\ttf x}.
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     double GetFinalX() const;
   \end{lstlisting}          
   Returns the final value of the evolution parameter {\ttf x}
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     static std::string GetName() {return "BodyTrack";};
   \end{lstlisting}
   Returns the name of the track object hard coded by the user. 
-\item[$\circ$]  
+\item  
   \begin{lstlisting}
     std::vector<double> GetTrackParams() const 
   \end{lstlisting}           
   Returns a vector of doubles that define the trajectory.
-\item[$\circ$] 
+\item 
    \begin{lstlisting}
-    virtual void FillDerivedParams(std::vector<double>& TrackParams) const{};
+     virtual void FillDerivedParams(std::vector<double>& TrackParams)
+     const{};
   \end{lstlisting}           
   Should be implemented by derived classes to append their
   additional parameters to TrackParams
   
-\item[$\circ$] 
+\item 
   \begin{lstlisting}
     void ReverseTrack() 
   \end{lstlisting}
@@ -1967,35 +1973,39 @@ constructors and the functions that are not member of the parent class.
 \subsubsection{Vacuum}
 
 \begin{itemize}
-\item[$\circ$] {\ttf Vacuum}
+\item {\ttf Vacuum}
   \begin{lstlisting}
     Vacuum():Body(){}
   \end{lstlisting}
   Initializes a {\ttf Vacuum} environment. 
-\item[$\circ$] {\ttf Vacuum::Track}
+\item {\ttf Vacuum::Track}
   \begin{lstlisting}
-        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
-        Track(double xini,double xend):Track(xini,xini,xend){};
-        Track(double xend):Track(0.0,xend){}
+    Track(double x,double xini,double xend):
+    Body::Track(x,xini,xend){};
+    Track(double xini,double xend):
+    Track(xini,xini,xend){};
+    Track(double xend):Track(0.0,xend){}
   \end{lstlisting}
   Initialize the corresponding {\ttf Track} setting the current ({\ttf
-  x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+    x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
 \end{itemize}
 
 \subsubsection{ConstantDensity}
 
 \begin{itemize}
-\item[$\circ$] {\ttf ConstantDensity}
+\item {\ttf ConstantDensity}
   \begin{lstlisting}
     ConstantDensity(double density,double ye);
   \end{lstlisting}
   Initializes a {\ttf ConstantDensity} environment with constant
   density ({\ttf density} in ${\rm g}/{\rm cm}^3$) and electron
   fraction ({\ttf ye}).
-\item[$\circ$] {\ttf ConstantDensity::Track}
+\item {\ttf ConstantDensity::Track}
   \begin{lstlisting}
-    Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
-    Track(double xini,double xend):Track(xini,xini,xend){};
+    Track(double x,double xini,double xend):
+    Body::Track(x,xini,xend){};
+    Track(double xini,double xend):
+    Track(xini,xini,xend){};
     Track(double xend):Track(0.0,xend){}
   \end{lstlisting}
   Initialize the corresponding {\ttf Track} setting the current ({\ttf
@@ -2005,16 +2015,19 @@ constructors and the functions that are not member of the parent class.
 \subsubsection{VariableDensity}
 
 \begin{itemize}
-\item[$\circ$] {\ttf VariableDensity}
+\item {\ttf VariableDensity}
   \begin{lstlisting}
-    VariableDensity(std::vector<double> x,std::vector<double> density,
-    std::vector<double> ye);
+    VariableDensity(std::vector<double> x,
+        std::vector<double> density,
+        std::vector<double> ye);
   \end{lstlisting}
   Initializes a {\ttf VariableDensity} environment given three equal size arrays specifying the density and electron fraction at given positions. An object will be created that interpolates using {\ttfamily gsl\_spline} \citep{gough2009gnu} along the {\ttf x} array to get the density and electron fraction as continuous functions.
-  \item[$\circ$] {\ttf VariableDensity::Track}
+  \item {\ttf VariableDensity::Track}
   \begin{lstlisting}
-    Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
-    Track(double xini,double xend):Track(xini,xini,xend){};
+    Track(double x,double xini,double xend):
+    Body::Track(x,xini,xend){};
+    Track(double xini,double xend):
+    Track(xini,xini,xend){};
     Track(double xend):Track(0.0,xend){}
   \end{lstlisting}
   Initialize the corresponding {\ttf Track} setting the current ({\ttf
@@ -2027,7 +2040,7 @@ in the earth form two points in the surface, since the earth in the
 PREM model is assumed to be spherically symmetric the length of the
 path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:tools} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
 \begin{itemize}
-\item[$\circ$] {\ttf Earth}
+\item {\ttf Earth}
   \begin{lstlisting}
     Earth();
   \end{lstlisting}
@@ -2037,7 +2050,8 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
   \end{lstlisting}
   Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm g}/{\rm cm}^3$), and $y_e$ (dimensionless). 
   \begin{lstlisting}
-    Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    Earth(std::vector<double> x,std::vector<double> rho,
+    std::vector<double> ye);
   \end{lstlisting}
   Initialize an {\ttf earth} whose radial density is specified by the
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
@@ -2049,10 +2063,12 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
   \end{lstlisting}
   Returns the radius of the Earth in eV$^{-1}$.
 
-\item[$\circ$] {\ttf Earth::Track}
+\item {\ttf Earth::Track}
   \begin{lstlisting}
-        Track(double x,double xini,double xend,double baseline):Body::Track(x,xini,xend),baseline(baseline){};
-        Track(double xini,double xend,double baseline):Track(xini,xini,xend,baseline){};
+    Track(double x,double xini,double xend,double baseline):
+    Body::Track(x,xini,xend),baseline(baseline){};
+    Track(double xini,double xend,double baseline):
+    Track(xini,xini,xend,baseline){};
   \end{lstlisting}
   Initialize the corresponding {\ttf Track} setting the current ({\ttf
     x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
@@ -2074,7 +2090,7 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
 This is to be used when the relevant parameter is the zenith angle of
 the path,
 \begin{itemize}
-\item[$\circ$] {\ttf EarthAtm}
+\item {\ttf EarthAtm}
   \begin{lstlisting}
     Earth();
   \end{lstlisting}
@@ -2084,14 +2100,15 @@ the path,
   \end{lstlisting}
   Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm g}/{\rm cm}^3$), and $y_e$ (dimensionless). 
   \begin{lstlisting}
-    Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    Earth(std::vector<double> x,std::vector<double> rho,
+    std::vector<double> ye);
   \end{lstlisting}
   Initialize an {\ttf earth} whose radial density is specified by the
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
   electron fraction in the vector {\ttf ye}, and the radial positions
   in the vector {\ttf x} in centimeters. 
 
-\item[$\circ$] {\ttf EarthAtm::Track}
+\item {\ttf EarthAtm::Track}
   \begin{lstlisting}
     Track(double x_,double phi):Track(phi){x=x_;};
     Track(double phi);
@@ -2116,7 +2133,7 @@ the path,
 This specification of the object allows to define the Sun and radial
 trajectories that start from the center of the sun.
 \begin{itemize}
-\item[$\circ$] {\ttf Sun}
+\item {\ttf Sun}
   \begin{lstlisting}
     Sun();
   \end{lstlisting}
@@ -2124,21 +2141,21 @@ trajectories that start from the center of the sun.
     Standard Solar Model}~\citep{bahcall2005new}.
   
   \begin{lstlisting}
-    Sun(std::vector<double> x,std::vector<double>
-    rho,std::vector<double> xh);
+    Sun(std::vector<double> x,std::vector<double> rho,
+        std::vector<double> xh);
   \end{lstlisting}
   Initialize an {\ttf Sun} whose radial density is specified by the
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
   electron fraction in the vector {\ttf ye}, and the radial positions
   in the vector {\ttf x} in centimeters. 
   
-\item[$\circ$] {\ttf Sun::Track}
+\item {\ttf Sun::Track}
   \begin{lstlisting}
     Sun::Track(double xini);
   \end{lstlisting}
   This constructor sets the trajectory starting at a distance 
   {\ttf xini} from the Sun center.
-  \item[$\circ$] {\ttf Sun::Track}
+  \item {\ttf Sun::Track}
   \begin{lstlisting}
     Sun::Track(double xini, double xend);
   \end{lstlisting}
@@ -2150,7 +2167,7 @@ trajectories that start from the center of the sun.
 This specification of the object allows to define the Sun and the
 trajectories with different impact parameters.
 \begin{itemize}
-\item[$\circ$] {\ttf Sun}
+\item {\ttf Sun}
   \begin{lstlisting}
     SunASun();
   \end{lstlisting}
@@ -2158,14 +2175,14 @@ trajectories with different impact parameters.
     Standard Solar Model}~\citep{bahcall2005new}.
   \begin{lstlisting}
     SunASnu(std::vector<double> x,std::vector<double> rho,
-    std::vector<double> xh);
+            std::vector<double> xh);
   \end{lstlisting}
   Initialize an {\ttf Sun} whose radial density is specified by the
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
   electron fraction in the vector {\ttf ye}, and the radial positions
   in the vector {\ttf x} in centimeters. 
   
-\item[$\circ$] {\ttf SunASun::Track}
+\item {\ttf SunASun::Track}
   \begin{lstlisting}
     Track(double x,double xini,double b_impact);
     Track(double xini,double b_impact):Track(xini,xini,b_impact){};
@@ -2187,7 +2204,8 @@ First, we define enumerations to lable flavor, neutrino, and interaction type.
 \begin{itemize}
   \item {\ttf NeutrinoFlavor}
   \begin{lstlisting}
-    enum NeutrinoFlavor {electron = 0, muon = 1, tau = 2, sterile = 3};
+    enum NeutrinoFlavor
+    {electron = 0, muon = 1, tau = 2, sterile = 3};
  \end{lstlisting}
   Enumeration that is used to specify the neutrino flavor.
   \item {\ttf NeutrinoType}
@@ -2218,8 +2236,8 @@ Second we list the public abstract virtual functions.
   total cross section in ${\rm cm}^2$.
   \item Single differential cross section
   \begin{lstlisting}
-    virtual double SingleDifferentialCrossSection(double E1, double E2,
-    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    virtual double SingleDifferentialCrossSection(double E1,
+        double E2, NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
   Abstract virtual function that given an incident neutrino energy
@@ -2231,9 +2249,8 @@ Second we list the public abstract virtual functions.
   \item Double differential cross section
   \begin{lstlisting}
     virtual double DoubleDifferentialCrossSection(double E, 
-        double x, double y,
-    	NeutrinoFlavor flavor, NeutrinoType neutype,
-    	Current current) const;
+        double x, double y,NeutrinoFlavor flavor,
+        NeutrinoType neutype, Current current) const;
   \end{lstlisting}
   Virtual function such that given the neutrino energy ({\ttf E}),
   Bjorken-x ({\ttf x}), and y ({\ttf y}) should to return the double
@@ -2627,19 +2644,22 @@ position specified by the {\ttfamily track}.
     ie}, and  {\ttf rho} specifies whether the neutrino or antineutrino.
   \item Get the state of the system 
   \begin{lstlisting}
-      const squids::SU_vector& GetState(unsigned int ei,unsigned int rho = 0) const;
+    const squids::SU_vector& GetState(unsigned int ei,
+        unsigned int rho = 0) const;
   \end{lstlisting}
   Returns the {\ttf SU\_vector} that represents the (anti)neutrino state at given energy node {\ttf ie}. 
   Furthermore, {\tt rho} specifies whether the neutrino or antineutrino state is returned.
   \item Get the flavor projector
   \begin{lstlisting}
-    SU_vector GetFlavorProj(unsigned int ie, unsigned int rho = 0) const;
+    SU_vector GetFlavorProj(unsigned int ie,
+         unsigned int rho = 0) const;
   \end{lstlisting}
   Returns a {\ttf SU\_vector} that represents the flavor projector for the energy node {\ttf ie} and 
   {\ttf rho} specifies if neutrinos or antineutrinos are requested.
   \item Get the mass projector
   \begin{lstlisting}
-    SU_vector GetMassProj(unsigned int ie, unsigned int rho = 0) const;
+    SU_vector GetMassProj(unsigned int ie,
+         unsigned int rho = 0) const;
   \end{lstlisting}
   Returns a {\ttf SU\_vector} that represents the mass projector for the energy node {\ttf ie} and 
   {\ttf rho} specifies if neutrinos or antineutrinos are requested.
@@ -2733,13 +2753,15 @@ position specified by the {\ttfamily track}.
   coherent interactions are enabled tau regeneration effects will be included.
   \item Set mixing angle
   \begin{lstlisting}
-    void Set_MixingAngle(unsigned int i, unsigned int j, double angle);
+    void Set_MixingAngle(unsigned int i, unsigned int j,
+        double angle);
   \end{lstlisting}
   Sets the $\theta_{i,j}$ mixing angle to {\ttf angle}, where {\ttf i}
   and {\ttf j} are zero based indexes, and {\ttf angle} must be given in radians.
   \item Get CP phase
   \begin{lstlisting}
-    void Set_CPPhase(unsigned int i, unsigned int j, doble phase);
+    void Set_CPPhase(unsigned int i, unsigned int j,
+        double phase);
   \end{lstlisting}
   Sets the $\delta_{i,j}$ CP phase to {\ttf phase}, where {\ttf i} and
   {\ttf j} are zero based indexes, and {\ttf phase} must be given in radians.
@@ -2764,7 +2786,8 @@ position specified by the {\ttfamily track}.
   the default. 
 \item Set neutrino cross-section
   \begin{lstlisting}
-    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs)
+    void SetNeutrinoCrossSections(
+        std::shared_ptr<NeutrinoCrossSections> xs)
   \end{lstlisting}
   Sets the neutrino cross-section~\ref{sec:xs} given by the shared
   pointer {\ttf xs} to the nuSQuIDS object.
@@ -2778,7 +2801,8 @@ position specified by the {\ttfamily track}.
     void WriteStateHDF5(std::string hdf5_filename,
                         std::string group = "/",
                         bool save_cross_sections = true, 
-                        std::string cross_section_grp_loc = "") const;
+                        std::string cross_section_grp_loc = "")
+                        const;
   \end{lstlisting}
   Writes the current {\ttf nuSQUIDS} configuration and state into an HDF5 file
   for later use. {\ttf hdf5\_filename} specifies the output filename, {\ttf group} is the 
@@ -2879,16 +2903,17 @@ interpolations to the fluxes.
 \subsubsection{Constructors}
 
 \begin{itemize}
-\item[$\circ$] Constructor with {\ttf costh} range.
+\item Constructor with {\ttf costh} range.
   \begin{lstlisting}
-    template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args)
+    template<typename... ArgTypes> nuSQUIDSAtm(
+        marray<double,1> costh_array, ArgTypes&&... args)
   \end{lstlisting}
 This constructor it creates a set {\ttf nuSQUIDS} or derived {\ttf
   nuSQUIDS} objects with a set of zenith angles given by the {\ttf
   marray} {\ttf costh\_array}. The arguments given in {\ttf arg} are the
 corresponding arguments of the nuSQUIDS or derived nuSQUIDS class constructor.
 
-\item[$\circ$] Constructing from a nuSQuIDSAtm-HDF5 file
+\item Constructing from a nuSQuIDSAtm-HDF5 file
   \begin{lstlisting}
     nuSQUIDSAtm(std::string hdf5_filename)
   \end{lstlisting}
@@ -2901,7 +2926,7 @@ path of the HDF5 file. Furthermore,
 where the object will be saved; by default
 it will be saved on the {\ttfamily root} of the HDF5 file.
 
-\item[$\circ$] Move constructor.
+\item Move constructor.
   \begin{lstlisting}
     nuSQUIDSAtm(nuSQUIDSAtm&&);
   \end{lstlisting}
@@ -2909,8 +2934,10 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
   \subsubsection{Functions}
 \item Set initial state.
   \begin{lstlisting}
-    void Set_initial_state(const marray<double,3>& ini_flux, Basis basis=flavor);
-    void Set_initial_state(const marray<double,4>& ini_flux, Basis basis=flavor);
+    void Set_initial_state(const marray<double,3>& ini_flux,
+        Basis basis=flavor);
+    void Set_initial_state(const marray<double,4>& ini_flux,
+        Basis basis=flavor);
   \end{lstlisting}
   Sets the initial state of the system given in the marray {\ttf
     ini\_flux}, {\ttf basis} is the basis in where the state is
@@ -2940,10 +2967,12 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
 \item Evaluate the flux for a given flavor.
   \begin{lstlisting}
     double EvalFlavor(unsigned int flv,double costh,
-    double enu, unsigned int rho, double scale,std::vector<bool> avr) const;
+        double enu, unsigned int rho,
+        double scale,std::vector<bool> avr) const;
 
     double EvalFlavor(unsigned int flv,double costh,
-    double enu,unsigned int rho = 0, bool randomize_production_height = false) const;
+    double enu,unsigned int rho = 0,
+        bool randomize_production_height = false) const;
   \end{lstlisting}
   It returns the flux for the flavor {\ttf flv} at the value of cosine
   zenith given by {\ttf costh} and energy given by {\ttf enu}.
@@ -2957,7 +2986,8 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
 \item Read and write function.
   \begin{lstlisting}
     void ReadStateHDF5(std::string hdf5_filename);
-    void WriteStateHDF5(std::string hdf5_filename, bool overwrite = true) const;
+    void WriteStateHDF5(std::string hdf5_filename,
+        bool overwrite = true) const;
   \end{lstlisting}
   
   This functions read and write the state of the system in the file

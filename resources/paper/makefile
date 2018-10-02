@@ -1,6 +1,7 @@
 all: nusquids.pdf
 
-TEX_FILES:=nusquids.tex body_track.tex cross_section_tau_decay.tex nusquids_class.tex nusquidsatm_class.tex
+TEX_FILES:=nusquids.tex
+#body_track.tex cross_section_tau_decay.tex nusquids_class.tex nusquidsatm_class.tex
 
 nusquids.pdf : $(TEX_FILES) nusquids.bib
 	pdflatex nusquids
