@@ -53,6 +53,14 @@
 \newcommand{\pa}[2]{\frac{\partial #1}{\partial #2}}
 \newcommand{\p}[1]{\partial_{#1}}
 
+\newcommand{\jt}[2]{
+\item[$\circ$]{#1}
+  \begin{lstlisting}
+    {#2}
+  \end{lstlisting}
+}
+
+
 \definecolor{mauve}{rgb}{1,0,1}
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 % \definecolor{gray}{rgb}{0.5,0.5,0.5}
@@ -145,13 +153,18 @@ experimental results and related theoretical calculations the
 \citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,
   Akhmedov:1999uz,Balantekin:2013kc, GonzalezGarcia:2007ib,Mohapatra:qv, Gouvea:2013fj}
 has been firmly established and the three mixing angles, which
-parametrize the lepton mixing matrix, together with the two squared-mass differences, have been measured to good precision\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It is the task of on-going 
-and future experiments to determine the neutrino mass ordering
+parametrize the lepton mixing matrix, together with the two
+squared-mass differences, have been measured to good
+precision\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It
+is the task of on-going 
+and future experiments to determine the neutrino mass ordering 
 and the CP-violating phase \citep{Hewett:2012et,
   Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
 Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
 spectrum above 100 GeV allowing new physics
-models to be constrained~\citep{Aartsen:2014gkd,TheIceCube:2016oqi}, where the Earth is no longer transparent to neutrinos~\citep{Donini:2018tsg}.
+models to be constrained~\citep{Aartsen:2014gkd,TheIceCube:2016oqi},
+where the Earth is no longer transparent to
+neutrinos~\citep{Donini:2018tsg}. 
 The identification of high-energy
 extraterrestrial neutrinos \citep{ Aartsen:2014gkd, Aartsen:2015rwa}
 has opened the possibility of exploring new physics at these energies as well
@@ -164,7 +177,9 @@ changing neutrino interactions \citep{Barger:1991ae, Roulet:1991sm, GonzalezGarc
   Maltoni:2015kca,Esteban:2018ppq}.
 Even though most of the data can be explained in the standard three
 neutrino framework, some puzzling anomalies still remain
-\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm, Ko:2016owz, Ashenfelter:2018iov, Abreu:2018pxg, Dentler:2018sju}. These may be explained
+\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm,
+  Ko:2016owz, Ashenfelter:2018iov, Abreu:2018pxg,
+  Dentler:2018sju}. These may be explained 
 by introducing new light neutrino states \citep{kopp2013sterile,
   Collin:2016rao, Abazajian:2012rf,Blennow:2018hto} and other new physics
 \citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
@@ -426,9 +441,6 @@ terms couple the propagation of neutrinos and antineutrinos.
 Finally, the last term in \eqref{eq:antiFterm} accounts for the
 neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
-
-%%ejemplos de codigo
-%\input{examples.tex}
 \section{Examples}
 \label{sec:examples}
 To help the user to apply the library in concrete scenarios we provide
@@ -1745,11 +1757,1329 @@ capability to store the system state in an HDF5~\citep{folk1999hdf5}
 file for later use.
 
 % TODO: mention setting mixing parameters used for propagation
+\subsection{Body \& Track}
 
-\input{body_track.tex}
-\input{cross_section_tau_decay.tex}
-\input{nusquids_class.tex}
-\input{nusquidsatm_class.tex}
+{\ttf Body} and {\ttf Body::Track} are abstract {\ttf C++} classes
+which are used to represent the environment in which neutrinos
+are propagated ({\ttf Body}) and the propagation path inside it ({\ttf
+  Body::Track}). We will frequently use the shorthand {\ttf Track} for {\ttf Body::Track},
+ when it should be clear from context that this is the type of {\ttf Track} 
+ corresponding to a particular implementation of {\ttf Body}.
+
+The evolution of the system depends on a single parameter which is
+{\ttf double} member of {\ttf Track}. The
+interplay between the evolution of this parameter and the trajectory
+inside a given body is what is encoded in the {\ttf Body} and 
+{\ttf Body::Track} classes. 
+Namely, a {\ttf Body} is defined as a matter density and electron
+fraction depending on the position in a 3 dimensional space, $\rho_m(\vec{r})$ and
+$Y_e(\vec{r})$, the role of the {\ttf Track} would be
+equivalent to the trajectory ($\vec{r}(x)$) and the current position ($x$).
+
+In the context of the code, the two main virtual functions that the
+user should provide in order to define a non-trivial {\ttf Body} are:
+\begin{itemize}
+\item[$\circ$] 
+  \begin{lstlisting}
+    virtual double density(std::shared_ptr<Track>);
+  \end{lstlisting}
+This function returns the density in ${\rm g}/{\rm cm}^3$ for a
+given {\ttf Track} position.
+\item[$\circ$] 
+  \begin{lstlisting}
+    virtual double ye(std::shared_ptr<Track>);
+  \end{lstlisting}
+Returns the electron fraction at a given {\ttf Track} position.
+\end{itemize}
+
+In order to allow the user to store the information of the
+object the following members are important,
+
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::vector<double> BodyParams;
+  \end{lstlisting}
+  Double vector that contains all the parameters that are
+  needed to compute the density and electron fraction from the parameter
+  {\ttf x}.
+  
+\item[$\circ$]  
+  \begin{lstlisting}
+    bool is_constant_density = false;
+  \end{lstlisting}  
+  This variable is {\ttf true} if the density of the object is constant. This is
+  used to set the fast computations internally.
+\end{itemize}
+
+Other public function of the {\ttf Body} object are,
+
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    virtual void Serialize(hid_t group) const=0;
+  \end{lstlisting}
+  This is an abstract function whose argument is an HDF5 location
+  where the user should store the body properties.
+
+  \item[$\circ$]  
+  \begin{lstlisting}
+    static std::shared_ptr<Body> Deserialize(hid_t group);
+  \end{lstlisting}
+  This is an abstract function whose argument is an HDF5 location
+  with the body information to be used for the user to recover the body.
+  
+\item[$\circ$]  
+  \begin{lstlisting}
+    unsigned int GetId() const {return 0;}
+  \end{lstlisting}
+  It returns the Id of the body which is hard coded by the user.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::string GetName() const {return name;}
+  \end{lstlisting}
+  It returns the name of the object which is hard coded by the user.
+
+\item[$\circ$]  
+  \begin{lstlisting}
+    const std::vector<double>& GetBodyParams() const { return BodyParams;}
+  \end{lstlisting}
+  It returns a constant reference to the vector of parameter that define body. 
+  
+  \item[$\circ$]  
+  \begin{lstlisting}
+    virtual bool IsConstantDensity() const {return is_constant_density;}
+  \end{lstlisting}
+  It returns true or false if its a constant density body.
+  
+\item[$\circ$]  
+  \begin{lstlisting}
+    virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
+  \end{lstlisting}
+  Set true or false the constant density. 
+\end{itemize}
+
+
+Furthermore, the {\ttf Track} object has the following protected
+variables, which are the initial, final and current
+evolution parameter values, by default in units of eV$^{-1}$
+%
+%
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+  double x;
+  \end{lstlisting}
+  Current position.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double xini;
+  \end{lstlisting}
+  Initial position.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double xend;
+  \end{lstlisting}
+  Final position.
+\end{itemize}
+%
+And the following public functions are provided,
+%
+\begin{itemize}
+\item[$\circ$]  
+  \begin{lstlisting}
+    Track(double x,double xini, double xend): x(x), xini(xini),xend(xend) {}
+  \end{lstlisting}
+  Constructor where we specify current, initial, and final positions. 
+\item[$\circ$]  
+  \begin{lstlisting}
+    Track(double xini, double xend): Track(xini,xini,xend) {}
+  \end{lstlisting}
+  Constructor where we specify initial and final positions. The
+  current position is set to the initial. 
+  \item[$\circ$]  
+  \begin{lstlisting}
+    virtual void Serialize(hid_t group) const=0;
+  \end{lstlisting}
+  This is an abstract function whose argument is an HDF5 location
+  where the user should store the track properties.
+  \item[$\circ$]  
+  \begin{lstlisting}
+    static std::shared_ptr<Body::Track> Deserialize(hid_t group);
+  \end{lstlisting}
+  This is an abstract function whose argument is an HDF5 location
+  with the track information to be used for the user to recover the track.
+\item[$\circ$]  
+  \begin{lstlisting}
+    void SetX(double y);
+  \end{lstlisting}
+  Sets the current position along the trajectory.  
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetX() const;
+  \end{lstlisting}
+  Returns the current value of the evolution parameter {\ttf x}.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetInitialX() const;
+  \end{lstlisting}    
+  Returns the initial value of the evolution parameter {\ttf x}.
+\item[$\circ$]  
+  \begin{lstlisting}
+    double GetFinalX() const;
+  \end{lstlisting}          
+  Returns the final value of the evolution parameter {\ttf x}
+\item[$\circ$]  
+  \begin{lstlisting}
+    static std::string GetName() {return "BodyTrack";};
+  \end{lstlisting}
+  Returns the name of the track object hard coded by the user. 
+\item[$\circ$]  
+  \begin{lstlisting}
+    std::vector<double> GetTrackParams() const 
+  \end{lstlisting}           
+  Returns a vector of doubles that define the trajectory.
+\item[$\circ$] 
+   \begin{lstlisting}
+    virtual void FillDerivedParams(std::vector<double>& TrackParams) const{};
+  \end{lstlisting}           
+  Should be implemented by derived classes to append their
+  additional parameters to TrackParams
+  
+\item[$\circ$] 
+  \begin{lstlisting}
+    void ReverseTrack() 
+  \end{lstlisting}
+  Interchanges initial and final positions.
+\end{itemize}
+
+
+Since {\ttf Body} and {\ttf Track} are abstract classes they themselves do not perform any task, but rather their specializations specify the real neutrino propagation environment and how it relates to its trajectory. $\nu$-SQuIDS implements the most commonly used environments and trajectory configurations. The user can create new classes in order to extend $\nu$-SQuIDS functionality.
+
+The {\ttf Body} classes specializations implemented in $\nu$-SQuIDS
+are the following: {\ttf Vacuum}, {\ttf ConstantDensity}, {\ttf
+  VariableDensity}, {\ttf Earth}, {\ttf EarthAtm}, {\ttf Sun}, and {\ttf SunASnu}.
+
+In the following sub-sections we will describe the specific
+constructors and the functions that are not member of the parent class.
+
+\subsubsection{Vacuum}
+
+\begin{itemize}
+\item[$\circ$] {\ttf Vacuum}
+  \begin{lstlisting}
+    Vacuum():Body(){}
+  \end{lstlisting}
+  Initializes a {\ttf Vacuum} environment. 
+\item[$\circ$] {\ttf Vacuum::Track}
+  \begin{lstlisting}
+        Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+        Track(double xini,double xend):Track(xini,xini,xend){};
+        Track(double xend):Track(0.0,xend){}
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the current ({\ttf
+  x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{ConstantDensity}
+
+\begin{itemize}
+\item[$\circ$] {\ttf ConstantDensity}
+  \begin{lstlisting}
+    ConstantDensity(double density,double ye);
+  \end{lstlisting}
+  Initializes a {\ttf ConstantDensity} environment with constant
+  density ({\ttf density} in ${\rm g}/{\rm cm}^3$) and electron
+  fraction ({\ttf ye}).
+\item[$\circ$] {\ttf ConstantDensity::Track}
+  \begin{lstlisting}
+    Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+    Track(double xini,double xend):Track(xini,xini,xend){};
+    Track(double xend):Track(0.0,xend){}
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the current ({\ttf
+  x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{VariableDensity}
+
+\begin{itemize}
+\item[$\circ$] {\ttf VariableDensity}
+  \begin{lstlisting}
+    VariableDensity(std::vector<double> x,std::vector<double> density,
+    std::vector<double> ye);
+  \end{lstlisting}
+  Initializes a {\ttf VariableDensity} environment given three equal size arrays specifying the density and electron fraction at given positions. An object will be created that interpolates using {\ttfamily gsl\_spline} \citep{gough2009gnu} along the {\ttf x} array to get the density and electron fraction as continuous functions.
+  \item[$\circ$] {\ttf VariableDensity::Track}
+  \begin{lstlisting}
+    Track(double x,double xini,double xend):Body::Track(x,xini,xend){};
+    Track(double xini,double xend):Track(xini,xini,xend){};
+    Track(double xend):Track(0.0,xend){}
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the current ({\ttf
+  x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+\end{itemize}
+
+\subsubsection{Earth}
+The {\ttf Earth} body specification is designed to propagate neutrinos
+in the earth form two points in the surface, since the earth in the
+PREM model is assumed to be spherically symmetric the length of the
+path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:tools} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
+\begin{itemize}
+\item[$\circ$] {\ttf Earth}
+  \begin{lstlisting}
+    Earth();
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  \begin{lstlisting}
+    Earth(std::string earthmodel);
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm g}/{\rm cm}^3$), and $y_e$ (dimensionless). 
+  \begin{lstlisting}
+    Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+  \end{lstlisting}
+  Initialize an {\ttf earth} whose radial density is specified by the
+  values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
+  electron fraction in the vector {\ttf ye}, and the radial positions
+  in the vector {\ttf x} in centimeters. 
+
+  \begin{lstlisting}
+    double GetRadius() const;
+  \end{lstlisting}
+  Returns the radius of the Earth in eV$^{-1}$.
+
+\item[$\circ$] {\ttf Earth::Track}
+  \begin{lstlisting}
+        Track(double x,double xini,double xend,double baseline):Body::Track(x,xini,xend),baseline(baseline){};
+        Track(double xini,double xend,double baseline):Track(xini,xini,xend,baseline){};
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} setting the current ({\ttf
+    x}), initial ({\ttf xini}), and final ({\ttf xend}) neutrino position in ${\rm eV}^{-1}$.
+  
+  \begin{lstlisting}
+    Track(double baseline):Track(0.,baseline,baseline){}
+  \end{lstlisting}
+  Constructor that sets the path on the earth for a given baseline
+  {ttf baseline}
+
+  \begin{lstlisting}
+    double GetBaseline() const;
+  \end{lstlisting}
+  Returns the baseline in eV$^{-1}$.
+    
+\end{itemize}
+
+\subsubsection{{EarthAtm}}
+This is to be used when the relevant parameter is the zenith angle of
+the path,
+\begin{itemize}
+\item[$\circ$] {\ttf EarthAtm}
+  \begin{lstlisting}
+    Earth();
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  \begin{lstlisting}
+    Earth(std::string earthmodel);
+  \end{lstlisting}
+  Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm g}/{\rm cm}^3$), and $y_e$ (dimensionless). 
+  \begin{lstlisting}
+    Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+  \end{lstlisting}
+  Initialize an {\ttf earth} whose radial density is specified by the
+  values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
+  electron fraction in the vector {\ttf ye}, and the radial positions
+  in the vector {\ttf x} in centimeters. 
+
+\item[$\circ$] {\ttf EarthAtm::Track}
+  \begin{lstlisting}
+    Track(double x_,double phi):Track(phi){x=x_;};
+    Track(double phi);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} by specifying the zenith
+  angle in radians ({\ttf phi}) and the current position along the
+  track ({\ttf x}) in eV$^{-1}$.
+  
+  \begin{lstlisting}
+    double GetBaseline() const;
+  \end{lstlisting}
+  Returns the baseline in eV$^{-1}$.
+
+  \begin{lstlisting}
+    static Track makeWithCosine(double cosphi);
+  \end{lstlisting}
+  Initialize the track with the cosine of the zenith angle ({\ttf cosphi}) instead. 
+  
+\end{itemize}
+
+\subsubsection{{Sun}}
+This specification of the object allows to define the Sun and radial
+trajectories that start from the center of the sun.
+\begin{itemize}
+\item[$\circ$] {\ttf Sun}
+  \begin{lstlisting}
+    Sun();
+  \end{lstlisting}
+  Initializes an {\ttf Sun} environment as defined by the {\it
+    Standard Solar Model}~\citep{bahcall2005new}.
+  
+  \begin{lstlisting}
+    Sun(std::vector<double> x,std::vector<double>
+    rho,std::vector<double> xh);
+  \end{lstlisting}
+  Initialize an {\ttf Sun} whose radial density is specified by the
+  values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
+  electron fraction in the vector {\ttf ye}, and the radial positions
+  in the vector {\ttf x} in centimeters. 
+  
+\item[$\circ$] {\ttf Sun::Track}
+  \begin{lstlisting}
+    Sun::Track(double xini);
+  \end{lstlisting}
+  This constructor sets the trajectory starting at a distance 
+  {\ttf xini} from the Sun center.
+  \item[$\circ$] {\ttf Sun::Track}
+  \begin{lstlisting}
+    Sun::Track(double xini, double xend);
+  \end{lstlisting}
+  Initialize the corresponding {\ttf Track} by the initial position in the sun {\ttf xini} and {\ttf xend} along the solar radius.
+\end{itemize}
+
+
+\subsubsection{{SunASnu}}
+This specification of the object allows to define the Sun and the
+trajectories with different impact parameters.
+\begin{itemize}
+\item[$\circ$] {\ttf Sun}
+  \begin{lstlisting}
+    SunASun();
+  \end{lstlisting}
+  Initializes an {\ttf Sun} environment as defined by the {\it
+    Standard Solar Model}~\citep{bahcall2005new}.
+  \begin{lstlisting}
+    SunASnu(std::vector<double> x,std::vector<double> rho,
+    std::vector<double> xh);
+  \end{lstlisting}
+  Initialize an {\ttf Sun} whose radial density is specified by the
+  values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
+  electron fraction in the vector {\ttf ye}, and the radial positions
+  in the vector {\ttf x} in centimeters. 
+  
+\item[$\circ$] {\ttf SunASun::Track}
+  \begin{lstlisting}
+    Track(double x,double xini,double b_impact);
+    Track(double xini,double b_impact):Track(xini,xini,b_impact){};
+    Track(double b_impact_):Track(0.0,b_impact_){}
+  \end{lstlisting}
+  This constructor sets the trajectory starting at a distance 
+  {\ttf xini}, with current position {\ttf x}, and impact factor {\ttf
+    b\_impact} in eV$^-{1}$.
+\end{itemize}
+
+
+\subsection{NeutrinoCrossSections}
+\label{sec:xs}
+This object can be query to obtain neutrino cross section information used when considering neutrino non-coherent interactions. The {\ttf NeutrinoCrossSections} is a base abstract class, which the user has to subclass and implement the relevant neutrino cross section for the problem at hand. The user must specify the total cross section per flavor and per interaction type (charge and neutral current), as well as the single differential cross sections with respect to the outgoing neutrino energy.
+
+\subsubsection{NeutrinoCrossSections}
+
+First, we define enumerations to lable flavor, neutrino, and interaction type.
+\begin{itemize}
+  \item {\ttf NeutrinoFlavor}
+  \begin{lstlisting}
+    enum NeutrinoFlavor {electron = 0, muon = 1, tau = 2, sterile = 3};
+ \end{lstlisting}
+  Enumeration that is used to specify the neutrino flavor.
+  \item {\ttf NeutrinoType}
+  \begin{lstlisting}
+    enum NeutrinoType {neutrino = 0, antineutrino = 1};
+  \end{lstlisting}
+  Enumeration used to specify {\ttf neutrino} and {\ttf antineutrino} particle type.
+  \item {\ttf Current}
+  \begin{lstlisting}
+    enum Current {CC, NC, GR};
+  \end{lstlisting}
+  Enumeration used to specify charged ({\ttf CC}), neutral ({\ttf NC}) current interactions, 
+  and Glashow resonant interactions ({\ttf GR}).
+\end{itemize}
+
+Second we list the public abstract virtual functions.
+
+\begin{itemize}
+  \item Total cross section
+  \begin{lstlisting}
+    virtual double TotalCrossSection(double Enu,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+  Abstract virtual function that given a neutrino energy ({\ttf Enu})
+  in eV, neutrino flavor ({\ttf flavor}, neutrino type ({\ttf
+    neutype}), and interaction type ({\ttf current}) returns the 
+  total cross section in ${\rm cm}^2$.
+  \item Single differential cross section
+  \begin{lstlisting}
+    virtual double SingleDifferentialCrossSection(double E1, double E2,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+  Abstract virtual function that given an incident neutrino energy
+  ({\ttf E1}) in eV, outgoing neutrino energy ({\ttf E2}) in eV,
+  neutrino flavor ({\ttf flavor}, neutrino type ({\ttf neutype}), and
+  interaction type ({\ttf current}) returns the differential cross
+  section with respect to the outgoing neutrino energy in ${\rm
+    cm}^2{\rm GeV}^{-1}$.  
+  \item Double differential cross section
+  \begin{lstlisting}
+    virtual double DoubleDifferentialCrossSection(double E, 
+        double x, double y,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+  Virtual function such that given the neutrino energy ({\ttf E}),
+  Bjorken-x ({\ttf x}), and y ({\ttf y}) should to return the double
+   differential cross section. Its implementation is no required to
+   run {\ttf nuSQUIDS} and by default when evaluated, unless
+   overwritten, it will throw an error. 
+\end{itemize}
+
+\subsubsection{NeutrinoDISCrossSectionsFromTables}
+
+This class uses precalculated deep inelastic cross section tables
+which are provided by {\ttf nuSQuIDS}.
+In the code two different cross-sections are available:
+{\ttf csms.h5} is a perturbative QCD next-to-leading order calculation using the HERA
+parton distributions functions~\cite{Chekanov:2002pv} on an iso-scalar
+target~\cite{CooperSarkar:2011pa}. {\ttf nusigma}~\cite{nusigma} is a first order QCD
+calculation using the {\ttf CTEQ6} parton distribution functions on an
+iso-scalar target. In the {\ttf csms} calculation the mass of the tau
+is neglected thus the neutrinos cross section is the same for all
+flavors; this is not the case for the {\ttf nusigma} calculation.
+Both correspond to deep inelastic scattering which is the dominant
+neutrino interaction with nucleons above $O({\rm 10~GeV})$. 
+
+The cross sections are loaded from tables included in
+{\ttfamily nuSQUIDS/data/xsections/}.
+The cross section object can be constructed from a single {\ttf hdf5}
+file that contains both single and total cross sections or by a set of
+four text files. The four text files have to end with the suffixes
+{\ttf dsde\_CC.dat}, {\ttf dsde\_NC.dat}, {\ttf sigma\_CC.dat}, and
+{\ttf sigma\_NC.dat}.
+The text files contain the following columns:
+For the total cross-sections neutrino energy in GeV, electron neutrino 
+cross sections, electron anti-neutrino cross-section, muon neutrino
+cross sections, muon anti-neutrino cross-section, tau neutrino
+cross sections, and tau anti-neutrino cross-section. All the cross
+section values are in cm$^2$.
+For the single differential cross-sections incident neutrino energy in
+GeV, outgoing neutrino energy in GeV, electron neutrino 
+differential cross sections, differential electron anti-neutrino cross-section, muon neutrino
+differential cross sections, muon anti-neutrino differential cross-section, tau neutrino
+differential cross sections, and tau anti-neutrino differential
+cross-section. All the differential cross-section values are in cm$^2/$GeV.
+Fro the {\ttf HDF5} cross-section format see table.~ref{tab:cross}
+
+\begin{figure}[htb]
+  \label{cross}
+  \centering
+  \begin{tikzpicture}[%
+    grow via three points={one child at (0.5,-0.7) and
+      two children at (0.5,-0.7) and (0.5,-1.4)},
+    edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+    \node {{\ttf csms.h5}}
+    child { node [label=right:{Neutrino charge current differential spectrum (${\rm cm^2/GeV}$).}]  {\ttf dsDE\_CC}}
+    child { node [label=right:{Neutrino neutral current differential spectrum (${\rm cm^2/GeV}$).}] {\ttf dsDE\_NC}}
+    child { node [label=right:{Total charge current neutrino cross section (${\rm cm^2}$).}]{\ttf s\_CC}}
+    child { node [label=right:{Total neutral current neutrino cross section (${\rm cm^2}$).}] {\ttf s\_NC}}
+    ;
+  \end{tikzpicture}
+  \caption{HDF5 cross section format.}
+  \label{fig:nusquids_cross_section_hdf5}
+\end{figure}
+
+
+\subsubsection{Constructors}
+
+\begin{itemize}
+\item Default constructor.
+  \begin{lstlisting}
+    NeutrinoDISCrossSectionsFromTables();
+  \end{lstlisting}
+  This constructor load the defaults {\ttf csms.h5} file
+\end{itemize}
+
+The files to load the different cross-sections can be specified
+explicitly as follows. 
+\begin{lstlisting}
+  NeutrinoDISCrossSectionsFromTables csh5('./csms.h5');
+  NeutrinoDISCrossSectionsFromTables cstxt('./nusigma_');
+\end{lstlisting}
+
+\subsubsection{Functions}
+
+\begin{itemize}
+\item Total cross sections
+  \begin{lstlisting}
+    double TotalCrossSection(double Enu,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+      \end{lstlisting}
+      
+  Returns the total cross section at an energy {\ttf Enu} in eV, neutrino
+  flavor {\ttf flavor}, neutrino type: {\ttf neutype}, and {\ttf
+    current} can be either {\ttf NC} or {\ttf CC} for neutral or
+  charge current DIS cross sections. Using a linear interpolation in
+  the logarithm of the neutrino energy. 
+     
+\item Single differential cross sections              
+  \begin{lstlisting}
+    double SingleDifferentialCrossSection(double E1, double E2,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+      Function that given an incident neutrino energy ({\ttf E1}) in eV an outgoing lepton energy ({\ttf E2}), as well as neutrino flavor,
+       type, and process, returns the differential cross section with
+       respect to the outgoing lepton energy in ${\rm cm}^2/{\rm
+         GeV}$. Using a bi-linear interpolation. 
+\end{itemize}
+
+\subsubsection{GlashowResonanceCrossSection}
+
+This class implements the formulas in~\citep{GhandiReno} in order to calculate the electron antineutrino Glashow resonance cross section contribution.
+
+\subsubsection{Constructors}
+
+\begin{itemize}
+\item Default constructor.
+  \begin{lstlisting}
+    GlashowResonanceCrossSection();
+  \end{lstlisting}
+\end{itemize}
+
+\subsubsection{Functions}
+
+\begin{itemize}
+\item Total cross sections
+  \begin{lstlisting}
+    double TotalCrossSection(double Enu,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+     Returns the total cross section in cm$^2$ at an energy {\ttf Enu} in eV, neutrino flavor {\ttf flavor}, and neutrino type: {\ttf neutype}.
+     If the flavor is not electron and neutrino type is not antineutrino it returns zero.              
+\item Single differential cross sections
+  \begin{lstlisting}
+    double SingleDifferentialCrossSection(double E1, double E2,
+    	NeutrinoFlavor flavor, NeutrinoType neutype,
+    	Current current) const;
+  \end{lstlisting}
+  Returns the single differential cross section in cm$^2$/GeV for an incident neutrinos energy ({\ttf
+    E1}) in eV an outgoing neutrinos energy ({\ttf E2}) in eV, neutrino flavor ({\ttf flavor}), 
+  and neutrino type ({\ttf neutype}).
+     If the flavor is not electron and neutrino type is not antineutrino it returns zero.   
+      
+\end{itemize}
+
+\subsection{TauDecaySpectra}
+
+This object can be query to obtain $\tau$ decay physics into leptons
+and hadrons. The formulas implemented in this class were taken
+from~\citep{Dutta:2000jv}. It is only used when $\tau$-regeneration is
+activated and it returns the following quantities on the energy
+nodes, 
+\begin{equation}
+\frac{dN^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu} {\rm ~~and~~ }
+\frac{d\bar{N}^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu},
+\label{eqn:tau-dist}
+\end{equation}
+i.e. the neutrino and antineutrino spectral distributions from $\tau$
+leptonic and hadronic decay modes. 
+
+\subsubsection{Constructors and Initializing Functions}
+
+\begin{itemize}
+\item Default constructor.
+  \begin{lstlisting}
+    TauDecaySpectra();
+  \end{lstlisting}
+\item Constructor and initializing function with memory reservation.
+  \begin{lstlisting}
+    TauDecaySpectra(marray<double,1> E_range);
+    void Init(marray<double,1> E_range);
+  \end{lstlisting}
+This constructor and initialization functions calculate and store the
+$\tau$ decay spectra on nodes specified by the one dimensional array
+{\ttf E\_range} in eV.
+\end{itemize}
+
+\subsubsection{Functions}
+
+The following functions assume that the $\tau$ and $\bar{\tau}$ have
+the same decay distribution. 
+
+\begin{itemize}
+\item (Anti)Neutrino spectra with respect to neutrino energy.
+  \begin{lstlisting}
+    double dNdEnu_All(int e1,int e2) const;
+  \end{lstlisting}
+  Returns neutrino decay spectra evaluated from energy node
+  {\ttfamily e1} to energy node {\ttfamily e2} when $\tau$ decays into
+  leptons or hadrons.  
+  \begin{lstlisting}
+    double dNdEnu_Lep(int e1,int e2) const;
+  \end{lstlisting}
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons. 
+\item (Anti)Neutrino spectra with respect to $\tau$ energy.
+  \begin{lstlisting}
+    double dNdEle_All(int e1,int e2) const;
+  \end{lstlisting}
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into leptons
+  or hadrons with respect to the initial $\tau$ energy.
+  \begin{lstlisting}
+    double dNdEle_Lep(int e1,int e2) const;
+  \end{lstlisting}
+  Returns neutrino decay spectra evaluated between energy nodes
+  {\ttfamily e1} and {\ttfamily e2} when $\tau$ decays into
+  leptons with respect to the initial $\tau$ energy.
+\item Get the $\tau$ branching ratio to leptons.
+  \begin{lstlisting}
+    double GetTauToLeptonBranchingRatio() const;
+  \end{lstlisting}
+  Returns the $\tau$ branching ratio to leptons.
+\item Get the $\tau$ branching ratio to hadrons.
+  \begin{lstlisting}
+    double GetTauToHadronBranchingRatio() const;
+  \end{lstlisting}
+  Returns the $\tau$ branching ratio to hadrons.
+\end{itemize}
+
+\subsection{nuSQUIDS}
+
+This object is an specialization of the {\ttf SQUIDS} class~\citep{SQUIDS} that implements the
+differential equations as described in Sec.~\ref{sec:theory}. In
+particular, it is used to specify the propagation {\ttf Body} and its
+associated {\ttf Track}. Moreover, it uses the {\ttf
+  NeutrinoCrossSections} and {\ttf TauDecaySpectra} in order to
+evaluate the neutrino cross sections and $\tau$ decay spectra; the
+latter is only used then {\it $\tau$} regeneration is
+enabled. Furthermore, it enables the user to modify the neutrino
+oscillation parameters as well as the differential equation numerical
+precision. Finally, it also has the capability to create and read HDF5
+files that store the program results and configuration. 
+
+\subsubsection{Constructors}
+
+\begin{itemize}
+\item Default constructor.
+  \begin{lstlisting}
+    nuSQUIDS();
+  \end{lstlisting}
+\item Move constructor.
+  \begin{lstlisting}
+    nuSQUIDS(nuSQUIDS&&);
+  \end{lstlisting}
+Constructs a {\ttf nuSQUIDS} object from an r-value reference.  
+\item Single energy mode constructor.
+  \begin{lstlisting}
+    nuSQUIDS(unsigned int numneu, NeutrinoType NT);
+  \end{lstlisting}
+This constructor and initialization function initializes {\ttfamily nuSQUIDS} in the
+single energy mode. {\ttfamily numneu} specifies the number of
+neutrino flavors which can go from two to six, while {\ttfamily NT} can be
+set to  {\ttfamily neutrino} or {\ttfamily antineutrino}. 
+\item Multiple energy mode constructor.
+  \begin{lstlisting}
+    nuSQUIDS(marray<double,1> E_vector,
+    unsigned int numneu,NeutrinoType NT = both,
+    bool iinteraction = false,
+    std::shared_ptr<NeutrinoCrossSections> ncs = nullptr)
+  \end{lstlisting}
+This constructor and initialization function initializes {\ttfamily nuSQUIDS} in the
+multiple energy mode. We need to provide the following arguments:
+list of neutrino energy nodes
+(\lstinline[columns=fixed,breaklines=true]{E_vector}),
+number of neutrino flavors ({\ttf numneu}), neutrino or
+anti-neutrino type ({\ttf NT}),  non-coherent scattering
+interactions ({\ttf iinteraction}), and neutrino cross section object
+pointer ({\ttf ncs}).  
+
+\item Constructing from a $\nu$SQuIDS-HDF5 file
+  \begin{lstlisting}
+    nuSQUIDS(std::string hdf5_filename, std::string grp = "/",
+    std::shared_ptr<InteractionStructure> int_struct = nullptr)
+  \end{lstlisting}
+This constructor initializes {\ttfamily nuSQUIDS} from a 
+previously generated $\nu$SQuIDS HDF5 file. {\ttfamily filepath} must
+specify the full path of the HDF5 file, {\ttfamily grp} specifies the
+location on the HDF5 file structure where the object will be saved (by default
+it will be saved on the {\ttfamily root} of the HDF5 file), and {\ttf
+  int\_struct} can specify the cross-section object instead of loading it from
+the file.
+\end{itemize}
+
+\subsubsection{Functions}
+
+\textbf{Functions to evaluate flavor and mass composition}
+
+\begin{itemize}
+\item Flavor composition evaluator (single energy mode)
+  \begin{lstlisting}
+    double EvalFlavor(unsigned int flv) const;
+  \end{lstlisting}
+Returns the content a given neutrino flavor specified by {\ttfamily
+  flv} ({\ttfamily 0 = $e$}, {\ttfamily 1 = $\mu$}, {\ttfamily 2 =
+  $\tau$}, ...). This function can only be use in the single energy
+mode. 
+\item Flavor composition evaluator (multiple energy mode)
+  \begin{lstlisting}
+    double EvalFlavorAtNode(unsigned int flv, unsigned int ie, 
+                            unsigned int rho=0) const;
+    double EvalFlavor(unsigned int flv, double enu,
+                      unsigned int rho=0) const;
+    double EvalFlavor(unsigned int flv,double enu,
+                      unsigned int rho,double scale,
+                      std::vector<bool>& avr) const;
+  \end{lstlisting}
+{\ttfamily EvalFlavorAtNode} returns the content a given neutrino
+flavor specified by {\ttfamily flv} ({\ttfamily 0 = $e$}, {\ttfamily 1
+  = $\mu$}, {\ttfamily 2 = $\tau$, ...}) at an energy node {\ttfamily
+  ie}. Furthermore, {\ttfamily EvalFlavor} returns the approximate
+content of a given flavor for a specific neutrino energy  {\ttf enu}
+by interpolating in the interaction basis. In each function, when
+considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles
+between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
+The last function gets two additional arguments: an {\ttf scale} such
+that all $H_0$ induced oscillation frequencies larger than this scale
+will be averaged and a vector of booleans which entries will be set to
+true if the corresponding oscillations frequencies have been averaged
+out.
+
+
+\item Mass composition evaluator (single energy mode)
+  \begin{lstlisting}
+    double EvalMass(unsigned int eig) const;
+  \end{lstlisting}
+Returns the content a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}). This function can only be use in the  single energy mode.
+\item Mass composition evaluator (multiple energy mode)
+  \begin{lstlisting}
+    double EvalMassAtNode(unsigned int eig, unsigned int ie,
+                           unsigned int rho=0) const;
+    double EvalMass(unsigned int eig, double enu,
+                     unsigned int rho=0) const;
+    double EvalMass(unsigned int flv,double enu,
+                    unsigned int rho,double scale,
+                    std::vector<bool>& avr) const;
+  \end{lstlisting}
+{\ttfamily EvalMassAtNode} returns the content a given neutrino mass
+eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$},
+{\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}) at an energy
+node {\ttfamily ie}. Furthermore, {\ttfamily EvalMass} returns the
+approximate content of a given mass eigenstate for a specific neutrino
+energy  {\ttf enu} by interpolating in the interaction basis. In each
+function, when considering  {\ttf  NT = both}, the parameter {\ttf
+  rho} toggles between {\ttf neutrino (0)} and {\ttf antineutrino
+  (1)}. The last function gets two additional arguments: an {\ttf scale} such
+that all $H_0$ induced oscillation frequencies larger than this scale
+will be averaged and a vector of booleans which entries will be set to
+true if the corresponding oscillations frequencies have been averaged
+out.
+\end{itemize}
+
+\textbf{Functions to evolve the neutrino ensemble}
+
+\begin{itemize}
+\item Evolve state
+  \begin{lstlisting}
+    void EvolveState();
+  \end{lstlisting}
+Once the neutrino propagation problem has been setup this function
+evolves the neutrino state from its initial position to its final
+position specified by the {\ttfamily track}. 
+\end{itemize}
+
+\textbf{Functions obtain properties of the nuSQUIDS object as well as the state}
+
+\begin{itemize}
+\item Get energy nodes values
+  \begin{lstlisting}
+    marray<double,1> GetERange() const;
+  \end{lstlisting}
+  Returns a one dimensional array containing the energy nodes
+  positions given in eV. 
+  \item Get number of energy nodes
+  \begin{lstlisting}
+    unsigned int GetNumE() const;
+  \end{lstlisting}
+  Returns the number of energy nodes.
+  \item Get number neutrino flavors
+  \begin{lstlisting}
+    unsigned int GetNumNeu() const;
+  \end{lstlisting}
+  Returns the number of neutrino flavors.
+  \item Get Hamiltonian at current position
+  \begin{lstlisting}
+    SU_vector GetHamiltonian(unsigned int ie, 
+                             unsigned int rho = 0);
+  \end{lstlisting}
+  Returns the {\ttf SU\_vector} that represents the (anti)neutrino
+  Hamiltonian at the current position, at a given energy node {\ttf
+    ie}, and  {\ttf rho} specifies whether the neutrino or antineutrino.
+  \item Get the state of the system 
+  \begin{lstlisting}
+      const squids::SU_vector& GetState(unsigned int ei,unsigned int rho = 0) const;
+  \end{lstlisting}
+  Returns the {\ttf SU\_vector} that represents the (anti)neutrino state at given energy node {\ttf ie}. 
+  Furthermore, {\tt rho} specifies whether the neutrino or antineutrino state is returned.
+  \item Get the flavor projector
+  \begin{lstlisting}
+    SU_vector GetFlavorProj(unsigned int ie, unsigned int rho = 0) const;
+  \end{lstlisting}
+  Returns a {\ttf SU\_vector} that represents the flavor projector for the energy node {\ttf ie} and 
+  {\ttf rho} specifies if neutrinos or antineutrinos are requested.
+  \item Get the mass projector
+  \begin{lstlisting}
+    SU_vector GetMassProj(unsigned int ie, unsigned int rho = 0) const;
+  \end{lstlisting}
+  Returns a {\ttf SU\_vector} that represents the mass projector for the energy node {\ttf ie} and 
+  {\ttf rho} specifies if neutrinos or antineutrinos are requested.
+  \item Get {\ttfamily Body}
+  \begin{lstlisting}
+    std::shared_ptr<Body> GetBody() const;
+  \end{lstlisting}
+  Returns the {\ttf Body} instance currently stored in the {\ttf nuSQUIDS} object.
+  \item Get {\ttfamily Track}
+  \begin{lstlisting}
+    std::shared_ptr<Track> GetTrack() const;
+  \end{lstlisting}
+  Returns the {\ttf Track} instance currently stored in the {\ttf nuSQUIDS} object.
+  \item Get mixing angle
+  \begin{lstlisting}
+    double Get_MixingAngle(unsigned int i, unsigned int j) const;
+  \end{lstlisting}
+  Returns the $\theta_{i,j}$ mixing angle where {\ttf i} and {\ttf j} are zero based indexes.
+  \item Get CP phase
+  \begin{lstlisting}
+    double Get_CPPhase(unsigned int i, unsigned int j) const;
+  \end{lstlisting}
+  Returns the $\delta_{i,j}$ CP phase where {\ttf i} and {\ttf j} are zero based indexes.
+  \item Get square mass difference
+  \begin{lstlisting}
+    double Get_SquareMassDifference(unsigned int i) const;
+  \end{lstlisting}
+  Returns the $\Delta m^2_{i0}$ in ${\rm eV}^2$ where $1\le i < {\rm \tt numneu}$.
+  \end{itemize}
+  
+\textbf{Functions to set properties of the nuSQUIDS object as well as the state}
+
+\begin{itemize}
+  \item Set {\ttfamily Body}
+  \begin{lstlisting}
+    void Set_Body(std::shared_ptr<Body>);
+  \end{lstlisting}
+  Sets the {\ttf Body} instance in which the neutrino propagation will take place.
+  \item Set {\ttfamily Track}
+  \begin{lstlisting}
+    void Set_Track(std::shared_ptr<Track>);
+  \end{lstlisting}
+  Sets the {\ttf Track} instance which describes the neutrino propagation inside a
+  given {\ttf Body}.
+  \item Set the initial state
+  \begin{lstlisting}
+    void Set_initial_state(marray<double,1> state, Basis basis);
+    void Set_initial_state(marray<double,2> state, Basis basis);
+    void Set_initial_state(marray<double,3> state, Basis basis);
+  \end{lstlisting}
+  {\ttf Set\_initial\_state} sets the initial neutrino (and
+  antineutrino) state. The states  can be specified for the single and
+  multiple energy modes can be specified using the different {\ttf
+    C++} signatures. In each case {\ttf basis} can be either {\ttf
+    mass} or {\ttf flavor}. 
+  \begin{itemize}
+  	\item {\ttf marray<double,1> state}: 
+	Can only be used in single energy mode and is defined by 
+	{\ttf state[$\alpha$]  = $\phi_\alpha$ } where $\alpha$ is a
+        flavor or mass eigenstate index. 
+	\item {\ttf marray<double,2> state}: Can only be used in
+          multiple energy mode and is defined by {\ttf
+            state[ei][$\alpha$]  = $\phi_\alpha (E$[ei]$),$ } i.e. the
+          flavor (mass) eigenstate composition at a given energy node
+          {\ttf ei}. 
+	\item {\ttf marray<double,3> state}: Can only be used in
+          multiple energy mode and is defined by {\ttf
+            state[ei][$\rho$][$\alpha$]  = $\phi^{\rho}_\alpha
+            (E$[ei]$),$ } i.e. the flavor (mass) eigenstate
+          composition at a given energy node {\ttf ei}, and where
+          $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 0 \equiv {\rm
+            antineutrino}$. 
+  \end{itemize}
+  \item Set energy
+  \begin{lstlisting}
+    void Set_E(double enu);
+  \end{lstlisting}
+  Set the neutrino energy. This function can only be used in the
+  single energy mode and {\ttf enu} has to be in natural units.
+  \item Enable progress bar
+  \begin{lstlisting}
+    void Set_ProgressBar(bool opt);
+  \end{lstlisting}
+  If {\ttf opt} is {\ttf true} a progress bar will be printed to
+  indicate the calculation progress. 
+  \item Enable tau regeneration
+  \begin{lstlisting}
+    void Set_TauRegeneration(bool opt);
+  \end{lstlisting}
+  If {\ttf opt} is {\ttf true}, {\ttf NT} is {\ttf both}, and non
+  coherent interactions are enabled tau regeneration effects will be included.
+  \item Set mixing angle
+  \begin{lstlisting}
+    void Set_MixingAngle(unsigned int i, unsigned int j, double angle);
+  \end{lstlisting}
+  Sets the $\theta_{i,j}$ mixing angle to {\ttf angle}, where {\ttf i}
+  and {\ttf j} are zero based indexes, and {\ttf angle} must be given in radians.
+  \item Get CP phase
+  \begin{lstlisting}
+    void Set_CPPhase(unsigned int i, unsigned int j, doble phase);
+  \end{lstlisting}
+  Sets the $\delta_{i,j}$ CP phase to {\ttf phase}, where {\ttf i} and
+  {\ttf j} are zero based indexes, and {\ttf phase} must be given in radians.
+  \item Set square mass difference
+  \begin{lstlisting}
+    void Set_SquareMassDifference(unsigned int i, doble dmsq);
+  \end{lstlisting}
+  Sets the $\Delta m^2_{i0}$ to {\ttf dams}, given in ${\rm eV}^2$,
+  where $1\le i < {\rm \tt numneu}$. 
+  \item Set parameters to default
+  \begin{lstlisting}
+    void Set_MixingParametersToDefault();
+  \end{lstlisting}
+  Sets the mixing angles and square mass mixings to the best fit point
+  given in \citep{Gonzalez-Garcia:2014bfa}. 
+  \item Set the basis of solution
+  \begin{lstlisting}
+    void Set_Basis(Basis basis);
+  \end{lstlisting}
+  Sets the basis on which the evolution will be performed. Two options
+  are available: {\ttf mass} and {\ttf interaction}, the later being
+  the default. 
+\item Set neutrino cross-section
+  \begin{lstlisting}
+    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs)
+  \end{lstlisting}
+  Sets the neutrino cross-section~\ref{sec:xs} given by the shared
+  pointer {\ttf xs} to the nuSQuIDS object.
+\end{itemize}
+  
+\textbf{HDF5 interface functions}
+ 
+\begin{itemize}
+  \item Write nuSQUIDS object into an HDF5 file.
+  \begin{lstlisting}
+    void WriteStateHDF5(std::string hdf5_filename,
+                        std::string group = "/",
+                        bool save_cross_sections = true, 
+                        std::string cross_section_grp_loc = "") const;
+  \end{lstlisting}
+  Writes the current {\ttf nuSQUIDS} configuration and state into an HDF5 file
+  for later use. {\ttf hdf5\_filename} specifies the output filename, {\ttf group} is the 
+  location on the HDF5 structure where the {\ttf nuSQUIDS} object will be save; by default
+  the root of the HDF5 will be used. Furthermore, {\ttf
+    save\_cross\_sections} and {\ttf cross\_section\_grp\_loc} specify
+  if cross sections will be saved and where on the HDF5 file
+  structure. See Figure~\ref{fig:nusquids_hdf5}. 
+  \item Add to the HDF5 write funtion.
+  \begin{lstlisting}
+    virtual void AddToWriteStateHDF5(hid_t hdf5_loc_id) const;
+  \end{lstlisting}
+  En ables the user to add content in the HDF5 file. An HDF5
+  location,{\ttf hdf5\_loc\_id}. Using that the user can stor relevant
+  informa about the derived nuSQuIDS class.
+  \item Read nuSQUIDS object from an HDF5 file.
+    \begin{lstlisting}
+    void ReadStateHDF5(std::string hdf5_filename,
+                       std::string group = "/",
+                       std::string cross_section_grp_loc = "");
+  \end{lstlisting}
+  Reads an previously generated HDF5 file and sets the {\ttf nuSQUIDS} object
+  accordingly, i.e. it configures it and loads the saved state. {\ttf
+    hdf5\_filename} specifies the input filename, {\ttf group} is the
+  location on the HDF5 structure where the {\ttf nuSQUIDS} object is;
+  by default the root of the HDF5 is assumed. Furthermore, {\ttf
+    cross\_section\_grp\_loc} specify where the cross sections are in
+  the HDF5 file structure. See Figure~\ref{fig:nusquids_hdf5}. 
+  \item Add to the HDF5 read file.
+  \begin{lstlisting}
+    virtual void AddToReadStateHDF5(hid_t hdf5_loc_id);
+  \end{lstlisting}
+  Enables the user to read user defined content from the HDF5 file. An
+  HDF5 location,{\ttf hdf5\_loc\_id}, is provided so the user can
+  interface with the HDF5 library. For a correct implementations this
+  functions has to be implemented consistently with {\ttf
+    AddToWriteStateHDF5} function. 
+\end{itemize}
+
+\begin{figure}[htb]
+\centering
+\begin{tikzpicture}[%
+  grow via three points={one child at (0.5,-0.7) and
+  two children at (0.5,-0.7) and (0.5,-1.4)},
+  edge from parent path={(\tikzparentnode.south) |- (\tikzchildnode.west)}]
+  \node {/}
+    child { node [label=right:{{\ttf NeutrinoType}, number of flavors, interaction flag.}] {\ttf basic}}	
+    child { node [label=right:{$\delta_{i,j} (rad).$}] {\ttf CPphases}}		
+    child { node [label=right:{$\theta_{i,j} (rad).$}] {\ttf mixingangles}}
+    child { node [label=right:{$\Delta m^2_{i,j} (\rm eV^2).$}] {\ttf massdifferences}}
+    child { node [optional] {\ttf crosssections}
+      child { node [label=right:{Neutrino charge current differential spectrum (${\rm GeV^{-1}}$).}]  {\ttf dNdEcc}}
+      child { node [label=right:{Neutrino neutral current differential spectrum (${\rm GeV^{-1}}$).}] {\ttf dNdEnc}}
+      child { node [label=right:{Tau decay lepton full spectrum (${\rm GeV^{-1}}$).}] {\ttf dNdEtauall}}
+      child { node [label=right:{Tau decay lepton differential spectrum (${\rm GeV^{-1}}$).}] {\ttf dNdEtaulep}}
+      child { node [label=right:{Tau decay length (${\rm cm^{-1}}$).}] {\ttf invlentau}}
+      child { node [label=right:{Total neutral current neutrino cross section (${\rm cm^2}$).}]{\ttf sigmacc}}
+      child { node [label=right:{Total charge current neutrino cross section (${\rm cm^2}$).}] {\ttf sigmanc}}
+    }
+    child [missing] {}				
+    child [missing] {}				
+    child [missing] {}
+    child [missing] {}
+    child [missing] {}			
+    child [missing] {}
+    child [missing] {}			
+    child { node [label=right:{Energy nodes ({\rm eV}).}] {\ttf energies}}	
+    child { node [label=right:{Flavor composition at each energy node.}] {\ttf flavorcomp}}
+    child { node [label=right:{Mass composition at each energy node.}] {\ttf masscomp}}
+    child { node [label=right:{Neutrino {\ttf SU\_vector} components at each energy node.}] {\ttf neustate}}
+    child { node [label=right:{Antineutrino {\ttf SU\_vector} components at each energy node.}] {\ttf aneustate}}
+    child { node [label=right:{body definition and parameters.}] {\ttf body}}
+    child { node [label=right:{track definition and parameters.}] {\ttf track}}
+    child { node [selected] {\ttf user\_parameters}}
+    ;
+\end{tikzpicture}
+\caption{Structure of {\ttf nuSQUIDS} HDF5 file. The {\ttf
+    crosssections} group will only be written when interactions are
+  enable. Furthermore, {\ttf user\_parameters} are by default empty
+  and can be set/access by {\ttf AddToWriteStateHDF5/AddToReadStateHDF5}.} 
+\label{fig:nusquids_hdf5}
+\end{figure}
+
+
+
+\subsection{nuSQUIDSAtm}
+
+Atmospheric neutrino oscillations is a major and instrumental part of
+research in contemporary neutrino physics. Experiments like
+SuperKamiokande, IceCube, and Antares have used atmospheric neutrinos
+to measure neutrino mass splittings and mixing angles. Furthermore,
+proposed extensions like HyperKamiokande, PINGU, and ORCA ought to
+improve the current measurements and have sensitivity to neutrino
+neutrino mass ordering. This class allows to propagate a set of full
+energy spectrum of neutrinos for a different zenith angles.
+It implements functions to set easily the initial conditions and also
+interpolations to the fluxes.
+\subsubsection{Constructors}
+
+\begin{itemize}
+\item[$\circ$] Constructor with {\ttf costh} range.
+  \begin{lstlisting}
+    template<typename... ArgTypes> nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args)
+  \end{lstlisting}
+This constructor it creates a set {\ttf nuSQUIDS} or derived {\ttf
+  nuSQUIDS} objects with a set of zenith angles given by the {\ttf
+  marray} {\ttf costh\_array}. The arguments given in {\ttf arg} are the
+corresponding arguments of the nuSQUIDS or derived nuSQUIDS class constructor.
+
+\item[$\circ$] Constructing from a nuSQuIDSAtm-HDF5 file
+  \begin{lstlisting}
+    nuSQUIDSAtm(std::string hdf5_filename)
+  \end{lstlisting}
+This constructor initializes {\ttfamily nuSQUIDS} from a 
+previously generated $\nu$SQuIDS-HDF5 file. The result {\ttfamily nuSQUIDS} 
+object will be given in {\it single} or {\it multiple} energy mode
+depending on the HDF5 file configuration. {\ttfamily filepath} must specify the full
+path of the HDF5 file. Furthermore,
+{\ttfamily grp} specifies the location on the HDF5 file structure
+where the object will be saved; by default
+it will be saved on the {\ttfamily root} of the HDF5 file.
+
+\item[$\circ$] Move constructor.
+  \begin{lstlisting}
+    nuSQUIDSAtm(nuSQUIDSAtm&&);
+  \end{lstlisting}
+
+  \subsubsection{Functions}
+\item Set initial state.
+  \begin{lstlisting}
+    void Set_initial_state(const marray<double,3>& ini_flux, Basis basis=flavor);
+    void Set_initial_state(const marray<double,4>& ini_flux, Basis basis=flavor);
+  \end{lstlisting}
+  Sets the initial state of the system given in the marray {\ttf
+    ini\_flux}, {\ttf basis} is the basis in where the state is
+  defined. Different {\ttf marray} can be used for different cases:
+
+  \begin{itemize}
+  \item {\ttf marray<double,3> state}: Can only be used in
+    multiple energy mode and is defined by {\ttf
+      state[czi][ei][$\alpha$]  = $\phi_\alpha (E$[ei]$,costh$[czi]$),$ } i.e. the
+    flavor (mass) eigenstate composition at a given energy and cosine
+    zenith node {\ttf ei} and {\ttf czi}. 
+  \item {\ttf marray<double,4> state}: Can only be used in
+    multiple energy mode and is defined by {\ttf
+      state[czi][ei][$\rho$][$\alpha$]  = $\phi^{\rho}_\alpha
+      (E$[ei]$,costh$[czi]$),$ } i.e. the flavor (mass) eigenstate
+    composition at a given energy and zenith node {\ttf ei} and {\ttf czi}, and where
+    $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 0 \equiv {\rm
+      antineutrino}$. 
+  \end{itemize}
+  
+\item Evolve function
+  \begin{lstlisting}
+    void EvolveState();
+  \end{lstlisting}
+  Function that evolves the system.
+
+\item Evaluate the flux for a given flavor.
+  \begin{lstlisting}
+    double EvalFlavor(unsigned int flv,double costh,
+    double enu, unsigned int rho, double scale,std::vector<bool> avr) const;
+
+    double EvalFlavor(unsigned int flv,double costh,
+    double enu,unsigned int rho = 0, bool randomize_production_height = false) const;
+  \end{lstlisting}
+  It returns the flux for the flavor {\ttf flv} at the value of cosine
+  zenith given by {\ttf costh} and energy given by {\ttf enu}.
+  {\ttf rho} is {\ttf neutrino} or {\ttf antineutrino}.
+  Some arguments can be also set: If a frequency is higher that {\ttf
+    scale} it will be averaged out, and the corresponding entrance in the
+  Boolean vector {\ttf avr} will be set to {\ttf true}.
+  In the second case the randomization on the production height of the
+  neutrino can be set to $true$, by default is $false$.
+  
+\item Read and write function.
+  \begin{lstlisting}
+    void ReadStateHDF5(std::string hdf5_filename);
+    void WriteStateHDF5(std::string hdf5_filename, bool overwrite = true) const;
+  \end{lstlisting}
+  
+  This functions read and write the state of the system in the file
+  {\ttf hdf5\_filename}, in the write {\ttf overwrite} may be set to
+  {\ttf true} or {\ttf false}.
+
+\item Set functions as in nuSQUIDS.
+  \begin{lstlisting}
+    void Set_MixingParametersToDefault();
+    void Set_MixingAngle(unsigned int i,
+                         unsigned int j,double angle);
+    void Set_CPPhase(unsigned int i,
+                     unsigned int j,double angle);
+    void Set_SquareMassDifference(unsigned int i,double sq);
+    void Set_h(double h);
+    void Set_h_max(double h);
+    void Set_h_min(double h);
+    void Set_abs_error(double eps);
+    void Set_rel_error(double eps);
+    void Set_GSL_step(gsl_odeiv2_step_type const * opt);
+    void Set_ProgressBar(bool opt);
+    void Set_TauRegeneration(bool opt);
+    void Set_GlashowResonance(bool opt);
+    void Set_IncludeOscillations(bool opt);
+    void Set_AllowConstantDensityOscillationOnlyEvolution(bool opt);
+    void Set_PositivityConstrain(bool opt);
+    void Set_PositivityConstrainStep(double step);
+    void SetNeutrinoCrossSections(
+                   std::shared_ptr<NeutrinoCrossSections> xs);
+  \end{lstlisting}
+  All this functions do a recursive call to the function with
+  the same name in all the nuSQUIDS objects.
+  
+
+\item Set earth model.
+  \begin{lstlisting}
+    void Set_EarthModel(std::shared_ptr<EarthAtm> earth);
+  \end{lstlisting}
+  Sets the body given by {\ttf earth} to all the nuSQUIDS objects in
+  every node.
+
+\item Sets the number of threads
+  \begin{lstlisting}
+    void Set_EvalThreads(unsigned int nThreads);
+  \end{lstlisting}
+  The evolution can be done in a multi-thread with the number of
+  threads specified by {\ttf nThreads}.
+
+\item Set absolute error in a give node.
+  \begin{lstlisting}
+    void Set_abs_error(double eps, unsigned int idx);
+  \end{lstlisting}
+  Sets the GSL absolute error {\ttf eps} in the cosine zenith node
+  given by $idx$.
+
+\item Number of threads.
+  \begin{lstlisting}
+    unsigned int Get_EvalThreads() const{
+  \end{lstlisting}
+  Returns the number of threads used in the evaluation.
+\item Get mixing angles.
+  \begin{lstlisting}
+    double Get_MixingAngle(unsigned int i, unsigned int j) const;
+  \end{lstlisting}
+  It returns the mixing angle of the first cosine zenith node in the
+  rotation plane given by ({\ttf i}, {\ttf j}).
+
+\item Get square mass difference.
+  \begin{lstlisting}
+    double Get_SquareMassDifference(unsigned int i) const;
+  \end{lstlisting}
+  It returns the square mass difference value given by {\ttf i}.
+ \item Number of energy nodes.
+  \begin{lstlisting}
+    size_t GetNumE() const;
+  \end{lstlisting}
+  Gives the number of energy nodes.
+
+ \item Number of cosine zenith nodes.
+  \begin{lstlisting}
+    size_t GetNumCos() const;
+  \end{lstlisting}
+  Gives the number of cosine zenith nodes.
+
+\item Number of rho.
+  \begin{lstlisting}
+    unsigned int GetNumRho() const;
+  \end{lstlisting}
+  Gives the number of {\ttf rho}, for neutrino-antineutrino case it
+  will be two. 
+
+\item  Energy array. 
+  \begin{lstlisting}
+    marray<double,1> GetERange() const;
+  \end{lstlisting}
+  Returns and {\ttf marray} with the value of the energies in the
+  energy nodes.
+
+\item Cosine zenith array.
+  \begin{lstlisting}
+    marray<double,1> GetCosthRange() const;
+  \end{lstlisting}
+  Returns and {\ttf marray} with the value of the cosine zenith in the
+  cosine zenith nodes.
+
+\item Get the nuSQUIDS object.
+  \begin{lstlisting}
+    BaseSQUIDS& GetnuSQuIDS(unsigned int ci);
+  \end{lstlisting}
+  Returns the nuSQUIDS object in the cosine zenith node {\ttf ci}.
+
+\item Get the array of nuSQUIDS.
+  \begin{lstlisting}
+      std::vector<BaseSQUIDS>& GetnuSQuIDS();
+    \end{lstlisting}
+    Returns a {\ttf std::vector} with the nuSQUIDS objects in all the
+    cosine zenith nodes.
+
+    
+    
+  
+\end{itemize}
 
 % TODO: section describing space and time complexity, benchmarks
 
