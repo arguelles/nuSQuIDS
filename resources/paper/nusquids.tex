@@ -1367,6 +1367,118 @@ This enforces the order of the set functions calls.
     }
 \end{lstlisting}
 
+\subsection{Decoherence or averaged oscillations \textnormal{({\ttf
+      examples/Astrophysical\_neutrino\_flavor\_ratio})}}
+
+This file demonstrates how to the astrophysical flavo ratio by means
+of using the averaged out approximation. We do this in two ways in this
+example: first explicitly using the PMNS matrix and the formula given
+in the literature and second by means of nuSQuIDS fast averaging functionality.
+For simplicity we will do this example in the single energy mode, but it
+can be performed in the multiple energy mode too.
+
+
+In this example we set {\ttf N\_neutrino = 3} and {\ttf Type = "neutrino"}.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  nuSQUIDS nus(3,neutrino);
+\end{lstlisting}
+
+We use the standard parametrization.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  nus.Set_MixingAngle(0,1,0.563942);
+  nus.Set_MixingAngle(0,2,0.154085);
+  nus.Set_MixingAngle(1,2,0.785398);
+
+  nus.Set_SquareMassDifference(1,7.65e-05);
+  nus.Set_SquareMassDifference(2,0.00247);
+  
+  nus.Set_CPPhase(0,2,0.0);
+\end{lstlisting}
+
+We construct and set the body and the track, in this case we use vacuum
+oscillations.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  std::shared_ptr<Vacuum> vacuum = std::make_shared<Vacuum>();
+  std::shared_ptr<Vacuum::Track> vacuum_track = std::make_shared<Vacuum::Track>(1.e3*units.kparsec);
+  nus.Set_Body(vacuum);
+  nus.Set_Track(vacuum_track);
+\end{lstlisting}
+
+Here we set the initial state for the flavor, a pion produced flavor composition
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  marray<double,1> ini_state({3},{1,2,0});
+  nus.Set_initial_state(ini_state,flavor);
+\end{lstlisting}
+
+We evolve the neutrinos.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  nus.EvolveState();
+\end{lstlisting}
+
+nuSQuIDS can calculate the average oscillation probability
+where the oscillation frequencies are larger than some value
+we call this value {\ttf scale}. When this mode is used its often
+valuable to know which frequencies have been averaged out.
+NuSQuIDS this by sting true a boolean vector {\ttf is\_avg} provided to the
+evaluation function.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  nus.EvolveState();
+  double scale = 0.;
+  std::vector<bool> is_avg(3);
+\end{lstlisting}
+
+The get the result always averaged we can set the scale to the maximum
+double numerical limit.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+  scale = std::numeric_limits<double>::max();
+\end{lstlisting}
+
+We output the result for the averaged and non averaged computations.
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1]
+    std::cout << "Out state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i, scale, is_avg);
+      std::cout << " (" << (is_avg[i] ? "avg." : "no avg.")  << ") ";
+    }
+    std::cout << std::endl;
+  }
+
+  scale = 0.0;
+
+  std::cout << "Out state" << std::endl;
+  for (double EE : nus.GetERange()){
+    std::cout << EE/units.GeV << " ";
+    for(int i = 0; i < 3; i++){
+      std::cout << nus.EvalFlavor(i, scale, is_avg);
+      std::cout << " (" << (is_avg[i] ? "avg." : "no avg.")  << ") ";
+    }
+    std::cout << std::endl;
+  }
+\end{lstlisting}
+
+Notice that the average calculation is done only on the
+oscillations given by $H_0$ when any oscillation is evaluated. Fast
+oscillations from other terms, such $H_I$  wont be
+averaged out.
+
 
 \subsection{Atmospheric Mode: Standard \textnormal{({\ttf
       examples/Atm\_default})}}
