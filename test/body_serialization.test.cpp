@@ -188,7 +188,7 @@ int main(){
   // testing earthatm
   // ************************************
   EarthAtm earthatm;
-  EarthAtm::Track earthatmt(10.*units.km,acos(3.1415));
+  EarthAtm::Track earthatmt(10.*units.km,acos(-1.0));
 
   // open groups
   hid_t earthatm_group_id = H5Gcreate(file_id, "earthatm", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
