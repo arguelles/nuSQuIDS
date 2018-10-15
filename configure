@@ -644,7 +644,10 @@ if [ $PYTHON_BINDINGS ]; then
 
 	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	PYTHONLIBPATH=`${PYTHON_EXE} -c 'import sys; import re; print([ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0]);'`
-	PYTHONINCPATH=`find $PYTHONLIBPATH/../../include/ -name "python${PYTHONVERSION}*"`
+	PYTHONINCPATHS=`find $PYTHONLIBPATH/../../include/ -name "python${PYTHONVERSION}*"`
+  for proposed_path in $PYTHONINCPATHS; do
+    PYTHON_CFLAGS="$PYTHON_CFLAGS -I$proposed_path"
+  done
 	PYTHONNUMPYCHECK=`${PYTHON_EXE} ./resources/check_numpy.py`
 	if [ -z "$PYTHONNUMPYCHECK" ]; then
 		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
@@ -666,7 +669,7 @@ LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
 LDFLAGS+= -lpython${PYTHONVERSION}
 LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} -lnuSQuIDS ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
-INCCFLAGS+= -I${PYTHONINCPATH} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../include/
+INCCFLAGS+= ${PYTHON_CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../include/
 INCCFLAGS+= ${BOOST_CFLAGS}
 INCCFLAGS+= -I${PYTHONNUMPYINC}
 " > resources/python/src/Makefile
