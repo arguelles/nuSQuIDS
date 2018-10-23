@@ -1696,7 +1696,7 @@ void nuSQUIDS::AddToReadHDF5(hid_t hdf5_loc_id){
 
 }
 
-void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::shared_ptr<InteractionStructure> iis){
+void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared_ptr<InteractionStructure> iis){
   hid_t file_id,group_id,root_id;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;

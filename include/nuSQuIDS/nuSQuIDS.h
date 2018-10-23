@@ -543,7 +543,7 @@ protected:
     /// to be read.
     /// @see AddToReadHDF5
     /// @see WriteStateHDF5
-    void ReadStateHDF5(std::string hdf5_filename,std::string group = "/", std::shared_ptr<InteractionStructure> iis = nullptr);
+    void ReadStateHDF5Internal(std::string hdf5_filename,std::string group = "/", std::shared_ptr<InteractionStructure> iis = nullptr);
 
   public:
     /************************************************************************************
@@ -595,7 +595,7 @@ protected:
       int_struct(int_struct)
     {
       if(this->int_struct)
-        ReadStateHDF5(hdf5_filename,grp,int_struct);
+        ReadStateHDF5Internal(hdf5_filename,grp,int_struct);
       else
         ReadStateHDF5(hdf5_filename, grp, "");
     }
@@ -1535,7 +1535,7 @@ class nuSQUIDSAtm {
             int_struct = nsq.GetInteractionStructure();
         } else {
           // read the cross sections stored in /crosssections
-          nsq.ReadStateHDF5(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
+          nsq.ReadStateHDF5Internal(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
         }
         i++;
       }
