@@ -744,9 +744,10 @@ double EarthAtm::density(const GenericTrack& track_input) const
     return x_rho_max;
   }
   else if ( rel_r > radius/earth_with_atm_radius ) {
-    double h = atm_height*(rel_r - radius/earth_with_atm_radius);
-    double h0 = 25.0;
-    return 1.05*exp(-h/h0);
+    double h = atm_height*(rel_r - radius/earth_with_atm_radius); // here atm_height is a member of EarthAtm in km
+    double h0 = 7.594; //km obtained by fitting the NRLMSISE atmospheric model up to 60 km to an exponetial profile
+    // deviations from NRLMSISE model above this height can be subtantial.
+    return 0.0012*exp(-h/h0); // use as constant the atmospheric density at surface in gr/cm^3
   } else {
     return inter_density(r/radius);
   }

@@ -43,6 +43,7 @@
 #include <assert.h>
 #include <memory>
 #include <exception>
+#include <iostream>
 // hdf5 serializtion
 #include "H5Epublic.h"
 #include "H5Tpublic.h"
