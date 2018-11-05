@@ -325,7 +325,7 @@ class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
         plt.contourf(NCOSTH,NENU,PHINUMU,contour_divisions, cmap = color_map)
 
         plt.xlabel(r"$\cos\ \theta_z$", fontsize = fontsize, fontname = fontname)
-        plt.ylabel(r"$\mathrm{log}_{10}(E/\mathrm{GeV})$", fontsize = fontsize, fontname = fontname)
+        plt.ylabel(r"$\mathrm{log}_{10}(E/\mathrm{eV})$", fontsize = fontsize, fontname = fontname)
 
         cbar = plt.colorbar(cmap = color_map)
         if colorscale == "log":
