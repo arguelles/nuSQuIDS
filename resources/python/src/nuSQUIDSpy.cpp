@@ -409,7 +409,7 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
       class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor,
           nuSQUIDSAtm_EvalFlavor_overload<nuSQUIDSAtm<BaseType>>(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
-            "Reads an HDF5 file and loads the contents into the current object."));
+            "nuSQuIDSAtm evaluate flux.."));
       class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
       class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
@@ -490,6 +490,24 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("interaction",interaction)
   ;
 
+  enum_<NeutrinoCrossSections::NeutrinoFlavor>("NeutrinoCrossSections_NeutrinoFlavor")
+    .value("electron",NeutrinoCrossSections::NeutrinoFlavor::electron)
+    .value("muon",NeutrinoCrossSections::NeutrinoFlavor::muon)
+    .value("tau",NeutrinoCrossSections::NeutrinoFlavor::tau)
+    .value("sterile",NeutrinoCrossSections::NeutrinoFlavor::sterile)
+  ;
+
+  enum_<NeutrinoCrossSections::NeutrinoType>("NeutrinoCrossSections_NeutrinoType")
+    .value("neutrino",NeutrinoCrossSections::NeutrinoType::neutrino)
+    .value("antineutrino",NeutrinoCrossSections::NeutrinoType::antineutrino)
+  ;
+
+  enum_<NeutrinoCrossSections::Current>("NeutrinoCrossSections_Current")
+    .value("CC",NeutrinoCrossSections::Current::CC)
+    .value("NC",NeutrinoCrossSections::Current::NC)
+    .value("GR",NeutrinoCrossSections::Current::GR)
+  ;
+
   class_<squids::SU_vector, boost::noncopyable,std::shared_ptr<squids::SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<unsigned int>())
@@ -506,6 +524,30 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSAtm");
+
+  class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>, boost::noncopyable >("NeutrinoCrossSections", no_init);
+
+  class_<NullCrossSections, bases<NeutrinoCrossSections>, std::shared_ptr<NullCrossSections>, boost::noncopyable >("NullCrossSections")
+    .def("TotalCrossSection",&NullCrossSections::TotalCrossSection)
+    .def("SingleDifferentialCrossSection",&NullCrossSections::SingleDifferentialCrossSection)
+  ;
+
+  class_<GlashowResonanceCrossSection, bases<NeutrinoCrossSections>, std::shared_ptr<GlashowResonanceCrossSection>, boost::noncopyable >("GlashowResonanceCrossSection")
+    .def("TotalCrossSection",&GlashowResonanceCrossSection::TotalCrossSection)
+    .def("SingleDifferentialCrossSection",&GlashowResonanceCrossSection::SingleDifferentialCrossSection)
+    .def("WDecayBranchingFraction",&GlashowResonanceCrossSection::WDecayBranchingFraction)
+  ;
+
+  class_<NeutrinoDISCrossSectionsFromTables, bases<NeutrinoCrossSections>, std::shared_ptr<NeutrinoDISCrossSectionsFromTables>, boost::noncopyable>("NeutrinoDISCrossSectionsFromTables")
+    .def(init<std::string>())
+    .def("TotalCrossSection",&NeutrinoDISCrossSectionsFromTables::TotalCrossSection)
+    .def("SingleDifferentialCrossSection",&NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection)
+    .def("GetNumE",&NeutrinoDISCrossSectionsFromTables::GetNumE)
+    .def("GetEmin",&NeutrinoDISCrossSectionsFromTables::GetEmax)
+    .def("IsInit",&NeutrinoDISCrossSectionsFromTables::IsInit)
+    .def("WriteHDF",&NeutrinoDISCrossSectionsFromTables::WriteHDF)
+    .def("WriteText",&NeutrinoDISCrossSectionsFromTables::WriteText)
+  ;
 
   class_<squids::Const, boost::noncopyable>("Const")
     .def_readonly("TeV",&squids::Const::TeV)
