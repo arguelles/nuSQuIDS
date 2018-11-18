@@ -164,6 +164,7 @@ ensure_found(){
 }
 
 PREFIX=/usr/local
+INSTALL_LIBDIR=lib
 
 VERSION_NUM=101001
 VERSION=`echo $VERSION_NUM | awk '{
@@ -209,6 +210,10 @@ By default, \`make install' will install all the files in
 an installation prefix other than \`$PREFIX' using \`--prefix',
 for instance \`--prefix=\$HOME'.
 
+Fine tuning of the installation directories:
+
+  --libdir=DIR            object code libraries [lib]
+
 The following options can be used to maunally specify the 
 locations of dependencies:
   --with-gsl=DIR           use the copy of GSL in DIR
@@ -252,6 +257,9 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--prefix=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then PREFIX="$TMP"; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--libdir=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then INSTALL_LIBDIR="$TMP"; continue; fi
 
 	TMP=`echo "$var" | sed -n 's/^--with-gsl=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then
@@ -394,7 +402,7 @@ Libs: ${HDF5_LDFLAGS}
 
 echo "prefix=$PREFIX" > lib/nusquids.pc
 echo '
-libdir=${prefix}/lib
+libdir=${prefix}/'"$INSTALL_LIBDIR"'
 includedir=${prefix}/inc
 
 Name: nuSQuIDS
@@ -423,6 +431,7 @@ DYN_OPT=$DYN_OPT
 
 VERSION=$VERSION
 PREFIX=$PREFIX
+INSTALL_LIBDIR:=$INSTALL_LIBDIR
 " > ./Makefile
 
 echo '
@@ -567,29 +576,29 @@ test: $(DYN_PRODUCT) $(STAT_PRODUCT)
 
 install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
-	@mkdir -p $(PREFIX)/include/nuSQuIDS
-	@cp $(INCnuSQUIDS)/nuSQuIDS/*.h $(PREFIX)/include/nuSQuIDS
-	@echo Installing libraries in $(PREFIX)/lib
-	@mkdir -p $(PREFIX)/lib
-	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) $(PREFIX)/lib
-	@echo Installing config information in $(PREFIX)/lib/pkgconfig
-	@mkdir -p $(PREFIX)/lib/pkgconfig
-	@cp lib/nusquids.pc $(PREFIX)/lib/pkgconfig' >> ./Makefile
+	@mkdir -p "$(PREFIX)/include/nuSQuIDS"
+	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
+	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
+	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
+	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) "$(PREFIX)/$(INSTALL_LIBDIR)"
+	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
+	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
+	@cp lib/nusquids.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"' >> ./Makefile
 
 if `pkg-config hdf5`; then
 :
 else
-	echo '	@cp lib/hdf5.pc $(PREFIX)/lib/pkgconfig' >> ./Makefile
+	echo '	@cp lib/hdf5.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"' >> ./Makefile
 fi
 echo '
 uninstall:
 	@echo Removing headers from $(PREFIX)/include/nuSQuIDS
-	@rm -rf $(PREFIX)/include/nuSQuIDS
-	@echo Removing libraries from $(PREFIX)/lib
-	@rm -f $(PREFIX)/lib/$(DYN_PRODUCT)
-	@rm -f $(PREFIX)/lib/$(STAT_PRODUCT)
-	@echo Removing config information from $(PREFIX)/lib/pkgconfig
-	@rm -f $(PREFIX)/lib/pkgconfig/nusquids.pc
+	@rm -rf "$(PREFIX)/include/nuSQuIDS"
+	@echo Removing libraries from $(PREFIX)/$(INSTALL_LIBDIR)
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
+	@echo Removing config information from $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig/nusquids.pc"
 ' >> ./Makefile
 
 echo "
