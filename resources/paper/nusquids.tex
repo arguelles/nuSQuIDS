@@ -1598,6 +1598,26 @@ derived class constructor arguments.
 \section{Performance and precision}
 \label{sec:performance} 
 
+Machine 1 is configured with an Intel 6700K CPU, with a `base' frequency of 4.0 GHz. All tests were performed with the `Turbo Boost' feature disabled. 
+
+The time evolution and basis transformations performed by SQuIDS on SU\_vector objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. As a result, run time is strongly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. The considerable differences which can result are illustrated in Table $\ref{tab:trig_perf}$, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation is included. Broadly, it is apparent that the calculations using the math implementations from the GNU C Library (glibc) library are significantly slower than the versions using other math libraries. Furthermore, the glibc calculations appear to benefit only slightly from the opportunity to fuse sine and cosine calculations; while they are not as slow as might be expected from a simple doubling of the time to compute a single sine they are also not much better. This is contrast to the other implementations which are able to compute both functions in essentially the same time as a single function (or with relatively low overhead, in the case of BSD libc). In addition to this overhead, the glibc time to compute a single trigonometric function is approximately twice that of the other libraries (it is unclear why the result is far worse for clang 5.0.1 on CentOS 7, but this was deemed to have little practical relevance to this work and was not further investigated). Unfortunately, the conclusion is that the choice of compiler can be extremely important to maximizing the performance of nuSQuIDs. The benchmarks shown in this section will use the Intel compiler, version 18.0.3 on Cent OS 7, unless otherwise noted. 
+
+\begin{table*}
+	\begin{tabular}{ llcccl }
+		OS & Compiler & PRNG & Sine & Sine \& Cosine & Math Library \\
+		CentOS 7 & gcc 4.8.5 & 6.0 ns & 40.5 ns & 63.5 ns & GNU C Library  2.17 \\
+		CentOS 7 & gcc 7.3.1 & 2.7 ns & 37.1 ns & 63.3 ns & GNU C Library  2.17 \\
+		CentOS 7 & clang 5.0.1 & 4.8 ns & 96.4 ns & 69.0 ns & GNU C Library  2.17 \\
+		CentOS 7 & icc 18.0.3 & 4.0 ns & 20.9 ns & 22.2 ns & libimf 2018.3.222\\
+		Darwin 16.7.0 & clang 5.0.0 & 2.9 ns & 19.1 ns & 20.1 ns & libsystem\_m  3121.6.0 \\
+		FreeBSD 11.2 & clang 6.0.1 & 2.9 ns & 22.3 ns & 30.8 ns & BSD libc
+	\end{tabular}
+	\caption{
+		Measured time to compute trigonometric functions using different compilers and operating systems. In each case the same stream of $10^8$ pseudo-random arguments in the domain [-100,100] was used, and the average time per call was computed, including the time necessary for the PRNG to compute the next argument value. 
+	}
+	\label{tab:trig_perf}
+\end{table*}
+
 \section{Test suite}
 \label{sec:tests}
 A test suit is provided with the library to warranty the right
