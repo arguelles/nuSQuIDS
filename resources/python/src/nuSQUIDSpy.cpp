@@ -104,6 +104,16 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteText",&NeutrinoDISCrossSectionsFromTables::WriteText)
   ;
 
+  class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>, boost::noncopyable>("TauDecaySpectra")
+    .def(init<marray<double,1>>())
+    .def("dNdEnu_All",&TauDecaySpectra::dNdEnu_All)
+    .def("dNdEnu_Lep",&TauDecaySpectra::dNdEnu_Lep)
+    .def("dNdEle_All",&TauDecaySpectra::dNdEle_All)
+    .def("dNdEle_Lep",&TauDecaySpectra::dNdEle_Lep)
+    .def("GetTauToHadronBranchingRatio",&TauDecaySpectra::GetTauToHadronBranchingRatio)
+    .def("GetTauToLeptonBranchingRatio",&TauDecaySpectra::GetTauToLeptonBranchingRatio)
+  ;
+
   class_<squids::Const, boost::noncopyable>("Const")
     .def_readonly("PeV",&squids::Const::PeV)
     .def_readonly("TeV",&squids::Const::TeV)
