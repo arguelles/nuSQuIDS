@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import nuSQUIDSpy as nsq
@@ -178,7 +179,7 @@ class ExtNuSQUIDS(injector,nsq.nuSQUIDS):
             in the interaction-massbasis.
         """
         if ie < 0 or ie > self.GetNumE():
-            print "Error::Invalid energy node number.";
+            print("Error::Invalid energy node number.");
             exit();
         return self._PrintSUVector(self.HI(ie));
 
@@ -200,7 +201,7 @@ class ExtNuSQUIDS(injector,nsq.nuSQUIDS):
             in the mass basis.
         """
         if ie < 0 or ie > self.GetNumE():
-            print "Error::Invalid energy node number.";
+            print("Error::Invalid energy node number.");
 
         return self._PrintSUVector(self.GetState(ie,rho));
 
