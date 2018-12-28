@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
