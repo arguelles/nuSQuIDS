@@ -624,6 +624,7 @@ if [ $PYTHON_BINDINGS ]; then
 
 	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
+  PYTHONVERSIONSIMPLE=${PYTHONVERSIONSIMPLE//.}
 	PYTHONLIBPATH=`${PYTHON_EXE} -c 'import sys; import re; print([ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0]);'`
 	PYTHONINCPATHS=`find $PYTHONLIBPATH/../../include/ -name "python${PYTHONVERSION}*"`
   for proposed_path in $PYTHONINCPATHS; do
@@ -641,17 +642,17 @@ if [ $PYTHON_BINDINGS ]; then
 		if [ -d "$BOOST_INCDIR" \
 		  -a -d "$BOOST_LIBDIR" \
 		  -a -e "$BOOST_INCDIR/boost/python.hpp" \
-		  -a -e "$BOOST_LIBDIR/libboost_python${PYTHONVERSIONSIMPLE//.}.a" ]; then
+		  -a -e "$BOOST_LIBDIR/libboost_python$PYTHONVERSIONSIMPLE.a" ]; then
 			BOOST_FOUND=1
 			BOOST_CFLAGS="-I$BOOST_INCDIR"
-			BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L$BOOST_LIBDIR -lboost_python${PYTHONVERSIONSIMPLE//.}"
+			BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L$BOOST_LIBDIR -lboost_python$PYTHONVERSIONSIMPLE"
 		else
 			echo "Warning: manually specifed boost not found; will attempt auto detection"
 		fi
 	fi
 
-	try_find_boost /usr ${PYTHONVERSIONSIMPLE//.}
-	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE//.}
+	try_find_boost /usr $PYTHONVERSIONSIMPLE
+	try_find_boost /usr/local $PYTHONVERSIONSIMPLE
 
 	if [ -z $BOOST_LIBDIR -a  -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
