@@ -137,7 +137,7 @@ try_find_boost(){
 		return
 	fi
 	BOOST_CFLAGS="-I${BOOST_INCDIR}"
-	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python${PYV}"
+	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python${PYV} -lboost_numpy${PYV}"
 	BOOST_FOUND=1
 	echo " Found boost in $GUESS_DIR"
 }

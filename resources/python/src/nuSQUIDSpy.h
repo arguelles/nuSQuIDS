@@ -34,6 +34,7 @@
 //#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <boost/python.hpp>
+#include <boost/python/numpy.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
 #include <boost/python/overloads.hpp>
@@ -49,6 +50,7 @@
 using namespace boost::python;
 using namespace nusquids;
 namespace bp = boost::python;
+namespace np = boost::python::numpy;
 
 template<class T>
 struct VecToList
@@ -72,8 +74,9 @@ struct marray_to_numpyarray {
     npy_intp size[DIM];
     for(unsigned int i = 0; i < DIM; i++)
       size[i] = iarray.extent(i);
-    PyArrayObject * pyObj = (PyArrayObject*) PyArray_SimpleNew(DIM,size,PyArray_DOUBLE);
-    memcpy(pyObj->data, data, sizeof(double) * iarray.size());
+
+    PyArrayObject * pyObj = (PyArrayObject*) PyArray_SimpleNew(DIM,size,NPY_DOUBLE);
+    memcpy(PyArray_DATA(pyObj), data, sizeof(double) * iarray.size());
 
     return PyArray_Return(pyObj);
   }
