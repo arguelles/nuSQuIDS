@@ -3131,14 +3131,14 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
 
 \section{Python Interface}
 
-As the particle physics community has transition from {\ttfamily FORTRAN} to {\ttfamily C++} based Monte Carlos, it is also a current trent to be able to interface analysis software with high-level interpreted languages such as {\ttfamily Mathematica}, {\ttfamily R}, and {\ttfamily Python}. Of these languages we have decided to implement bindings with Python due to the well developed {\ttfamily C++}-{\ttfamily Python} bindings given by the {\ttfamily Boost} library.
+As the particle physics community has transition from {\ttfamily FORTRAN} to {\ttfamily C++} based frameworks, it is also a current trent to be able to interface analysis software with high-level interpreted languages such as {\ttfamily Mathematica}, {\ttfamily R}, and {\ttfamily Python}. Of these languages we have decided to implement bindings with Python due to the well-developed {\ttfamily C++}-{\ttfamily Python} bindings given by the {\ttfamily Boost} library.
 
 \subsection{Installation}
 
-In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following commands to generate a Makefile to compile the bindings.
+In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following command to generate a Makefile to compile the bindings.
 
 \begin{lstlisting}[language=Bash]
-./config --with-python-bindings
+./configure --with-python-bindings
 \end{lstlisting}
 
 This will produce a {\ttf Makefile} in the {\ttf resource/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder.

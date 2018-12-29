@@ -27,6 +27,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 {
 
   // import numpy array definitions
+  //np::initialize();
   import_array();
   import_ufunc();
 
@@ -76,6 +77,9 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("antineutrino",antineutrino)
     .value("both",both)
   ;
+
+  bp::def("linspace",linspace,bp::args("min","max","samples"));
+  bp::def("logspace",logspace,bp::args("min","max","samples"));
 
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSAtm");

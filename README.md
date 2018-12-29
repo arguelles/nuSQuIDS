@@ -20,7 +20,7 @@ PythonToolBox
 Additionally for compiling and using the python bindings:
 
 Required:
-* boost (>= 1.54): http://www.boost.org/
+* boost (>= 1.63): http://www.boost.org/
 * numpy: http://www.numpy.org/
 * matplotlib: http://matplotlib.org/
 
