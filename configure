@@ -625,10 +625,15 @@ if [ $PYTHON_BINDINGS ]; then
 	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
   PYTHONVERSIONSIMPLE=${PYTHONVERSIONSIMPLE//.}
+
   PYTHONLIBPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'`
   PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY")[3:])'`
+
   PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
   PYTHON_CFLAGS+=" -I${PYTHONINCPATH}"
+  # this fpermissive flag is due to a bug on numpy import_array() function on pythonv3
+  PYTHON_CFLAGS+=" -fpermissive"
+
 	PYTHONNUMPYCHECK=`${PYTHON_EXE} ./resources/check_numpy.py`
 	if [ -z "$PYTHONNUMPYCHECK" ]; then
 		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
