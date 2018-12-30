@@ -625,17 +625,19 @@ if [ $PYTHON_BINDINGS ]; then
 	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
   PYTHONVERSIONSIMPLE=${PYTHONVERSIONSIMPLE//.}
-	PYTHONLIBPATH=`${PYTHON_EXE} -c 'import sys; import re; print([ y for y in sys.path if re.search("\/lib\/python'$PYTHONVERSION'$",y)!=None ][0]);'`
-	PYTHONINCPATHS=`find $PYTHONLIBPATH/../../include/ -name "python${PYTHONVERSION}*"`
-  for proposed_path in $PYTHONINCPATHS; do
-    PYTHON_CFLAGS="$PYTHON_CFLAGS -I$proposed_path"
-  done
+  PYTHONLIBPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'`
+  PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY")[3:])'`
+  PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
+  PYTHON_CFLAGS+=" -I${PYTHONINCPATH}"
 	PYTHONNUMPYCHECK=`${PYTHON_EXE} ./resources/check_numpy.py`
 	if [ -z "$PYTHONNUMPYCHECK" ]; then
 		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
 		exit 1
 	fi
 	PYTHONNUMPYINC=$PYTHONNUMPYCHECK
+  
+  # check if python library was compiled with 
+  PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
 
 	if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
 		echo "Checking manually specified boost..."
@@ -679,7 +681,7 @@ DYN_OPT=$DYN_OPT
 
 PYTHON_VERSION = ${PYTHONVERSION}
 LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
-LDFLAGS+= -lpython${PYTHONVERSION}
+LDFLAGS+= ${PYTHONBLDLIB}
 LDFLAGS+= ${BOOST_LDFLAGS}
 LDFLAGS+= ${SQUIDS_LDFLAGS} -lnuSQuIDS ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
 INCCFLAGS+= ${PYTHON_CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../include/
