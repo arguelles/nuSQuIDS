@@ -49,6 +49,7 @@
 \newcommand{\els}{\end{lstlisting}}
 
 \newcommand{\ttf}{\ttfamily}
+\newcommand{\nuSQUIDS}{{\ttfamily nuSQUIDS}}
 
 \newcommand{\pa}[2]{\frac{\partial #1}{\partial #2}}
 \newcommand{\p}[1]{\partial_{#1}}
@@ -3135,35 +3136,111 @@ As the particle physics community has transition from {\ttfamily FORTRAN} to {\t
 
 \subsection{Installation}
 
-In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following command to generate a Makefile to compile the bindings.
+In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following command to generate a Makefile to compile the bindings
 
 \begin{lstlisting}[language=Bash]
 ./configure --with-python-bindings
 \end{lstlisting}
 
-This will produce a {\ttf Makefile} in the {\ttf resource/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder.
+This command will try to autodetect the location of the the aboved mentioned libraries. The following configuration script flags are influencial
+\begin{itemize}
+  \item Specify the Python executable
+  \begin{lstlisting}
+    --python-bin=PYTHON_EXECUTABLE
+  \end{lstlisting}
+  The provided {\ttf Python} executable will be use to find the python version, libraries, and includes.
+  \item Set Boost library and include paths
+  \begin{lstlisting}
+    --with-boost=DIR
+    --with-boost-incdir=DIR
+    --with-boost-libdir=DIR
+  \end{lstlisting}
+  The {\ttf incdir} and {\ttf libdir} options are use to set the boost include and library directories. The first option is a convenient flat that sets both to directories to: {\ttf DIR/lib} and {\ttf DIR/include} for the library and include directory.
+
+\end{itemize}
+This will produce a {\ttf Makefile} in the {\ttf resource/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder. This will produce a shared library in {\ttf resource/python/pybindings}; in order to be able to use the python bindings you need to add this directory to the system variable {\ttf PYTHONPATH}. {\it E.g.}, in the Bash shell
+\begin{lstlisting}[language=Python]
+export PYTHONPATH=NUSQUIDS_DIR/resource/python/bindings:$PYTHONPATH
+\end{lstlisting}
 
 After successful installation you can import the python bindings in the following manner
-
 \begin{lstlisting}[language=Python]
-import nuSQUIDSpy as nsq
+import nuSQUIDSpy
 \end{lstlisting}
 where here we have introduce the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extend the
-capabilities of nuSQuIDS in {\ttfamily Python} by means of the the {\ttfamily nuSQUIDSTools} python module. When 
-this module is loaded the nuSQuIDS functions and objects get overloaded with python only functionalities. In order to enable this, after loading the {\ttfamily nuSQUIDSpy} module, do
-
+capabilities of nuSQuIDS in {\ttfamily Python} by means of the the {\ttfamily nuSQUIDSTools} module.
+When it is loaded the nuSQuIDS functions and objects get overloaded with additoinal functionalities. In order to enable them, after loading the {\ttfamily nuSQUIDSpy} module, do
 \begin{lstlisting}[language=Python]
 import nuSQUIDSTools
 \end{lstlisting}
 
 \subsection{Description of the interface}
 
+The interface is implemented in two files {\ttf nuSQUIDSpy.h} and {\ttf nuSQUIDSpy.cpp}. Additionally in {\ttf resources/python/inc} the file {\ttf container\_conversions.h} is provided to enable translation between {\ttf std::vector<type>} to  {\ttf List} among {\ttf C++} and {\ttf Python}. The python bindings header contains {\ttf C++} templates that facilitate registrion of {\ttf nuSQuIDS} python bindings.
+
+In the bindings source file the following classes have been registered:
+\begin{itemize}
+  \item nuSQuIDS
+\end{itemize}
+for all these classes we have implemented the public members described on this document with the same names as on the {\ttf C++} interface.
+
+Also, the following enumerations have been made available in {\ttf Python}
+\begin{itemize}
+  \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_FUNCTIONS} enumeration contains the following members: 
+    \begin{itemize}
+      \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RK2},
+      \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RK4},
+      \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RKF45},
+      \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RKCK},
+      \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RK8PD},
+      \item and \lstinline[columns=fixed,breaklines=true]{GSL_STEP_MSADAMS}.
+    \end{itemize}
+    These can be used in the {\ttf Set\_GSL\_step} \nuSQUIDS member function.
+  \item {\ttf Basis}, which contains the members:
+    \begin{itemize}
+      \item {\ttf mass} ({\ttf Basis::mass}),
+      \item {\ttf flavor} ({\ttf Basis::flavor}),
+      \item and {\ttf interaction} ({\ttf Basis::interaction}).
+    \end{itemize}
+  \item {\ttf NeutrinoCrossSections\_NeutrinoFlavor}, which contains the members:
+    \begin{itemize} 
+      \item {\ttf electron} ({\ttf NeutrinoCrossSections::NeutrinoFlavor::electron}),
+      \item {\ttf muon} ({\ttf NeutrinoCrossSections::NeutrinoFlavor::muon}),
+      \item {\ttf tau} ({\ttf NeutrinoCrossSections::NeutrinoFlavor::tau}),
+      \item and {\ttf sterile} ({\ttf NeutrinoCrossSections::NeutrinoFlavor::sterile}).
+    \end{itemize}
+  \item {\ttf NeutrinoCrossSections\_NeutrinoType}, which contains the members:
+    \begin{itemize} 
+      \item {\ttf neutrino} ({\ttf NeutrinoCrossSections::NeutrinoType::neutrino})
+      \item and {\ttf antineutrino} ({\ttf NeutrinoCrossSections::NeutrinoType::antineutrino}).
+    \end{itemize}
+  \item {\ttf NeutrinoCrossSections\_Current}, which contains the members:
+    \begin{itemize}
+      \item {\ttf CC} ({\ttf NeutrinoCrossSections::Current::CC}),
+      \item {\ttf NC} ({\ttf NeutrinoCrossSections::Current::NC}),
+      \item and {\ttf GR} ({\ttf NeutrinoCrossSections::Current::GR}).
+    \end{itemize}
+  \item {\ttf Neutrinotype}, which contains the members:
+    \begin{itemize}
+      \item {\ttf neutrino} ({\ttf NeutrinoType::neutrino}),
+      \item {\ttf antineutrino} ({\ttf NeutrinoType::antineutrino}),
+      \item and {\ttf both} ({\ttf NeutrinoType::both}).
+    \end{itemize}
+
+\end{itemize}
+
 \subsection{Examples}
 
-\subsection{Extending the interface to user classes}
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+import nuSQUIDSTools
+\end{lstlisting}
 
-\section{Conclusions \& Acknowledgements} 
-\label{sec:conclu} 
+\subsection{Extending the interface with user-defined classes}
+
+\section{Conclusions}
+\label{sec:conclu}
+
+\section*{Acknowledgements}
 
 \bibliographystyle{plainnat}
 %\bibliographystyle{apacite}
