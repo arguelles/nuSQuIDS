@@ -116,6 +116,12 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("dNdEle_Lep",&TauDecaySpectra::dNdEle_Lep)
     .def("GetTauToHadronBranchingRatio",&TauDecaySpectra::GetTauToHadronBranchingRatio)
     .def("GetTauToLeptonBranchingRatio",&TauDecaySpectra::GetTauToLeptonBranchingRatio)
+    .def("TauDecayToLepton",&TauDecaySpectra::TauDecayToLepton)
+    .def("TauDecayToHadron",&TauDecaySpectra::TauDecayToHadron)
+    .def("TauDecayToAll",&TauDecaySpectra::TauDecayToAll)
+    .def("TauDecayToPion",&TauDecaySpectra::TauDecayToPion)
+    .def("TauDecayToRho",&TauDecaySpectra::TauDecayToRho)
+    .def("TauDecayToA1",&TauDecaySpectra::TauDecayToA1)
   ;
 
   class_<squids::Const, boost::noncopyable>("Const")
