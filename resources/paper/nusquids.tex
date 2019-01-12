@@ -3235,12 +3235,53 @@ Also, the following enumerations have been made available in {\ttf Python}
 import nuSQUIDSTools
 \end{lstlisting}
 
-\subsection{Extending the interface with user-defined classes}
+\subsection{Extending the interface with user-defined classes~\label{sec:python_extensions}}
+
+In this section we briefly how to construct python bindings for user defined classes. As an example
+we have an extension class called {\ttf nuSQUIDSExt} defined as:
+
+\begin{lstlisting}[language=C++, frame=leftline, numbers=left, breaklines=true]
+class nuSQUIDSExt : public nuSQUIDS {
+  ...
+}
+\end{lstlisting}
 
 \section{Conclusions}
 \label{sec:conclu}
 
+In this article we have written in detail the equations that guide the evolution of an ensemble of neutrinos
+in a dense medium. We have described the \nuSQUIDS~ library that solves these equations. We have provide examples
+of the core features of the library. We also discuss its performance and the tests that the library.
+\nuSQUIDS~  provides a complete solution to the neutrino propagation when accounting for neutrino oscillations and scatterings. 
+We find that it is competitive with dedicated neutrino oscillation calculators, when the number of evaluations of the oscillation probability
+is large; which is the typical case of interest in neutrino experiments.
+The library also has a {\ttf Python} extension which we also expose. Finally, the \nuSQUIDS~ library has been designed to be easily extendable 
+onto new mediums, but onto new physics scenarios. Users contributions to the project are encourage and a number of additional
+models have already been implemented and are linked in {\ttf resources/user\_contributions}.
+
 \section*{Acknowledgements}
+
+We thank: Jakov Van Santen for implementing the Glashow resonance cross sections;
+Benjamin Jones for early adoption of this code onto the sterile analysis;
+Melanie Day for early adoption of this code onto her analysis, carefully checking the non-standard interaction extension, and providing feedback;
+Tianlu Yuan for comments on neutrino cross section utilities and testing the performance of the code in realistic analysis scenarios;
+Subir Sarkar for providing the code to generate neutrino-nucleon the cross section tables;
+Kotoyo Hoshima and Aaron Vincent for dedicated comparisons and checks of this code;
+Zander Moss performing an independent check of several core features of the code;
+Felix Kallenborn for carefully reading thorugh the code, writing a GPU version of the algorithm, and pointing out an improve handling of the GSL ODE solver;
+Jos\'e Carpio and Zander Moss for pointing out the need to improve the Earth density interpolation;
+Mauricio Bustamante for testing the Python V3 support;
+Austin Schneider for reading through this draft and testing the Ubuntu support;
+Tom Studdard for providing feedback and contribution of neutrino decoherence;
+Jos\'e Carpio, Alberto Gago, and Eduardo Massoni for providing feedback and implemeting nuSQuIDS in GLoBES;
+Zander Moss, Marjon Moulai, and Janet Conrad for providing feedback and contribution of neutrino decay extension;
+Shivesh Mandalia and Teppei Katori for checking, providing feedback, and contribution on the Lorentz Violation model implementation;
+Joshua Highnight and Jessie Micallef for providing a modified version of Prob3++ with NSI for detailed comparisons; and
+Thomas Ehrhardt for performing detailed comparison between this code speed and accuracy versus Prob3++ CPU and GPU version.
+Pedro Machado, Aaron Vincent, and Logan Wille for providing the Solar model files and useful discussion in the construction of the SolarTransition extension.
+CAA is supported by U.S. National Science Foundation (NSF) grant PHY-1505858.
+JS is supported by
+CNW is supported by.
 
 \bibliographystyle{plainnat}
 %\bibliographystyle{apacite}
