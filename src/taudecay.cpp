@@ -115,7 +115,7 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
 
 // define tau decay object
 
-TauDecaySpectra::TauDecaySpectra(){}
+TauDecaySpectra::TauDecaySpectra(){SetParameters();}
 
 void TauDecaySpectra::SetParameters(){
   TauPolarization = -1.0;
