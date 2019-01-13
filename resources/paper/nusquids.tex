@@ -3382,8 +3382,53 @@ we have an extension class called {\ttf nuSQUIDSExt} defined as:
 \begin{lstlisting}[language=C++, frame=leftline, numbers=left, breaklines=true]
 class nuSQUIDSExt : public nuSQUIDS {
   ...
+  public:
+    nuSQUIDSExt(); // default constructor
+    nuSQUIDSExt(double x); // constructor
+    double FunctionExtension(double x); // function of interest
+    ...
 }
 \end{lstlisting}
+where this class has two constructors and one function of interest which we would like to expose in {\ttf Python}.
+In order to construct the python module we need to make a new C++ source file with the following content.
+
+\begin{lstlisting}[language=C++, frame=leftline, numbers=left, breaklines=true]
+#include "nuSQUIDSpy.h"
+#include "nuSQUIDSExt.h"
+
+BOOST_PYTHON_MODULE(nuSQUIDSExtensionPythonModuleName)
+{
+  // Register all standard nuSQuIDS and nuSQuIDS atmospheric functions for the user class
+  auto nusquidsext_register = RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSExt>("nuSQUIDSExt");
+  auto nusquidsext_atm_register = RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDSExt>("nuSQUIDSExtAtm");
+  // Register additional functions or members of the user class
+  auto nusquidsext_class_object = nusquidsext_register.GetClassObject();
+  nusquidsext_class_object->def("FuctionExtension",&nuSQUIDSExt::FunctionExtension);
+}
+\end{lstlisting}
+where we have the header {\ttf nuSQUIDSpy.h} contains the nuSQUIDS python binding utilities and definitions, and {\ttf nuSQUIDSExt.h} is the 
+header where the new class of interest is defined. In this code we have use two templates structures, whose constructors are:
+\begin{itemize}
+  \item
+    \begin{lstlisting}[language=C++, breaklines=true]
+      RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSDerivedType>(std::string name);
+    \end{lstlisting}
+    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derivate type, in this case \\
+  {\ttf nuSQUIDSDerivedType} is {\ttf nuSQUIDSExt}. The string that is passed
+  as an argument does not need to match the type name and is how the class will be named in {\ttf Python}. This class will register all the functions
+  that the class inherits as a nuSQUIDS derived class, but not any new members introduced by the user.
+  \item
+    \begin{lstlisting}[language=C++, breaklines=true]
+      RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDSDerivedType>(std::string name);
+    \end{lstlisting}
+    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derivate type, in this case \\ {\ttf nuSQUIDSDerivedType} is {\ttf nuSQUIDSExt}. The string that is passed
+  as an argument does not need to match the type name and is how the class will be named in {\ttf Python}. This class will register all the functions
+    that the class inherits as a {\ttf nuSQUIDSAtm<Type>} derived class, but not any new members introduced by the user.
+\end{itemize}
+
+This module needs to be compiled with the same dependencies as our nominal python bindings, for which we suggest the user
+to copy our Makefile and modify the name of the library to be generated to match the module name. As a final step the user
+should place the resulting shared object library in the system {\ttf PYTHONPATH}.
 
 \section{Conclusions}
 \label{sec:conclu}
