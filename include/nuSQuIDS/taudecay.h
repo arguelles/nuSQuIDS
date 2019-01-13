@@ -82,7 +82,7 @@ class TauDecaySpectra{
 
     /// \brief Sets mass ratios, branching ratios, and polarizations.
     void SetParameters();
-  protected:
+  public:
     /// \brief Calculates the differential spectrum for tau to leptons with respect to z = E_nu/E_tau.
     /// @param E_tau Tau energy.
     /// @param E_nu Tau neutrino energy.

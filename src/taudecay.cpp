@@ -115,7 +115,7 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
 
 // define tau decay object
 
-TauDecaySpectra::TauDecaySpectra(){}
+TauDecaySpectra::TauDecaySpectra(){SetParameters();}
 
 void TauDecaySpectra::SetParameters(){
   TauPolarization = -1.0;
@@ -155,19 +155,27 @@ void TauDecaySpectra::Init(marray<double,1> E_range){
 // tau decay spectra returned in units of [GeV^-1]
 
 double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const{
-    return dNdEnu_All_tbl[i_enu][i_ele];
+  if(i_enu >= dNdEnu_All_tbl.extent(0) or i_ele >= dNdEnu_All_tbl.extent(1))
+    throw std::runtime_error("TauDecaySpectra:dNdEnu_All in valid index choices");
+  return dNdEnu_All_tbl[i_enu][i_ele];
 }
 
 double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const{
-    return dNdEnu_Lep_tbl[i_enu][i_ele];
+  if(i_enu >= dNdEnu_Lep_tbl.extent(0) or i_ele >= dNdEnu_Lep_tbl.extent(1))
+    throw std::runtime_error("TauDecaySpectra:dNdEnu_Lep in valid index choices");
+  return dNdEnu_Lep_tbl[i_enu][i_ele];
 }
 
 double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele) const{
-    return dNdEle_All_tbl[i_enu][i_ele];
+  if(i_enu >= dNdEle_All_tbl.extent(0) or i_ele >= dNdEle_All_tbl.extent(1))
+    throw std::runtime_error("TauDecaySpectra:dNdEle_All in valid index choices");
+  return dNdEle_All_tbl[i_enu][i_ele];
 }
 
 double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const{
-    return dNdEle_Lep_tbl[i_enu][i_ele];
+  if(i_enu >= dNdEle_Lep_tbl.extent(0) or i_ele >= dNdEle_Lep_tbl.extent(1))
+    throw std::runtime_error("TauDecaySpectra:dNdEle_Lepin valid index choices");
+  return dNdEle_Lep_tbl[i_enu][i_ele];
 }
 
 }// close namespace
