@@ -2315,7 +2315,7 @@ differential cross sections, and tau anti-neutrino differential
 cross-section. All the differential cross-section values are in cm$^2/$GeV.
 Fro the {\ttf HDF5} cross-section format see table.~ref{tab:cross}
 
-\begin{figure}[htb]
+\begin{figure}[htb!]
   \label{cross}
   \centering
   \begin{tikzpicture}[%
@@ -2862,7 +2862,7 @@ position specified by the {\ttfamily track}.
     AddToWriteStateHDF5} function. 
 \end{itemize}
 
-\begin{figure}[htb]
+\begin{figure}[htb!]
 \centering
 \begin{tikzpicture}[%
   grow via three points={one child at (0.5,-0.7) and
@@ -3250,7 +3250,7 @@ marray_from_python<DIM>();
 \end{lstlisting}
 where {\ttf DIM} is the array dimensionality to register.
 
-\subsection{Python walk through}
+\subsection{Python walk-through}
 
 In this section we will exemplify the usage of the {\ttf Python} interface. 
 These examples can be found in the IPython notebook located in {\ttf resources/python/example}.
@@ -3263,49 +3263,64 @@ import nuSQUIDSTools
 \end{lstlisting}
 Through the example we will use the shorthand {\ttf nsq} for the \nuSQUIDS python bindings.
 
-\subsubsection{Single energy mode}
+\subsubsection{Single-energy mode}
 
-To start, like in the C++ case, we need to create a $\nu$-SQuIDS object. To begin this demonstration we will create a simple single energy three flavor neutrino oscillation calculator. Thus we just need to specify the number of neutrinos (3) and if we are dealing with neutrinos or antineutrinos.
+To start, like in the C++ case, we need to create a $\nu$-SQuIDS object. 
+To begin this demonstration we will create a simple single-energy mode three-flavor neutrino oscillation calculator.
+Thus we just need to specify the number of neutrinos (3) and if we are dealing with neutrinos or antineutrinos.
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ = nsq.nuSQUIDS(3,nsq.NeutrinoType.neutrino)
 \end{lstlisting}
 
-nuSQuIDS inputs should be given in natural units. In order to make this convenient we have define a units class called *Const*. We can instanciate it as follows
+nuSQuIDS inputs should be given in natural units.
+In order to make this convenient, as in the {\ttf C++} code, we make use of the {\ttf SQuIDS} class {\ttf Const}.
+We can instanciate it as follows
 \begin{lstlisting}[language=Python, breaklines=true]
 units = nsq.Const()
 \end{lstlisting}
 
-As in the C++ $\nu$-SQuIDS interface one can propagate the neutrinos in various environments (see the documentation for further details), and the user can create and include their own environments. To start a simple case, lets consider oscillactions in  Vacuum
+As in the C++ $\nu$-SQuIDS interface one can propagate the neutrinos in various environments
+(see~\ref{sec:body} for further details). We can start by considering oscillactions in vacuum by setting:
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_Body(nsq.Vacuum())
 \end{lstlisting}
 
-Since we have specify that we are considering vacuum propagation, we must construct - as in the C++ interface - a trayectory inside that object. This can be done using the `Track` property of the given Body. Each Body will have its on Track subclass and its constructors. We can set and construct a vacuum trayectory in the following way:
+Since we have specify that we are considering vacuum propagation, 
+we must construct a trayectory inside that object. This can be done using the {\ttf Track} class-property of a given Body.
+Each Body will have its on Track subclass and its constructors. We can set and construct a vacuum trayectory in the following way:
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_Track(nsq.Vacuum.Track(100.0*units.km))
 \end{lstlisting}
 
-Next we have to set the <strong>neutrino energy</strong>, which can be done as follows
+Next we have to set the neutrino energy, which can be done as follows
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_E(1.0*units.GeV)
 \end{lstlisting}
 
-Now we have to tell $\nu$-SQuIDS what is the initial neutrino state and if such state is given in the flavor or mass basis. We can do this using the {\ttf Set\_initial\_state} function and providing it with a numpy array and a {\ttf nsq.Basis}. If the basis is {\ttf nsq.Basis.flavor} then list must contain {\ttf np.array([}$\phi_e$,$\phi_\mu$,$\phi_\tau${\ttf ])}, similarly if enumeration is {\ttf nsq.Basis.mass} the list must specify $\phi_i$. In this example we set the initial state to $\nu_\mu$,
+Now we have to set the initial neutrino state. We can provide this state in either the flavor or mass basis.
+We can do this using the {\ttf Set\_initial\_state} function and providing it with a numpy array and a {\ttf nsq.Basis}.
+If the basis is {\ttf nsq.Basis.flavor} then list must contain {\ttf np.array([}$\phi_e$,$\phi_\mu$,$\phi_\tau${\ttf ])}, 
+similarly if enumeration is {\ttf nsq.Basis.mass} the list must specify $\phi_i$.
+In this example we set the initial state to $\nu_\mu$,
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_initial_state(np.array([0.,1.,0.]),nsq.Basis.flavor)
 \end{lstlisting}
 
-Finally we can tell $\nu$-SQuIDS to perform the calculation. In case one (or all) of the above parameters is not set $\nu$-SQuIDS will throw an exception and tell you to fix it, but if you have defined everything then it will evolve the given state.
+Finally, we calculate the system evolution by
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.EvolveState()
 \end{lstlisting}
 
-After this runs $\nu$-SQuIDS has evolved the state and store it in memory. Now there are lots of things you can ask $\nu$-SQuIDS to do. We can inquire for the flavor composition at this stage by
-\begin{lstlisting}[language=Python, breaklines=true]
+After this runs {\ttf nuSQuIDS} has evolved the state and holds its state in memory.
+We can inquire for the flavor composition at this stage by
+\begin{lstlisting}[language=Python, breaklines=true]yy
 print([nuSQ.EvalFlavor(i) for i in range(3)])
 \end{lstlisting}
 
 which results in
+\begin{lstlisting}[language=Python, breaklines=true]yy
+[0.004675502573140013, 0.9022064087866011, 0.09311808864025879]
+\end{lstlisting}
 
 $\nu$-SQuIDS knows everything about the neutrino state at the current moment, it also knows what we did with it so far, where it went, what mixing parameters were used, etc. It would be convenient to store this information. One way of doing this is to serialize the $\nu$-SQuIDS status. We can do this in the following way
 \begin{lstlisting}[language=Python, breaklines=true]
@@ -3328,51 +3343,208 @@ for Enu in energy_values:
     nu_mu_to_nu_e.append(nuSQ.EvalFlavor(0))
 
 plt.figure(figsize = (8,6))
-plt.xlabel(r"$E_\nu [GeV]$")
+plt.xlabel(r"$E_\nu [{\rm GeV}]$")
 plt.ylabel(r"$P(\nu_\mu \to \nu_e)$")
 plt.plot(energy_values,nu_mu_to_nu_e, lw = 2, color = 'blue')
 \end{lstlisting}
+This results in the plot shown in Figure~\ref{fig:nusquids_python_osc} left panel.
+\begin{figure}[h!]
+  \label{fig:nusquids_python_osc}
+  \centering
+  \includegraphics[width=0.45\textwidth]{fig/nusquids_python_osc_std.eps}
+  \includegraphics[width=0.45\textwidth]{fig/nusquids_python_osc_nonstd.eps}
+  \caption{Muon-neutrino to electron neutrino oscillation probability in vacuum as a function of the neutrino energy for a baseline of 100 km. 
+  The left panel is for the default standard oscillation parameters and the right panel has $\Delta m^2_{21}$ set to $1~{\rm eV}^2$}
+\end{figure}
 
-This is a nice plot. But we do not see an *oscillation* like curve. The reason for this is that the oscillation parameters do not produce an oscillation pattern in this $L/E$ scale. **$\nu$-SQuIDs has some predefined oscillation mixing angles ($\theta_{ij}$) and mass splittings ($\Delta m^2_{ij}$)**, which we have taken from the most recents fits. Perhaps you want to change this parameter to investigate what happens, this can be done easily using the `Set` function.
-\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+nuSQuIDs has some predefined oscillation mixing angles ($\theta_{ij}$) and mass splittings ($\Delta m^2_{ij}$),
+which we have taken from~\cite{nufit}.
+We can change the square mass different by using the following function
+\begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_SquareMassDifference(1,2.0e-1) # sets dm^2_{21} in eV^2.
 \end{lstlisting}
 
-We can then, again, do a plot with this simple script
-\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
-energy_values = np.linspace(1,10,100)
-nu_mu_to_nu_e = []
-for Enu in energy_values:
-    nuSQ.Set_E(Enu*units.GeV)
-    nuSQ.Set_initial_state(np.array([0.,1.,0.]),nsq.Basis.flavor)
-    nuSQ.EvolveState()
-    nu_mu_to_nu_e.append(nuSQ.EvalFlavor(0))
+Running the same script again results in the plot shown in Fig.~\ref{fig:nusquids_python_osc} right panel.
 
-plt.figure(figsize = (8,6))
-plt.xlabel(r"$E_\nu [GeV]$")
-plt.ylabel(r"$P(\nu_\mu \to \nu_e)$")
-plt.plot(energy_values,nu_mu_to_nu_e, lw = 2, color = 'blue')
-\end{lstlisting}
-
-We can also try to modify the mixing angles (see how to do this in detail in the documentation), for example
-\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+We can also try to modify the mixing angles, for example
+\begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_MixingAngle(0,1,1.2) # sets \theta_{12} in radians.
 nuSQ.Set_MixingAngle(0,2,0.3) # sets \theta_{23}} in radians.
 nuSQ.Set_MixingAngle(1,2,0.4) # sets \theta_{23}} in radians.
+\end{lstlisting}
+We can also restore the default mixing angles and mass differences to default by doing
+\begin{lstlisting}[language=Python, breaklines=true]
+nuSQ.Set_MixingParametersToDefault()
+\end{lstlisting}
 
-energy_values = np.linspace(1,10,100)
-nu_mu_to_nu_e = []
-for Enu in energy_values:
-    nuSQ.Set_E(Enu*units.GeV)
-    nuSQ.Set_initial_state(np.array([0.,1.,0.]),nsq.Basis.flavor)
-    nuSQ.EvolveState()
-    nu_mu_to_nu_e.append(nuSQ.EvalFlavor(0))
+\subsubsection{Multiple-energy mode}
+
+In this section we will demonstrate the use of {\ttf nuSQuIDS} in the multiple energy node mode.
+To begin we have to specify the $\{E_i\}$ grid where the equation will be solve.
+The energy nodes can be an arbitrary ordered list of energy in eV.
+The most common choices is to have linearly spaced nodes or logarithmically spaced nodes.
+For constructing numpy array of linear and logarithmic scales nuSQuIDS provides two
+ convenient functions called {\ttf linspace} and {\ttf logspace }respectively. The 
+following lines define the energy grid and construct the nuSQUIDS object.
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+interactions = False
+
+E_min = 1.0*units.GeV
+E_max = 10.0*units.GeV
+E_nodes = 101
+
+energy_nodes = nsq.logspace(E_min,E_max,E_nodes)
+
+neutrino_flavors = 3
+
+nuSQ = nsq.nuSQUIDS(energy_nodes,neutrino_flavors,nsq.NeutrinoType.neutrino,interactions)
+\end{lstlisting}
+
+We can propage neutrino ensemble through the Earth in an atmospheric neutrino telescope setting.
+We can do that by setting the following Body and Track:
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+nuSQ.Set_Body(nsq.EarthAtm())
+nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+\end{lstlisting}
+
+For the initial flux we will assume that is given by $\phi_\nu = N_0 E^{-2}$,
+with flavor composition $\phi_e:\phi_\mu:\phi_\tau$ = $0:1:0$.
+$\nu$-SQuIDS input flux is a {\ttf numpy.ndarray} formatted in the following way:
+\begin{equation}
+InputState \doteq [[\phi^1_e,\phi^1_\mu,\phi^1_\tau],...,[\phi^i_e,\phi^i_\mu,\phi^i_\tau],...,[\phi^n_e,\phi^n_\mu,\phi^n_\tau]]
+\end{equation}
+where $i = 1$ to $n$ and $n$ is the number of energy nodes. We can implement this in the following way
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+N0 = 1.0e18
+Eflux = lambda E: N0*E**-2
+Einitial = (Eflux(nuSQ.GetERange()).reshape((101,1)))*(np.array([0.,1.,0.]).reshape(1,3))
+\end{lstlisting}
+where {\ttf N0} is an arbitrary normalization constant, but we have choosen such that the input flux is O(1).
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+nuSQ.Set_initial_state(Einitial,nsq.Basis.flavor)
+
+nuSQ.Set_rel_error(1.0e-17)
+nuSQ.Set_abs_error(1.0e-17)
+
+nuSQ.EvolveState()
+\end{lstlisting}
+
+Then we can evaluate the resulting flux and plot the resulting oscillation 
+probabilities by using the folowing script
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+e_range = np.linspace(1.0,10.0,200)
+
+nu_e = np.array([nuSQ.EvalFlavor(0,EE*units.GeV,0) 
+                           for EE in e_range])
+nu_mu = np.array([nuSQ.EvalFlavor(1,EE*units.GeV,0) 
+                           for EE in e_range])
+nu_tau = np.array([nuSQ.EvalFlavor(2,EE*units.GeV,0) 
+                           for EE in e_range])
+
+total = nu_e + nu_mu + nu_tau
 
 plt.figure(figsize = (8,6))
-plt.xlabel(r"$E_\nu [GeV]$")
-plt.ylabel(r"$P(\nu_\mu \to \nu_e)$")
-plt.plot(energy_values,nu_mu_to_nu_e, lw = 2, color = 'blue')
+
+plt.xlabel(r"$E_\nu [{\rm GeV}]$")
+plt.ylabel(r"$\phi_\alpha$")
+
+plt.plot(e_range,nu_e, lw = 2, color = 'red', label = r"$\nu_e$")
+plt.plot(e_range,nu_mu, lw = 2, color = 'blue', label = r"$\nu_\mu$")
+plt.plot(e_range,nu_tau, lw = 2, color = 'green', label = r"$\nu_\tau$")
+plt.plot(e_range,total, lw = 2, color = 'black', label = r"Total")
+plt.legend(fancybox = True, fontsize = 10)
+plt.semilogy()
 \end{lstlisting}
+The result of this is shown in the the left panel of Fig.~\ref{fig:nusquids_atm_python_no_interaction}. Our final example is 
+performing the full nuSQuIDS calculation with neutrinos and antineutrinos, but this time including interactions
+
+\begin{figure}[h!]
+  \label{fig:nusquids_atm_python_no_interaction}
+  \centering
+  \includegraphics[width=\textwidth]{fig/nusquids_atm_python_no_int.eps}
+  \caption{Result of propagating a power-law flux with spectral index of -1 throught the Earth considering only oscillations and no interactions.}
+\end{figure}
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+interactions = True
+
+E_min = 1.0e2*units.GeV
+E_max = 1.0e8*units.GeV
+E_nodes = 200
+energy_nodes = nsq.logspace(E_min,E_max,E_nodes)
+
+neutrino_flavors = 3
+
+nuSQ = nsq.nuSQUIDS(energy_nodes,neutrino_flavors,nsq.NeutrinoType.both,interactions)
+\end{lstlisting}
+In this case we need to specify the neutrino and antineutrino initial fluxes. Those have the following format:
+\begin{equation}
+InputState \doteq [[[\phi^1_e,\phi^1_\mu,\phi^1_\tau],[\bar{\phi}^1_e,\bar{\phi}^1_\mu,\bar{\phi}^1_\tau]],...,[[\phi^i_e,\phi^i_\mu,\phi^i_\tau],[\bar{\phi}^i_e,\bar{\phi}^i_\mu,\bar{\phi}^i_\tau]],...,[[\phi^n_e,\phi^n_\mu,\phi^n_\tau],[\bar{\phi}^n_e,\bar{\phi}^n_\mu,\bar{\phi}^n_\tau]]] \nonumber \nonumber
+\end{equation}
+where $i = 1$ to $n$ and $n$ is the number of energy nodes and $\phi$ ($\bar{\phi}$) is the neutrino (antineutrino) flux.
+We can implement this as follows
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+N0 = 1.0e18; Power = -1.0
+Eflux = lambda E: N0*E**Power
+
+InitialFlux = np.zeros((200,2,3))
+for i,E in enumerate(nuSQ.GetERange()):
+    InitialFlux[i][0][0] = 0.0
+    InitialFlux[i][1][0] = 0.0
+    InitialFlux[i][0][1] = Eflux(E)
+    InitialFlux[i][1][1] = Eflux(E)
+    InitialFlux[i][0][2] = Eflux(E)
+    InitialFlux[i][1][2] = Eflux(E)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+nuSQ.Set_MixingParametersToDefault()
+nuSQ.Set_Body(nsq.EarthAtm())
+nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1.0)))
+nuSQ.Set_initial_state(InitialFlux,nsq.Basis.flavor)
+\end{lstlisting}
+An important phenomena in this scenario is that of tau-regeneration, which we can enable by
+\begin{lstlisting}[language=Python, breaklines=true]
+nuSQ.Set_TauRegeneration(True)
+\end{lstlisting}
+
+After doing the evolution we can evaluate the flux resulting flux by doing:
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+nu_tau = np.array([ nuSQ.EvalFlavorAtNode(2,ie,0) for ie,EE in enumerate(nuSQ.GetERange())])
+nu_tau_bar = np.array([ nuSQ.EvalFlavorAtNode(2,ie,1) for ie,EE in enumerate(nuSQ.GetERange())])
+
+nu_mu = np.array([ nuSQ.EvalFlavorAtNode(1,ie,0) for ie,EE in enumerate(nuSQ.GetERange())])
+nu_mu_bar = np.array([ nuSQ.EvalFlavorAtNode(1,ie,1) for ie,EE in enumerate(nuSQ.GetERange())])
+\end{lstlisting}
+
+and plot it by using this script
+
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+plt.figure(figsize = (6,6))
+plt.xlabel(r"$E_\nu [{\rm GeV}]$")
+plt.ylabel(r"${\rm E_\nu} \times \phi_\nu (E_\nu)$")
+e_range = nuSQ.GetERange()/units.GeV
+plt.plot(e_range,0.5*(nu_tau+nu_tau_bar)*(e_range*units.GeV)/N0, lw = 3, label =r"$\nu_\tau + \bar{\nu}_\tau$", color = "blue")
+plt.plot(e_range,0.5*(nu_mu+nu_mu_bar)*(e_range*units.GeV)/N0, lw = 3, label =r"$\nu_\mu + \bar{\nu}_\mu$", color = "red")
+plt.axhline (1.0, color = "k", lw = 3)
+plt.xlim(1.0e2,1.0e6)
+plt.ylim(1.0e-2,1.0e1)
+plt.grid()
+plt.loglog()
+plt.legend(loc = "upper right", fancybox = True, fontsize = 15)
+\end{lstlisting}
+The result of this is shown in Fig.~\ref{fig:nusquids_atm_python_with_interaction}.
+
+\begin{figure}[h!]
+  \label{fig:nusquids_atm_python_with_interaction}
+  \centering
+  \includegraphics[width=0.7\textwidth]{fig/nusquids_python_with_interactions_both.eps} 
+  \caption{Propagated flux for muon and tau neutrinos through the Earth including the effect of tau regeneration.}
+\end{figure}
 
 \subsection{Extending the interface with user-defined classes~\label{sec:python_extensions}}
 
@@ -3456,6 +3628,7 @@ Felix Kallenborn for carefully reading thorugh the code, writing a GPU version o
 Jos\'e Carpio and Zander Moss for pointing out the need to improve the Earth density interpolation;
 Mauricio Bustamante for testing the Python V3 support;
 Austin Schneider for reading through this draft and testing the Ubuntu support;
+Ibrahim Safa for reading through this draft;
 Tom Studdard for providing feedback and contribution of neutrino decoherence;
 Jos\'e Carpio, Alberto Gago, and Eduardo Massoni for providing feedback and implemeting nuSQuIDS in GLoBES;
 Zander Moss, Marjon Moulai, and Janet Conrad for providing feedback and contribution of neutrino decay extension;
