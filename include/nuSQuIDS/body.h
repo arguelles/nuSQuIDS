@@ -700,7 +700,7 @@ class EarthAtm: public Body{
         /// \brief Construct trajectory.
         /// @param x_ current position [eV^-1].
         /// @param phi Zenith angle in radians.
-        Track(double x_,double phi):Track(phi){x=x_; assert(x >= 0 && x <= L);};
+        Track(double x_,double phi):Track(phi){x=x_; assert(x >= 0);};
         /// \brief Construct trajectory.
         /// @param phi Zenith angle in radians.
         Track(double phi);
