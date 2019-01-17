@@ -3157,9 +3157,9 @@ This command will try to autodetect the location of the the aboved mentioned lib
   The {\ttf incdir} and {\ttf libdir} options are use to set the boost include and library directories. The first option is a convenient flat that sets both to directories to: {\ttf DIR/lib} and {\ttf DIR/include} for the library and include directory.
 
 \end{itemize}
-This will produce a {\ttf Makefile} in the {\ttf resource/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder. This will produce a shared library in {\ttf resource/python/pybindings}; in order to be able to use the python bindings you need to add this directory to the system variable {\ttf PYTHONPATH}. {\it E.g.}, in the Bash shell
+This will produce a {\ttf Makefile} in the {\ttf resources/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder. This will produce a shared library in {\ttf resources/python/pybindings}; in order to be able to use the python bindings you need to add this directory to the system variable {\ttf PYTHONPATH}. {\it E.g.}, in the Bash shell
 \begin{lstlisting}[language=Python]
-export PYTHONPATH=NUSQUIDS_DIR/resource/python/bindings:$PYTHONPATH
+export PYTHONPATH=NUSQUIDS_DIR/resources/python/bindings:$PYTHONPATH
 \end{lstlisting}
 
 After successful installation you can import the python bindings in the following manner
