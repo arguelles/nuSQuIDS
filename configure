@@ -110,7 +110,7 @@ find_hdf5(){
 
 try_find_boost(){
 	GUESS_DIR=$1
-  PYV=$2
+	PYV=$2
 	PKG=boost
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
@@ -660,6 +660,7 @@ if [ $PYTHON_BINDINGS ]; then
 
 	try_find_boost /usr ${PYTHONVERSIONSIMPLE}
 	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE}
+	try_find_boost /usr/lib ${PYTHONVERSIONSIMPLE}
 
 	if [ -z $BOOST_LIBDIR ] && [ -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
