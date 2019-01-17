@@ -660,7 +660,7 @@ if [ $PYTHON_BINDINGS ]; then
 
 	try_find_boost /usr ${PYTHONVERSIONSIMPLE}
 	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE}
-	try_find_boost /usr/lib ${PYTHONVERSIONSIMPLE}
+	try_find_boost /usr "-py27" 
 
 	if [ -z $BOOST_LIBDIR ] && [ -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
