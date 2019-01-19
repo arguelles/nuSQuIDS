@@ -122,8 +122,8 @@ through a given media. Neutrino oscillation calculations relevant to
 current and next generation experiments are implemented. In doing so
 we account for coherent and non-coherent neutrino interactions in
 different media such as the Sun, Earth, Vacuum, or others.
-The code has been design to be accurate and flexible, while at the
-same time maintain good performance. It has a modular design that
+The code is designed to be accurate and flexible, while at the
+same time maintaining good performance. It has a modular design that
 allows the user to incorporate new physics in novel scenarios. 
 \end{abstract}
 
@@ -188,7 +188,7 @@ Also, the interplay between cosmology and neutrino
 oscillation has been widely studied in the literature
 \citep{Bergstrom:2014fqa, Giusarma:2016phn,
   Dasgupta:2013la,Hernandez:2016kel,Arguelles:2016uwb,Song:2018zyl,Chu:2018gxk}. 
-In counclusion, neutrinos are good proves to perform 
+In conclusion, neutrinos are good probes to perform 
 fundamental physics tests~\citep{Hewett:2012et,Aartsen:2017ibm,Mewes:2018cze,Barenboim:2017vlc}.
 
 Tools are needed to accurately and reliably compute neutrino
@@ -203,13 +203,14 @@ propagation medium is also limited. {\ttf nuSQuIDS} seeks to
 address all of these problems by providing a highly customizable
 package, while at the same time remaining numerically efficient.
 
-The rest of the paper is organized as follows: in section
-\ref{sec:theory} we review neutrino oscillation theory; in section
-\ref{sec:benchmark} we show the use of the code in typical
-scenarios; in section \ref{sec:performance} we show the performance of
-the library; in section \ref{sec:tests} we describe the unit tests that
-are provided with the library; in section \ref{sec:code} we describe
-the main classes and structure of the code. Finally, section
+The rest of the paper is organized as follows: in section~\ref{sec:theory}
+we review neutrino oscillation theory; in section~\ref{sec:examples}
+we show the use of the code in typical
+scenarios; in section~\ref{sec:performance} we show the performance of
+the library; in section~\ref{sec:tests} we describe the unit tests that
+are provided with the library; in section~\ref{sec:code} we describe
+the main classes and structure of the code; in section~\ref{sec:python}
+we describe the library {\ttf Python} interface. Finally, section
 \ref{sec:conclu} presents concluding remarks.
 
 \section{Neutrino Oscillations}
@@ -286,11 +287,11 @@ In writing these equations we have used the convention that the first
 three flavor eigenstates corresponds to 
 $\nu_e$, $\nu_\mu$, and $\nu_\tau$, while the rest are assumed to be
 sterile neutrinos. $H_0$ arises from the neutrino kinetic
-term, where as $H_1$ incorporates the matter potential induced by coherent
+term, whereas $H_1$ incorporates the matter potential induced by coherent
 forward scattering~\citep{Mikheev:1986gs,Mikheev:1986wj,Wolfenstein:1977ue}. Notice that the matter
 potential, $H_1$, given in \eqref{eq:hi} for neutrinos changes to
 $-H_1^*$ for antineutrinos. 
-Since the propagation due to $H_0$ can be solved analytically is
+Since the propagation due to $H_0$ can be solved analytically, it is
 convenient to use the  so-called interaction picture. For an operator
 $O(x)$ the interaction picture transformed
 operator, $O_I(x)$ is defined as
@@ -444,9 +445,9 @@ neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
 \section{Examples}
 \label{sec:examples}
-To help the user to apply the library in concrete scenarios we provide
-a set o examples. These examples are located in different sub-folders inside a folder
-called {\ttf examples}. An specific example can be compiled using the
+To help the user use the library in concrete scenarios we provide
+a set of examples. These examples are located in different sub-folders inside a folder
+called {\ttf examples}. A specific example can be compiled using the
 makefile by running {\ttf make examples example\_name}, omitting the
 name compiles all the examples. 
 Some of the examples contain a {\ttf Gnuplot} script to plot the output file.
@@ -458,22 +459,22 @@ propagation of the neutrinos for a single energy.
 
 In the following we will go though the main file of the example.
 First we construct the nusquids object using the signature that
-requires only the number of flavors and to specify if its
-neutrino or antineutrino type.
+requires only the number of flavors and to specify if it's type is
+neutrino or antineutrino.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
   nuSQUIDS nus(3,neutrino);
 \end{lstlisting}
 
-In the following function we set the value of the oscillation paramters, we put
+In the following function we set the value of the oscillation parameters, we put
 the value for the mixing angles in radians, the value for the mass
 square difference in electron-volt squared and a value for the CP
 phase in radians.
 In order to do so we use the {\ttf Set\_MixingAngle} member function
 whose first two arguments are the indices of the rotation  starting
 from zero. Similarly for the CP phase function.
-In the case of the square mass difference we use the first argument is
-the mass eigenvalue index and the second the value.
+In the case of the square mass difference,  we the first argument of the function is
+the mass eigenvalue index and the second argument the value.
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
@@ -492,7 +493,7 @@ constants we will need.
   squids::Const units;
 \end{lstlisting}
 
-This line sets the energy of the neutrino to be propagate.
+This line sets the energy of the neutrino to be propagated.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   nus.Set_E(10.0*units.GeV);
 \end{lstlisting}
@@ -750,16 +751,16 @@ constructor that takes as an argument the name of the file.
       examples/Bodies})}}
 \label{sec:body}
 One of the main classes in the nuSQUIDS library are the body and the
-track. These two do not have defaults in the code and always needs to
+track. These two do not have defaults in the code and always need to
 be specified.
 In this example we show how to use the objects already implemented in
 the library and also how to create some objects from the classes
 already defined.
 
-The folder {\ttf examples/Bodies/} contains a new body an track
+The folder {\ttf examples/Bodies/} contains a new body and track
 definitions in the files {\ttf exBody.h} and {\ttf exBody.cpp}.
 It also contains the file {\ttf main.cpp} whose main function 
-uses all the already existing objects in nuSQUIDS and the new objects
+uses all the pre-existing objects in nuSQUIDS and the new objects
 of these examples.
 
 
@@ -768,7 +769,7 @@ of these examples.
 Here is an example of how to define a derived object of the EarthAtm
 body. In this simple case the object is just an earth model with some
 parameters that weight the relative densities in the different layers
-of the Earth's inner core, outer core, and mantel.
+of the Earth's inner core, outer core, and mantle.
 
 In order to implement it we suggest to do it inside the {\ttf nusquids}
 namespace. We define a new class called {\ttf EarthMod}, which is a derived class of {\ttf
@@ -781,7 +782,7 @@ class EarthMod: public EarthAtm{
 public:
 \end{lstlisting}
 
-Our object constructors requires the following inputs:
+Our object constructors require the following inputs:
 based earth model file name ({\ttf earthmodel}), inner core weight
 ({\ttf frho1}), outer core weight ({\ttf frho2}), mantle weight ({\ttf
   frho3}).
@@ -808,7 +809,7 @@ In this part we will describe what is implemented in {\ttf
   main.cpp}.
 This file defines a nuSQUIDS object and sets different bodies and
 tracks. For each of these it evolves the system and shows the
-probabilities in the screen.
+probabilities on the screen.
 For simplicity we use the single energy mode sec.~\ref{sec:single}, but the use of the body
 and track would be the same for the multiple energy case.
 
@@ -848,7 +849,7 @@ And we set the Body and Track to the nuSQuIDS object.
   nus.Set_Track(earth_track);
 \end{lstlisting}
 
-We first set the initial state of the system and print the state in
+We first set the initial state of the system and print the state on
 the screen.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -872,7 +873,7 @@ We set the numerical error and maximum step for the GSL integrator.
   nus.Set_abs_error(1.0e-12);
 \end{lstlisting}
 
-Finally we evolve the state and print in the screen the final state of
+Finally we evolve the state and print on the screen the final state of
 the system.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -906,9 +907,9 @@ track is defined by the zenith angle of the trajectory.
 \item {\ttf earth\_mod}
 
   In this case we use the modified earth object.
-  As before the track is deffined by the zenith angle of
-  the trajectory. In the constructor we set all the weight to $0.1$.
-  Finally we set the body an track to nuSQUIDS.
+  As before the track is defined by the zenith angle of
+  the trajectory. In the constructor we set all the weights to $0.1$.
+  Finally we set the body and track to nuSQUIDS.
   
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -999,27 +1000,27 @@ baseline to $500{\rm km}$.
 
 One of the important features of nuSQuIDS is the possibility of handling in a
 consistent way the non-coherent interactions with the oscillation
-behavior. The physical quantity that encodes how often this scattering
-interaction happen between the neutrinos and the media is the cross
+behavior. The physical quantity that encodes how often these scattering
+interactions happen between the neutrinos and the media is the cross
 section.
-nuSQuIDS it has implemented two kind of interactions: charge and
-neutral current. In the case of charge current we have in to account
+nuSQuIDS has implemented two kind of interactions: charge and
+neutral current. In the case of charge current we have taken into account
 the neutrinos produced by the decay of short lived charged particles
 such as $\tau$ and $W^\pm$. For the neutral current we always include
 the outgoing neutrino.
-Other particles produced in the interactions such as hadrons or long
-lived charged leptons are ignored along the evolution.
+Other particles produced in the interactions such as hadrons or long-lived
+charged leptons are ignored along the evolution.
 This information is organized and stored in the cross-section class.
-This class requires the user to provide the total cross-section for
+This class requires the user to provide the total cross section for
 each flavor and current in units of cm$^2$. It also requires to
-specify the single differential neutrinos cross sections with respect to
-the outgoing neutrino energy in units of cm$^2$/GeV. 
+specify the single differential neutrino cross sections with respect to
+the outgoing neutrino energy in units of cm$^2$/GeV.
 
-nuSQuIDS includes by default deep inelastic neutrino nucleon
-cross-sections as well as neutrino electron
-cross-sections~\citep{Gandhi:1998ri, CooperSarkar:2011pa}.
+nuSQuIDS includes by default deep inelastic neutrino-nucleon
+cross sections as well as neutrino-electron
+cross sections~\citep{Gandhi:1998ri, CooperSarkar:2011pa}.
 
-In this example construct a new cross section object to be used by
+In this example, we construct a new cross section object to be used by
 nuSQuIDS instead of the default one.
 Every cross section must be a class of {\ttf NeutrinoCrossSections}
 and implement at least two member functions:
@@ -1043,11 +1044,11 @@ and implement at least two member functions:
  
 \end{lstlisting}
 
-In this example we use a toy total cross section that scales linearly with
+We use a toy total cross section that scales linearly with
 the neutrino energy and the corresponding differential cross sections
 linear in the outgoing neutrino energy; see implementation in {\ttf
-  exCross.cpp}. We also allow to change the proportion charge to
-neutral current at the construction of the object.
+  exCross.cpp}. We also allow to change the proportion of charge-to-neutral
+  current at the construction of the object.
 
 
 We construct two cross section objects: one with only charge current  interactions
@@ -1137,12 +1138,12 @@ other new physics setups~\ref{sec:LV}.
 
 The implementation of {\ttf nuSQUIDSNSI} class is in {\ttf NSI.h}.
 We will go trough the implementation to see what needs to be
-added to be base class.
+added to the base class.
 
 First, we declare the NSI matter potential as a {\ttf SU\_vector}
 called {\ttf NSI}. By default nuSQuIDS  works in the interaction
 picture, thus every term we add to the hamiltonian has to be properly
-evolved with $H_0$. Since $H_0$ depends on the energy to do this in
+evolved with $H_0$. Since $H_0$ depends on the energy we do this in
 every node. For optimization we will compute and store the evolved NSI
 term in a vector of {\ttf SU\_vector} objects called {\ttf NSI\_evol}.
 
@@ -1329,12 +1330,13 @@ file.
 
 \subsection{BSM extension: Lorentz Violation \textnormal{({\ttf
       examples/LV})}}
+\label{sec:LV}
 The Lorentz symmetry is a well established property of space-time.
 As a fundamental symmetry it should be tested and neutrino
-oscillations prove part of the parameter space.
+oscillations probe part of the parameter space.
 
 The example is technically the same as the non-standard interactions,
-but we add a couple of features illustrate good practices.
+but we add a couple of features to illustrate good practices.
 
 As before the new term is added in to {\ttf HI}. For this particular
 physics case the effect is positive for neutrinos and negative for
@@ -1383,7 +1385,7 @@ This enforces the order of the set functions calls.
 \subsection{Decoherence or averaged oscillations\\ \textnormal{({\ttf
       examples/Astrophysical\_neutrino\_flavor\_ratio})}}
 
-This file demonstrates how to the astrophysical flavo ratio by means
+This file demonstrates how to calculate the astrophysical flavor ratio by means
 of using the averaged out approximation. We do this in two ways in this
 example: first explicitly using the PMNS matrix and the formula given
 in the literature and second by means of nuSQuIDS fast averaging functionality.
@@ -1423,7 +1425,7 @@ oscillations.
   nus.Set_Track(vacuum_track);
 \end{lstlisting}
 
-Here we set the initial state for the flavor, a pion produced flavor composition
+Here we set the initial state for the flavor, a pion-produced flavor composition
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1439,10 +1441,10 @@ We evolve the neutrinos.
 \end{lstlisting}
 
 nuSQuIDS can calculate the average oscillation probability
-where the oscillation frequencies are larger than some value
-we call this value {\ttf scale}. When this mode is used its often
+where the oscillation frequencies are larger than some value;
+we call this value {\ttf scale}. When this mode is used it is often
 valuable to know which frequencies have been averaged out.
-NuSQuIDS this by sting true a boolean vector {\ttf is\_avg} provided to the
+NuSQuIDS does this by sting true a boolean vector {\ttf is\_avg} provided to the
 evaluation function.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1452,7 +1454,7 @@ evaluation function.
   std::vector<bool> is_avg(3);
 \end{lstlisting}
 
-The get the result always averaged we can set the scale to the maximum
+To always get an averaged result, we can set the scale to the maximum
 double numerical limit.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1460,7 +1462,7 @@ double numerical limit.
   scale = std::numeric_limits<double>::max();
 \end{lstlisting}
 
-We output the result for the averaged and non averaged computations.
+We output the result for the averaged and non-averaged computations.
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1489,7 +1491,7 @@ We output the result for the averaged and non averaged computations.
 
 Notice that the average calculation is done only on the
 oscillations given by $H_0$ when any oscillation is evaluated. Fast
-oscillations from other terms, such $H_I$  wont be
+oscillations from other terms, such as $H_I$, won't be
 averaged out.
 
 
@@ -1500,7 +1502,7 @@ In this example we show how to use the atmospheric mode. This mode is
 a compact way to treat a set of nuSQUIDS objects distributed in
 zenith.
 This allows us to propagate the energy-zenith dependent atmospheric
-neutrino flux thought the Earth.
+neutrino flux through the Earth.
 
 First, we construct the nuSQUIDSAtm object. The parameters of the
 constructors are the list of cosine of the zenith angle values ({\ttf
@@ -1549,11 +1551,10 @@ To evolve the full state we call as always {\ttf EvolveState}.
 nus_atm.EvolveState();
 \end{lstlisting}
 
-Finally, we evaluate as print the flux in a file. The
+Finally, we evaluate and print the flux in a file. The
 atmospheric mode has an interpolation implemented that allows to
-evaluate the flux at any flavor, energy, and cosine-zenith. See \ref{sec:atm}
+evaluate the flux at any flavor, energy, and cosine-zenith. See~\ref{sec:nusquidsatm}
 for more details.
-
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -1587,7 +1588,7 @@ In the folder we include a copy of the NSI header file {\ttf NSI.h}.
 The main file is essentially the same as the atmospheric default mode
 example with the following changes.
 The class type template argument is the nuSQuIDS derived class. The
-constructor takes list of cosine zenith angle values and then the
+constructor takes a list of cosine zenith angle values and then the
 derived class constructor arguments. 
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1601,7 +1602,9 @@ derived class constructor arguments.
 
 Machine 1 is configured with an Intel 6700K CPU, with a `base' frequency of 4.0 GHz. All tests were performed with the `Turbo Boost' feature disabled. 
 
-The time evolution and basis transformations performed by SQuIDS on SU\_vector objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. As a result, run time is strongly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. The considerable differences which can result are illustrated in Table $\ref{tab:trig_perf}$, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation is included. Broadly, it is apparent that the calculations using the math implementations from the GNU C Library (glibc) library are significantly slower than the versions using other math libraries. Furthermore, the glibc calculations appear to benefit only slightly from the opportunity to fuse sine and cosine calculations; while they are not as slow as might be expected from a simple doubling of the time to compute a single sine they are also not much better. This is contrast to the other implementations which are able to compute both functions in essentially the same time as a single function (or with relatively low overhead, in the case of BSD libc). In addition to this overhead, the glibc time to compute a single trigonometric function is approximately twice that of the other libraries (it is unclear why the result is far worse for clang 5.0.1 on CentOS 7, but this was deemed to have little practical relevance to this work and was not further investigated). Unfortunately, the conclusion is that the choice of compiler can be extremely important to maximizing the performance of nuSQuIDs. The benchmarks shown in this section will use the Intel compiler, version 18.0.3 on Cent OS 7, unless otherwise noted. 
+The time evolution and basis transformations performed by SQuIDS on SU\_vector objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. As a result, run time is strongly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. 
+The differences are illustrated in Table~\ref{tab:trig_perf}, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation. Broadly, it is apparent that the calculations using the math implementations from the GNU C library (glibc) are significantly slower than the versions using other math libraries. Furthermore, the glibc calculations appear to benefit only slightly from the opportunity to fuse sine and cosine calculations; while they are not as slow as might be expected from a simple doubling of the time to compute a single sine they are also not much better. 
+This is in contrast to the other implementations which are able to compute both functions in essentially the same time as a single function (or with relatively low overhead, in the case of BSD libc). In addition to this overhead, the glibc time to compute a single trigonometric function is approximately twice that of the other libraries (it is unclear why the result is far worse for clang 5.0.1 on CentOS 7, but this was deemed to have little practical relevance to this work and was not further investigated). Unfortunately, the conclusion is that the choice of compiler can be extremely important to maximizing the performance of nuSQuIDs. The benchmarks shown in this section will use the Intel compiler, version 18.0.3 on Cent OS 7, unless otherwise noted. 
 
 \begin{table*}
 	\begin{tabular}{ llcccl }
@@ -1621,11 +1624,11 @@ The time evolution and basis transformations performed by SQuIDS on SU\_vector o
 
 \section{Test suite}
 \label{sec:tests}
-A test suit is provided with the library to warranty the right
-performance in different systems or after any modification of the
-code. All the test are located in the folder {\ttf nuSQuIDS/test}
+A test suite is provided with the library to guarantee the right
+output in different systems or after any modification of the
+code. All the tests are located in the folder {\ttf nuSQuIDS/test}
 And they can be run using the provided script {\ttf test/run\_tests}.
-A single test can be run adding the name as and argument to the script
+A single test can be run by adding the name as an argument to the script
 command.
 In the following we list the tests that are provided with a brief
 description of what they test.
@@ -1646,7 +1649,7 @@ description of what they test.
   
   Tests that propagation on a constant density with no oscillation and
   neglecting regeneration from neutral current or tau decay matches
-  the expected expnential behavior.
+  the expected exponential behavior.
   
 \item {\ttf test/constant\_opacity\_with\_nc.test}
   
@@ -1671,14 +1674,14 @@ description of what they test.
 
 \item {\ttf test/cross\_section\_consistency.test}
   
-  Check that the differential cross section add with numerical error
-  the total cross section.
+  Checks that the differential cross section adds, within numerical error,
+  to the total cross section.
   
 \item {\ttf test/earth\_osc\_prob.test}
   
   Test that three and four neutrinos oscillation probability over a
   1000km baseline in multiple and single energy modes matches with the
-  numerical error to reference independent calculation.
+  numerical error to a reference independent calculation.
   
 \item {\ttf test/glashow\_resonance.test}
   
@@ -1712,12 +1715,12 @@ description of what they test.
 \item {\ttf test/tools\_integrator.test}
   
   Checks that the provided one dimensional integrate function works
-  with in the numerical error.
+  within the numerical error.
   
 \item {\ttf test/track\_concatenate\_hdf5.test}
   
   Checks that propagating by concatenating a series of tracks in
-  vacuum and writing and reading that state a every step is the same
+  vacuum and writing and reading that state at every step is the same
   as propagating with a single track with the total length. 
   
   
@@ -1773,7 +1776,7 @@ Several implementations of {\ttf Body} and {\ttf Track} covering
 common physics cases are supplied with the library. 
 
 Finally, {\ttf nuSQuIDS} provides a set functions to evaluate the
-neutrino ensemble flavor and mass composition. The code also have the
+neutrino ensemble flavor and mass composition. The code also has the
 capability to store the system state in an HDF5~\citep{folk1999hdf5}
 file for later use.
 
@@ -1832,7 +1835,7 @@ object the following members are important,
   used to set the fast computations internally.
 \end{itemize}
 
-Other public function of the {\ttf Body} object are,
+Other public functions of the {\ttf Body} object are,
 
 \begin{itemize}
 \item  
@@ -1853,27 +1856,27 @@ Other public function of the {\ttf Body} object are,
   \begin{lstlisting}
     unsigned int GetId() const {return 0;}
   \end{lstlisting}
-  It returns the Id of the body which is hard coded by the user.
+  It returns the Id of the body which is hard-coded by the user.
 
 \item  
   \begin{lstlisting}
     std::string GetName() const {return name;}
   \end{lstlisting}
-  It returns the name of the object which is hard coded by the user.
+  It returns the name of the object which is hard-coded by the user.
 
 \item  
   \begin{lstlisting}
     const std::vector<double>& GetBodyParams() const
     { return BodyParams;}
   \end{lstlisting}
-  It returns a constant reference to the vector of parameter that define body. 
+  It returns a constant reference to the vector of parameters that define body. 
   
   \item  
   \begin{lstlisting}
     virtual bool IsConstantDensity() const
     {return is_constant_density;}
   \end{lstlisting}
-  It returns true or false if its a constant density body.
+  It returns true if the body has constant density, false otherwise.
   
 \item  
   \begin{lstlisting}
@@ -1959,7 +1962,7 @@ And the following public functions are provided,
   \begin{lstlisting}
     static std::string GetName() {return "BodyTrack";};
   \end{lstlisting}
-  Returns the name of the track object hard coded by the user. 
+  Returns the name of the track object hard-coded by the user. 
 \item  
   \begin{lstlisting}
     std::vector<double> GetTrackParams() const 
@@ -1988,7 +1991,7 @@ are the following: {\ttf Vacuum}, {\ttf ConstantDensity}, {\ttf
   VariableDensity}, {\ttf Earth}, {\ttf EarthAtm}, {\ttf Sun}, and {\ttf SunASnu}.
 
 In the following sub-sections we will describe the specific
-constructors and the functions that are not member of the parent class.
+constructors and the functions that are not members of the parent class.
 
 \subsubsection{Vacuum \label{sec:vacuum}}
 
@@ -2056,7 +2059,7 @@ constructors and the functions that are not member of the parent class.
 
 \subsubsection{Earth \label{sec:earth}}
 The {\ttf Earth} body specification is designed to propagate neutrinos
-in the earth form two points in the surface, since the earth in the
+in the earth from two points on the surface. Since the earth in the
 PREM model is assumed to be spherically symmetric the length of the
 path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:tools} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
 \begin{itemize}
@@ -2096,8 +2099,8 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
   \begin{lstlisting}
     Track(double baseline):Track(0.,baseline,baseline){}
   \end{lstlisting}
-  Constructor that sets the path on the earth for a given baseline
-  {ttf baseline}
+  Constructor that sets the path in the earth for a given baseline
+  {\ttf baseline}.
 
   \begin{lstlisting}
     double GetBaseline() const;
@@ -2108,7 +2111,7 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
 
 \subsubsection{EarthAtm\label{sec:earthatm}}
 This is to be used when the relevant parameter is the zenith angle of
-the path,
+the path.
 \begin{itemize}
 \item {\ttf EarthAtm}
   \begin{lstlisting}
@@ -2216,11 +2219,11 @@ trajectories with different impact parameters.
 
 \subsection{NeutrinoCrossSections\label{sec:neutrino_cross_section}}
 \label{sec:xs}
-This object can be query to obtain neutrino cross section information used when considering neutrino non-coherent interactions. The {\ttf NeutrinoCrossSections} is a base abstract class, which the user has to subclass and implement the relevant neutrino cross section for the problem at hand. The user must specify the total cross section per flavor and per interaction type (charge and neutral current), as well as the single differential cross sections with respect to the outgoing neutrino energy.
+This object can be queried to obtain neutrino cross section information used when considering neutrino non-coherent interactions. The {\ttf NeutrinoCrossSections} is a base abstract class, which the user has to subclass and implement the relevant neutrino cross section for the problem at hand. The user must specify the total cross section per flavor and per interaction type (charge and neutral current), as well as the single differential cross sections with respect to the outgoing neutrino energy.
 
 \subsubsection{NeutrinoCrossSections\label{sec:neutrino_cross_section_class}}
 
-First, we define enumerations to lable flavor, neutrino, and interaction type.
+First, we define enumerations to label flavor, neutrino, and interaction type.
 \begin{itemize}
   \item {\ttf NeutrinoFlavor}
   \begin{lstlisting}
@@ -2251,7 +2254,7 @@ Second we list the public abstract virtual functions.
     	Current current) const;
   \end{lstlisting}
   Abstract virtual function that given a neutrino energy ({\ttf Enu})
-  in eV, neutrino flavor ({\ttf flavor}, neutrino type ({\ttf
+    in eV, neutrino flavor ({\ttf flavor}), neutrino type ({\ttf
     neutype}), and interaction type ({\ttf current}) returns the 
   total cross section in ${\rm cm}^2$.
   \item Single differential cross section
@@ -2262,7 +2265,7 @@ Second we list the public abstract virtual functions.
   \end{lstlisting}
   Abstract virtual function that given an incident neutrino energy
   ({\ttf E1}) in eV, outgoing neutrino energy ({\ttf E2}) in eV,
-  neutrino flavor ({\ttf flavor}, neutrino type ({\ttf neutype}), and
+    neutrino flavor ({\ttf flavor}), neutrino type ({\ttf neutype}), and
   interaction type ({\ttf current}) returns the differential cross
   section with respect to the outgoing neutrino energy in ${\rm
     cm}^2{\rm GeV}^{-1}$.  
@@ -2273,8 +2276,8 @@ Second we list the public abstract virtual functions.
         NeutrinoType neutype, Current current) const;
   \end{lstlisting}
   Virtual function such that given the neutrino energy ({\ttf E}),
-  Bjorken-x ({\ttf x}), and y ({\ttf y}) should to return the double
-   differential cross section. Its implementation is no required to
+  Bjorken-x ({\ttf x}), and y ({\ttf y}) should return the double
+   differential cross section. Its implementation is not required to
    run {\ttf nuSQUIDS} and by default when evaluated, unless
    overwritten, it will throw an error. 
 \end{itemize}
@@ -2283,9 +2286,9 @@ Second we list the public abstract virtual functions.
 
 This class uses precalculated deep inelastic cross section tables
 which are provided by {\ttf nuSQuIDS}.
-In the code two different cross-sections are available:
+In the code two different cross sections are available:
 {\ttf csms.h5} is a perturbative QCD next-to-leading order calculation using the HERA
-parton distributions functions~\cite{Chekanov:2002pv} on an iso-scalar
+parton distribution functions~\cite{Chekanov:2002pv} on an iso-scalar
 target~\cite{CooperSarkar:2011pa}. {\ttf nusigma}~\cite{nusigma} is a first order QCD
 calculation using the {\ttf CTEQ6} parton distribution functions on an
 iso-scalar target. In the {\ttf csms} calculation the mass of the tau
@@ -2313,7 +2316,7 @@ differential cross sections, differential electron anti-neutrino cross-section, 
 differential cross sections, muon anti-neutrino differential cross-section, tau neutrino
 differential cross sections, and tau anti-neutrino differential
 cross-section. All the differential cross-section values are in cm$^2/$GeV.
-Fro the {\ttf HDF5} cross-section format see table.~ref{tab:cross}
+For the {\ttf HDF5} cross section format see Table~\ref{tab:cross}.
 
 \begin{figure}[htb!]
   \label{cross}
@@ -2364,8 +2367,8 @@ explicitly as follows.
   Returns the total cross section at an energy {\ttf Enu} in eV, neutrino
   flavor {\ttf flavor}, neutrino type: {\ttf neutype}, and {\ttf
     current} can be either {\ttf NC} or {\ttf CC} for neutral or
-  charge current DIS cross sections. Using a linear interpolation in
-  the logarithm of the neutrino energy. 
+  charge current DIS cross sections. This function performs a linear interpolation in
+  the logarithm of the neutrino energy to estimate the cross section from a reference table.
      
 \item Single differential cross sections              
   \begin{lstlisting}
@@ -2376,7 +2379,7 @@ explicitly as follows.
       Function that given an incident neutrino energy ({\ttf E1}) in eV an outgoing lepton energy ({\ttf E2}), as well as neutrino flavor,
        type, and process, returns the differential cross section with
        respect to the outgoing lepton energy in ${\rm cm}^2/{\rm
-         GeV}$. Using a bi-linear interpolation. 
+         GeV}$. This function interpolates the cross section from a reference table by means of aa bi-linear interpolation.
 \end{itemize}
 
 \subsubsection{GlashowResonanceCrossSection\label{sec:neutrino_cross_section_glashow}}
@@ -2402,23 +2405,22 @@ This class implements the formulas in~\citep{GhandiReno} in order to calculate t
     	Current current) const;
   \end{lstlisting}
      Returns the total cross section in cm$^2$ at an energy {\ttf Enu} in eV, neutrino flavor {\ttf flavor}, and neutrino type: {\ttf neutype}.
-     If the flavor is not electron and neutrino type is not antineutrino it returns zero.              
-\item Single differential cross sections
+     If the flavor is not electron and neutrino type is not antineutrino it returns zero.
+\item Single differential cross section
   \begin{lstlisting}
     double SingleDifferentialCrossSection(double E1, double E2,
     	NeutrinoFlavor flavor, NeutrinoType neutype,
     	Current current) const;
   \end{lstlisting}
-  Returns the single differential cross section in cm$^2$/GeV for an incident neutrinos energy ({\ttf
-    E1}) in eV an outgoing neutrinos energy ({\ttf E2}) in eV, neutrino flavor ({\ttf flavor}), 
+  Returns the single differential cross section in cm$^2$/GeV for an incident neutrino energy ({\ttf
+    E1}) in eV an outgoing neutrino energy ({\ttf E2}) in eV, neutrino flavor ({\ttf flavor}),
   and neutrino type ({\ttf neutype}).
-     If the flavor is not electron and neutrino type is not antineutrino it returns zero.   
-      
+     If the flavor is not electron and neutrino type is not antineutrino it returns zero.
 \end{itemize}
 
 \subsection{TauDecaySpectra\label{sec:tau_decay_spectra}}
 
-This object can be query to obtain $\tau$ decay physics into leptons
+This object can be queried to obtain $\tau$ decay physics into leptons
 and hadrons. The formulas implemented in this class were taken
 from~\citep{Dutta:2000jv}. It is only used when $\tau$-regeneration is
 activated and it returns the following quantities on the energy
@@ -2428,8 +2430,8 @@ nodes,
 \frac{d\bar{N}^{lep/had}_{dec} (E_\tau, E_\nu)}{dE_\nu},
 \label{eqn:tau-dist}
 \end{equation}
-i.e. the neutrino and antineutrino spectral distributions from $\tau$
-leptonic and hadronic decay modes. 
+{\it i.e.} the neutrino and antineutrino spectral distributions from $\tau$
+leptonic and hadronic decay modes.
 
 \subsubsection{Constructors and Initializing Functions}
 
@@ -2443,7 +2445,7 @@ leptonic and hadronic decay modes.
     TauDecaySpectra(marray<double,1> E_range);
     void Init(marray<double,1> E_range);
   \end{lstlisting}
-This constructor and initialization functions calculate and store the
+This constructor and initialization function calculates and stores the
 $\tau$ decay spectra on nodes specified by the one dimensional array
 {\ttf E\_range} in eV.
 \end{itemize}
@@ -2499,7 +2501,7 @@ particular, it is used to specify the propagation {\ttf Body} and its
 associated {\ttf Track}. Moreover, it uses the {\ttf
   NeutrinoCrossSections} and {\ttf TauDecaySpectra} in order to
 evaluate the neutrino cross sections and $\tau$ decay spectra; the
-latter is only used then {\it $\tau$} regeneration is
+latter is only used when {\it $\tau$} regeneration is
 enabled. Furthermore, it enables the user to modify the neutrino
 oscillation parameters as well as the differential equation numerical
 precision. Finally, it also has the capability to create and read HDF5
@@ -2564,9 +2566,9 @@ the file.
   \begin{lstlisting}
     double EvalFlavor(unsigned int flv) const;
   \end{lstlisting}
-Returns the content a given neutrino flavor specified by {\ttfamily
+Returns the content of a given neutrino flavor specified by {\ttfamily
   flv} ({\ttfamily 0 = $e$}, {\ttfamily 1 = $\mu$}, {\ttfamily 2 =
-  $\tau$}, ...). This function can only be use in the single energy
+  $\tau$}, ...). This function can only be used in the single energy
 mode. 
 \item Flavor composition evaluator (multiple energy mode)
   \begin{lstlisting}
@@ -2578,7 +2580,7 @@ mode.
                       unsigned int rho,double scale,
                       std::vector<bool>& avr) const;
   \end{lstlisting}
-{\ttfamily EvalFlavorAtNode} returns the content a given neutrino
+{\ttfamily EvalFlavorAtNode} returns the content of a given neutrino
 flavor specified by {\ttfamily flv} ({\ttfamily 0 = $e$}, {\ttfamily 1
   = $\mu$}, {\ttfamily 2 = $\tau$, ...}) at an energy node {\ttfamily
   ie}. Furthermore, {\ttfamily EvalFlavor} returns the approximate
@@ -2586,18 +2588,17 @@ content of a given flavor for a specific neutrino energy  {\ttf enu}
 by interpolating in the interaction basis. In each function, when
 considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles
 between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
-The last function gets two additional arguments: an {\ttf scale} such
+The last function gets two additional arguments: an {\ttf scale}, such
 that all $H_0$ induced oscillation frequencies larger than this scale
-will be averaged and a vector of booleans which entries will be set to
+will be averaged, and a vector of booleans, which entries will be set to
 true if the corresponding oscillations frequencies have been averaged
 out.
-
 
 \item Mass composition evaluator (single energy mode)
   \begin{lstlisting}
     double EvalMass(unsigned int eig) const;
   \end{lstlisting}
-Returns the content a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}). This function can only be use in the  single energy mode.
+Returns the content of a given neutrino mass eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$}, {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}). This function can only be used in the single energy mode.
 \item Mass composition evaluator (multiple energy mode)
   \begin{lstlisting}
     double EvalMassAtNode(unsigned int eig, unsigned int ie,
@@ -2608,7 +2609,7 @@ Returns the content a given neutrino mass eigenstate specified by {\ttfamily eig
                     unsigned int rho,double scale,
                     std::vector<bool>& avr) const;
   \end{lstlisting}
-{\ttfamily EvalMassAtNode} returns the content a given neutrino mass
+{\ttfamily EvalMassAtNode} returns the content of a given neutrino mass
 eigenstate specified by {\ttfamily eig} ({\ttfamily 0 = $\nu_1$},
 {\ttfamily 1 = $\nu_2$}, {\ttfamily 2 = $\nu_3$, ...}) at an energy
 node {\ttfamily ie}. Furthermore, {\ttfamily EvalMass} returns the
@@ -2616,9 +2617,9 @@ approximate content of a given mass eigenstate for a specific neutrino
 energy  {\ttf enu} by interpolating in the interaction basis. In each
 function, when considering  {\ttf  NT = both}, the parameter {\ttf
   rho} toggles between {\ttf neutrino (0)} and {\ttf antineutrino
-  (1)}. The last function gets two additional arguments: an {\ttf scale} such
+  (1)}. The last function gets two additional arguments: an {\ttf scale}, such
 that all $H_0$ induced oscillation frequencies larger than this scale
-will be averaged and a vector of booleans which entries will be set to
+will be averaged, and a vector of booleans, which entries will be set to
 true if the corresponding oscillations frequencies have been averaged
 out.
 \end{itemize}
@@ -2630,7 +2631,7 @@ out.
   \begin{lstlisting}
     void EvolveState();
   \end{lstlisting}
-Once the neutrino propagation problem has been setup this function
+Once the neutrino propagation problem has been set up, this function
 evolves the neutrino state from its initial position to its final
 position specified by the {\ttfamily track}. 
 \end{itemize}
@@ -2642,14 +2643,14 @@ position specified by the {\ttfamily track}.
   \begin{lstlisting}
     marray<double,1> GetERange() const;
   \end{lstlisting}
-  Returns a one dimensional array containing the energy nodes
+  Returns a one-dimensional array containing the energy nodes
   positions given in eV. 
   \item Get number of energy nodes
   \begin{lstlisting}
     unsigned int GetNumE() const;
   \end{lstlisting}
   Returns the number of energy nodes.
-  \item Get number neutrino flavors
+  \item Get number of neutrino flavors
   \begin{lstlisting}
     unsigned int GetNumNeu() const;
   \end{lstlisting}
@@ -2661,27 +2662,27 @@ position specified by the {\ttfamily track}.
   \end{lstlisting}
   Returns the {\ttf SU\_vector} that represents the (anti)neutrino
   Hamiltonian at the current position, at a given energy node {\ttf
-    ie}, and  {\ttf rho} specifies whether the neutrino or antineutrino.
+    ie}, and  {\ttf rho} specifies whether the neutrino or antineutrino hamiltonian is returned.
   \item Get the state of the system 
   \begin{lstlisting}
     const squids::SU_vector& GetState(unsigned int ei,
         unsigned int rho = 0) const;
   \end{lstlisting}
   Returns the {\ttf SU\_vector} that represents the (anti)neutrino state at given energy node {\ttf ie}. 
-  Furthermore, {\tt rho} specifies whether the neutrino or antineutrino state is returned.
+  and {\tt rho} specifies whether the neutrino or antineutrino state is returned.
   \item Get the flavor projector
   \begin{lstlisting}
     SU_vector GetFlavorProj(unsigned int ie,
          unsigned int rho = 0) const;
   \end{lstlisting}
-  Returns a {\ttf SU\_vector} that represents the flavor projector for the energy node {\ttf ie} and 
+  Returns an {\ttf SU\_vector} that represents the flavor projector for the energy node {\ttf ie} and 
   {\ttf rho} specifies if neutrinos or antineutrinos are requested.
   \item Get the mass projector
   \begin{lstlisting}
     SU_vector GetMassProj(unsigned int ie,
          unsigned int rho = 0) const;
   \end{lstlisting}
-  Returns a {\ttf SU\_vector} that represents the mass projector for the energy node {\ttf ie} and 
+  Returns an {\ttf SU\_vector} that represents the mass projector for the energy node {\ttf ie} and 
   {\ttf rho} specifies if neutrinos or antineutrinos are requested.
   \item Get {\ttfamily Body}
   \begin{lstlisting}
@@ -2697,12 +2698,12 @@ position specified by the {\ttfamily track}.
   \begin{lstlisting}
     double Get_MixingAngle(unsigned int i, unsigned int j) const;
   \end{lstlisting}
-  Returns the $\theta_{i,j}$ mixing angle where {\ttf i} and {\ttf j} are zero based indexes.
+  Returns the $\theta_{i,j}$ mixing angle where {\ttf i} and {\ttf j} are zero based indices.
   \item Get CP phase
   \begin{lstlisting}
     double Get_CPPhase(unsigned int i, unsigned int j) const;
   \end{lstlisting}
-  Returns the $\delta_{i,j}$ CP phase where {\ttf i} and {\ttf j} are zero based indexes.
+  Returns the $\delta_{i,j}$ CP phase where {\ttf i} and {\ttf j} are zero based indices.
   \item Get square mass difference
   \begin{lstlisting}
     double Get_SquareMassDifference(unsigned int i) const;
@@ -2732,8 +2733,8 @@ position specified by the {\ttfamily track}.
   \end{lstlisting}
   {\ttf Set\_initial\_state} sets the initial neutrino (and
   antineutrino) state. The states  can be specified for the single and
-  multiple energy modes can be specified using the different {\ttf
-    C++} signatures. In each case {\ttf basis} can be either {\ttf
+  multiple energy modes using the appropiate {\ttf
+    C++} signature. In each case {\ttf basis} can be either {\ttf
     mass} or {\ttf flavor}. 
   \begin{itemize}
   	\item {\ttf marray<double,1> state}: 
@@ -2750,7 +2751,7 @@ position specified by the {\ttfamily track}.
             state[ei][$\rho$][$\alpha$]  = $\phi^{\rho}_\alpha
             (E$[ei]$),$ } i.e. the flavor (mass) eigenstate
           composition at a given energy node {\ttf ei}, and where
-          $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 0 \equiv {\rm
+          $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 1 \equiv {\rm
             antineutrino}$. 
   \end{itemize}
   \item Set energy
@@ -2769,22 +2770,22 @@ position specified by the {\ttfamily track}.
   \begin{lstlisting}
     void Set_TauRegeneration(bool opt);
   \end{lstlisting}
-  If {\ttf opt} is {\ttf true}, {\ttf NT} is {\ttf both}, and non
-  coherent interactions are enabled tau regeneration effects will be included.
+  If {\ttf opt} is {\ttf true}, {\ttf NT} is {\ttf both}, and non-coherent 
+    interactions are enabled, tau regeneration effects will be included.
   \item Set mixing angle
   \begin{lstlisting}
     void Set_MixingAngle(unsigned int i, unsigned int j,
         double angle);
   \end{lstlisting}
   Sets the $\theta_{i,j}$ mixing angle to {\ttf angle}, where {\ttf i}
-  and {\ttf j} are zero based indexes, and {\ttf angle} must be given in radians.
+  and {\ttf j} are zero-based indexes, and {\ttf angle} must be given in radians.
   \item Get CP phase
   \begin{lstlisting}
     void Set_CPPhase(unsigned int i, unsigned int j,
         double phase);
   \end{lstlisting}
   Sets the $\delta_{i,j}$ CP phase to {\ttf phase}, where {\ttf i} and
-  {\ttf j} are zero based indexes, and {\ttf phase} must be given in radians.
+  {\ttf j} are zero-based indexes, and {\ttf phase} must be given in radians.
   \item Set square mass difference
   \begin{lstlisting}
     void Set_SquareMassDifference(unsigned int i, doble dmsq);
@@ -2801,8 +2802,8 @@ position specified by the {\ttfamily track}.
   \begin{lstlisting}
     void Set_Basis(Basis basis);
   \end{lstlisting}
-  Sets the basis on which the evolution will be performed. Two options
-  are available: {\ttf mass} and {\ttf interaction}, the later being
+  Sets the basis in which the evolution will be performed. Two options
+  are available: {\ttf mass} and {\ttf interaction}, the latter being
   the default. 
 \item Set neutrino cross-section
   \begin{lstlisting}
@@ -2825,29 +2826,30 @@ position specified by the {\ttfamily track}.
                         const;
   \end{lstlisting}
   Writes the current {\ttf nuSQUIDS} configuration and state into an HDF5 file
-  for later use. {\ttf hdf5\_filename} specifies the output filename, {\ttf group} is the 
-  location on the HDF5 structure where the {\ttf nuSQUIDS} object will be save; by default
+  for later use. {\ttf hdf5\_filename} specifies the output filename, {\ttf group} is the
+  location in the HDF5 structure where the {\ttf nuSQUIDS} object will be saved; by default
   the root of the HDF5 will be used. Furthermore, {\ttf
-    save\_cross\_sections} and {\ttf cross\_section\_grp\_loc} specify
-  if cross sections will be saved and where on the HDF5 file
-  structure. See Figure~\ref{fig:nusquids_hdf5}. 
+  save\_cross\_sections} and {\ttf cross\_section\_grp\_loc}
+  specify if and where in the HDF5 file structure will the cross sections be saved
+   See Figure~\ref{fig:nusquids_hdf5} for details of the nuSQUIDS HDF5 structure.
   \item Add to the HDF5 write funtion.
   \begin{lstlisting}
     virtual void AddToWriteStateHDF5(hid_t hdf5_loc_id) const;
   \end{lstlisting}
-  En ables the user to add content in the HDF5 file. An HDF5
-  location,{\ttf hdf5\_loc\_id}. Using that the user can stor relevant
-  informa about the derived nuSQuIDS class.
+  Enables the user to add content to the HDF5 file. An HDF5
+    location identifier,{\ttf hdf5\_loc\_id}, will be provided by {\ttf nuSQUIDS}. Using this
+    identifier the user can store relevant
+  information about the derived nuSQuIDS class.
   \item Read nuSQUIDS object from an HDF5 file.
     \begin{lstlisting}
     void ReadStateHDF5(std::string hdf5_filename,
                        std::string group = "/",
                        std::string cross_section_grp_loc = "");
   \end{lstlisting}
-  Reads an previously generated HDF5 file and sets the {\ttf nuSQUIDS} object
+  Reads a previously generated HDF5 file and sets the {\ttf nuSQUIDS} object
   accordingly, i.e. it configures it and loads the saved state. {\ttf
     hdf5\_filename} specifies the input filename, {\ttf group} is the
-  location on the HDF5 structure where the {\ttf nuSQUIDS} object is;
+  location in the HDF5 structure where the {\ttf nuSQUIDS} object is;
   by default the root of the HDF5 is assumed. Furthermore, {\ttf
     cross\_section\_grp\_loc} specify where the cross sections are in
   the HDF5 file structure. See Figure~\ref{fig:nusquids_hdf5}. 
@@ -2857,9 +2859,9 @@ position specified by the {\ttfamily track}.
   \end{lstlisting}
   Enables the user to read user defined content from the HDF5 file. An
   HDF5 location,{\ttf hdf5\_loc\_id}, is provided so the user can
-  interface with the HDF5 library. For a correct implementations this
-  functions has to be implemented consistently with {\ttf
-    AddToWriteStateHDF5} function. 
+  interface with the HDF5 library. For a correct implementation this
+  functions has to be written consistently with {\ttf
+    AddToWriteStateHDF5} function.
 \end{itemize}
 
 \begin{figure}[htb!]
@@ -2901,25 +2903,23 @@ position specified by the {\ttfamily track}.
 \end{tikzpicture}
 \caption{Structure of {\ttf nuSQUIDS} HDF5 file. The {\ttf
     crosssections} group will only be written when interactions are
-  enable. Furthermore, {\ttf user\_parameters} are by default empty
-  and can be set/access by {\ttf AddToWriteStateHDF5/AddToReadStateHDF5}.} 
+  enabled. Furthermore, {\ttf user\_parameters} is by default empty
+  and can be set/accessed by {\ttf AddToWriteStateHDF5/AddToReadStateHDF5}.} 
 \label{fig:nusquids_hdf5}
 \end{figure}
 
-
-
 \subsection{nuSQUIDSAtm\label{sec:nusquidsatm}}
 
-Atmospheric neutrino oscillations is a major and instrumental part of
+Atmospheric neutrino oscillations are a major and instrumental part of
 research in contemporary neutrino physics. Experiments like
 SuperKamiokande, IceCube, and Antares have used atmospheric neutrinos
 to measure neutrino mass splittings and mixing angles. Furthermore,
 proposed extensions like HyperKamiokande, PINGU, and ORCA ought to
-improve the current measurements and have sensitivity to neutrino
+improve the current measurements and have sensitivity to 
 neutrino mass ordering. This class allows to propagate a set of full
-energy spectrum of neutrinos for a different zenith angles.
+energy spectrum of neutrinos for different zenith angles.
 It implements functions to set easily the initial conditions and also
-interpolations to the fluxes.
+interpolations of the fluxes.
 \subsubsection{Constructors}
 
 \begin{itemize}
@@ -2928,7 +2928,7 @@ interpolations to the fluxes.
     template<typename... ArgTypes> nuSQUIDSAtm(
         marray<double,1> costh_array, ArgTypes&&... args)
   \end{lstlisting}
-This constructor it creates a set {\ttf nuSQUIDS} or derived {\ttf
+This constructor creates a set of {\ttf nuSQUIDS} or derived {\ttf
   nuSQUIDS} objects with a set of zenith angles given by the {\ttf
   marray} {\ttf costh\_array}. The arguments given in {\ttf arg} are the
 corresponding arguments of the nuSQUIDS or derived nuSQUIDS class constructor.
@@ -2942,7 +2942,7 @@ previously generated $\nu$SQuIDS-HDF5 file. The result {\ttfamily nuSQUIDS}
 object will be given in {\it single} or {\it multiple} energy mode
 depending on the HDF5 file configuration. {\ttfamily filepath} must specify the full
 path of the HDF5 file. Furthermore,
-{\ttfamily grp} specifies the location on the HDF5 file structure
+{\ttfamily grp} specifies the location in the HDF5 file structure
 where the object will be saved; by default
 it will be saved on the {\ttfamily root} of the HDF5 file.
 
@@ -2960,7 +2960,7 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
         Basis basis=flavor);
   \end{lstlisting}
   Sets the initial state of the system given in the marray {\ttf
-    ini\_flux}, {\ttf basis} is the basis in where the state is
+    ini\_flux}, {\ttf basis} is the basis in which the state is
   defined. Different {\ttf marray} can be used for different cases:
 
   \begin{itemize}
@@ -2974,7 +2974,7 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
       state[czi][ei][$\rho$][$\alpha$]  = $\phi^{\rho}_\alpha
       (E$[ei]$,costh$[czi]$),$ } i.e. the flavor (mass) eigenstate
     composition at a given energy and zenith node {\ttf ei} and {\ttf czi}, and where
-    $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 0 \equiv {\rm
+    $\rho = 0 \equiv {\rm neutrino}$ and $\rho = 1 \equiv {\rm
       antineutrino}$. 
   \end{itemize}
   
@@ -2997,10 +2997,10 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
   It returns the flux for the flavor {\ttf flv} at the value of cosine
   zenith given by {\ttf costh} and energy given by {\ttf enu}.
   {\ttf rho} is {\ttf neutrino} or {\ttf antineutrino}.
-  Some arguments can be also set: If a frequency is higher that {\ttf
-    scale} it will be averaged out, and the corresponding entrance in the
+  Some arguments can also be set: If a frequency is higher than {\ttf
+    scale} it will be averaged out, and the corresponding entry in the
   Boolean vector {\ttf avr} will be set to {\ttf true}.
-  In the second case the randomization on the production height of the
+  In the second case the randomization of the production height of the
   neutrino can be set to $true$, by default is $false$.
   
 \item Read and write function.
@@ -3010,7 +3010,7 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
         bool overwrite = true) const;
   \end{lstlisting}
   
-  This functions read and write the state of the system in the file
+  These functions read and write the state of the system in the file
   {\ttf hdf5\_filename}, in the write {\ttf overwrite} may be set to
   {\ttf true} or {\ttf false}.
 
@@ -3038,7 +3038,7 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
     void SetNeutrinoCrossSections(
                    std::shared_ptr<NeutrinoCrossSections> xs);
   \end{lstlisting}
-  All this functions do a recursive call to the function with
+  All these functions do a recursive call to the function with
   the same name in all the nuSQUIDS objects.
   
 
@@ -3056,7 +3056,7 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
   The evolution can be done in a multi-thread with the number of
   threads specified by {\ttf nThreads}.
 
-\item Set absolute error in a give node.
+\item Set absolute error in a given node.
   \begin{lstlisting}
     void Set_abs_error(double eps, unsigned int idx);
   \end{lstlisting}
@@ -3072,14 +3072,14 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
   \begin{lstlisting}
     double Get_MixingAngle(unsigned int i, unsigned int j) const;
   \end{lstlisting}
-  It returns the mixing angle of the first cosine zenith node in the
+  Returns the mixing angle of the first cosine zenith node in the
   rotation plane given by ({\ttf i}, {\ttf j}).
 
 \item Get square mass difference.
   \begin{lstlisting}
     double Get_SquareMassDifference(unsigned int i) const;
   \end{lstlisting}
-  It returns the square mass difference value given by {\ttf i}.
+  Returns the square mass difference value given by {\ttf i}.
  \item Number of energy nodes.
   \begin{lstlisting}
     size_t GetNumE() const;
@@ -3103,14 +3103,14 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
   \begin{lstlisting}
     marray<double,1> GetERange() const;
   \end{lstlisting}
-  Returns and {\ttf marray} with the value of the energies in the
+  Returns an {\ttf marray} with the value of the energies in the
   energy nodes.
 
 \item Cosine zenith array.
   \begin{lstlisting}
     marray<double,1> GetCosthRange() const;
   \end{lstlisting}
-  Returns and {\ttf marray} with the value of the cosine zenith in the
+  Returns an {\ttf marray} with the value of the cosine zenith in the
   cosine zenith nodes.
 
 \item Get the nuSQUIDS object.
@@ -3130,31 +3130,39 @@ it will be saved on the {\ttfamily root} of the HDF5 file.
 % TODO: section describing space and time complexity, benchmarks
 
 \section{Python Interface}
+\label{sec:python}
 
-As the particle physics community has transition from {\ttfamily FORTRAN} to {\ttfamily C++} based frameworks, it is also a current trent to be able to interface analysis software with high-level interpreted languages such as {\ttfamily Mathematica}, {\ttfamily R}, and {\ttfamily Python}. Of these languages we have decided to implement bindings with Python due to the well-developed {\ttfamily C++}-{\ttfamily Python} bindings given by the {\ttfamily Boost} library.
+As the particle physics community has transitioned from {\ttfamily FORTRAN} to {\ttfamily C++} based frameworks, 
+it is also a current trend to be able to interface analysis software with high-level interpreted 
+languages such as {\ttfamily Mathematica}, {\ttfamily R}, and {\ttfamily Python}. 
+Of these languages we have decided to implement bindings with Python due to the well-developed 
+{\ttfamily C++}-{\ttfamily Python} bindings given by the {\ttfamily Boost} library.
 
 \subsection{Installation}
 
-In order to install nuSQuIDS python bindings additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). Upon installing these new prerequisites you can run the following command to generate a Makefile to compile the bindings
+In order to install nuSQuIDS python bindings, additional libraries are required, namely, {\ttfamily Boost.Python} ($\ge1.54$) and {\ttfamily Python.numpy} ($\ge1.7$). 
+Upon installing these new prerequisites you can run the following command to generate a Makefile to compile the bindings
 
 \begin{lstlisting}[language=Bash]
 ./configure --with-python-bindings
 \end{lstlisting}
 
-This command will try to autodetect the location of the the aboved mentioned libraries. The following configuration script flags are influencial
+This command will try to autodetect the location of the aforementioned mentioned libraries.
+The following configuration script flags are influencial and can be used to set pre-requisites locations:
 \begin{itemize}
   \item Specify the Python executable
   \begin{lstlisting}
     --python-bin=PYTHON_EXECUTABLE
   \end{lstlisting}
-  The provided {\ttf Python} executable will be use to find the python version, libraries, and includes.
+  The provided {\ttf Python} executable will be used to find the python version, libraries, and includes.
   \item Set Boost library and include paths
   \begin{lstlisting}
     --with-boost=DIR
     --with-boost-incdir=DIR
     --with-boost-libdir=DIR
   \end{lstlisting}
-  The {\ttf incdir} and {\ttf libdir} options are use to set the boost include and library directories. The first option is a convenient flat that sets both to directories to: {\ttf DIR/lib} and {\ttf DIR/include} for the library and include directory.
+  The {\ttf incdir} and {\ttf libdir} options are used to set the boost include and library directories. 
+    The first option is a convenient flag that sets both directories to: {\ttf DIR/lib} and {\ttf DIR/include} for the library and include directory.
 
 \end{itemize}
 This will produce a {\ttf Makefile} in the {\ttf resources/python/src} directory of nuSQuIDS. This Makefile will be compiled when you run {\ttf make} on the main nuSQuIDS folder. This will produce a shared library in {\ttf resources/python/pybindings}; in order to be able to use the python bindings you need to add this directory to the system variable {\ttf PYTHONPATH}. {\it E.g.}, in the Bash shell
@@ -3166,16 +3174,19 @@ After successful installation you can import the python bindings in the followin
 \begin{lstlisting}[language=Python]
 import nuSQUIDSpy
 \end{lstlisting}
-where here we have introduce the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extend the
+where here we have introduced the alias {\ttfamily nsq} for the nuSQuIDS python module. We can further extend the
 capabilities of nuSQuIDS in {\ttfamily Python} by means of the the {\ttfamily nuSQUIDSTools} module.
-When it is loaded the nuSQuIDS functions and objects get overloaded with additoinal functionalities. In order to enable them, after loading the {\ttfamily nuSQUIDSpy} module, do
+When it is loaded the nuSQuIDS functions and objects get overloaded with additional functionalities. In order to enable them, after loading the {\ttfamily nuSQUIDSpy} module, do
 \begin{lstlisting}[language=Python]
 import nuSQUIDSTools
 \end{lstlisting}
 
 \subsection{Description of the interface}
 
-The interface is implemented in two files {\ttf nuSQUIDSpy.h} and {\ttf nuSQUIDSpy.cpp}. Additionally in {\ttf resources/python/inc} the file {\ttf container\_conversions.h} is provided to enable translation between {\ttf std::vector<type>} to  {\ttf List} among {\ttf C++} and {\ttf Python}. The python bindings header contains {\ttf C++} templates that facilitate registrion of {\ttf nuSQuIDS} python bindings.
+The interface is implemented in two files {\ttf nuSQUIDSpy.h} and {\ttf nuSQUIDSpy.cpp}. 
+Additionally in {\ttf resources/python/inc} the file {\ttf container\_conversions.h} 
+is provided to enable translation between {\ttf std::vector<type>} to  {\ttf List} among {\ttf C++} and {\ttf Python}. 
+The python bindings header contains {\ttf C++} templates that facilitate registration of {\ttf nuSQuIDS} python bindings.
 
 In the bindings source file the following classes have been registered:
 \begin{itemize}
@@ -3193,12 +3204,13 @@ In the bindings source file the following classes have been registered:
   \item {\ttf SunASnu}, {\ttf SunASnu.Track}
   \item {\ttf EarthAtm}, {\ttf EarhAtm.Track}
 \end{itemize}
-for all these classes we have implemented the public members described on this document with the same names as on the {\ttf C++} interface. Additoinally two classes from SQuIDS have been expose to {\ttf Python}:
+for all these classes we have implemented the public members described in this document with 
+the same names as in the {\ttf C++} interface. Additionally, two classes from SQuIDS have been expose to {\ttf Python}:
 \begin{itemize}
   \item {\ttf SU\_vector} and
   \item {\ttf Const}.
 \end{itemize}
-See~\cite{SQUIDS} for details on thses classes. Also, the following enumerations have been made available in {\ttf Python}
+See~\cite{SQUIDS} for details on these classes. Also, the following enumerations have been made available in {\ttf Python}
 \begin{itemize}
   \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_FUNCTIONS} enumeration contains the following members: 
     \begin{itemize}
@@ -3209,7 +3221,7 @@ See~\cite{SQUIDS} for details on thses classes. Also, the following enumerations
       \item \lstinline[columns=fixed,breaklines=true]{GSL_STEP_RK8PD},
       \item and \lstinline[columns=fixed,breaklines=true]{GSL_STEP_MSADAMS}.
     \end{itemize}
-    These can be used in the {\ttf Set\_GSL\_step} \nuSQUIDS member function.
+    These can be used in the {\ttf Set\_GSL\_step} {\ttf nuSQUIDS}  member function.
   \item {\ttf Basis}, which contains the members:
     \begin{itemize}
       \item {\ttf mass} ({\ttf Basis::mass}),
@@ -3242,7 +3254,7 @@ See~\cite{SQUIDS} for details on thses classes. Also, the following enumerations
     \end{itemize}
 \end{itemize}
 
-Finally, conversion between {\ttf Numpy.Array} and {\ttf marray<double,DIM>} conversion has been made available up to dimension four.
+Finally, conversion between {\ttf Numpy.Array} and {\ttf marray<double,DIM>} has been made available up to dimension four.
 Higher dimensionality multidimensional array conversion is possible by adding the following lines to the boost python module
 \begin{lstlisting}[language=C++]
 to_python_converted< marray<double, DIM>, marray_to_numpyarray<DIM> >();
@@ -3252,7 +3264,7 @@ where {\ttf DIM} is the array dimensionality to register.
 
 \subsection{Python walk-through}
 
-In this section we will exemplify the usage of the {\ttf Python} interface. 
+In this section we will illustrate the usage of the {\ttf Python} interface. 
 These examples can be found in the IPython notebook located in {\ttf resources/python/example}.
 We start by importing the modules
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
@@ -3261,11 +3273,11 @@ import matplotlib.pyplot as plt
 import nuSQUIDSpy as nsq
 import nuSQUIDSTools
 \end{lstlisting}
-Through the example we will use the shorthand {\ttf nsq} for the \nuSQUIDS python bindings.
+Through the example we will use the shorthand {\ttf nsq} for the {\ttf nuSQUIDS} python bindings.
 
 \subsubsection{Single-energy mode}
 
-To start, like in the C++ case, we need to create a $\nu$-SQuIDS object. 
+To start, like in the {\ttf C++} case, we need to create a $\nu$-SQuIDS object. 
 To begin this demonstration we will create a simple single-energy mode three-flavor neutrino oscillation calculator.
 Thus we just need to specify the number of neutrinos (3) and if we are dealing with neutrinos or antineutrinos.
 \begin{lstlisting}[language=Python, breaklines=true]
@@ -3274,20 +3286,20 @@ nuSQ = nsq.nuSQUIDS(3,nsq.NeutrinoType.neutrino)
 
 nuSQuIDS inputs should be given in natural units.
 In order to make this convenient, as in the {\ttf C++} code, we make use of the {\ttf SQuIDS} class {\ttf Const}.
-We can instanciate it as follows
+We can instantiate it as follows
 \begin{lstlisting}[language=Python, breaklines=true]
 units = nsq.Const()
 \end{lstlisting}
 
-As in the C++ $\nu$-SQuIDS interface one can propagate the neutrinos in various environments
+As in the {\ttf C++} $\nu$-SQuIDS interface one can propagate the neutrinos in various environments
 (see~\ref{sec:body} for further details). We can start by considering oscillactions in vacuum by setting:
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_Body(nsq.Vacuum())
 \end{lstlisting}
 
 Since we have specify that we are considering vacuum propagation, 
-we must construct a trayectory inside that object. This can be done using the {\ttf Track} class-property of a given Body.
-Each Body will have its on Track subclass and its constructors. We can set and construct a vacuum trayectory in the following way:
+we must construct a trajectory inside that object. This can be done using the {\ttf Track} class-property of a given {\ttf Body}.
+Each {\ttf Body} will have its own {\ttf Track} subclass and its constructors. We can set and construct a vacuum trajectory in the following way:
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_Track(nsq.Vacuum.Track(100.0*units.km))
 \end{lstlisting}
@@ -3298,7 +3310,7 @@ nuSQ.Set_E(1.0*units.GeV)
 \end{lstlisting}
 
 Now we have to set the initial neutrino state. We can provide this state in either the flavor or mass basis.
-We can do this using the {\ttf Set\_initial\_state} function and providing it with a numpy array and a {\ttf nsq.Basis}.
+We can do this using the {\ttf Set\_initial\_state} function, providing it with a numpy array and a {\ttf nsq.Basis}.
 If the basis is {\ttf nsq.Basis.flavor} then list must contain {\ttf np.array([}$\phi_e$,$\phi_\mu$,$\phi_\tau${\ttf ])}, 
 similarly if enumeration is {\ttf nsq.Basis.mass} the list must specify $\phi_i$.
 In this example we set the initial state to $\nu_\mu$,
@@ -3311,7 +3323,7 @@ Finally, we calculate the system evolution by
 nuSQ.EvolveState()
 \end{lstlisting}
 
-After this runs {\ttf nuSQuIDS} has evolved the state and holds its state in memory.
+After this runs, {\ttf nuSQuIDS} has evolved the state and holds it in memory.
 We can inquire for the flavor composition at this stage by
 \begin{lstlisting}[language=Python, breaklines=true]yy
 print([nuSQ.EvalFlavor(i) for i in range(3)])
@@ -3359,7 +3371,7 @@ This results in the plot shown in Figure~\ref{fig:nusquids_python_osc} left pane
 
 nuSQuIDs has some predefined oscillation mixing angles ($\theta_{ij}$) and mass splittings ($\Delta m^2_{ij}$),
 which we have taken from~\cite{nufit}.
-We can change the square mass different by using the following function
+We can change the square mass differences by using the following function
 \begin{lstlisting}[language=Python, breaklines=true]
 nuSQ.Set_SquareMassDifference(1,2.0e-1) # sets dm^2_{21} in eV^2.
 \end{lstlisting}
@@ -3379,10 +3391,10 @@ nuSQ.Set_MixingParametersToDefault()
 
 \subsubsection{Multiple-energy mode}
 
-In this section we will demonstrate the use of {\ttf nuSQuIDS} in the multiple energy node mode.
-To begin we have to specify the $\{E_i\}$ grid where the equation will be solve.
+In this section we will demonstrate the use of {\ttf nuSQuIDS} in the multiple energy mode.
+To begin we have to specify the $\{E_i\}$ grid where the equation will be solved.
 The energy nodes can be an arbitrary ordered list of energy in eV.
-The most common choices is to have linearly spaced nodes or logarithmically spaced nodes.
+The most common choice is to have linearly-spaced nodes or logarithmically-spaced nodes.
 For constructing numpy array of linear and logarithmic scales nuSQuIDS provides two
  convenient functions called {\ttf linspace} and {\ttf logspace }respectively. The 
 following lines define the energy grid and construct the nuSQUIDS object.
@@ -3401,7 +3413,7 @@ neutrino_flavors = 3
 nuSQ = nsq.nuSQUIDS(energy_nodes,neutrino_flavors,nsq.NeutrinoType.neutrino,interactions)
 \end{lstlisting}
 
-We can propage neutrino ensemble through the Earth in an atmospheric neutrino telescope setting.
+We can propage a neutrino ensemble through the Earth in an atmospheric neutrino telescope setting.
 We can do that by setting the following Body and Track:
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
@@ -3409,7 +3421,7 @@ nuSQ.Set_Body(nsq.EarthAtm())
 nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
 \end{lstlisting}
 
-For the initial flux we will assume that is given by $\phi_\nu = N_0 E^{-2}$,
+For the initial flux we will assume that it's given by $\phi_\nu = N_0 E^{-2}$,
 with flavor composition $\phi_e:\phi_\mu:\phi_\tau$ = $0:1:0$.
 $\nu$-SQuIDS input flux is a {\ttf numpy.ndarray} formatted in the following way:
 \begin{equation}
@@ -3421,7 +3433,7 @@ N0 = 1.0e18
 Eflux = lambda E: N0*E**-2
 Einitial = (Eflux(nuSQ.GetERange()).reshape((101,1)))*(np.array([0.,1.,0.]).reshape(1,3))
 \end{lstlisting}
-where {\ttf N0} is an arbitrary normalization constant, but we have choosen such that the input flux is O(1).
+where {\ttf N0} is an arbitrary normalization constant, but we have chosen it such that the input flux is $O(1)$.
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
 nuSQ.Set_initial_state(Einitial,nsq.Basis.flavor)
@@ -3459,14 +3471,14 @@ plt.plot(e_range,total, lw = 2, color = 'black', label = r"Total")
 plt.legend(fancybox = True, fontsize = 10)
 plt.semilogy()
 \end{lstlisting}
-The result of this is shown in the the left panel of Fig.~\ref{fig:nusquids_atm_python_no_interaction}. Our final example is 
+The result of this is shown in the left panel of Fig.~\ref{fig:nusquids_atm_python_no_interaction}. Our final example is 
 performing the full nuSQuIDS calculation with neutrinos and antineutrinos, but this time including interactions
 
 \begin{figure}[h!]
   \label{fig:nusquids_atm_python_no_interaction}
   \centering
   \includegraphics[width=\textwidth]{fig/nusquids_atm_python_no_int.eps}
-  \caption{Result of propagating a power-law flux with spectral index of -1 throught the Earth considering only oscillations and no interactions.}
+  \caption{Result of propagating a power-law flux with spectral index of -1 through the Earth considering only oscillations and no interactions.}
 \end{figure}
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
@@ -3512,7 +3524,7 @@ An important phenomena in this scenario is that of tau-regeneration, which we ca
 nuSQ.Set_TauRegeneration(True)
 \end{lstlisting}
 
-After doing the evolution we can evaluate the flux resulting flux by doing:
+After doing the evolution we can evaluate the resulting flux by doing:
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
 nu_tau = np.array([ nuSQ.EvalFlavorAtNode(2,ie,0) for ie,EE in enumerate(nuSQ.GetERange())])
 nu_tau_bar = np.array([ nuSQ.EvalFlavorAtNode(2,ie,1) for ie,EE in enumerate(nuSQ.GetERange())])
@@ -3548,7 +3560,7 @@ The result of this is shown in Fig.~\ref{fig:nusquids_atm_python_with_interactio
 
 \subsection{Extending the interface with user-defined classes~\label{sec:python_extensions}}
 
-In this section we briefly how to construct python bindings for user defined classes. As an example
+In this section we briefly show how to construct python bindings for user-defined classes. As an example
 we have an extension class called {\ttf nuSQUIDSExt} defined as:
 
 \begin{lstlisting}[language=C++, frame=leftline, numbers=left, breaklines=true]
@@ -3578,24 +3590,24 @@ BOOST_PYTHON_MODULE(nuSQUIDSExtensionPythonModuleName)
   nusquidsext_class_object->def("FuctionExtension",&nuSQUIDSExt::FunctionExtension);
 }
 \end{lstlisting}
-where we have the header {\ttf nuSQUIDSpy.h} contains the nuSQUIDS python binding utilities and definitions, and {\ttf nuSQUIDSExt.h} is the 
-header where the new class of interest is defined. In this code we have use two templates structures, whose constructors are:
+where the header {\ttf nuSQUIDSpy.h} contains the nuSQUIDS python binding utilities and definitions, and {\ttf nuSQUIDSExt.h} is the 
+header where the new class of interest is defined. In this code we have used two template structures, whose constructors are:
 \begin{itemize}
   \item
     \begin{lstlisting}[language=C++, breaklines=true]
       RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSDerivedType>(std::string name);
     \end{lstlisting}
-    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derivate type, in this case \\
+    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derived type, in this case \\
   {\ttf nuSQUIDSDerivedType} is {\ttf nuSQUIDSExt}. The string that is passed
   as an argument does not need to match the type name and is how the class will be named in {\ttf Python}. This class will register all the functions
-  that the class inherits as a nuSQUIDS derived class, but not any new members introduced by the user.
+  that it inherits as a nuSQUIDS derived class, but not any new members introduced by the user.
   \item
     \begin{lstlisting}[language=C++, breaklines=true]
       RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDSDerivedType>(std::string name);
     \end{lstlisting}
-    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derivate type, in this case \\ {\ttf nuSQUIDSDerivedType} is {\ttf nuSQUIDSExt}. The string that is passed
+    The {\ttf type} of the extension has to be a {\ttf nuSQUIDS} derived type, in this case \\ {\ttf nuSQUIDSDerivedType} is {\ttf nuSQUIDSExt}. The string that is passed
   as an argument does not need to match the type name and is how the class will be named in {\ttf Python}. This class will register all the functions
-    that the class inherits as a {\ttf nuSQUIDSAtm<Type>} derived class, but not any new members introduced by the user.
+    that it inherits as a {\ttf nuSQUIDSAtm<Type>} derived class, but not any new members introduced by the user.
 \end{itemize}
 
 This module needs to be compiled with the same dependencies as our nominal python bindings, for which we suggest the user
@@ -3606,31 +3618,31 @@ should place the resulting shared object library in the system {\ttf PYTHONPATH}
 \label{sec:conclu}
 
 In this article we have written in detail the equations that guide the evolution of an ensemble of neutrinos
-in a dense medium. We have described the \nuSQUIDS~ library that solves these equations. We have provide examples
-of the core features of the library. We also discuss its performance and the tests that the library.
-\nuSQUIDS~  provides a complete solution to the neutrino propagation when accounting for neutrino oscillations and scatterings. 
+in a dense medium. We have described the \nuSQUIDS~ library that solves these equations. We have provided examples
+of the core features of the library. We also discussed its performance.
+\nuSQUIDS~  provides a complete solution to neutrino propagation while accounting for neutrino oscillations and scattering. 
 We find that it is competitive with dedicated neutrino oscillation calculators, when the number of evaluations of the oscillation probability
 is large; which is the typical case of interest in neutrino experiments.
-The library also has a {\ttf Python} extension which we also expose. Finally, the \nuSQUIDS~ library has been designed to be easily extendable 
-onto new mediums, but onto new physics scenarios. Users contributions to the project are encourage and a number of additional
+The library also has a {\ttf Python} extension which we also discuss. Finally, the \nuSQUIDS~ library has been designed to be easily extendable 
+onto both new mediums and new physics scenarios. User contributions to the project are encouraged and a number of additional
 models have already been implemented and are linked in {\ttf resources/user\_contributions}.
 
 \section*{Acknowledgements}
 
-We thank: Jakov Van Santen for implementing the Glashow resonance cross sections;
+We thank: Jakob Van Santen for implementing the Glashow resonance cross sections;
 Benjamin Jones for early adoption of this code onto the sterile analysis;
 Melanie Day for early adoption of this code onto her analysis, carefully checking the non-standard interaction extension, and providing feedback;
 Tianlu Yuan for comments on neutrino cross section utilities and testing the performance of the code in realistic analysis scenarios;
-Subir Sarkar for providing the code to generate neutrino-nucleon the cross section tables;
+Subir Sarkar for providing the code to generate neutrino-nucleon cross section tables;
 Kotoyo Hoshima and Aaron Vincent for dedicated comparisons and checks of this code;
-Zander Moss performing an independent check of several core features of the code;
-Felix Kallenborn for carefully reading thorugh the code, writing a GPU version of the algorithm, and pointing out an improve handling of the GSL ODE solver;
+Zander Moss for performing an independent check of several core features of the code;
+Felix Kallenborn for carefully reading through the code, writing a GPU version of the algorithm, and pointing out an improve handling of the GSL ODE solver;
 Jos\'e Carpio and Zander Moss for pointing out the need to improve the Earth density interpolation;
 Mauricio Bustamante for testing the Python V3 support;
 Austin Schneider for reading through this draft and testing the Ubuntu support;
 Ibrahim Safa for reading through this draft;
 Tom Studdard for providing feedback and contribution of neutrino decoherence;
-Jos\'e Carpio, Alberto Gago, and Eduardo Massoni for providing feedback and implemeting nuSQuIDS in GLoBES;
+Jos\'e Carpio, Alberto Gago, and Eduardo Massoni for providing feedback and implementing nuSQuIDS in GLoBES;
 Zander Moss, Marjon Moulai, and Janet Conrad for providing feedback and contribution of neutrino decay extension;
 Shivesh Mandalia and Teppei Katori for checking, providing feedback, and contribution on the Lorentz Violation model implementation;
 Joshua Highnight and Jessie Micallef for providing a modified version of Prob3++ with NSI for detailed comparisons; and
