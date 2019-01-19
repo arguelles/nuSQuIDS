@@ -119,11 +119,11 @@ try_find_boost(){
 	POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
 	POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
 	for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
-		if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so \) ]; then
+		if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so -o -e $BOOST_LIBDIR/libboost_python${PYV}.dylib \) ]; then
 			break
 		fi
 	done
-	if [ ! -d $BOOST_LIBDIR -o ! \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so \) ]; then
+	if [ ! -d $BOOST_LIBDIR -o ! \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so -o -e $BOOST_LIBDIR/libboost_python${PYV}.dylib \) ]; then
 		echo " Unable to locate the boost_python${PYV} libray in $GUESS_DIR"
 		return
 	fi
@@ -137,7 +137,7 @@ try_find_boost(){
 		return
 	fi
 	BOOST_CFLAGS="-I${BOOST_INCDIR}"
-	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python${PYV} -lboost_numpy${PYV}"
+	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python${PYV}"
 	BOOST_FOUND=1
 	echo " Found boost in $GUESS_DIR"
 }
@@ -628,6 +628,9 @@ if [ $PYTHON_BINDINGS ]; then
 
   PYTHONLIBPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'`
   PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY")[3:])'`
+	if [ -z "$PYTHONBLDLIB" ]; then
+    PYTHONBLDLIB=-lpython${PYTHONVERSION}
+	fi
 
   PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
   PYTHON_CFLAGS+=" -I${PYTHONINCPATH}"
@@ -660,7 +663,7 @@ if [ $PYTHON_BINDINGS ]; then
 
 	try_find_boost /usr ${PYTHONVERSIONSIMPLE}
 	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE}
-	try_find_boost /usr "-py27" 
+	try_find_boost /usr "-py27"
 
 	if [ -z $BOOST_LIBDIR ] && [ -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."

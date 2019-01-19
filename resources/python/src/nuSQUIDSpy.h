@@ -31,10 +31,9 @@
 #define H5Gopen_vers 2
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
-//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <boost/python.hpp>
-#include <boost/python/numpy.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/to_python_converter.hpp>
 #include <boost/python/overloads.hpp>
@@ -50,7 +49,6 @@
 using namespace boost::python;
 using namespace nusquids;
 namespace bp = boost::python;
-namespace np = boost::python::numpy;
 
 template<class T>
 struct VecToList
