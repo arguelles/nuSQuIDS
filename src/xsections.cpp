@@ -96,7 +96,7 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   size_t loge_M1 = static_cast<size_t>((logE1-logE_data_range[0])/dlogE);
   size_t loge_M2 = static_cast<size_t>((logE2-logE_data_range[0])/dlogE);
 
-  if ( (loge_M2 > div-1) or (loge_M1 > div-1) or (loge_M1 == loge_M2))
+  if ((loge_M2 > div-1) or (loge_M1 > div-1) or (E2 >= E1))
     return 0.0;
 
   //std::cout << E1 << " " << E2 << " " << loge_M1 << " " << loge_M2 << " " << div << std::endl;
