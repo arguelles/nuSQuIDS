@@ -64,13 +64,61 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .value("GR",NeutrinoCrossSections::Current::GR)
   ;
 
-  class_<squids::SU_vector, boost::noncopyable,std::shared_ptr<squids::SU_vector> >("SU_vector")
+  class_<squids::SU_vector, std::shared_ptr<squids::SU_vector> >("SU_vector")
     .def(init< std::vector<double> >())
     .def(init<unsigned int>())
-    //.def("Rotate",&squids::SU_vector::Rotate)
+    .def(init<const squids::SU_vector&>())
     .def("Dim",&squids::SU_vector::Dim)
+    .def("Size",&squids::SU_vector::Size)
+    .def("SetAllComponents",&squids::SU_vector::SetAllComponents)
     .def("GetComponents",&squids::SU_vector::GetComponents)
+    .def("Rotate",(squids::SU_vector(squids::SU_vector::*)(unsigned int, unsigned int, double, double) const)&squids::SU_vector::Rotate)
+    .def("RotateToB0",&squids::SU_vector::RotateToB0)
+    .def("RotateToB1",&squids::SU_vector::RotateToB1)
+    .def("WeightedRotation",(void(squids::SU_vector::*)(const squids::Const&, const squids::SU_vector&, const squids::Const&))&squids::SU_vector::WeightedRotation)
+    .def("Transpose",&squids::SU_vector::Transpose)
+    .def("Imag",&squids::SU_vector::Imag)
+    .def("Real",&squids::SU_vector::Real)
+    //.def("UTransform",(squids::SU_vector(squids::SU_vector::*)(const squids::SU_vector, gsl_complex))&squids::SU_vector::UTransform)
+    //.def("GetEigenSystem",(std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex*)>(squids::SU_vector::*)())&squids::SU_vector::GetEigenSystem)
+    //.def("GetGSLMatrix",(std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex*)>(squids::SU_vector::*)())&squids::SU_vector::GetGSLMatrix)
+    .def(self += self)
+    .def(self + self)
+    .def(self -= self)
+    .def(self - self)
+    .def(self *= double())
+    .def(self * self)
+    .def(self /= double())
+    .def(self == self)
+    .def(-self)
+    .def(self_ns::str(self_ns::self))
+    .def("Projector",&squids::SU_vector::Projector)
+    .def("Identity",&squids::SU_vector::Identity).staticmethod("Identity")
+    .def("PosProjector",&squids::SU_vector::PosProjector)
+    .def("NegProjector",&squids::SU_vector::NegProjector)
+    .def("Generator",&squids::SU_vector::Generator).staticmethod("Generator")
   ;
+
+  class_<squids::detail::AdditionProxy, std::shared_ptr<squids::detail::AdditionProxy>>("AdditionProxy", no_init);
+  implicitly_convertible< squids::detail::AdditionProxy , squids::SU_vector >();
+
+  class_<squids::detail::SubtractionProxy, std::shared_ptr<squids::detail::SubtractionProxy>>("SubtractionProxy", no_init);
+  implicitly_convertible< squids::detail::SubtractionProxy, squids::SU_vector >();
+
+  class_<squids::detail::NegationProxy, std::shared_ptr<squids::detail::NegationProxy>>("NegationProxy", no_init);
+  implicitly_convertible< squids::detail::NegationProxy, squids::SU_vector >();
+
+  class_<squids::detail::EvolutionProxy, std::shared_ptr<squids::detail::EvolutionProxy>>("EvolutionProxy", no_init);
+  implicitly_convertible< squids::detail::EvolutionProxy, squids::SU_vector >();
+
+  class_<squids::detail::MultiplicationProxy, std::shared_ptr<squids::detail::MultiplicationProxy>>("MultiplicationProxy", no_init);
+  implicitly_convertible< squids::detail::MultiplicationProxy, squids::SU_vector >();
+
+  class_<squids::detail::iCommutatorProxy, std::shared_ptr<squids::detail::iCommutatorProxy>>("iCommutatorProxy", no_init);
+  implicitly_convertible< squids::detail::iCommutatorProxy, squids::SU_vector >();
+
+  class_<squids::detail::ACommutatorProxy, std::shared_ptr<squids::detail::ACommutatorProxy>>("ACommutatorProxy", no_init);
+  implicitly_convertible< squids::detail::ACommutatorProxy, squids::SU_vector >();
 
   enum_<NeutrinoType>("NeutrinoType")
     .value("neutrino",neutrino)
