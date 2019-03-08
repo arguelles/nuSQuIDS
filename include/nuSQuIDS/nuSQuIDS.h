@@ -171,12 +171,12 @@ protected:
         /// \brief Array that contains the tau decay spectrum to all particles.
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
-        marray<double,2,aligned_allocator<double>> dNdE_tau_all;
+        marray<double,3,aligned_allocator<double>> dNdE_tau_all;
         /// \brief Array that contains the tau decay spectrum to leptons.
         /// \brief Array that contains the tau decay spectrum to all particles.
         /// \details The first dimension corresponds to initial tau energy and the
         /// second one to the outgoing lepton.
-        marray<double,2,aligned_allocator<double>> dNdE_tau_lep;
+        marray<double,3,aligned_allocator<double>> dNdE_tau_lep;
         /// \brief Default constructor
         InteractionStructure():
         dNdE_CC(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),

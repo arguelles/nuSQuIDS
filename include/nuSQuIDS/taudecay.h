@@ -30,6 +30,9 @@
 #include <string>
 #include <cmath>
 #include <math.h>
+#include <iostream>
+#include "marray.h"
+#include "aligned_alloc.h"
 
 /*
  * FORMULAES implemented out of
@@ -50,6 +53,11 @@ namespace nusquids{
 /// PRD 62 123001, Hall Reno et al.
 class TauDecaySpectra{
   private:
+    ///aligned arrays should be aligned to at least this many items
+    constexpr static size_t preferred_alignment=4;
+    constexpr static uint8_t log2(size_t n) {
+      return((n>1) ? log2(n/2)+1 : 0);
+    }
     /// \brief Stores the tau polarization which is set by SetParameters()
     /// @see SetParameters
     double TauPolarization;
@@ -81,7 +89,7 @@ class TauDecaySpectra{
     double BrRA1;
 
     /// \brief Sets mass ratios, branching ratios, and polarizations.
-    void SetParameters();
+    void SetParameters(bool neutrino_type=true);
   public:
     /// \brief Calculates the differential spectrum for tau to leptons with respect to z = E_nu/E_tau.
     /// @param E_tau Tau energy.
@@ -110,21 +118,28 @@ class TauDecaySpectra{
   private:
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for all channels.
-    marray<double,2> dNdEnu_All_tbl;
+    marray<double,3,aligned_allocator<double>> dNdEnu_All_tbl;
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for leptonic channels.
-    marray<double,2> dNdEnu_Lep_tbl;
+    marray<double,3,aligned_allocator<double>> dNdEnu_Lep_tbl;
 
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for all channels.
-    marray<double,2> dNdEle_All_tbl;
+    marray<double,3,aligned_allocator<double>> dNdEle_All_tbl;
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for leptonic channels.
-    marray<double,2> dNdEle_Lep_tbl;
+    marray<double,3,aligned_allocator<double>> dNdEle_Lep_tbl;
 
   public :
     /// \brief Detault empty constructor.
-    TauDecaySpectra();
+    TauDecaySpectra():
+      dNdEnu_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
+      dNdEnu_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
+      dNdEle_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
+      dNdEle_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))})
+      {
+        SetParameters(true);
+      }
     /// \brief Constructor for a given energy range.
     /// @param E_range Energy nodes where the cross section will be calculated. [eV]
     /// \details Construct the tables on a rectangular grid given by E_range X E_range.
@@ -138,23 +153,23 @@ class TauDecaySpectra{
     /// all decay channels. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const;
+    double dNdEnu_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
     /// \brief Returns the differential spectrum with respect to the incoming neutrino energy for
     /// leptonic decay channel. Returned in units of GeV^-1.
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const;
+    double dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
 
     /// \brief Returns the differential spectrum with respect to the outgoing lepton energy for
     /// all decay channels. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEle_All(unsigned int i_enu,unsigned int i_ele) const;
+    double dNdEle_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
     /// \brief Returns the differential spectrum with respect to the outgoing neutrino energy for
     /// leptonic decay channel. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const;
+    double dNdEle_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
     /// \brief Returns tau to lepton branching ratio.
     double GetTauToLeptonBranchingRatio() const{
       return BrLepton;

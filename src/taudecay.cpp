@@ -115,67 +115,75 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
 
 // define tau decay object
 
-TauDecaySpectra::TauDecaySpectra(){SetParameters();}
-
-void TauDecaySpectra::SetParameters(){
-  TauPolarization = -1.0;
+void TauDecaySpectra::SetParameters(bool neutrino_type){
+  if(neutrino_type)
+    TauPolarization = -1.0;
+  else
+    TauPolarization = 1.0;
   RPion = SQR(0.07856); RRho = SQR(0.43335); RA1 = SQR(0.70913);
   BrLepton = 0.18; BrPion = 0.12; BrRho = 0.26; BrRA1 = 0.13; BrHadron = 0.13;
 }
 
-TauDecaySpectra::TauDecaySpectra(marray<double,1> E_range){
+TauDecaySpectra::TauDecaySpectra(marray<double,1> E_range):TauDecaySpectra(){
   Init(E_range);
 }
 
 void TauDecaySpectra::Init(marray<double,1> E_range){
-        SetParameters();
-        double GeV = 1.0e9;
-        unsigned int e_size = E_range.size();
+  std::cout << " init function here " << std::endl;
+  SetParameters(true);
+  double GeV = 1.0e9;
+  unsigned int e_size = E_range.size();
+  unsigned int neutrino_number = 2;
 
-        dNdEnu_All_tbl.resize(std::vector<size_t>{e_size,e_size});
-        dNdEnu_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
-        dNdEle_All_tbl.resize(std::vector<size_t>{e_size,e_size});
-        dNdEle_Lep_tbl.resize(std::vector<size_t>{e_size,e_size});
+  dNdEnu_All_tbl.resize(std::vector<size_t>{neutrino_number,e_size,e_size});
+  dNdEnu_Lep_tbl.resize(std::vector<size_t>{neutrino_number,e_size,e_size});
+  dNdEle_All_tbl.resize(std::vector<size_t>{neutrino_number,e_size,e_size});
+  dNdEle_Lep_tbl.resize(std::vector<size_t>{neutrino_number,e_size,e_size});
 
-        for (unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
-            double Enu1 = E_range[e1]/GeV; // tau energy
-            for (unsigned int e2 = 0 ; e2 < e_size ; e2 ++){
-                double Enu2 = E_range[e2]/GeV; // tau neutrino energy
-                // save spectra
-                dNdEle_All_tbl[e1][e2] = TauDecayToAll(Enu1,Enu2)*Enu2/(Enu1*Enu1);
-                dNdEle_Lep_tbl[e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)*Enu2/(Enu1*Enu1);
+  for(unsigned int neutype = 0; neutype < neutrino_number; neutype++){
+    if(neutype == 0)
+      TauPolarization = -1.0;
+    else
+      TauPolarization = 1.0;
+    for(unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
+        double Enu1 = E_range[e1]/GeV; // tau energy
+        for(unsigned int e2 = 0 ; e2 < e_size ; e2 ++){
+            double Enu2 = E_range[e2]/GeV; // tau neutrino energy
+            // save spectra
+            dNdEle_All_tbl[neutype][e1][e2] = TauDecayToAll(Enu1,Enu2)*Enu2/(Enu1*Enu1);
+            dNdEle_Lep_tbl[neutype][e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)*Enu2/(Enu1*Enu1);
 
-                dNdEnu_All_tbl[e1][e2] = TauDecayToAll(Enu1,Enu2)/Enu1;
-                dNdEnu_Lep_tbl[e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)/Enu1;
-            }
+            dNdEnu_All_tbl[neutype][e1][e2] = TauDecayToAll(Enu1,Enu2)/Enu1;
+            dNdEnu_Lep_tbl[neutype][e1][e2] = BrLepton*TauDecayToLepton(Enu1,Enu2)/Enu1;
         }
-
+    }
+  }
 }
 
 // tau decay spectra returned in units of [GeV^-1]
 
-double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const{
-  if(i_enu >= dNdEnu_All_tbl.extent(0) or i_ele >= dNdEnu_All_tbl.extent(1))
+double TauDecaySpectra::dNdEnu_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type) const{
+  if(i_enu >= dNdEnu_All_tbl.extent(1) or i_ele >= dNdEnu_All_tbl.extent(2))
     throw std::runtime_error("TauDecaySpectra:dNdEnu_All in valid index choices");
-  return dNdEnu_All_tbl[i_enu][i_ele];
+  return dNdEnu_All_tbl[neutrino_type][i_enu][i_ele];
 }
 
-double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const{
-  if(i_enu >= dNdEnu_Lep_tbl.extent(0) or i_ele >= dNdEnu_Lep_tbl.extent(1))
+double TauDecaySpectra::dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type) const{
+  if(i_enu >= dNdEnu_Lep_tbl.extent(1) or i_ele >= dNdEnu_Lep_tbl.extent(2))
     throw std::runtime_error("TauDecaySpectra:dNdEnu_Lep in valid index choices");
-  return dNdEnu_Lep_tbl[i_enu][i_ele];
+  return dNdEnu_Lep_tbl[neutrino_type][i_enu][i_ele];
 }
 
-double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele) const{
-  if(i_enu >= dNdEle_All_tbl.extent(0) or i_ele >= dNdEle_All_tbl.extent(1))
+double TauDecaySpectra::dNdEle_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type) const{
+  if(i_enu >= dNdEle_All_tbl.extent(1) or i_ele >= dNdEle_All_tbl.extent(2))
     throw std::runtime_error("TauDecaySpectra:dNdEle_All in valid index choices");
-  return dNdEle_All_tbl[i_enu][i_ele];
+  return dNdEle_All_tbl[neutrino_type][i_enu][i_ele];
 }
 
-double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const{
-  if(i_enu >= dNdEle_Lep_tbl.extent(0) or i_ele >= dNdEle_Lep_tbl.extent(1))
+double TauDecaySpectra::dNdEle_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type) const{
+  if(i_enu >= dNdEle_Lep_tbl.extent(1) or i_ele >= dNdEle_Lep_tbl.extent(2))
     throw std::runtime_error("TauDecaySpectra:dNdEle_Lepin valid index choices");
-  return dNdEle_Lep_tbl[i_enu][i_ele];
+  return dNdEle_Lep_tbl[neutrino_type][i_enu][i_ele];
 }
 
 }// close namespace
