@@ -129,7 +129,6 @@ TauDecaySpectra::TauDecaySpectra(marray<double,1> E_range):TauDecaySpectra(){
 }
 
 void TauDecaySpectra::Init(marray<double,1> E_range){
-  std::cout << " init function here " << std::endl;
   SetParameters(true);
   double GeV = 1.0e9;
   unsigned int e_size = E_range.size();
