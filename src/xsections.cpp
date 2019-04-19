@@ -135,6 +135,7 @@ void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
        std::string filename_sigma_CC = root+"sigma_CC.dat";
        std::string filename_sigma_NC = root+"sigma_NC.dat";
 
+       std::cout << filename_sigma_NC << std::endl;
        // check if files exist for this energies and divisions
        if(
           fexists(filename_dsde_CC) and
