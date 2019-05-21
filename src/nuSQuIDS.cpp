@@ -1674,7 +1674,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     hsize_t dNdEtaudim[3] {static_cast<hsize_t>(nrhos),
                            static_cast<hsize_t>(ne),
                            static_cast<hsize_t>(ne)};
-    std::vector<double> dNdEtauall(ne*ne),dNdEtaulep(ne*ne);
+    std::vector<double> dNdEtauall(ne*ne*nrhos),dNdEtaulep(ne*ne*nrhos);
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int e1 = 0; e1 < ne; e1++){
           for(unsigned int e2 = 0; e2 < ne; e2++){
