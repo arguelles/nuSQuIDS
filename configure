@@ -664,6 +664,8 @@ if [ $PYTHON_BINDINGS ]; then
 	try_find_boost /usr ${PYTHONVERSIONSIMPLE}
 	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE}
 	try_find_boost /usr "-py27"
+	try_find_boost /usr ""
+	try_find_boost /usr/local ""
 
 	if [ -z $BOOST_LIBDIR ] && [ -z $BOOST_INCDIR ]; then
 		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
@@ -747,7 +749,7 @@ $(STAT_PRODUCT) : $(OBJECTS)
 
 .PHONY: clean
 clean:
-	rm -f *.o ../lib/*.so ../lib/*.a
+	rm -f *.o ../bindings/*.so ../bindings/*.a
 ' >> resources/python/src/Makefile
 
 fi
