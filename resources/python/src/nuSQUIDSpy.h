@@ -418,14 +418,4 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
     }
 };
 
-/*
-namespace nusquidspy {
-  class SU_vector : private squids::SU_vector {
-    SU_vector operator+(const SU_vector& other) const &{
-      return squids::SU_vector(this)+squids::SU_vector(other);
-    }
-  };
-}
-*/
-
 #endif
