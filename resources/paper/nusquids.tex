@@ -442,6 +442,12 @@ terms couple the propagation of neutrinos and antineutrinos.
 Finally, the last term in \eqref{eq:antiFterm} accounts for the
 neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
+These equations are implemented by discretizing the problem in bins that the user
+specifies. The user should be aware that the discretization used can introduce errors due to
+bin spill-over. Special care should be taken for hard spectrums,
+{\it e.g.} $\phi(E_\nu) = E^{-1}$, where this maybe more relevant and the user is encouraged
+to check the effect of discretization by modifying the energy nodes spacing and cross sections granularity.
+
 \section{Examples}
 \label{sec:examples}
 To help the user use the library in concrete scenarios we provide
@@ -3557,6 +3563,31 @@ The result of this is shown in Fig.~\ref{fig:nusquids_atm_python_with_interactio
   \includegraphics[width=0.7\textwidth]{fig/nusquids_python_with_interactions_both.eps} 
   \caption{Propagated flux for muon and tau neutrinos through the Earth including the effect of tau regeneration.}
 \end{figure}
+
+\subsection{{\ttf SU\_vector} operations in Python~\label{sec:python_suvector}}
+
+SQuIDS {\ttf SU\_vector} class provides a combinent way to perform operations
+that commonly arise in quantum mechanics. For this reason we have also make them
+available in the {\ttf Python} interface. All of the {\ttf SU\_vector} operations have been implemented,
+but due to optimizations performed in the {\ttf C++} some notes are in order.
+
+We can compute the {\ttf SU\_vector} that represents a typical neutrino Hamiltonian 
+in three flavors as
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+import nuSQUIDSpy as nsq
+p2=nsq.SU_vector.Projector(3,1)
+dm12=1e-5
+H=p2*dm12
+\end{lstlisting}
+In this code snippet {\ttf p2} is a {\ttf SU\_vector}, but {\ttf H} is a {\ttf SU\_vector::MultiplicationProxy}.
+In the {\ttf C++} implementation these proxies appear when operations are performed on {\ttf SU\_vector} objects
+to optimize memory usage, as described earlier in this document. To keep operating on these objects one needs to 
+cast them onto real {\ttf SU\_vector} rather than proxies for them. This can be done as follows:
+\begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
+H=nsq.SU_vector(H)
+\end{lstlisting}
+after which {\ttf H} is a real vector and can be operated upon. This same conversion needs to be performed explicitly
+every time a proxy is encountered in {\ttf Python}.
 
 \subsection{Extending the interface with user-defined classes~\label{sec:python_extensions}}
 
