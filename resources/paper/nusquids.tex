@@ -213,6 +213,7 @@ we describe the library {\ttf Python} interface. Finally, section
 \ref{sec:conclu} presents concluding remarks.
 
 \section{Neutrino Oscillations}
+\subsection{Density Matrix Formalism}
 \label{sec:theory} 
 In this section we briefly review neutrino oscillations
 using the density matrix formalism.
@@ -451,6 +452,55 @@ to check the effect of discretization by modifying the energy nodes spacing and 
 
 =======
 >>>>>>> c6a8be92b35067939fa5267703c6d8ea03949c30
+
+\subsection{Fast Oscillations Approximation}
+
+In the regime where the oscillation frequencies are too large to be
+resolved by the energy resolution of your detector, the oscillation length is much
+shorter that the production region of the propagated neutrinos, or the
+traveled distance is large enough to produce the physical separation
+of the different mass eigen-states the oscillations due to the quantum
+interference vanishes.
+
+In order to implement the evaluation of the vacuum oscillations in
+this regime a generalized functions for the analytic evolution are included in
+the SQuIDS~\cite{SQUIDS} later release. A low level generalized function of the function {\ttf PrepareEvolve} is included.
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
+  void PrepareEvolve(double* buffer, double t, double scale, std::vector<bool>& avr) const
+\end{lstlisting}
+Where the {\ttf double* buffer}  will contain all the needed evaluated
+trigonometric functions to evaluate the evolution give by the {\ttf
+  SU\_vector} to be used by any {\ttf Evolve()} function. The frequencies of this oscillating functions are given by the
+difference of the eigenvalues where the trigonometric functions
+evaluations are set to zero for frequencies
+larger that the value given by the argument {\ttfdouble scale}.
+The {\ttf double t} is the time and the {\ttf bool} vector is set to
+{\ttf true} when the corresponding frequency is set to zero due to the fast
+oscillation approximation.
+
+A set of higher level functions to evaluate the expectation values of
+the system in this approximations are also added,
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
+double GetExpectationValue(SU_vector op, unsigned int nrh, unsigned int i, double scale, std::vector<bool>& avr) cons
+double GetExpectationValueD(const SU_vector& op, unsigned int nrh, double x, double scale, std::vector<bool>& avr) const;
+\end{lstlisting}
+
+Where the two extra argument, the {\ttf double scale} and the {\ttf
+  bool} vector {\ttf avr} are included.
+In section~\ref{sec:code} the functions to evaluate the the expectation values for the neutrinos, {\ttf EvalFlavor} in
+{\ttf nuSQuIDS}, are described in detail.  
+
+Besides using this approximation in the evaluation, esentially to set the states
+from the interaction picture to the real picture, this approximated functions can be also used to compute the right hand side
+terms of the differential equation when the oscillations are much
+faster than the time scales of a given numerical system. This can be
+understood as the leading order of the Magnus expansion~\cite{Magnus:1954zz} and can
+speed up numerical calculations dramatically in some concrete physics setups
+such as oscillations in the early universe~\cite{Hernandez:2016kel}. 
+
+
 \section{Examples}
 \label{sec:examples}
 To help the user use the library in concrete scenarios we provide
