@@ -499,10 +499,10 @@ such as oscillations in the early universe~\cite{Hernandez:2016kel}.
 
 \section{Examples}
 \label{sec:examples}
-To help the user use the library in concrete scenarios we provide
+To illustrate use of the library in concrete scenarios we provide
 a set of examples. These examples are located in different sub-folders inside a folder
 called {\ttf examples}. A specific example can be compiled using the
-makefile by running {\ttf make examples example\_name}, omitting the
+makefile by running {\ttf make examples example\_name}, and omitting the
 name compiles all the examples. 
 Some of the examples contain a {\ttf Gnuplot} script to plot the output file.
 
@@ -512,20 +512,19 @@ This example illustrates the use of the simplified mode to compute the
 propagation of the neutrinos for a single energy. 
 
 In the following we will go though the main file of the example.
-First we construct the nusquids object using the signature that
-requires only the number of flavors and to specify if it's type is
-neutrino or antineutrino.
+First, we construct the nuSQuIDS object using the signature that
+requires only the number of flavors and specification of the use of
+neutrinos or antineutrinos.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
   nuSQUIDS nus(3,neutrino);
 \end{lstlisting}
 
-In the following function we set the value of the oscillation parameters, we put
-the value for the mixing angles in radians, the value for the mass
-square difference in electron-volt squared and a value for the CP
+We next set the value of the oscillation parameters, giving the values for the mixing angles in radians, the value for the mass
+square difference in electron-volt squared, and a value for the CP
 phase in radians.
 In order to do so we use the {\ttf Set\_MixingAngle} member function
-whose first two arguments are the indices of the rotation  starting
+whose first two arguments are the indices of the rotation, starting
 from zero. Similarly for the CP phase function.
 In the case of the square mass difference, the first argument of the function is
 the mass eigenvalue index and the second argument the value. These
@@ -553,15 +552,11 @@ This line sets the energy of the neutrino to be propagated.
   nus.Set_E(10.0*units.GeV);
 \end{lstlisting}
 
-In these lines we define the medium in which we are going to propagate
-the neutrino. In this example we will use the Earth and specify the
-path by the zenith angle, see~\ref{sec:body} for more details.
-
-These are separate objects in the code, in this example we construct
-an atmospheric Earth object, {\ttf earth\_atm}, which contains the
-Earth geometry and density. We also construct a trajectory in the
-earth for a zenith angle {\ttf phi}, {\ttf earth\_atm\_track}. Finally
-we set these objects to nuSQuIDS.
+Next, we define the medium in which we are going to propagate the neutrinos. 
+The atmospheric Earth object used here, {\ttf earth\_atm}, contains the
+geometry and density of the Earth, including a simple treatment of the atmosphere; see~\ref{sec:body} for more details. We also construct a trajectory in the
+earth for a zenith angle {\ttf phi}, {\ttf earth\_atm\_track}. Finally,
+we apply these objects to the nuSQuIDS object.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   double phi = acos(-1.0);
@@ -572,11 +567,10 @@ we set these objects to nuSQuIDS.
   nus.Set_Track(earth_atm_track);
 \end{lstlisting}
 
-Now we set the initial neutrino flavor. In this example we start with
-a muon neutrino represented by an {\ttf marray} of length {\ttf
+Now we set the initial neutrino flavor composition. In this example we start with
+a muon neutrino, which we represent represented by an {\ttf marray} of rank 1 and length {\ttf
   \{3\}}, corresponding to the number of flavors, and with value given
 by {\ttf\{0,1,0\}}.
-
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   marray<double,1> ini_state({3},{0,1,0});
@@ -595,11 +589,11 @@ Finally we show the result before and after propagation. The
 propagation is done by calling the function {\ttf nus.EvolveState()}
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
-  std::cout << ``In state'' << std::endl;
+  std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/units.GeV << `` ``;
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << `` ``;
+      std::cout << nus.EvalFlavor(i) << " ";
     }
     std::cout << std::endl;
   }
@@ -607,11 +601,11 @@ propagation is done by calling the function {\ttf nus.EvolveState()}
   nus.EvolveState();
   
   // Output the result                                                                                 
-  std::cout << ``Out state'' << std::endl;
+  std::cout << "Out state" << std::endl;
   for (double EE : nus.GetERange()){
-    std::cout << EE/units.GeV << `` ``;
+    std::cout << EE/units.GeV << " ";
     for(int i = 0; i < 3; i++){
-      std::cout << nus.EvalFlavor(i) << `` ``;
+      std::cout << nus.EvalFlavor(i) << " ";
     }
     std::cout << std::endl;
   }
