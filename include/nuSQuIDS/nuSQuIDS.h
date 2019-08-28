@@ -1320,8 +1320,8 @@ class nuSQUIDSAtm {
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
       
       struct storage_type{
-        squids::SU_vector evol_proj, temp1, temp2;
-        storage_type(unsigned int dim):evol_proj(dim),temp1(dim),temp2(dim){}
+        squids::SU_vector evol_proj, temp1;
+        storage_type(unsigned int dim):evol_proj(dim),temp1(dim){}
       };
   #ifdef SQUIDS_THREAD_LOCAL
       static SQUIDS_THREAD_LOCAL
@@ -1333,16 +1333,14 @@ class nuSQUIDSAtm {
       //coefficients for energy interpolation
       double f2=(enu-enu_array[loge_M])/(enu_array[loge_M+1]-enu_array[loge_M]);
       double f1=1-f2;
-      
+
       storage.temp1 =f1*nusq_array[cth_M  ].GetState(loge_M  ,rho);
       storage.temp1+=f2*nusq_array[cth_M  ].GetState(loge_M+1,rho);
-      storage.temp2=storage.temp1.Evolve(H0_at_enu,t_inter - nusq_array[cth_M  ].Get_t());
-      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp1,storage.evol_proj);
       
       storage.temp1 =f1*nusq_array[cth_M+1].GetState(loge_M  ,rho);
       storage.temp1+=f2*nusq_array[cth_M+1].GetState(loge_M+1,rho);
-      storage.temp2=storage.temp1.Evolve(H0_at_enu,t_inter - nusq_array[cth_M+1].Get_t());
-      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp1,storage.evol_proj);
       
       //perform angular interpolation
       return(LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],phiM,phiP));
@@ -1412,8 +1410,8 @@ class nuSQUIDSAtm {
       squids::SU_vector H0_at_enu = nusq_array[0].H0(enu,rho);
       
       struct storage_type{
-        squids::SU_vector evol_proj, temp1, temp2;
-        storage_type(unsigned int dim):evol_proj(dim),temp1(dim),temp2(dim){}
+        squids::SU_vector evol_proj, temp1;
+        storage_type(unsigned int dim):evol_proj(dim),temp1(dim){}
       };
   #ifdef SQUIDS_THREAD_LOCAL
       static SQUIDS_THREAD_LOCAL
@@ -1431,15 +1429,11 @@ class nuSQUIDSAtm {
       storage.temp1 =f1*nusq_array[cth_M  ].GetState(loge_M  ,rho);
       storage.temp1+=f2*nusq_array[cth_M  ].GetState(loge_M+1,rho);
 
-      H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter - nusq_array[cth_M  ].Get_t(),scale,avr);
-      storage.temp2=storage.temp1.Evolve(evol_buffer.get());
-      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp1,storage.evol_proj);
       
       storage.temp1 =f1*nusq_array[cth_M+1].GetState(loge_M  ,rho);
       storage.temp1+=f2*nusq_array[cth_M+1].GetState(loge_M+1,rho);
-      H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter - nusq_array[cth_M+1].Get_t(),scale,avr);
-      storage.temp2=storage.temp1.Evolve(evol_buffer.get());
-      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp2,storage.evol_proj);
+      double phiP=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp1,storage.evol_proj);
       
       //perform angular interpolation
       return(LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],phiM,phiP));
