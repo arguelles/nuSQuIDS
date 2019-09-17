@@ -40,6 +40,7 @@
 #include "container_conversions.h"
 #include <SQuIDS/SQuIDS.h>
 #include <nuSQuIDS/nuSQuIDS.h>
+#include <nuSQuIDS/xsections.h>
 #include <nuSQuIDS/marray.h>
 
 #include <numpy/ndarrayobject.h>
@@ -410,7 +411,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
       class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
       class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
-      class_object->def("SetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::SetNeutrinoCrossSections);
+      class_object->def("SetNeutrinoCrossSections",(void(nuSQUIDSAtm<BaseType>::*)(std::shared_ptr<NeutrinoCrossSections>))&nuSQUIDSAtm<BaseType>::SetNeutrinoCrossSections);
+      class_object->def("SetNeutrinoCrossSections",(void(nuSQUIDSAtm<BaseType>::*)(std::vector<std::shared_ptr<NeutrinoCrossSections>>))&nuSQUIDSAtm<BaseType>::SetNeutrinoCrossSections);
       class_object->def("GetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::GetNeutrinoCrossSections);
     }
     std::shared_ptr<class_<nuSQUIDSAtm<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<BaseType>>>> GetClassObject() {

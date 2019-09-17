@@ -1826,6 +1826,17 @@ class nuSQUIDSAtm {
       for(BaseSQUIDS& nsq : nusq_array)
         nsq.SetNeutrinoCrossSections(ncs);
     }
+
+    /// \brief Sets the neutrino interaction cross sections for each zenith
+    void SetNeutrinoCrossSections(std::vector<std::shared_ptr<NeutrinoCrossSections>> xs_vec){
+      assert(xs_vec.size() == nusq_array.size());
+      unsigned int i = 0;
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.SetNeutrinoCrossSections(xs_vec[i]);
+        i++;
+      }
+    }
+
 };
 
 

@@ -359,4 +359,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   marray_from_python<2>();
   marray_from_python<3>();
   marray_from_python<4>();
+
+  // neutrion cross section vector
+  from_python_sequence< std::vector<std::shared_ptr<nusquids::NeutrinoCrossSections>>, variable_capacity_policy >();
+  //to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
 }
