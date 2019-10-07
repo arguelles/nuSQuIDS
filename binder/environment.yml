@@ -1,0 +1,15 @@
+name: nuSQuIDS
+channels:
+    - conda-forge
+dependencies:
+    - boost
+    - python 
+    - jupyter
+    - matplotlib
+    - numpy
+    - ipython
+    - pytables
+    - jupyterlab
+    - libgcc
+    - gnuplot
+    - gsl

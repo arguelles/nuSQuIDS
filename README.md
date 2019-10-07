@@ -16,6 +16,8 @@ can probably be had from your favorite package manager:
 
 PythonToolBox
 -------------
+Run online jupyter notebook example 
+
 
 Additionally for compiling and using the python bindings:
 
