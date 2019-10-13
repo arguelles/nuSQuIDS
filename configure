@@ -627,7 +627,7 @@ if [ $PYTHON_BINDINGS ]; then
   PYTHONVERSIONSIMPLE=${PYTHONVERSIONSIMPLE//.}
 
   PYTHONLIBPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'`
-  PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY")[3:])'`
+  PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY"))'`
 	if [ -z "$PYTHONBLDLIB" ]; then
     PYTHONBLDLIB=-lpython${PYTHONVERSION}
 	fi
