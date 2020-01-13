@@ -354,7 +354,14 @@ double Earth::density(const GenericTrack& track_input) const
 {
   const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
   double xkm = track_earth.GetX()/param.km;
-  double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
+  double r2 = SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm;
+  double r;
+  if (r2 > 0.0)
+    r = sqrt(r2);
+  else if(fabs(r2) < 1.e-6)
+    r = 0;
+  else
+    throw std::runtime_error("nuSQUIDS::Earth::ye got impossible geometry.");
 
   if ( r/radius < x_radius_min ){
     return x_rho_min;
@@ -371,7 +378,14 @@ double Earth::ye(const GenericTrack& track_input) const
 {
   const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
   double xkm = track_earth.GetX()/param.km;
-  double r = sqrt(SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm);
+  double r2 = SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm;
+  double r;
+  if (r2 > 0.0)
+    r = sqrt(r2);
+  else if(fabs(r2) < 1.e-6)
+    r = 0;
+  else
+    throw std::runtime_error("nuSQUIDS::Earth::ye got impossible geometry.");
 
   if ( r/radius < x_radius_min ){
     return x_ye_min;
