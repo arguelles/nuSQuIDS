@@ -470,6 +470,8 @@ protected:
     double time_offset;
     /// \brief Force flavor projections to be positive.
     void PositivizeFlavors();
+    /// \brief Set GSL differential cross section precision.
+    double gsl_int_precision = 1.e-3;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -969,6 +971,17 @@ protected:
     /// interactions introduce phases that cannot be cancelled as one goes to the
     /// interaction basis.
     void Set_Basis(Basis basis);
+
+    /// \brief Sets GSL differential cross section integrator precision
+    /// @param gsl_int_precision Double that specifies the differential cross section integrator precision.
+    void Set_GSL_DifferentialCrossSection_Integrator_Precision(double gsl_int_precision_){
+      gsl_int_precision = gsl_int_precision_;
+    }
+
+    /// \brief Returns the GSL differential cross section integrator precision
+    double Get_GSL_DifferentialCrossSection_Integrator_Precision() const {
+      return gsl_int_precision;
+    }
 
     /// \brief Sets the debug information on/off
     /// @param debug_ Boolean that toggles debuging on and off.
