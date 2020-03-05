@@ -27,7 +27,7 @@
 
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <sstream>
-#include "nuSQuIDS/AdaptiveQuad.h"
+#include <nuSQuIDS/AdaptiveQuad.h>
 
 namespace nusquids{
 
