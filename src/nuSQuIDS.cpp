@@ -27,6 +27,7 @@
 
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <sstream>
+#include "nuSQuIDS/AdaptiveQuad.h"
 
 namespace nusquids{
 
@@ -904,17 +905,45 @@ void nuSQUIDS::GetCrossSections(){
       for(unsigned int flv = 0; flv < numneu; flv++){
         for(unsigned int e1 = 0; e1 < ne; e1++){
           // differential cross sections
+          AdaptiveQuad::Options ncOpt, ccOpt;
+          double NaN=std::numeric_limits<double>::quiet_NaN();
           for(unsigned int e2 = 0; e2 < e1; e2++){
-            dsignudE_NC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+            std::swap(ncOpt.fa,ncOpt.fb);
+            ncOpt.fb=NaN;
+            dsignudE_NC[neutype][flv][e1][e2] = AdaptiveQuad::integrate([&](double e_out){return ncs->SingleDifferentialCrossSection(E_range[e1],e_out,
+                                                                                         (NeutrinoCrossSections::NeutrinoFlavor)flv,
+                                                                                         neutype_xs_dict[neutype],
+                                                                                         NeutrinoCrossSections::NC)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision, &ncOpt)/delE[e2];
+            if(ncOpt.outOfTolerance)
+              throw std::runtime_error("nuSQuIDS::GetCrossSections: Neutral-current differential cross section integration failed.");
             validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
-            dsignudE_CC[neutype][flv][e1][e2] = ncs->SingleDifferentialCrossSection(E_range[e1],E_range[e2],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+            std::swap(ccOpt.fa,ccOpt.fb);
+            ccOpt.fb=NaN;
+            dsignudE_CC[neutype][flv][e1][e2] = AdaptiveQuad::integrate([&](double e_out){return ncs->SingleDifferentialCrossSection(E_range[e1],e_out,
+                                                                                         (NeutrinoCrossSections::NeutrinoFlavor)flv,
+                                                                                         neutype_xs_dict[neutype],
+                                                                                         NeutrinoCrossSections::CC)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision, &ccOpt)/delE[e2];
+            if(ccOpt.outOfTolerance)
+              throw std::runtime_error("nuSQuIDS::GetCrossSections: Charged-current differential cross section integration failed.");
             validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
           }
           // total cross sections
-          int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-          validateCrossSection(int_struct->sigma_CC[neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
-          int_struct->sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-          validateCrossSection(int_struct->sigma_NC[neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
+          if(e1<ne-1){
+            int_struct->sigma_CC[neutype][flv][e1] =  AdaptiveQuad::integrate([&](double e){
+                            return ncs->TotalCrossSection(e,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;},
+                            E_range[e1], E_range[e1+1], gsl_int_precision)/delE[e1];
+          } else {
+            int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+            validateCrossSection(int_struct->sigma_CC[neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
+          }
+          if(e1<ne-1) {
+            int_struct->sigma_NC[neutype][flv][e1] = AdaptiveQuad::integrate([&](double e){
+                            return ncs->TotalCrossSection(e,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;},
+                            E_range[e1], E_range[e1+1], gsl_int_precision)/delE[e1];
+          } else {
+            int_struct->sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+            validateCrossSection(int_struct->sigma_NC[neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
+          }
         }
       }
     }
@@ -948,7 +977,7 @@ void nuSQUIDS::GetCrossSections(){
       for(unsigned int e1 = 0; e1 < ne; e1++){
         int_struct->sigma_GR[e1] = gr_cs.TotalCrossSection(E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
         for(unsigned int e2 = 0; e2 < e1; e2++){
-          dsignudE_GR[e1][e2] = gr_cs.SingleDifferentialCrossSection(E_range[e1],E_range[e2],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
+          dsignudE_GR[e1][e2] = AdaptiveQuad::integrate([&](double e_out){return gr_cs.SingleDifferentialCrossSection(E_range[e1],e_out,NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision)/delE[e2];
         }
       }
       for(unsigned int e1 = 0; e1 < ne; e1++){
