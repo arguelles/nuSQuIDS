@@ -334,6 +334,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     ;
 
     class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<double>())
+    .def(init<double,double>())
     .def("GetInitialX",&EarthAtm::Track::GetInitialX)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)
