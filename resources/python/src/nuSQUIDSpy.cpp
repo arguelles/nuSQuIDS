@@ -25,11 +25,14 @@
 
 BOOST_PYTHON_MODULE(nuSQUIDSpy)
 {
-
   // import numpy array definitions
   //np::initialize();
-  import_array();
   import_ufunc();
+#if PY_VERSION_HEX >= 0x03000000
+  import_array1();
+#else
+  import_array();
+#endif
 
   enum_<GSL_STEP_FUNCTIONS>("GSL_STEP_FUNCTIONS")
     .value("GSL_STEP_RK2",GSL_STEP_RK2)
