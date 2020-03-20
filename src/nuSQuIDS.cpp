@@ -2221,21 +2221,46 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     }
 
     // dNdE_tau_all,dNdE_tau_lep
-    hsize_t dNdEtaudim[3];
-    H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
+    int tau_spectra_rank;
+    H5LTget_dataset_ndims(xs_grp,"dNdEtauall",&tau_spectra_rank);
+    if(tau_spectra_rank == 3){
+      // taking account polarization of taus spectra
+      hsize_t dNdEtaudim[3];
+      H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
 
-    std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]*dNdEtaudim[2]]);
-    H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
-    std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]*dNdEtaudim[2]]);
-    H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
+      std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]*dNdEtaudim[2]]);
+      H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
+      std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]*dNdEtaudim[2]]);
+      H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
 
-    for(unsigned int rho = 0; rho < nrhos; rho++){
-      for( unsigned int e1 = 0; e1 < ne; e1++){
-          for( unsigned int e2 = 0; e2 < e1; e2++){
-            int_struct->dNdE_tau_all[rho][e1][e2] = dNdEtauall[rho*(ne*ne) + e1*ne + e2];
-            int_struct->dNdE_tau_lep[rho][e1][e2] = dNdEtaulep[rho*(ne*ne) + e1*ne + e2];
-          }
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        for( unsigned int e1 = 0; e1 < ne; e1++){
+            for( unsigned int e2 = 0; e2 < e1; e2++){
+              int_struct->dNdE_tau_all[rho][e1][e2] = dNdEtauall[rho*(ne*ne) + e1*ne + e2];
+              int_struct->dNdE_tau_lep[rho][e1][e2] = dNdEtaulep[rho*(ne*ne) + e1*ne + e2];
+            }
+        }
       }
+    } else if (tau_spectra_rank == 2) {
+      // averaging out taus polarization spectra -- LEGACY
+      hsize_t dNdEtaudim[2];
+      H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
+
+      std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+      H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
+      std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+      H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
+
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        for( unsigned int e1 = 0; e1 < ne; e1++){
+            for( unsigned int e2 = 0; e2 < e1; e2++){
+              int_struct->dNdE_tau_all[rho][e1][e2] = dNdEtauall[e1*ne + e2];
+              int_struct->dNdE_tau_lep[rho][e1][e2] = dNdEtaulep[e1*ne + e2];
+            }
+        }
+      }
+    } else {
+      throw std::runtime_error("nuSQUIDS::ReadStateHDF5: Error. Misformed HDF5 files when trying to deserialize tau decay distributions.");
     }
 
     nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
