@@ -148,12 +148,25 @@ private:
             x-=this->x;
             return((((a3*x)+a2)*x+a1)*x+a0);
         }
+        double derivative(double x) const{
+            x-=this->x;
+            return(((3*a3)*x+2*a2)*x+a1);
+        }
         operator double() const{ return(x); }
     };
     std::vector<segment> segments;
+    double xLast, yLast;
+    template<typename T=void>
+    T emitError(const std::string& msg){ throw std::runtime_error(msg); }
 public:
+	void initialize(const double* x, const double* y, const unsigned int n);
     AkimaSpline(){}
-    AkimaSpline(const std::vector<double>& x, const std::vector<double>& y);
+    AkimaSpline(const double* x, const double* y, const unsigned int n){
+    	initialize(x,y,n);
+    }
+    AkimaSpline(const std::vector<double>& x, const std::vector<double>& y):
+    AkimaSpline(x.data(),y.data(),
+                (x.size()==y.size()?x.size():emitError<std::size_t>("Data array sizes must match"))){}
     
     double operator()(double x) const{
         if(x<segments.front().x)
@@ -162,6 +175,47 @@ public:
         seg_it--;
         return((*seg_it)(x));
     }
+    marray<double,1> getAbscissas() const;
+    marray<double,1> getOrdinates() const;
+    marray<double,1> getAbscissaDerivatives() const;
+    void getAbscissaDerivatives(marray<double,1>& d) const;
+};
+
+///\brief A bicubic interpolator for two-dimensional data. 
+///One-dimensional Akima splines are used to obtain all necessary derivatives at 
+///the grid points. 
+struct BiCubicInterpolator{
+public:
+	BiCubicInterpolator(){}
+
+	BiCubicInterpolator(marray<double,2> data_, 
+	                    marray<double,1> xcoords_, 
+	                    marray<double,1> ycoords_);
+	
+	///Compute the interpolated value at the given coordinates. May not return 
+	///useful results outside the domain of the interpolation. 
+	double operator()(double x, double y) const;
+	
+	const marray<double,2>& getData() const{ return data; }
+	const marray<double,1>& getXCoords() const{ return xcoords; }
+	const marray<double,1>& getYCoords() const{ return ycoords; }
+private:
+	marray<double,2> data;
+	marray<double,1> xcoords;
+	marray<double,1> ycoords;
+	//derivatives
+	marray<double,2> dzdx, dzdy, dzdxdy;
+};
+
+struct H5File{
+    hid_t id;
+    H5File(hid_t id):id(id){}
+    H5File(const H5File&)=delete;
+    H5File(H5File&& h):id(h.id){ h.id=0; }
+    H5File& operator=(const H5File&)=delete;
+    H5File& operator=(H5File&& h){ std::swap(id,h.id); return *this;}
+    ~H5File(){ H5Fclose(id); }
+    operator hid_t() const{ return(id); }
 };
 	
 template<typename T>
@@ -172,9 +226,10 @@ template<> struct h5Datatype<unsigned int>{ static hid_t type(){ return H5T_NATI
 template<> struct h5Datatype<float>{ static hid_t type(){ return H5T_NATIVE_FLOAT; }};
 template<> struct h5Datatype<double>{ static hid_t type(){ return H5T_NATIVE_DOUBLE; }};
 
-template<typename T, unsigned int Rank, typename Alloc>
-void writeArrayH5(hid_t loc_id, std::string name, const marray<T,Rank,Alloc>& data, unsigned int compressLevel=0){
-    hid_t dType=h5Datatype<T>::type();
+template<typename DestType, typename SourceType, unsigned int Rank, typename Alloc>
+void writeArrayH5(hid_t loc_id, std::string name, const marray<SourceType,Rank,Alloc>& data, unsigned int compressLevel=0){
+    hid_t sourceType=h5Datatype<SourceType>::type();
+    hid_t destType=h5Datatype<DestType>::type();
     std::array<hsize_t,Rank> extents;
     std::copy_n(data.get_extents().begin(),Rank,extents.begin());
     hid_t dSpace=H5Screate_simple(Rank, &extents[0], nullptr);
@@ -183,7 +238,7 @@ void writeArrayH5(hid_t loc_id, std::string name, const marray<T,Rank,Alloc>& da
         assert(compressLevel<=9);
         plist_id = H5Pcreate(H5P_DATASET_CREATE);
         std::array<hsize_t,Rank> chunkDims;
-        unsigned long size=sizeof(T);
+        unsigned long size=sizeof(DestType);
         const unsigned long targetChunkSize=1UL<<16; //64KB seems like a good size
         for(unsigned int i=Rank; i>0; i--){
             if(size<targetChunkSize){
@@ -200,8 +255,8 @@ void writeArrayH5(hid_t loc_id, std::string name, const marray<T,Rank,Alloc>& da
         H5Pset_deflate(plist_id, compressLevel);
     }
     
-    hid_t dSet=H5Dcreate(loc_id, name.c_str(),dType,dSpace,H5P_DEFAULT,plist_id,H5P_DEFAULT);
-    herr_t err=H5Dwrite(dSet,dType,H5S_ALL,H5S_ALL,H5P_DEFAULT,&data.front());
+    hid_t dSet=H5Dcreate(loc_id, name.c_str(),destType,dSpace,H5P_DEFAULT,plist_id,H5P_DEFAULT);
+    herr_t err=H5Dwrite(dSet,sourceType,H5S_ALL,H5S_ALL,H5P_DEFAULT,&data.front());
     
     //need to close whether or not there's an error
     if(compressLevel)

@@ -25,26 +25,411 @@
 #include <iostream>
 #include <fstream>
 
-namespace{
-struct H5File{
-  hid_t id;
-  H5File(hid_t id):id(id){}
-  H5File(const H5File&)=delete;
-  H5File(H5File&& h):id(h.id){ h.id=0; }
-  H5File& operator=(const H5File&)=delete;
-  H5File& operator=(H5File&& h){ std::swap(id,h.id); return *this;}
-  ~H5File(){ H5Fclose(id); }
-  operator hid_t() const{ return(id); }
-};
-}
+#include <nuSQuIDS/AdaptiveQuad.h>
 
 namespace nusquids{
 
-double NeutrinoDISCrossSectionsFromTables::LinInter(double x,double xM, double xP,double yM,double yP) const{
+double NeutrinoCrossSections::AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	auto integrand=[=](double e_in)->double{
+		return this->TotalCrossSection(e_in,flavor,neutype,current);
+	};
+	return AdaptiveQuad::integrate(integrand,EMin,EMax,1e-3)/(EMax-EMin);
+}
+
+double NeutrinoCrossSections::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	auto integrand=[=](double e_out)->double{
+		return this->SingleDifferentialCrossSection(E1,e_out,flavor,neutype,current);
+	};
+	return AdaptiveQuad::integrate(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
+}
+
+std::tuple<AkimaSpline,double,double> NeutrinoDISCrossSectionsFromTables::read1DInterpolationFromText(const std::string& path){
+	marray<double,2> rawData=quickread(path);
+	if(rawData.extent(1)!=2)
+		throw std::runtime_error(path+" does not contain two columns of data");
+	const std::size_t nEntries=rawData.extent(0);
+	std::vector<double> en, sigma;
+	en.reserve(nEntries);
+	sigma.reserve(nEntries);
+	for(std::size_t i=0; i<nEntries; i++){
+		en.push_back(log10(rawData[i][0]*GeV)); //note conversion to eV
+		sigma.push_back(log10(rawData[i][1]));
+	}
+	double emin=rawData[0][0]*GeV;
+	double emax=rawData[nEntries-1][0]*GeV;
+	return std::make_tuple(AkimaSpline(en,sigma),emin,emax);
+}
+
+std::tuple<BiCubicInterpolator,double,double> NeutrinoDISCrossSectionsFromTables::read2DInterpolationFromText(const std::string& path){
+	marray<double,2> rawData=quickread(path);
+	if(rawData.extent(1)!=3)
+		throw std::runtime_error(path+" does not contain three columns of data");
+	double prevEn=0;
+	std::size_t zSteps=0;
+	for(; zSteps<rawData.extent(0); zSteps++){
+		if(zSteps && rawData[zSteps][0]!=prevEn)
+			break;
+		else
+			prevEn=rawData[zSteps][0];
+	}
+	std::size_t enSteps=rawData.extent(0)/zSteps;
+	if(zSteps==rawData.extent(0) || enSteps*zSteps!=rawData.extent(0))
+		throw std::runtime_error(path+" does not appear to represent a correctly ordered 2D table");
+	marray<double,2> data({zSteps,enSteps});
+	marray<double,1> xcoords({enSteps}), ycoords({zSteps});
+	
+	for(std::size_t j=0; j<enSteps; j++)
+		xcoords[j]=log10(rawData[j*zSteps][0]*GeV); // note conversion to eV
+	
+	//TODO: here we throw away the actual data for the z values, and 
+	//recompute them assuming they are linear. This assumption could be relaxed.
+	for(std::size_t j=0; j<zSteps; j++)
+		ycoords[j]=j/double(zSteps-1);
+	
+	//Constant for a small value in log-space, used to replace log(0). Making
+	//this too small (or leaving infinities) causes the interpolation to misbehave. 
+	const double tiny=-50;
+	for(std::size_t j=0; j<enSteps; j++){
+		for(std::size_t i=0; i<zSteps; i++){
+			data[i][j]=log10(rawData[j*zSteps+i][2]);
+			if(!std::isfinite(data[i][j]))
+				data[i][j]=tiny;
+		}
+	}
+	
+	return std::make_tuple(BiCubicInterpolator(std::move(data),std::move(xcoords),std::move(ycoords)),
+						   rawData[0][0]*GeV,rawData[rawData.extent(0)-1][0]*GeV);
+}
+
+AkimaSpline NeutrinoDISCrossSectionsFromTables::makeCumulativeInterpolator(const AkimaSpline& f){
+	marray<double,1> accData(f.getOrdinates()); //begin with a copy of the original data
+	//these we don't need to modify, but short names are handy
+	auto abscissas=f.getAbscissas();
+	const std::size_t iMax=accData.extent(0);
+	double sum=pow(10.,accData[0]), prev=sum;
+	for(std::size_t i=1; i!=iMax; i++){
+		double x2=pow(10.,abscissas[i]);
+		double x1=pow(10.,abscissas[i-1]);
+		double mid=log10((x1+x2)/2);
+		double fmid=pow(10.,f(mid));
+		double next=pow(10.,accData[i]);
+		sum+=(prev+4*fmid+next)/3 * (x2-x1)/2;
+		prev=next;
+		accData[i]=log10(sum);
+	}
+	return AkimaSpline(abscissas.get_data(),accData.get_data(),iMax);
+}
+
+BiCubicInterpolator NeutrinoDISCrossSectionsFromTables::makeCumulativeInterpolator(const BiCubicInterpolator& f){
+	marray<double,2> accData(f.getData()); //begin with a copy of the original data
+	//these we don't need to modify, but short names are handy
+	const auto& xcoords=f.getXCoords();
+	const auto& ycoords=f.getYCoords();
+	const std::size_t iMax=accData.extent(0), jMax=accData.extent(1);
+	for(std::size_t i=0; i!=iMax; i++){
+		//each row is independent
+		double x=xcoords[i];
+		double sum=pow(10.,accData[0][i]), prev=sum;
+		for(std::size_t j=1; j!=jMax; j++){
+			//Compute the integral across the interval [y_{j-1},y_j]
+			//Here we make use of the knowledge that our interpolation is only 
+			//cubic in y, so a three point Gauss-Lobatto quadrature rule is
+			//exact. A two point Gauss-Legedre rule might appear better, but we
+			//already know the function values at the endpoints, without 
+			//evaluation, so the three point rule is less expensive to compute. 
+			//Since we are overwriting the data as we go, the left endpoint is 
+			//saved from the previous iteration as prev. 
+			double mid=(ycoords[j]+ycoords[j-1])/2;
+			double fmid=pow(10.,f(x,mid));
+			double next=pow(10.,accData[j][i]);
+			sum+=(prev+4*fmid+next)/3 * (ycoords[j]-ycoords[j-1])/2;
+			prev=next;
+			accData[j][i]=log10(sum);
+		}
+	}
+	//The resulting interpolation of the integral will not be quite exact, since
+	//it should be quartic, but we will make it once again cubic. However, since 
+	//the original cubic interpolation was only an approximation, we aren't
+	//losing anything particularly important. 
+	return BiCubicInterpolator(std::move(accData),xcoords,ycoords);
+}
+
+bool NeutrinoDISCrossSectionsFromTables::isHDF(const std::string& path){
+	std::ifstream infile(path);
+	if(!infile)
+		return false;
+	unsigned char magic[8];
+	infile.read((char*)magic,8);
+	if(!infile)
+		return false;
+	return(magic[0]==0x89 && magic[1]=='H' && magic[2]=='D' && magic[3]=='F'
+	  && magic[4]=='\r' && magic[5]=='\n' && magic[6]==0x1A && magic[7]=='\n');
+}
+
+NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
+NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"){}
+
+NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix){
+	if(isHDF(pathOrPrefix))
+		readHDF(pathOrPrefix);
+	else
+		readText(pathOrPrefix);
+}
+
+double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	// we assume that sterile neutrinos are truly sterile
+	if (not (flavor == electron or flavor == muon or flavor == tau))
+		return 0;
+	if (Enu > Emax)
+		throw std::runtime_error("NeutrinoCrossSections::TotalCrossSection: Only DIS cross sections are included in a limited range. Interpolation re\
+		quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(Enu/GeV) + " [GeV].");
+
+	if (Enu < 10*GeV and Emin > 10*GeV) {
+		std::clog << "NeutrinoCrossSections::TotalCrossSection: Neglecting the neutrino cross section below 10 GeV." << std::endl;
+		return std::numeric_limits<double>::min();
+	} else if (Enu < Emin) {
+		// use approximate linear scaling below Emin GeV which is a good approximation for DIS up to 10 GeV
+		return TotalCrossSection(Emin, flavor, neutype, current)*(Enu/Emin);
+	}
+	
+	const AkimaSpline& sigma=
+	(neutype==neutrino ? (current==CC ? s_CC_nu : s_NC_nu)
+					   : (current==CC ? s_CC_nubar : s_NC_nubar));
+	return pow(10.,sigma(log10(Enu)));
+}
+
+double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	// we assume that sterile neutrinos are trully sterile
+	if (not (flavor == electron or flavor == muon or flavor == tau))
+		return 0;
+
+	if (E1 > Emax)
+		throw std::runtime_error("NeutrinoCrossSections::SingleDifferentialCrossSection: Only DIS cross sections are included. Interpolation re\
+		quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
+	if (E1 <= Emin)
+		return std::numeric_limits<double>::min();
+
+	const BiCubicInterpolator& dsdy=
+	(neutype==neutrino ? (current==CC ? dsdy_CC_nu : dsdy_NC_nu)
+					   : (current==CC ? dsdy_CC_nubar : dsdy_NC_nubar));
+	double z=(E2-Emin)/(E1-Emin);
+	return pow(10.,dsdy(log10(E1),z))/(E1/GeV);
+}
+
+/*double NeutrinoDISCrossSectionsFromTables::AverageTotalCrossSection(double EnuMin, double EnuMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	// we assume that sterile neutrinos are truly sterile
+	if (not (flavor == electron or flavor == muon or flavor == tau))
+		return 0;
+	if (EnuMax > Emax)
+		throw std::runtime_error("NeutrinoCrossSections::TotalCrossSection: Only DIS cross sections are included in a limited range. Interpolation re\
+		quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(EnuMax/GeV) + " [GeV].");
+	//TODO: deal with EnuMin < Emin
+	
+	const AkimaSpline& acc_s=
+	(neutype==neutrino ? (current==CC ? acc_s_CC_nu : acc_s_NC_nu)
+					   : (current==CC ? acc_s_CC_nubar : acc_s_NC_nubar));
+	double s1=pow(10.,acc_s(log10(EnuMin)));
+	double s2=pow(10.,acc_s(log10(EnuMax)));
+	return (s2-s1)/((EnuMax-EnuMin));
+}*/
+
+double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+	// we assume that sterile neutrinos are trully sterile
+	if (not (flavor == electron or flavor == muon or flavor == tau))
+		return 0;
+
+	if (E1 > Emax)
+		throw std::runtime_error("NeutrinoCrossSections::SingleDifferentialCrossSection: Only DIS cross sections are included. Interpolation re\
+		quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(E1/GeV) + " [GeV].");
+	if (E1 <= Emin)
+		return std::numeric_limits<double>::min();
+		
+	if(E2Min>E2Max)
+		std::swap(E2Min,E2Max);
+
+	const BiCubicInterpolator& acc_dsdy=
+	(neutype==neutrino ? (current==CC ? acc_dsdy_CC_nu : acc_dsdy_NC_nu)
+					   : (current==CC ? acc_dsdy_CC_nubar : acc_dsdy_NC_nubar));
+	double zMin=(E2Min-Emin)/(E1-Emin);
+	double zMax=(E2Max-Emin)/(E1-Emin);
+	double ds1=pow(10.,acc_dsdy(log10(E1),zMin));
+	double ds2=pow(10.,acc_dsdy(log10(E1),zMax));
+	return (ds2-ds1)/((E2Max-E2Min)/GeV);
+}
+
+void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
+	double eMinTmp, eMaxTmp;
+	std::tie(s_CC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_CC.dat");
+	Emin=eMinTmp;
+	Emax=eMaxTmp;
+	std::tie(s_NC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_sigma_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(s_CC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_sigma_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(s_NC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_sigma_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	
+	std::tie(dsdy_CC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_dsde_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_NC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_CC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_dsde_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_NC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	
+	/*acc_s_CC_nu=makeCumulativeInterpolator(s_CC_nu);
+	acc_s_NC_nu=makeCumulativeInterpolator(s_NC_nu);
+	acc_s_CC_nubar=makeCumulativeInterpolator(s_CC_nubar);
+	acc_s_NC_nubar=makeCumulativeInterpolator(s_NC_nubar);*/
+	
+	acc_dsdy_CC_nu=makeCumulativeInterpolator(dsdy_CC_nu);
+	acc_dsdy_NC_nu=makeCumulativeInterpolator(dsdy_NC_nu);
+	acc_dsdy_CC_nubar=makeCumulativeInterpolator(dsdy_CC_nubar);
+	acc_dsdy_NC_nubar=makeCumulativeInterpolator(dsdy_NC_nubar);
+}
+
+void NeutrinoDISCrossSectionsFromTables::writeText(const std::string& prefix) const{
+	auto write1D=[this](const AkimaSpline& data, const std::string& path){
+		std::ofstream outfile(path);
+		if(!outfile)
+			throw std::runtime_error("Unable to open "+path+" for writing");
+		//this makes a copy, which is unfortunate, but not a disaster for the 1D data
+		auto ab=data.getAbscissas();
+		auto ord=data.getOrdinates();
+		for(std::size_t i=0, n=ab.extent(0); i!=n; i++)
+			outfile << pow(10.,ab[i])/GeV << ' ' << pow(10.,ord[i]) << '\n';
+	};
+	auto write2D=[this](const BiCubicInterpolator& data, const std::string& path){
+		std::ofstream outfile(path);
+		if(!outfile)
+			throw std::runtime_error("Unable to open "+path+" for writing");
+		const auto& x=data.getXCoords();
+		const auto& y=data.getYCoords();
+		const auto& z=data.getData();
+		for(std::size_t i=0, iMax=x.extent(0); i!=iMax; i++){
+			double en=pow(10.,x[i])/GeV;
+			for(std::size_t j=0, jMax=y.extent(0); j!=jMax; j++)
+				outfile << en << ' ' << y[j] << ' ' << pow(10.,z[i][j]) << '\n';
+		}
+	};
+	write1D(s_CC_nu,prefix+"nu_sigma_CC.dat");
+	write1D(s_NC_nu,prefix+"nu_sigma_NC.dat");
+	write1D(s_CC_nubar,prefix+"nubar_sigma_CC.dat");
+	write1D(s_NC_nubar,prefix+"nubar_sigma_NC.dat");
+	write2D(dsdy_CC_nu,prefix+"nu_dsde_CC.dat");
+	write2D(dsdy_NC_nu,prefix+"nu_dsde_NC.dat");
+	write2D(dsdy_CC_nubar,prefix+"nubar_dsde_CC.dat");
+	write2D(dsdy_NC_nubar,prefix+"nubar_dsde_NC.dat");
+}
+
+void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
+	auto objectExists=[](hid_t loc_id, const char* name){
+		return H5Lexists(loc_id,name,H5P_DEFAULT)>0
+		  && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
+	};
+	H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
+	
+	marray<double,1> energies,zs;
+	readArrayH5(h5file, "energies", energies);
+	readArrayH5(h5file, "zs", zs);
+	Emin=pow(10.,energies.front());
+	Emax=pow(10.,energies.back());
+	
+	marray<double,1> buffer1;
+	auto readTotal=[&](AkimaSpline& dest, const std::string& tableName){
+		readArrayH5(h5file, tableName, buffer1);
+		if(buffer1.extent(0)!=energies.extent(0))
+			throw std::runtime_error(path+"/"+tableName+" does not have the same dimensions as "+path+"/energies");
+		dest=AkimaSpline(energies.get_data(),buffer1.get_data(),energies.size());
+	};
+	readTotal(s_CC_nu,"s_CC_nu");
+	readTotal(s_NC_nu,"s_NC_nu");
+	readTotal(s_CC_nubar,"s_CC_nubar");
+	readTotal(s_NC_nubar,"s_NC_nubar");
+	
+	/*acc_s_CC_nu=makeCumulativeInterpolator(s_CC_nu);
+	acc_s_NC_nu=makeCumulativeInterpolator(s_NC_nu);
+	acc_s_CC_nubar=makeCumulativeInterpolator(s_CC_nubar);
+	acc_s_NC_nubar=makeCumulativeInterpolator(s_NC_nubar);*/
+	
+	marray<double,2> buffer2;
+	auto readDifferential=[&](BiCubicInterpolator& dest, const std::string& tableName){
+		readArrayH5(h5file, tableName, buffer2);
+		if(buffer2.extent(0)!=energies.extent(0))
+			throw std::runtime_error(path+"/"+tableName+" does not have the same first dimension as "+path+"/energies");
+		if(buffer2.extent(1)!=zs.extent(0))
+			throw std::runtime_error(path+"/"+tableName+"'s second dimension does not have the same size as "+path+"/zs");
+		dest=BiCubicInterpolator(std::move(buffer2),energies,zs);
+	};
+	readDifferential(dsdy_CC_nu,"dsdy_CC_nu");
+	readDifferential(dsdy_NC_nu,"dsdy_NC_nu");
+	readDifferential(dsdy_CC_nubar,"dsdy_CC_nubar");
+	readDifferential(dsdy_NC_nubar,"dsdy_NC_nubar");
+	
+	if(objectExists(h5file,"acc_dsdy_CC_nu"))
+		readDifferential(acc_dsdy_CC_nu,"acc_dsdy_CC_nu");
+	else
+		acc_dsdy_CC_nu=makeCumulativeInterpolator(dsdy_CC_nu);
+	if(objectExists(h5file,"acc_dsdy_NC_nu"))
+		readDifferential(acc_dsdy_NC_nu,"acc_dsdy_NC_nu");
+	else
+		acc_dsdy_NC_nu=makeCumulativeInterpolator(dsdy_NC_nu);
+	if(objectExists(h5file,"acc_dsdy_CC_nubar"))
+		readDifferential(acc_dsdy_CC_nubar,"acc_dsdy_CC_nubar");
+	else
+		acc_dsdy_CC_nubar=makeCumulativeInterpolator(dsdy_CC_nubar);
+	if(objectExists(h5file,"acc_dsdy_NC_nubar"))
+		readDifferential(acc_dsdy_NC_nubar,"acc_dsdy_NC_nubar");
+	else
+		acc_dsdy_NC_nubar=makeCumulativeInterpolator(dsdy_NC_nubar);
+}
+
+void NeutrinoDISCrossSectionsFromTables::writeHDF(const std::string& path) const{
+	const unsigned int compressionLevel=0;
+	using StoreType=double;
+	H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
+	writeArrayH5<StoreType>(h5file, "energies", dsdy_CC_nu.getXCoords(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "zs", dsdy_CC_nu.getYCoords(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_CC_nu", s_CC_nu.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_NC_nu", s_NC_nu.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_CC_nubar", s_CC_nubar.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_NC_nubar", s_NC_nubar.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_CC_nu", dsdy_CC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_NC_nu", dsdy_NC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_CC_nubar", dsdy_CC_nubar.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_NC_nubar", dsdy_NC_nubar.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "acc_dsdy_CC_nu", acc_dsdy_CC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "acc_dsdy_NC_nu", acc_dsdy_NC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "acc_dsdy_CC_nubar", acc_dsdy_CC_nubar.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "acc_dsdy_NC_nubar", acc_dsdy_NC_nubar.getData(), compressionLevel);
+}
+
+double NeutrinoDISCrossSectionsFromTables_V1::LinInter(double x,double xM, double xP,double yM,double yP) const{
   return yM + (yP-yM)*(x-xM)/(xP-xM);
 }
 
-double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
+///do linear interpolation on a triangle
+double TriLinInter(double x, double y, 
+                   double x1, double y1, double z1,
+                   double x2, double y2, double z2,
+                   double x3, double y3, double z3){
+ 	//convert to barycentric coordinates
+ 	double denom=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3);
+ 	double l1=((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/denom;
+ 	double l2=((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/denom;
+ 	double l3=1-(l1+l2);
+ 	return l1*z1 + l2*z2 + l3*z3;
+}
+
+double NeutrinoDISCrossSectionsFromTables_V1::TotalCrossSection(double Enu, NeutrinoFlavor flavor,
                            NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are truly sterile
   if (not (flavor == electron or flavor == muon or flavor == tau))
@@ -74,7 +459,7 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   return(LinInter(logE,logE_data_range[idx],logE_data_range[idx+1],sigma[neutype][flavor][idx],sigma[neutype][flavor][idx+1]));
 }
 
-double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
+double NeutrinoDISCrossSectionsFromTables_V1::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
   // we assume that sterile neutrinos are trully sterile
   if (not (flavor == electron or flavor == muon or flavor == tau))
     return 0.0;
@@ -124,12 +509,20 @@ quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/Ge
   } else
     throw std::runtime_error("nuSQUIDS::XSECTIONS::ERROR::Current type unkwown.");
 
+  //If close to the E2==E1 boundary, omit the non-physical E2>E1 point from the interpolation
+  if(loge_M1==loge_M2 && phiMP==0){
+    return TriLinInter(logE1, logE2, 
+                       logE_data_range[loge_M1], logE_data_range[loge_M2], phiMM,
+                       logE_data_range[loge_M1+1], logE_data_range[loge_M2], phiPM,
+                       logE_data_range[loge_M1+1], logE_data_range[loge_M2+1], phiPP);
+  }
+    
   return LinInter(logE1,logE_data_range[loge_M1],logE_data_range[loge_M1+1],
            LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],phiMM,phiMP),
            LinInter(logE2,logE_data_range[loge_M2],logE_data_range[loge_M2+1],phiPM,phiPP));
 }
 
-void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
+void NeutrinoDISCrossSectionsFromTables_V1::ReadText(std::string root){
        std::string filename_dsde_CC = root+"dsde_CC.dat";
        std::string filename_dsde_NC = root+"dsde_NC.dat";
        std::string filename_sigma_CC = root+"sigma_CC.dat";
@@ -191,11 +584,11 @@ void NeutrinoDISCrossSectionsFromTables::ReadText(std::string root){
   is_init = true;
 }
   
-NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
-  NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms.h5"){
+NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1():
+  NeutrinoDISCrossSectionsFromTables_V1(XSECTION_LOCATION "csms.h5"){
 }
     
-NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string path){
+NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1(std::string path){
   //If a single file, read HDF5
   if(fexists(path)){
     {
@@ -228,19 +621,19 @@ NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::stri
     ReadText(path);
 }
 
-NeutrinoDISCrossSectionsFromTables::~NeutrinoDISCrossSectionsFromTables(){}
+NeutrinoDISCrossSectionsFromTables_V1::~NeutrinoDISCrossSectionsFromTables_V1(){}
     
-void NeutrinoDISCrossSectionsFromTables::WriteHDF(std::string path) const{
+void NeutrinoDISCrossSectionsFromTables_V1::WriteHDF(std::string path) const{
   H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
   addH5Attribute(h5file, "Emin", Emin);
   addH5Attribute(h5file, "Emax", Emax);
-  writeArrayH5(h5file, "s_CC", s_CC_data, 0);
-  writeArrayH5(h5file, "s_NC", s_NC_data, 0);
-  writeArrayH5(h5file, "dsDE_CC", dsde_CC_data, 0);
-  writeArrayH5(h5file, "dsDE_NC", dsde_NC_data, 0);
+  writeArrayH5<double>(h5file, "s_CC", s_CC_data, 0);
+  writeArrayH5<double>(h5file, "s_NC", s_NC_data, 0);
+  writeArrayH5<double>(h5file, "dsDE_CC", dsde_CC_data, 0);
+  writeArrayH5<double>(h5file, "dsDE_NC", dsde_NC_data, 0);
 }
   
-void NeutrinoDISCrossSectionsFromTables::WriteText(std::string basePath) const{
+void NeutrinoDISCrossSectionsFromTables_V1::WriteText(std::string basePath) const{
   std::string filename_sigma_CC = basePath+"sigma_CC.dat";
   std::string filename_sigma_NC = basePath+"sigma_NC.dat";
   std::string filename_dsde_CC = basePath+"dsde_CC.dat";

@@ -27,7 +27,6 @@
 
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <sstream>
-#include <nuSQuIDS/AdaptiveQuad.h>
 
 namespace nusquids{
 
@@ -900,46 +899,30 @@ void nuSQUIDS::GetCrossSections(){
         throw std::runtime_error(ss.str());
       }
     };
-
+    
+//     std::cout << "Looking up cross sections. . . ";
+//     std::cout.flush();
+//     std::chrono::high_resolution_clock::time_point t1, t2;
+//     t1 = std::chrono::high_resolution_clock::now();
     for(unsigned int neutype = 0; neutype < nrhos; neutype++){
       for(unsigned int flv = 0; flv < numneu; flv++){
         for(unsigned int e1 = 0; e1 < ne; e1++){
           // differential cross sections
-          AdaptiveQuad::Options ncOpt, ccOpt;
-          double NaN=std::numeric_limits<double>::quiet_NaN();
           for(unsigned int e2 = 0; e2 < e1; e2++){
-            std::swap(ncOpt.fa,ncOpt.fb);
-            ncOpt.fb=NaN;
-            dsignudE_NC[neutype][flv][e1][e2] = AdaptiveQuad::integrate([&](double e_out){return ncs->SingleDifferentialCrossSection(E_range[e1],e_out,
-                                                                                         (NeutrinoCrossSections::NeutrinoFlavor)flv,
-                                                                                         neutype_xs_dict[neutype],
-                                                                                         NeutrinoCrossSections::NC)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision, &ncOpt)/delE[e2];
-            if(ncOpt.outOfTolerance)
-              throw std::runtime_error("nuSQuIDS::GetCrossSections: Neutral-current differential cross section integration failed.");
+            dsignudE_NC[neutype][flv][e1][e2] = ncs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
             validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
-            std::swap(ccOpt.fa,ccOpt.fb);
-            ccOpt.fb=NaN;
-            dsignudE_CC[neutype][flv][e1][e2] = AdaptiveQuad::integrate([&](double e_out){return ncs->SingleDifferentialCrossSection(E_range[e1],e_out,
-                                                                                         (NeutrinoCrossSections::NeutrinoFlavor)flv,
-                                                                                         neutype_xs_dict[neutype],
-                                                                                         NeutrinoCrossSections::CC)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision, &ccOpt)/delE[e2];
-            if(ccOpt.outOfTolerance)
-              throw std::runtime_error("nuSQuIDS::GetCrossSections: Charged-current differential cross section integration failed.");
+            dsignudE_CC[neutype][flv][e1][e2] = ncs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
             validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
           }
           // total cross sections
           if(e1<ne-1){
-            int_struct->sigma_CC[neutype][flv][e1] =  AdaptiveQuad::integrate([&](double e){
-                            return ncs->TotalCrossSection(e,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;},
-                            E_range[e1], E_range[e1+1], gsl_int_precision)/delE[e1];
+            int_struct->sigma_CC[neutype][flv][e1] = ncs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
           } else {
             int_struct->sigma_CC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
             validateCrossSection(int_struct->sigma_CC[neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
           }
           if(e1<ne-1) {
-            int_struct->sigma_NC[neutype][flv][e1] = AdaptiveQuad::integrate([&](double e){
-                            return ncs->TotalCrossSection(e,(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;},
-                            E_range[e1], E_range[e1+1], gsl_int_precision)/delE[e1];
+            int_struct->sigma_NC[neutype][flv][e1] = ncs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
           } else {
             int_struct->sigma_NC[neutype][flv][e1] = ncs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
             validateCrossSection(int_struct->sigma_NC[neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
@@ -977,7 +960,7 @@ void nuSQUIDS::GetCrossSections(){
       for(unsigned int e1 = 0; e1 < ne; e1++){
         int_struct->sigma_GR[e1] = gr_cs.TotalCrossSection(E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
         for(unsigned int e2 = 0; e2 < e1; e2++){
-          dsignudE_GR[e1][e2] = AdaptiveQuad::integrate([&](double e_out){return gr_cs.SingleDifferentialCrossSection(E_range[e1],e_out,NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;}, E_range[e2], E_range[e2+1], gsl_int_precision)/delE[e2];
+          dsignudE_GR[e1][e2] = gr_cs.AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
         }
       }
       for(unsigned int e1 = 0; e1 < ne; e1++){
@@ -1008,6 +991,10 @@ void nuSQUIDS::GetCrossSections(){
           }
       }
     }
+    
+//     t2 = std::chrono::high_resolution_clock::now();
+//     double time=std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+//     std::cout << time << " seconds" << std::endl;
 }
 
 void nuSQUIDS::Set_Body(std::shared_ptr<Body> body_in){
