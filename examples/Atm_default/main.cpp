@@ -51,6 +51,7 @@ int main()
   squids::Const units;
   //Number of neutrinos (3) standard 4 1-sterile
   //Number of neutrinos, 4 is the case with one sterile neutrino
+  std::cout << "Enter number of neutrino flavors to consider:\n";
   std::cout << "(3) Three Active Neutrinos, " << "(4) 3+1 Three Active and One Sterile Neutrino" << std::endl;
   unsigned int numneu;
   std::cin >>numneu;
