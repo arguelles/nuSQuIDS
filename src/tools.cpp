@@ -395,16 +395,12 @@ double BiCubicInterpolator::operator()(double x, double y) const{
 		return 0;
 	
 	//figure out which grid cell we are in
-	if(x<xcoords[0])
-		return 0;
 	auto x_it=std::upper_bound(xcoords.begin(),xcoords.end(),x);
-	std::size_t i=std::distance(xcoords.begin(),x_it)-1;
+	std::size_t i=x<xcoords[0] ? 0 : std::distance(xcoords.begin(),x_it)-1;
 	if(i==xcoords.extent(0)-1)
 		i--;
-	if(y<ycoords[0])
-		return 0;
 	auto y_it=std::upper_bound(ycoords.begin(),ycoords.end(),y);
-	std::size_t j=std::distance(ycoords.begin(),y_it)-1;
+	std::size_t j=y<ycoords[0] ? 0 : std::distance(ycoords.begin(),y_it)-1;
 	if(j==ycoords.extent(0)-1)
 		j--;
 	
