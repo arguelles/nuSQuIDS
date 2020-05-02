@@ -254,7 +254,7 @@ double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection
 	double zMax=(E2Max-Emin)/(E1-Emin);
 	double ds1=pow(10.,acc_dsdy(log10(E1),zMin));
 	double ds2=pow(10.,acc_dsdy(log10(E1),zMax));
-	return (ds2-ds1)/((E2Max-E2Min)/GeV);
+	return (ds2-ds1)/((zMax-zMin)*(E1/GeV));
 }
 
 void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
