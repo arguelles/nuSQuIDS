@@ -27,20 +27,80 @@
 
 #include <nuSQuIDS/AdaptiveQuad.h>
 
+namespace{
+	//Most of the time the cross section functions are _very_ smooth, and indeed
+	//implemented as piece-wise cubic functions. This function therefore attempts 
+	//to optimistically do an integral with a bare minimum of evaluations, 
+	//starting with just two. If those values match to within the tolerance 
+	//(treating them as 'quadrature rules' with degree of exactness zero), it  
+	//treats the integrand as constant, otherwise it adds more evaluation points  
+	//and uses quadrature rules which are exact for higher degress, namely one 
+	//and three, returning the results of those rules if they agree to within 
+	//the tolerance and otherwise continuing to escalate the sophistication of 
+	//the approximation until finally calling the fully generaly adaptive
+	//integration procedure. 
+	//This function should not but used on functions which are substantially 
+	//non-monotonic as it will, for example, return zero if asked to integrate
+	//sin(x) over the interval [0,pi], regardless of tolerance. 
+	template<typename FuncType>
+	double fastInt(FuncType integrand, double a, double b, double tol){
+		double abcissas[5]={-1,-1/sqrt(3),0,1/sqrt(3),1};
+		const double midpoint=AdaptiveQuad::midpoint(a,b);
+		const double halfWidth=(b-a)/2;
+		auto checkAgreement=[](double est1, double est2, double tol){
+			double a1=std::abs(est1);
+			double a2=std::abs(est2);
+			if(a1<a2) std::swap(a1,a2);
+			return((a2 && tol>(a1/a2)-1) || (!a2 && a1<tol));
+		};
+		auto x=[&](unsigned int i){ return midpoint+abcissas[i]*halfWidth; };
+		double y[5]; //array of integrand evaluations
+		y[0]=integrand(x(0));
+		y[4]=integrand(x(4));
+		//check whether the integrand appers to be constant. This is somewhat
+		//dangerous, as it can be fooled by the introduction of any term with 
+		//even degree.  
+		if(checkAgreement(y[0],y[4],tol))
+			return halfWidth*(y[0]+y[4]); //actually exact for degree 1
+		
+		//use real quadrature rules of with degrees of exactness 3 and 1, 
+		//allowing treatment of linear integrands. 
+		y[1]=integrand(x(1));
+		y[3]=integrand(x(3));
+		double Legendre2=y[1]+y[3];
+		double Lobatto2=y[0]+y[4]; //a.k.a. trapezoid rule
+		if(checkAgreement(Legendre2,Lobatto2,tol))
+			return halfWidth*Legendre2; //use result which is good to degree 3
+		
+		//try upgrading our calculation to be entirely exact for degree 3
+		y[2]=integrand(x(2));
+		double Lobatto3=(y[0]+4*y[2]+y[4])/3;
+		if(checkAgreement(Legendre2,Lobatto3,tol))
+			return halfWidth*Lobatto3;
+		
+		//otherwise, call the general adaptive integration, but give it our
+		//known endpoint values to save recalculating them
+		AdaptiveQuad::Options opt;
+		opt.fa=y[0];
+		opt.fb=y[4];
+		return AdaptiveQuad::integrate(integrand,a,b,tol,&opt);
+	}
+}
+
 namespace nusquids{
 
 double NeutrinoCrossSections::AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
 	auto integrand=[=](double e_in)->double{
 		return this->TotalCrossSection(e_in,flavor,neutype,current);
 	};
-	return AdaptiveQuad::integrate(integrand,EMin,EMax,1e-3)/(EMax-EMin);
+	return fastInt(integrand,EMin,EMax,1e-3)/(EMax-EMin);
 }
-
+	
 double NeutrinoCrossSections::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
 	auto integrand=[=](double e_out)->double{
 		return this->SingleDifferentialCrossSection(E1,e_out,flavor,neutype,current);
 	};
-	return AdaptiveQuad::integrate(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
+	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
 }
 
 std::tuple<AkimaSpline,double,double> NeutrinoDISCrossSectionsFromTables::read1DInterpolationFromText(const std::string& path){
@@ -75,6 +135,7 @@ std::tuple<BiCubicInterpolator,double,double> NeutrinoDISCrossSectionsFromTables
 	std::size_t enSteps=rawData.extent(0)/zSteps;
 	if(zSteps==rawData.extent(0) || enSteps*zSteps!=rawData.extent(0))
 		throw std::runtime_error(path+" does not appear to represent a correctly ordered 2D table");
+	
 	marray<double,2> data({zSteps,enSteps});
 	marray<double,1> xcoords({enSteps}), ycoords({zSteps});
 	
@@ -99,59 +160,6 @@ std::tuple<BiCubicInterpolator,double,double> NeutrinoDISCrossSectionsFromTables
 	
 	return std::make_tuple(BiCubicInterpolator(std::move(data),std::move(xcoords),std::move(ycoords)),
 						   rawData[0][0]*GeV,rawData[rawData.extent(0)-1][0]*GeV);
-}
-
-AkimaSpline NeutrinoDISCrossSectionsFromTables::makeCumulativeInterpolator(const AkimaSpline& f){
-	marray<double,1> accData(f.getOrdinates()); //begin with a copy of the original data
-	//these we don't need to modify, but short names are handy
-	auto abscissas=f.getAbscissas();
-	const std::size_t iMax=accData.extent(0);
-	double sum=pow(10.,accData[0]), prev=sum;
-	for(std::size_t i=1; i!=iMax; i++){
-		double x2=pow(10.,abscissas[i]);
-		double x1=pow(10.,abscissas[i-1]);
-		double mid=log10((x1+x2)/2);
-		double fmid=pow(10.,f(mid));
-		double next=pow(10.,accData[i]);
-		sum+=(prev+4*fmid+next)/3 * (x2-x1)/2;
-		prev=next;
-		accData[i]=log10(sum);
-	}
-	return AkimaSpline(abscissas.get_data(),accData.get_data(),iMax);
-}
-
-BiCubicInterpolator NeutrinoDISCrossSectionsFromTables::makeCumulativeInterpolator(const BiCubicInterpolator& f){
-	marray<double,2> accData(f.getData()); //begin with a copy of the original data
-	//these we don't need to modify, but short names are handy
-	const auto& xcoords=f.getXCoords();
-	const auto& ycoords=f.getYCoords();
-	const std::size_t iMax=accData.extent(0), jMax=accData.extent(1);
-	for(std::size_t i=0; i!=iMax; i++){
-		//each row is independent
-		double x=xcoords[i];
-		double sum=pow(10.,accData[0][i]), prev=sum;
-		for(std::size_t j=1; j!=jMax; j++){
-			//Compute the integral across the interval [y_{j-1},y_j]
-			//Here we make use of the knowledge that our interpolation is only 
-			//cubic in y, so a three point Gauss-Lobatto quadrature rule is
-			//exact. A two point Gauss-Legedre rule might appear better, but we
-			//already know the function values at the endpoints, without 
-			//evaluation, so the three point rule is less expensive to compute. 
-			//Since we are overwriting the data as we go, the left endpoint is 
-			//saved from the previous iteration as prev. 
-			double mid=(ycoords[j]+ycoords[j-1])/2;
-			double fmid=pow(10.,f(x,mid));
-			double next=pow(10.,accData[j][i]);
-			sum+=(prev+4*fmid+next)/3 * (ycoords[j]-ycoords[j-1])/2;
-			prev=next;
-			accData[j][i]=log10(sum);
-		}
-	}
-	//The resulting interpolation of the integral will not be quite exact, since
-	//it should be quartic, but we will make it once again cubic. However, since 
-	//the original cubic interpolation was only an approximation, we aren't
-	//losing anything particularly important. 
-	return BiCubicInterpolator(std::move(accData),xcoords,ycoords);
 }
 
 bool NeutrinoDISCrossSectionsFromTables::isHDF(const std::string& path){
@@ -199,7 +207,7 @@ double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, Neutrin
 }
 
 double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	// we assume that sterile neutrinos are trully sterile
+	// we assume that sterile neutrinos are truly sterile
 	if (not (flavor == electron or flavor == muon or flavor == tau))
 		return 0;
 
@@ -213,28 +221,18 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
 	(neutype==neutrino ? (current==CC ? dsdy_CC_nu : dsdy_NC_nu)
 					   : (current==CC ? dsdy_CC_nubar : dsdy_NC_nubar));
 	double z=(E2-Emin)/(E1-Emin);
-	return pow(10.,dsdy(log10(E1),z))/(E1/GeV);
+	double val=dsdy(log10(E1),z);
+	if(E2<=Emin){ //if extrapolating, make sure no blow-up happens
+		double altVal=dsdy(log10(E1),0);
+		if(val>altVal)
+			val=altVal;
+	}
+	return pow(10.,val)/(E1/GeV);
 }
 
-/*double NeutrinoDISCrossSectionsFromTables::AverageTotalCrossSection(double EnuMin, double EnuMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	// we assume that sterile neutrinos are truly sterile
-	if (not (flavor == electron or flavor == muon or flavor == tau))
-		return 0;
-	if (EnuMax > Emax)
-		throw std::runtime_error("NeutrinoCrossSections::TotalCrossSection: Only DIS cross sections are included in a limited range. Interpolation re\
-		quested below "+std::to_string(Emin/GeV)+" GeV or above "+std::to_string(Emax/GeV)+" GeV. E_nu = " + std::to_string(EnuMax/GeV) + " [GeV].");
-	//TODO: deal with EnuMin < Emin
-	
-	const AkimaSpline& acc_s=
-	(neutype==neutrino ? (current==CC ? acc_s_CC_nu : acc_s_NC_nu)
-					   : (current==CC ? acc_s_CC_nubar : acc_s_NC_nubar));
-	double s1=pow(10.,acc_s(log10(EnuMin)));
-	double s2=pow(10.,acc_s(log10(EnuMax)));
-	return (s2-s1)/((EnuMax-EnuMin));
-}*/
-
 double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	// we assume that sterile neutrinos are trully sterile
+	std::cout.precision(16); 
+	// we assume that sterile neutrinos are truly sterile
 	if (not (flavor == electron or flavor == muon or flavor == tau))
 		return 0;
 
@@ -246,15 +244,13 @@ double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection
 		
 	if(E2Min>E2Max)
 		std::swap(E2Min,E2Max);
-
-	const BiCubicInterpolator& acc_dsdy=
-	(neutype==neutrino ? (current==CC ? acc_dsdy_CC_nu : acc_dsdy_NC_nu)
-					   : (current==CC ? acc_dsdy_CC_nubar : acc_dsdy_NC_nubar));
-	double zMin=(E2Min-Emin)/(E1-Emin);
-	double zMax=(E2Max-Emin)/(E1-Emin);
-	double ds1=pow(10.,acc_dsdy(log10(E1),zMin));
-	double ds2=pow(10.,acc_dsdy(log10(E1),zMax));
-	return (ds2-ds1)/((zMax-zMin)*(E1/GeV));
+	if(E2Min==E2Max)
+		return SingleDifferentialCrossSection(E1, E2Max, flavor, neutype, current);
+	
+	auto integrand=[=](double e_out)->double{
+		return this->SingleDifferentialCrossSection(E1,e_out,flavor,neutype,current);
+	};
+	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
 }
 
 void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
@@ -284,16 +280,6 @@ void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
 	std::tie(dsdy_NC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_NC.dat");
 	if(eMinTmp!=Emin || eMaxTmp!=Emax)
 		throw std::runtime_error(prefix+"nubar_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
-	
-	/*acc_s_CC_nu=makeCumulativeInterpolator(s_CC_nu);
-	acc_s_NC_nu=makeCumulativeInterpolator(s_NC_nu);
-	acc_s_CC_nubar=makeCumulativeInterpolator(s_CC_nubar);
-	acc_s_NC_nubar=makeCumulativeInterpolator(s_NC_nubar);*/
-	
-	acc_dsdy_CC_nu=makeCumulativeInterpolator(dsdy_CC_nu);
-	acc_dsdy_NC_nu=makeCumulativeInterpolator(dsdy_NC_nu);
-	acc_dsdy_CC_nubar=makeCumulativeInterpolator(dsdy_CC_nubar);
-	acc_dsdy_NC_nubar=makeCumulativeInterpolator(dsdy_NC_nubar);
 }
 
 void NeutrinoDISCrossSectionsFromTables::writeText(const std::string& prefix) const{
@@ -335,6 +321,7 @@ void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
 		return H5Lexists(loc_id,name,H5P_DEFAULT)>0
 		  && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
 	};
+	try{
 	H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
 	
 	marray<double,1> energies,zs;
@@ -347,7 +334,7 @@ void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
 	auto readTotal=[&](AkimaSpline& dest, const std::string& tableName){
 		readArrayH5(h5file, tableName, buffer1);
 		if(buffer1.extent(0)!=energies.extent(0))
-			throw std::runtime_error(path+"/"+tableName+" does not have the same dimensions as "+path+"/energies");
+			throw std::runtime_error(tableName+" does not have the same dimensions as energies");
 		dest=AkimaSpline(energies.get_data(),buffer1.get_data(),energies.size());
 	};
 	readTotal(s_CC_nu,"s_CC_nu");
@@ -355,46 +342,27 @@ void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
 	readTotal(s_CC_nubar,"s_CC_nubar");
 	readTotal(s_NC_nubar,"s_NC_nubar");
 	
-	/*acc_s_CC_nu=makeCumulativeInterpolator(s_CC_nu);
-	acc_s_NC_nu=makeCumulativeInterpolator(s_NC_nu);
-	acc_s_CC_nubar=makeCumulativeInterpolator(s_CC_nubar);
-	acc_s_NC_nubar=makeCumulativeInterpolator(s_NC_nubar);*/
-	
 	marray<double,2> buffer2;
 	auto readDifferential=[&](BiCubicInterpolator& dest, const std::string& tableName){
-		readArrayH5(h5file, tableName, buffer2);
+		readArrayH5(h5file, tableName, buffer2); //reallocates the target array 
 		if(buffer2.extent(0)!=energies.extent(0))
-			throw std::runtime_error(path+"/"+tableName+" does not have the same first dimension as "+path+"/energies");
+			throw std::runtime_error(tableName+" does not have the same first dimension as energies");
 		if(buffer2.extent(1)!=zs.extent(0))
-			throw std::runtime_error(path+"/"+tableName+"'s second dimension does not have the same size as "+path+"/zs");
+			throw std::runtime_error(tableName+"'s second dimension does not have the same size as zs");
 		dest=BiCubicInterpolator(std::move(buffer2),energies,zs);
 	};
 	readDifferential(dsdy_CC_nu,"dsdy_CC_nu");
 	readDifferential(dsdy_NC_nu,"dsdy_NC_nu");
 	readDifferential(dsdy_CC_nubar,"dsdy_CC_nubar");
 	readDifferential(dsdy_NC_nubar,"dsdy_NC_nubar");
-	
-	if(objectExists(h5file,"acc_dsdy_CC_nu"))
-		readDifferential(acc_dsdy_CC_nu,"acc_dsdy_CC_nu");
-	else
-		acc_dsdy_CC_nu=makeCumulativeInterpolator(dsdy_CC_nu);
-	if(objectExists(h5file,"acc_dsdy_NC_nu"))
-		readDifferential(acc_dsdy_NC_nu,"acc_dsdy_NC_nu");
-	else
-		acc_dsdy_NC_nu=makeCumulativeInterpolator(dsdy_NC_nu);
-	if(objectExists(h5file,"acc_dsdy_CC_nubar"))
-		readDifferential(acc_dsdy_CC_nubar,"acc_dsdy_CC_nubar");
-	else
-		acc_dsdy_CC_nubar=makeCumulativeInterpolator(dsdy_CC_nubar);
-	if(objectExists(h5file,"acc_dsdy_NC_nubar"))
-		readDifferential(acc_dsdy_NC_nubar,"acc_dsdy_NC_nubar");
-	else
-		acc_dsdy_NC_nubar=makeCumulativeInterpolator(dsdy_NC_nubar);
+	}
+	catch(std::runtime_error& err){
+		throw std::runtime_error("Failed to read cross sections from "+path+": "+err.what());
+	}
 }
 
-void NeutrinoDISCrossSectionsFromTables::writeHDF(const std::string& path) const{
-	const unsigned int compressionLevel=0;
-	using StoreType=double;
+void NeutrinoDISCrossSectionsFromTables::writeHDF(const std::string& path, unsigned int compressionLevel) const{
+	using StoreType=float;
 	H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
 	writeArrayH5<StoreType>(h5file, "energies", dsdy_CC_nu.getXCoords(), compressionLevel);
 	writeArrayH5<StoreType>(h5file, "zs", dsdy_CC_nu.getYCoords(), compressionLevel);
@@ -406,10 +374,6 @@ void NeutrinoDISCrossSectionsFromTables::writeHDF(const std::string& path) const
 	writeArrayH5<StoreType>(h5file, "dsdy_NC_nu", dsdy_NC_nu.getData(), compressionLevel);
 	writeArrayH5<StoreType>(h5file, "dsdy_CC_nubar", dsdy_CC_nubar.getData(), compressionLevel);
 	writeArrayH5<StoreType>(h5file, "dsdy_NC_nubar", dsdy_NC_nubar.getData(), compressionLevel);
-	writeArrayH5<StoreType>(h5file, "acc_dsdy_CC_nu", acc_dsdy_CC_nu.getData(), compressionLevel);
-	writeArrayH5<StoreType>(h5file, "acc_dsdy_NC_nu", acc_dsdy_NC_nu.getData(), compressionLevel);
-	writeArrayH5<StoreType>(h5file, "acc_dsdy_CC_nubar", acc_dsdy_CC_nubar.getData(), compressionLevel);
-	writeArrayH5<StoreType>(h5file, "acc_dsdy_NC_nubar", acc_dsdy_NC_nubar.getData(), compressionLevel);
 }
 
 double NeutrinoDISCrossSectionsFromTables_V1::LinInter(double x,double xM, double xP,double yM,double yP) const{

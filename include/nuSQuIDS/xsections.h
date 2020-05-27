@@ -276,8 +276,6 @@ protected:
 	///Total cross section for neutral-current anti-neutrino interactions
 	AkimaSpline s_NC_nubar;
 	
-	//AkimaSpline acc_s_CC_nu, acc_s_NC_nu, acc_s_CC_nubar, acc_s_NC_nubar;
-	
 	///Singly-differential cross section for charged-current neutrino interactions
 	BiCubicInterpolator dsdy_CC_nu;
 	///Singly-differential cross section for neutral-current neutrino interactions
@@ -286,15 +284,6 @@ protected:
 	BiCubicInterpolator dsdy_CC_nubar;
 	///Singly-differential cross section for neutral-current anti-neutrino interactions
 	BiCubicInterpolator dsdy_NC_nubar;
-	
-	///Singly-differential cumulative cross section for charged-current neutrino interactions
-	BiCubicInterpolator acc_dsdy_CC_nu;
-	///Singly-differential cumulative cross section for neutral-current neutrino interactions
-	BiCubicInterpolator acc_dsdy_NC_nu;
-	///Singly-differential cumulative cross section for charged-current anti-neutrino interactions
-	BiCubicInterpolator acc_dsdy_CC_nubar;
-	///Singly-differential cumulative cross section for neutral-current anti-neutrino interactions
-	BiCubicInterpolator acc_dsdy_NC_nubar;
 	
 	///Read a total cross section table from whitespace-separated text
 	///\param path the filesystem path from which to read input
@@ -306,18 +295,9 @@ protected:
 	///Read a singly-differential cross section table from whitespace-separated text
 	///\param path the filesystem path from which to read input
 	///\return a tuple of a bicubic interpolator for the tabulated data, the 
-	///        minimum tabulated energy, and maximum tabulated energies. 
+	///        minimum tabulated energy, and maximum tabulated energy.
 	///        Energies are in natural units. 
 	std::tuple<BiCubicInterpolator,double,double> read2DInterpolationFromText(const std::string& path);
-	
-	///Construct an interpolator for the cumulative function of an existing 
-	///interpolator. Assumes the the input is in the logarithm of both the true 
-	///abscissas and ordinates. 
-	AkimaSpline makeCumulativeInterpolator(const AkimaSpline& f);
-
-	///Construct an interpolator for the cumulative function, in the y dimension, 
-	///of an existing interpolator. Assumes that the input is logarithmic. 
-	BiCubicInterpolator makeCumulativeInterpolator(const BiCubicInterpolator& f);
 	
 	///\brief Check whether a path refers to an HDF5 file
 	bool isHDF(const std::string& path);
@@ -437,7 +417,7 @@ public:
 	
 	/// Write out an HDF5 file in the format expected by ReadHDF. 
 	///\param path the path to which the output should be written
-	void writeHDF(const std::string& path) const;
+	void writeHDF(const std::string& path, unsigned int compressionLevel=0) const;
 };
 
 /// \class NeutrinoGRCrossSection
