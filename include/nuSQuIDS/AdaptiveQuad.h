@@ -166,7 +166,7 @@ namespace AdaptiveQuad{
 	};
 	
 	///Integrate a function with adaptive gaussian quadrature. 
-	///This is a modified version of the standard Gand and Gautschi algorithm
+	///This is a modified version of the standard Gander and Gautschi algorithm
 	///which splits intervals into three subintervals at a time rather than six.
 	///\param integrand the function to be integrated
 	///\param a the left boundary of the interval over which to integrate
