@@ -1,20 +1,21 @@
-%\documentclass[3p,12pt,authoryear]{elsarticle}
 \documentclass[3p,12pt]{elsarticle}
 
 \let\counterwithout\relax
 \let\counterwithin\relax
-%\usepackage{natbib}
-%\usepackage{apacite}
-\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue]{hyperref}
+\usepackage[linktoc=all,colorlinks=true,citecolor=blue,linkcolor=blue]{hyperref}
 \usepackage{amsmath,amssymb}
-\usepackage{epsfig}  
+\usepackage{epsfig}
 \usepackage{graphicx}               % Standard graphics package  
 \usepackage{url}
 \usepackage{titlesec}
-\usepackage{hyperref}
 \usepackage{cleveref}
 \usepackage{color}
 \usepackage{listings}
+\usepackage{natbib}
+\biboptions{numbers,sort&compress}
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
 
 \usepackage{titlesec}
 
@@ -97,17 +98,16 @@
 
 \begin{frontmatter}
 
-\title{$\nu$-SQuIDS: A toolbox for neutrino oscillations\tnoteref{t1}}
+\title{\texttt{$\nu$-SQuIDS}: A toolbox for neutrino oscillations\tnoteref{t1}}
 
-\author[MIT]{Carlos A. Arg\"uelles}
-\ead{caad@mit.edu}
+\author[HU]{Carlos A. Arg\"uelles}
+\ead{carguelles@fas.harvard.edu}
 \author[UB]{Jordi Salvado}
 \ead{jsalvado@icc.ub.edu}
-\author[UA]{Christopher N. Weaver}
+\author[UC]{Christopher N. Weaver}
 \ead{chris.weaver@icecube.wisc.edu}
-\address[MIT]{Massachusetts Institute of Technology, Cambridge, MA 02139, USA}
-\address[UA]{Dept.~of Physics, University of Alberta, Edmonton,
-  Alberta, Canada T6G 2E1} 
+\address[HU]{Department of Physics \& Laboratory for Particle Physics and Cosmology, Harvard University, Cambridge, MA 02138, USA}
+\address[UC]{Enrico Fermi Institute, University of Chicago, Chicago IL 60637, USA}
 \address[UB]{Departament de F\'isica Qu\`antica i Astrofísica and Institut de Ciencies del Cosmos,
 Universitat de Barcelona, Diagonal 647, E-08028 Barcelona, Spain}
 
@@ -147,55 +147,55 @@ solar~\citep{Abe:2010hy, Borexino2014},
 atmospheric~\citep{PhysRevD.91.072004,Richard:2015aua},
 accelerator~\citep{PhysRevLett.112.181801,
   PhysRevD.93.051104,PhysRevLett.116.151806, PhysRevLett.110.251801}, and
-reactor \citep{An:2013zwz,Abe:2015rcp, Kim:2016yvm} experiments.
+reactor~\citep{An:2013zwz,Abe:2015rcp, Kim:2016yvm} experiments.
 Thanks to these remarkable
 experimental results and related theoretical calculations, the
-  neutrino-mass induced flavor oscillation paradigm
-\citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,
+  neutrino-mass induced flavor oscillation paradigm~\citep{Pontecorvo:1967fh,Gribov:1968kq,fukugita2003physics,
   Akhmedov:1999uz,Balantekin:2013kc, GonzalezGarcia:2007ib,Mohapatra:qv, Gouvea:2013fj}
 has been firmly established and the three mixing angles, which
 parametrize the lepton mixing matrix, together with the two
 squared-mass differences, have been measured to good
-precision\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It
+precision~\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It
 is the task of on-going 
 and future experiments to determine the neutrino mass ordering 
-and the CP-violating phase \citep{Hewett:2012et,
+and the $CP$-violating phase~\citep{Hewett:2012et,
   Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
 Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
-spectrum above 100 GeV, where the Earth is no longer transparent to
+spectrum above 100~GeV, where the Earth is no longer transparent to
 neutrinos~\citep{Donini:2018tsg}, allowing new physics
 models to be constrained~\citep{Aartsen:2014gkd,TheIceCube:2016oqi}.
 The identification of high-energy
-extraterrestrial neutrinos \citep{ Aartsen:2014gkd, Aartsen:2015rwa}
-has opened the possibility of exploring new physics at these energies as well
-\citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc}. 
+extraterrestrial neutrinos~\citep{ Aartsen:2014gkd, Aartsen:2015rwa}
+has opened the possibility of exploring new physics at these energies as well~\citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc}. 
 
 Matter effects play a fundamental role in the explanation of solar
-neutrinos \citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of new flavor
-changing neutrino interactions \citep{Barger:1991ae, Roulet:1991sm, GonzalezGarcia:2011my,
+neutrinos~\citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of new flavor
+changing neutrino interactions~\citep{Barger:1991ae, Roulet:1991sm, GonzalezGarcia:2011my,
   Gonzalez-Garcia:2013usa, Pospelov:2011dp, Kopp:2014nosterile,
   Maltoni:2015kca,Esteban:2018ppq}.
 Even though most of the data can be explained in the standard three
 neutrino framework, some puzzling anomalies still remain
-\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm,
+~\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm,
   Ko:2016owz, Ashenfelter:2018iov, Abreu:2018pxg,
   Dentler:2018sju}. These may be explained 
-by introducing new light neutrino states \citep{kopp2013sterile,
-  Collin:2016rao, Abazajian:2012rf,Blennow:2018hto} and other new physics
-\citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
+by introducing new light neutrino states~\citep{kopp2013sterile,
+  Collin:2016rao, Abazajian:2012rf,Blennow:2018hto, Dentler:2018sju, Diaz:2019fwt, Boser:2019rta} and other new physics
+~\citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
 Also, the interplay between cosmology and neutrino
 oscillation has been widely studied in the literature
-\citep{Bergstrom:2014fqa, Giusarma:2016phn,
+~\citep{Bergstrom:2014fqa, Giusarma:2016phn,
   Dasgupta:2013la,Hernandez:2016kel,Arguelles:2016uwb,Song:2018zyl,Chu:2018gxk}. 
 Generally, neutrinos are good probes to perform 
 fundamental physics tests~\citep{Hewett:2012et,Aartsen:2017ibm,Mewes:2018cze,Barenboim:2017vlc}.
 
 Tools are needed to accurately and reliably compute neutrino
 propagation.
-When the only effect of propagation is neutrino oscillations libraries such as {\ttf GLoBES}
-\citep{Huber:2007ji}, {\ttf Prob3++} \citep{prob3pp, Calland:2013vaa},
-and {\ttf nuCRAFT} \citep{Wallraff:2014vl} are
-available. Unfortunately, when non-coherent interactions are 
+In classical computer when the only effect of propagation is neutrino oscillations libraries such as {\ttf GLoBES}
+~\citep{Huber:2007ji}, {\ttf Prob3++}~\citep{prob3pp, Calland:2013vaa},
+and {\ttf nuCRAFT}~\citep{Wallraff:2014vl} are
+available; for a recent comparison of oscillation calculations comparisons see~\cite{Parke:2019vbs}.
+On quantum computers, such as the IBM-Q systems, implementations using two entangled qubits have also been developed~\cite{Arguelles:2019phs}.
+Unfortunately, when non-coherent interactions are 
 important they are no longer applicable. Furthermore, the ability to
 allow the user to incorporate new physics models or to change the
 propagation medium is also limited. {\ttf nuSQuIDS} seeks to
@@ -209,8 +209,7 @@ scenarios; in section~\ref{sec:performance} we show the performance of
 the library; in section~\ref{sec:tests} we describe the unit tests that
 are provided with the library; in section~\ref{sec:code} we describe
 the main classes and structure of the code; in section~\ref{sec:python}
-we describe the library {\ttf Python} interface. Finally, section
-\ref{sec:conclu} presents concluding remarks.
+we describe the library {\ttf Python} interface. Finally, section~\ref{sec:conclu} presents concluding remarks.
 
 \section{Neutrino Oscillations}
 \subsection{Density Matrix Formalism}
@@ -233,7 +232,7 @@ These eigenstates can be related with the mass eigenstates,  $\{ \ket{\nu_i}  \}
 where $U$ is a unitary matrix known as the Pontecorvo-Maki-Nakagawa-Sakata (PMNS)
 matrix or neutral lepton mixing matrix. For antineutrinos the relation
 is the same as in 
-\eqref{eq:changebasis} with $U \to U^*$.
+Eq.~\eqref{eq:changebasis} with $U \to U^*$.
 It is customary to parametrize $U$ as a product of complex rotations,
 \begin{equation}
 \label{eq:mixing}
@@ -258,7 +257,7 @@ where $c_{ij} \equiv \cos \theta_{ij}$, $s_{ij} \equiv \sin \theta_{ij}$. In the
 three flavor scenario we use this parametrization (with
 values from \citep{Esteban:2016qun} by default).
 The neutrino ensemble propagation is
-described by the following quantum Von Neumann equation \footnote{Where we have set $c = \hbar = 1$.} 
+described by the following quantum Von Neumann equation\footnote{In this equation and henceforth we set $c = \hbar = 1$.} 
 \begin{equation}
 \pa{\rho(E,x)}{x} = -i [ H (E,x), \rho(E,x) ].
 \label{eq:schrodinger}
@@ -289,7 +288,7 @@ $\nu_e$, $\nu_\mu$, and $\nu_\tau$ respectively, while the rest are assumed to b
 sterile neutrinos. $H_0$ arises from the neutrino kinetic
 term, whereas $H_1$ incorporates the matter potential induced by coherent
 forward scattering~\citep{Mikheev:1986gs,Mikheev:1986wj,Wolfenstein:1977ue}. Note that the matter
-potential, $H_1$, given in \eqref{eq:hi} for neutrinos changes to
+potential, $H_1$, given in Eq.~\eqref{eq:hi} for neutrinos changes to
 $-H_1^*$ for antineutrinos. 
 Since the propagation due to $H_0$ can be solved analytically, it is
 convenient to use the  so-called interaction picture. For an operator
@@ -309,11 +308,9 @@ effects through coherent interactions, but we now wish to extend this
 formalism to incorporate non-coherent interactions and collective
 neutrino behavior. In what follows we will remove the subindex $I$ and
 assume that all operators, unless specified, are in the interaction picture. 
-This problem has been extensively discussed in the literature,
-\citep{Sigl:1992fn,Duan:2010tk,Strack:qd,Zhang:2013ay,
+This problem has been extensively discussed in the literature,~\citep{Sigl:1992fn,Duan:2010tk,Strack:qd,Zhang:2013ay,
  Cirelli:mw,Blennow:2007tw,Arguelles:2012cf}, for definiteness we
-follow the formalism and notation given in
-\citep{Gonzalez-Garcia:2005xw}.
+follow the formalism and notation given in~\citep{Gonzalez-Garcia:2005xw}.
 The neutrino (antineutrino), $\rho$ $(\bar\rho)$, kinetic equations are
 \begin{subequations}
 \begin{eqnarray}
@@ -432,15 +429,15 @@ in which $m_\tau$ is the $\tau$ mass and $\tau_\tau$ is the $\tau$
 lifetime, ``all'' and ``lep'' indicate the all and leptonic $\tau$
 decay modes, respectively.
 
-The first term in \eqref{eq:Fterm} and \eqref{eq:antiFterm} accounts for
+The first term in Eqs.~\eqref{eq:Fterm} and \eqref{eq:antiFterm} accounts for
 neutrino re-injection at lower energies coming from
-\eqref{eq:gammarhoa} and \eqref{eq:gammarhob} due to neutral current
+Eqs.~\eqref{eq:gammarhoa} and \eqref{eq:gammarhob} due to neutral current
 interaction.
 The second and third term is the injection due to the $\tau$ decay
 in to $\nu_\tau$ and in the other flavors in the leptonic case: this
 is known as tau-regeneration. It is important to note that the latter
 terms couple the propagation of neutrinos and antineutrinos.
-Finally, the last term in \eqref{eq:antiFterm} accounts for the
+Finally, the last term in Eq.~\eqref{eq:antiFterm} accounts for the
 neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
 These equations are implemented by discretizing the problem in bins that the user
@@ -521,11 +518,11 @@ neutrinos or antineutrinos.
 \end{lstlisting}
 
 We next set the value of the oscillation parameters, giving the values for the mixing angles in radians, the value for the mass
-square difference in electron-volt squared, and a value for the CP
+square difference in electron-volt squared, and a value for the $CP$
 phase in radians.
 In order to do so we use the {\ttf Set\_MixingAngle} member function
 whose first two arguments are the indices of the rotation, starting
-from zero. Similarly for the CP phase function.
+from zero. Similarly for the $CP$ phase function.
 In the case of the square mass difference, the first argument of the function is
 the mass eigenvalue index and the second argument the value. These
 square mass differences are always with respect to the lightest mass state.
@@ -619,7 +616,7 @@ we can model the neutrino energy and flavor changes.
 For example interactions such as charged and neutral current.
 In the following we describe the code for the example.
 
-As before we construct the Const object to have a set of useful physical parameters.
+As before we construct the {\ttf Const} object to have a set of useful physical parameters.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   squids::Const units;
 \end{lstlisting}
@@ -754,7 +751,7 @@ Finally we write the propagated fluxes in a file called {\ttf
   \caption{Output for the multiple energy mode with sterile neutrino (3+1)} 
 \end{figure}
  
-In fig.\ref{fig:multimode} we show the results of running this example
+In Fig.~\ref{fig:multimode} we show the results of running this example
 for the case with sterile neutrino.
 
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
@@ -859,7 +856,7 @@ In this part we will describe what is implemented in {\ttf
 This file defines a nuSQUIDS object and sets different bodies and
 tracks. For each of these it evolves the system and shows the
 probabilities on the screen.
-For simplicity we use the single energy mode sec.~\ref{sec:single}, but the use of the body
+For simplicity we use the single energy mode Sec.~\ref{sec:single}, but the use of the body
 and track would be the same for the multiple energy case.
 
 First we construct the nuSQUIDS object for three neutrinos, then we set the
@@ -1783,7 +1780,7 @@ description of what they test.
 \label{sec:code} 
 
 $\nu$-SQuIDS is a {\ttf C++} code built using the SQuIDS
-framework \citep{SQUIDS}. It is designed to propagate neutrinos
+framework~\citep{SQUIDS}. It is designed to propagate neutrinos
 through media while taking into account flavor oscillations and
 non-coherent interactions. 
 
@@ -1791,10 +1788,10 @@ In order to allow the user to compute simple oscillation probabilities
 for a single neutrino energy the code has a simplified mode.
 In this mode the neutrino energy is fixed and only coherent interactions
 are treated.
-In this case, only Eq. \eqref{eq:schrodinger} is relevant for the
+In this case, only Eq.~\eqref{eq:schrodinger} is relevant for the
 neutrino propagation, and the {\ttf nuSQuIDS} class implements {\ttf
-  SQuIDS::H0} as in Eq. \eqref{eq:h0} and {\ttf SQuIDS::HI} as given
-in Eq. \eqref{eq:hi}. 
+  SQuIDS::H0} as in Eq.~\eqref{eq:h0} and {\ttf SQuIDS::HI} as given
+in Eq.~\eqref{eq:hi}. 
 
 In the default mode a statistical ensemble of neutrinos is
 considered. The ensemble is described by means of a set of {\ttf
@@ -1802,10 +1799,11 @@ considered. The ensemble is described by means of a set of {\ttf
 energy region under consideration. Besides defining {\ttf SQuIDS::H0}
 and {\ttf SQuIDS::HI}, as in the simplified single energy mode, the
 following functions are also defined: {\ttf SQuIDS::GammaRho} by
-equations \eqref{eq:gammarhoa} and \eqref{eq:gammarhob}, and {\ttf
-  SQuIDS::InteractionsRho} in equations \eqref{eq:Fterm} and
-\eqref{eq:antiFterm}. Furthermore, in the latter equation
-\eqref{eq:antiFterm} $\tau$-regeneration is implemented assuming
+Eqs.~\eqref{eq:gammarhoa} and \eqref{eq:gammarhob}, and {\ttf
+  SQuIDS::InteractionsRho} in Eqs.~\eqref{eq:Fterm} and
+\eqref{eq:antiFterm}.
+Furthermore, in the latter
+Eq.~\eqref{eq:antiFterm} $\tau$-regeneration is implemented assuming
 instantaneous $\tau$ decay.
 
 While the {\ttf nuSQuIDS} class implements all the necessary
@@ -2090,7 +2088,7 @@ constructors and the functions that are not members of the parent class.
         std::vector<double> density,
         std::vector<double> ye);
   \end{lstlisting}
-  Initializes a {\ttf VariableDensity} environment given three equal size arrays specifying the density and electron fraction at given positions. An object will be created that interpolates using {\ttfamily gsl\_spline} \citep{gough2009gnu} along the {\ttf x} array to get the density and electron fraction as continuous functions.
+  Initializes a {\ttf VariableDensity} environment given three equal size arrays specifying the density and electron fraction at given positions. An object will be created that interpolates using {\ttfamily gsl\_spline}~\citep{gough2009gnu} along the {\ttf x} array to get the density and electron fraction as continuous functions.
   \item {\ttf VariableDensity::Track}
   \begin{lstlisting}
     Track(double x,double xini,double xend):
@@ -2113,7 +2111,7 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
   \begin{lstlisting}
     Earth();
   \end{lstlisting}
-  Initializes an {\ttf Earth} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  Initializes an {\ttf Earth} environment as defined by the PREM~\citep{dziewonski1981preliminary}.
   \begin{lstlisting}
     Earth(std::string earthmodel);
   \end{lstlisting}
@@ -2163,7 +2161,7 @@ the path.
   \begin{lstlisting}
     Earth();
   \end{lstlisting}
-  Initializes an {\ttf Earth} environment as defined by the PREM \citep{dziewonski1981preliminary}.
+  Initializes an {\ttf Earth} environment as defined by the PREM~\citep{dziewonski1981preliminary}.
   \begin{lstlisting}
     Earth(std::string earthmodel);
   \end{lstlisting}
@@ -2217,7 +2215,18 @@ trajectories that start from the center of the sun.
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
   electron fraction in the vector {\ttf ye}, and the radial positions
   in the vector {\ttf x} in centimeters. 
-  
+
+  \begin{lstlisting}
+    Sun(std::string sunmodel);
+  \end{lstlisting}
+  Initialize a {\ttf Sun} object from a text file that should have the same format as the {\it
+  Standard Solar Model}~\citep{bahcall2005new}. Namely, the second column one must run from zero to one representing
+  the center and surface of the Sun respectively. The
+  fourth column must contain the Sun density in ${\rm g}/{\rm cm}^3$ at
+  a given position, while the seven column must contain
+  the hydrogen fraction, $r_h$, which is related to the electron fraction by $ye = 0.5*(1.0+r_h(r))$.
+  Internally we assume that the solar radius is 695980.0~kilometers.
+
 \item {\ttf Sun::Track}
   \begin{lstlisting}
     Sun::Track(double xend);
@@ -2250,7 +2259,18 @@ trajectories with different impact parameters.
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
   electron fraction in the vector {\ttf ye}, and the radial positions
   in the vector {\ttf x} in centimeters. 
-  
+
+  \begin{lstlisting}
+    SunASnu(std::string sunmodel);
+  \end{lstlisting}
+  Initialize a {\ttf SunASnu} object from a text file that should have the same format as the {\it
+  Standard Solar Model}~\citep{bahcall2005new}. Namely, the second column one must run from zero to one representing
+  the center and surface of the Sun respectively. The
+  fourth column must contain the Sun density in ${\rm g}/{\rm cm}^3$ at
+  a given position, while the seven column must contain
+  the hydrogen fraction, $r_h$, which is related to the electron fraction by $ye = 0.5*(1.0+r_h(r))$.
+  Internally we assume that the solar radius is 695980.0~kilometers.
+
 \item {\ttf SunASun::Track}
   \begin{lstlisting}
     Track(double x,double xini,double b_impact);
@@ -2749,7 +2769,7 @@ position specified by the {\ttfamily track}.
   \begin{lstlisting}
     double Get_CPPhase(unsigned int i, unsigned int j) const;
   \end{lstlisting}
-  Returns the $\delta_{i,j}$ CP phase where {\ttf i} and {\ttf j} are zero based indices.
+  Returns the $\delta_{i,j}$ $CP$ phase where {\ttf i} and {\ttf j} are zero based indices.
   \item Get square mass difference
   \begin{lstlisting}
     double Get_SquareMassDifference(unsigned int i) const;
@@ -2830,7 +2850,7 @@ position specified by the {\ttfamily track}.
     void Set_CPPhase(unsigned int i, unsigned int j,
         double phase);
   \end{lstlisting}
-  Sets the $\delta_{i,j}$ CP phase to {\ttf phase}, where {\ttf i} and
+  Sets the $\delta_{i,j}$ $CP$ phase to {\ttf phase}, where {\ttf i} and
   {\ttf j} are zero-based indexes, and {\ttf phase} must be given in radians.
   \item Set square mass difference
   \begin{lstlisting}
@@ -2843,7 +2863,7 @@ position specified by the {\ttfamily track}.
     void Set_MixingParametersToDefault();
   \end{lstlisting}
   Sets the mixing angles and square mass mixings to the best fit point
-  given in \citep{Gonzalez-Garcia:2014bfa}. 
+  given in~\citep{Gonzalez-Garcia:2014bfa}. 
   \item Set the basis of solution
   \begin{lstlisting}
     void Set_Basis(Basis basis);
@@ -3936,10 +3956,7 @@ JS is supported by  EU Networks FP10 ITN ELUSIVES (H2020-MSCA-ITN-2015-674896), 
 RISE-2015-690575),  MINECO grant FPA2016-76005-C2-1-P and Maria de Maetzu grant MDM-2014-0367 of ICCUB. 
 CNW is supported by.
 
-\bibliographystyle{plainnat}
-%\bibliographystyle{apacite}
-%\bibliographystyle{elsarticle-harv}
-
+\bibliographystyle{elsarticle-num}
 \bibliography{nusquids}
 
 \end{document}
