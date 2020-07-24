@@ -468,6 +468,17 @@ class Sun: public Body{
     /// @param xh Hydrogen fraction at each point.
     /// \pre All input vectors must be of equal size.
     Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
+    /// \brief Constructor from a user supplied solar model.
+    /// @param sunmodel Path to the Sun model file.
+    /// \details The input file should have the same columns as John Bahcalls solar model file.
+    /// The second column one must run from zero to one representing
+    /// the center and surface of the Sun respectively. The
+    /// fourth column must contain the Sun density in g/cm^3 at
+    /// a given position, while the seven column must contain
+    /// the hydrogen fraction which is related to the electron fraction by ye = 0.5*(1.0+rxh(r)).
+    /// Internally we assume that the solar radius is 695980.0 kilometers.
+    Sun(std::string sunmodel);
+
 
     /// \brief Destructor
     ~Sun();
@@ -551,6 +562,16 @@ class SunASnu: public Body{
   public:
     /// \brief Detault constructor.
     SunASnu();
+    /// \brief Constructor from a user supplied solar model.
+    /// @param sunmodel Path to the Sun model file.
+    /// \details The input file should have the same columns as John Bahcalls solar model file.
+    /// The second column one must run from zero to one representing
+    /// the center and surface of the Sun respectively. The
+    /// fourth column must contain the Sun density in g/cm^3 at
+    /// a given position, while the seven column must contain
+    /// the hydrogen fraction which is related to the electron fraction by ye = 0.5*(1.0+rxh(r)).
+    /// Internally we assume that the solar radius is 695980.0 kilometers.
+    SunASnu(std::string sunmodel);
     /// \brief Constructor in which the user provides, as vectors, the
     /// Sun properties.
     /// @param x Vector containing position nodes in cm.

@@ -297,6 +297,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   {
     scope outer
     = class_<Sun, bases<Body>, std::shared_ptr<Sun> >("Sun")
+    .def(init<std::string>())
     ;
 
     class_<Sun::Track, std::shared_ptr<Sun::Track> >("Track", init<double>())
@@ -315,6 +316,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   {
     scope outer
     = class_<SunASnu, bases<Body>, std::shared_ptr<SunASnu> >("SunASnu")
+    .def(init<std::string>())
     ;
 
     class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track", init<double>())

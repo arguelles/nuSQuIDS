@@ -428,12 +428,15 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 */
 
 // constructor
-Sun::Sun():Body()
+Sun::Sun():Sun(SUN_MODEL_LOCATION)
+{}
+
+Sun::Sun(std::string sunlocation):Body()
 {
   radius = 695980.0*param.km;
 
   // import sun model
-  sun_model = quickread(SUN_MODEL_LOCATION);
+  sun_model = quickread(sunlocation);
   arraysize = sun_model.extent(0);
 
   sun_radius.resize(arraysize);
@@ -531,7 +534,10 @@ std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
 */
 
 // constructor
-SunASnu::SunASnu():Body()
+SunASnu::SunASnu():SunASnu(SUN_MODEL_LOCATION)
+{}
+
+SunASnu::SunASnu(std::string sunlocation):Body()
 {
   radius = 694439.0*param.km;
 
