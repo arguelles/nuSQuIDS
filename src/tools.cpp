@@ -209,16 +209,16 @@ void gsl_matrix_complex_change_basis_UCMU(gsl_matrix_complex* U, gsl_matrix_comp
 //Numerik-Algorithmen: Verfahren, Beispiele, Anwendungen
 //Engeln-M{\"u}llges, Gisela and Niederdrenk, Klaus and Wodicka, Reinhard
 //https://doi.org/10.1007/978-3-642-13473-9_11
-AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>& y){
-    assert(x.size()==y.size());
-    if(x.size()<3)
-        throw std::runtime_error("At least 3 points are required to construct the Akima spline interpolation");
-    const unsigned int n=x.size();
+void AkimaSpline::initialize(const double* x, const double* y, const unsigned int n){
+    if(n<3)
+    	throw std::runtime_error("At least 3 points are required to construct the Akima spline interpolation");
+    segments.reserve(n-1);
+    segments.resize(0);
     
     //a lambda, basically, but needs to be able to call itself recursively
     struct mHelper{
-        const std::vector<double>& x;
-        const std::vector<double>& y;
+        const double* x;
+        const double* y;
         const unsigned int n;
         double operator()(int i) const{
             const mHelper& m=*this;
@@ -298,6 +298,182 @@ AkimaSpline::AkimaSpline(const std::vector<double>& x, const std::vector<double>
         m_i=m_ip1;
         m_ip1=m_ip2;
     }
+    xLast=x[n-1];
+    yLast=y[n-1];
+}
+
+marray<double,1> AkimaSpline::getAbscissas() const{
+	marray<double,1> x({segments.size()+1});
+	auto it=x.begin();
+	for(const auto& s : segments)
+		*(it++)=s.x;
+	x[segments.size()]=xLast;
+	return x;
+}
+
+marray<double,1> AkimaSpline::getOrdinates() const{
+	marray<double,1> y({segments.size()+1});
+	auto it=y.begin();
+	for(const auto& s : segments)
+		*(it++)=s.a0;
+	y[segments.size()]=yLast;
+	return y;
+}
+
+marray<double,1> AkimaSpline::getAbscissaDerivatives() const{
+	marray<double,1> d({segments.size()+1});
+	auto it=d.begin();
+	for(const auto& s : segments)
+		*(it++)=s.a1;
+	//this is the only one we don't have precalculated:
+	d[segments.size()]=segments.back().derivative(xLast);
+	return d;
+}
+
+void AkimaSpline::getAbscissaDerivatives(marray<double,1>& d) const{
+	d.resize(0,segments.size()+1);
+	auto it=d.begin();
+	for(const auto& s : segments)
+		*(it++)=s.a1;
+	//this is the only one we don't have precalculated:
+	d[segments.size()]=segments.back().derivative(xLast);
+}
+
+BiCubicInterpolator::BiCubicInterpolator(marray<double,2> data_, 
+                                         marray<double,1> xcoords_, 
+                                         marray<double,1> ycoords_):
+data(std::move(data_)),
+xcoords(std::move(xcoords_)),
+ycoords(std::move(ycoords_)),
+dzdx(data.get_extents(),detail::no_init),
+dzdy(data.get_extents(),detail::no_init),
+dzdxdy(data.get_extents(),detail::no_init)
+{	
+	if(xcoords.extent(0) != data.extent(1))
+		throw std::runtime_error("Number of x-coordinates does not match interpolation grid size");
+	if(ycoords.extent(0) != data.extent(0))
+		throw std::runtime_error("Number of y-coordinates does not match interpolation grid size");
+	
+	//compute derivatives at all tabulated points by spline interpolation
+	std::size_t iMax=data.extent(1);
+	std::size_t jMax=data.extent(0);
+	AkimaSpline spline;
+	
+	marray<double,1> xslice(xcoords.get_extents());
+	marray<double,1> yslice(ycoords.get_extents());
+	
+	for(std::size_t i=0; i!=iMax; i++){
+		for(std::size_t j=0; j!=jMax; j++)
+			yslice[j]=data[j][i];
+		spline.initialize(ycoords.get_data(),yslice.get_data(),jMax);
+		spline.getAbscissaDerivatives(yslice);
+		for(std::size_t j=0; j!=jMax; j++)
+			dzdy[j][i]=yslice[j];
+	}
+	
+	for(std::size_t j=0; j!=jMax; j++){
+		for(std::size_t i=0; i!=iMax; i++)
+			xslice[i]=data[j][i];
+		spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+		spline.getAbscissaDerivatives(xslice);
+		for(std::size_t i=0; i!=iMax; i++)
+			dzdx[j][i]=xslice[i];
+	}
+	
+	for(std::size_t j=0; j!=jMax; j++){
+		for(std::size_t i=0; i!=iMax; i++)
+			xslice[i]=dzdy[j][i];
+		spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+		spline.getAbscissaDerivatives(xslice);
+		for(std::size_t i=0; i!=iMax; i++)
+			dzdxdy[j][i]=xslice[i];
+	}
+}
+
+double BiCubicInterpolator::operator()(double x, double y) const{
+	if(data.empty())
+		return 0;
+	
+	//figure out which grid cell we are in
+	auto x_it=std::upper_bound(xcoords.begin(),xcoords.end(),x);
+	std::size_t i=x<xcoords[0] ? 0 : std::distance(xcoords.begin(),x_it)-1;
+	if(i==xcoords.extent(0)-1)
+		i--;
+	auto y_it=std::upper_bound(ycoords.begin(),ycoords.end(),y);
+	std::size_t j=y<ycoords[0] ? 0 : std::distance(ycoords.begin(),y_it)-1;
+	if(j==ycoords.extent(0)-1)
+		j--;
+	
+	//cell dimensions
+	double dx=xcoords[i+1]-xcoords[i];
+	double dy=ycoords[j+1]-ycoords[j];
+	//compute local coordinates
+	double t=(x-xcoords[i])/dx;
+	double u=(y-ycoords[j])/dy;
+	//Numbering scheme, following NR:
+	//   |        |   
+	//---3--------2--- y[j+1]
+	//   |        |   
+	//   |        | dy
+	//   |        |   
+	//---0--------1--- y[j+2]
+	//   |   dx   |   
+	//  x[i]    x[i+1]
+	double z[4]={
+		data[j  ][i  ],
+		data[j  ][i+1],
+		data[j+1][i+1],
+		data[j+1][i  ],
+	};
+	double dzdt[4]={
+		dzdx[j  ][i  ]*dx, // dt/dx=1/dx => dx/dt=dx, dz/dt=dz/dx*dx/dt=dz/dx*dx
+		dzdx[j  ][i+1]*dx,
+		dzdx[j+1][i+1]*dx,
+		dzdx[j+1][i  ]*dx,
+	};
+	double dzdu[4]={
+		dzdy[j  ][i  ]*dy, // du/dy=1/dy => dy/du=dx, dz/du=dz/dy*dy/du=dz/dy*dy
+		dzdy[j  ][i+1]*dy,
+		dzdy[j+1][i+1]*dy,
+		dzdy[j+1][i  ]*dy,
+	};
+	double dzdtdu[4]={
+		dzdxdy[j  ][i  ]*dx*dy, // d2z/dtdu = d2z/dxdy * dx/dt * dy/du = d2z/dxdy*dx*dy
+		dzdxdy[j  ][i+1]*dx*dy,
+		dzdxdy[j+1][i+1]*dx*dy,
+		dzdxdy[j+1][i  ]*dx*dy,
+	};
+	
+	double c0[4]={
+		z[0],
+		dzdu[0],
+		-3*z[0] + 3*z[3] - 2*dzdu[0] - dzdu[3],
+		2*z[0] - 2*z[3] + dzdu[0] + dzdu[3],
+	};
+	double c1[4]={
+		dzdt[0],
+		dzdtdu[0],
+		-3*dzdt[0] + 3*dzdt[3] - 2*dzdtdu[0] - dzdtdu[3],
+		2*dzdt[0] - 2*dzdt[3] + dzdtdu[0] + dzdtdu[3],
+	};
+	double c2[4]={
+		-3*z[0] + 3*z[1] - 2*dzdt[0] - dzdt[1],
+		-3*dzdu[0] + 3*dzdu[1] - 2*dzdtdu[0] - dzdtdu[1],
+		9*z[0] - 9*z[1] + 9*z[2] - 9*z[3] + 6*dzdt[0] + 3*dzdt[1] - 3*dzdt[2] - 6*dzdt[3] + 6*dzdu[0] - 6*dzdu[1] - 3*dzdu[2] + 3*dzdu[3] + 4*dzdtdu[0] + 2*dzdtdu[1] + dzdtdu[2] + 2*dzdtdu[3],
+		-6*z[0] + 6*z[1] - 6*z[2] + 6*z[3] - 4*dzdt[0] - 2*dzdt[1] + 2*dzdt[2] + 4*dzdt[3] - 3*dzdu[0] + 3*dzdu[1] + 3*dzdu[2] - 3*dzdu[3] - 2*dzdtdu[0] - dzdtdu[1] - dzdtdu[2] - 2*dzdtdu[3],
+	};
+	double c3[4]={
+		2*z[0] - 2*z[1] + dzdt[0] + dzdt[1],
+		2*dzdu[0] - 2*dzdu[1] + dzdtdu[0] + dzdtdu[1],
+		-6*z[0] + 6*z[1] - 6*z[2] + 6*z[3] - 3*dzdt[0] - 3*dzdt[1] + 3*dzdt[2] + 3*dzdt[3] - 4*dzdu[0] + 4*dzdu[1] + 2*dzdu[2] - 2*dzdu[3] - 2*dzdtdu[0] - 2*dzdtdu[1] - dzdtdu[2] - dzdtdu[3],
+		4*z[0] - 4*z[1] + 4*z[2] - 4*z[3] + 2*dzdt[0] + 2*dzdt[1] - 2*dzdt[2] - 2*dzdt[3] + 2*dzdu[0] - 2*dzdu[1] - 2*dzdu[2] + 2*dzdu[3] + dzdtdu[0] + dzdtdu[1] + dzdtdu[2] + dzdtdu[3],
+	};
+	
+	double result   = ((c3[3]*u+c3[2])*u+c3[1])*u+c3[0];
+	result=result*t + ((c2[3]*u+c2[2])*u+c2[1])*u+c2[0];
+	result=result*t + ((c1[3]*u+c1[2])*u+c1[1])*u+c1[0];
+	result=result*t + ((c0[3]*u+c0[2])*u+c0[1])*u+c0[0];
+	return result;
 }
     
 template<>

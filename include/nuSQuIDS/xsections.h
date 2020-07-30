@@ -72,6 +72,9 @@ class NeutrinoCrossSections{
       throw std::runtime_error("NeutrinoCrossSections::Error::DoubleDifferentialCrossSection is not implemented.");
       return 0;
     }
+    
+    virtual double AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
+    virtual double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
 };
 
 /// \class NullCrossSections
@@ -87,11 +90,11 @@ class NullCrossSections: public NeutrinoCrossSections {
     double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override { return 0;}
 };
 
-/// \class NeutrinoDISCrossSectionsFromTables
+/// \class NeutrinoDISCrossSectionsFromTables_V1
 /// \brief Tabulates and interpolates all cross sections for a given energy array.
 /// \details The cross section tables are supplied data/xsections/ and bilinear
 /// interpolation is performed on the logarithm of the energy.
-class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
+class NeutrinoDISCrossSectionsFromTables_V1 : public NeutrinoCrossSections {
     protected :
       /// \brief True if the class has being initialized
       bool is_init = false;
@@ -140,9 +143,9 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \param root the base file path
       void ReadText(std::string root);
     public :
-      virtual ~NeutrinoDISCrossSectionsFromTables();
+      virtual ~NeutrinoDISCrossSectionsFromTables_V1();
       /// \brief Default construct with built-in tables
-      NeutrinoDISCrossSectionsFromTables();
+      NeutrinoDISCrossSectionsFromTables_V1();
       /// \brief Construct with data from the given file(s)
       /// \details If the specified path is a file it will be assumed to be an
       ///          HDF5 file, otherwise it must be a prefix of several text files
@@ -197,7 +200,7 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \param path Either a path to a single HDF5 file which contains all
       ///             cross section data, or the base path for a set of text
       ///             files containing the various cross sections
-      NeutrinoDISCrossSectionsFromTables(std::string path);
+      NeutrinoDISCrossSectionsFromTables_V1(std::string path);
 
       /// \brief Returns the total neutrino cross section
       /// \details Used to interpolate the total cross sections.
@@ -225,6 +228,196 @@ class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
       /// \param basePath the base path name for the output files;
       ///                 suffixes will be automatically appended.
       void WriteText(std::string basePath) const;
+};
+
+/// \brief Interpolates tabulated DIS cross sections with cubic polynomials
+/// \details Total cross sections are stored and interpolated in double-log
+/// space, that is the base ten logarithm of the total cross section is 
+/// tabulated in the base ten logarithm of the incoming neutrino energy. The
+/// singly-differential cross section is uses the same axes, but its additional 
+/// axis for out-going lepton energy is tabulated linearly in energy above the 
+/// minimum tabulated incoming neutrino energy scaled by the difference in 
+/// incoming neutrino energy and the minimum tabulated energy:
+/// z = (E_out - E_min)/(E_in - E_min)
+/// This alternate variable has a domain of [0,1], which has the useful property
+/// that the physical boundary E_out <= E_in maps to z <= 1, (and E_out >= 0 
+/// becomes z >= 0), so the full space of a rectangular table can be utilized, 
+/// and interpolation does not need to address special cases of grid cells which 
+/// have only some bounding points in the physical region. A linear mapping is
+/// suitable because DIS cross sections have the helpful property of becoming 
+/// smooth and even near linear for E_out << E_in, so there is little need for 
+/// detailed tabulation around z = 0. Conversely, the largest contributions to 
+/// the cross section occur near E_out = E_in - epsilon, which region is better 
+/// sampled by a linear mapping than a logarithmic one. It is still advisable, 
+/// when computing the singly-differential cross sections, if the maximum of the
+/// cross section for a given E_in is between the last two samples in z to 
+/// replace the sample at z = 1 (whose value should formally be zero) with the 
+/// peak value. nuSQuiDS assumes implicitly that the cross section for 
+/// E_out = E_in is zero, and so will not use it explicitly, and at high E_in 
+/// where the cross section becomes sharply peaked, missing the peak between the 
+/// last to samples in z can lead to a severe and systematic under-estimate of
+/// the average cross section in that region, corresponding to an under-estimate
+/// of absorption. 
+class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
+protected:
+	/// \brief Minimum neutrino energy.
+	double Emin;
+	/// \brief Maximum neutrino energy.
+	double Emax;
+	///\brief Conversion factor from GeV to eV
+	const double GeV = 1.0e9;
+	
+	///Total cross section for charged-current neutrino interactions
+	AkimaSpline s_CC_nu;
+	///Total cross section for neutral-current neutrino interactions
+	AkimaSpline s_NC_nu;
+	///Total cross section for charged-current anti-neutrino interactions
+	AkimaSpline s_CC_nubar;
+	///Total cross section for neutral-current anti-neutrino interactions
+	AkimaSpline s_NC_nubar;
+	
+	///Singly-differential cross section for charged-current neutrino interactions
+	BiCubicInterpolator dsdy_CC_nu;
+	///Singly-differential cross section for neutral-current neutrino interactions
+	BiCubicInterpolator dsdy_NC_nu;
+	///Singly-differential cross section for charged-current anti-neutrino interactions
+	BiCubicInterpolator dsdy_CC_nubar;
+	///Singly-differential cross section for neutral-current anti-neutrino interactions
+	BiCubicInterpolator dsdy_NC_nubar;
+	
+	///Read a total cross section table from whitespace-separated text
+	///\param path the filesystem path from which to read input
+	///\return a tuple of a spline interpolating the tabulated data, the minimum
+	///        tabulated energy, and maximum tabulated energies. Energies are in
+	///        natural units. 
+	std::tuple<AkimaSpline,double,double> read1DInterpolationFromText(const std::string& path);
+	
+	///Read a singly-differential cross section table from whitespace-separated text
+	///\param path the filesystem path from which to read input
+	///\return a tuple of a bicubic interpolator for the tabulated data, the 
+	///        minimum tabulated energy, and maximum tabulated energy.
+	///        Energies are in natural units. 
+	std::tuple<BiCubicInterpolator,double,double> read2DInterpolationFromText(const std::string& path);
+	
+	///\brief Check whether a path refers to an HDF5 file
+	bool isHDF(const std::string& path);
+	
+public:
+	///Construct a set of cross sections from a default set of tables
+	NeutrinoDISCrossSectionsFromTables();
+
+	///Construct a set of cross sections from either ASCII text tables or an 
+	///HDF5 file. See readText and readHDF for descriptions of input formats. 
+	///\param pathOrPrefix either common prefix for the paths of a family of 
+	///                    text files or the path to a single HDF5 file
+	NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix);
+	
+	double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+	
+	double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+	
+	//Implementing this doesn't give any substantial benefit over the default implementation
+	//double AverageTotalCrossSection(double EnuMin, double EnuMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+	
+	double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+	
+	/// Read a set of cross sections from text files with a common path prefix. 
+	///
+	/// This will fail messily and leave the object in an inconsistent state if 
+	/// any file does not exist or has the wrong structure. 
+	///
+	/// The input files must have consistent names:
+	/// - ${prefix}nu_sigma_CC.dat : the total charged-current neutrino xs
+	/// - ${prefix}nu_sigma_NC.dat : the total neutral-current neutrino xs
+	/// - ${prefix}nubar_sigma_CC.dat : the total charged-current anti-neutrino xs
+	/// - ${prefix}nubar_sigma_NC.dat : the total neutral-current anti-neutrino xs
+	/// - ${prefix}nu_dsde_CC.dat : the singly-differential charged-current neutrino xs
+	/// - ${prefix}nu_dsde_NC.dat : the singly-differential neutral-current neutrino xs
+	/// - ${prefix}nubar_dsde_CC.dat : the singly-differential charged-current anti-neutrino xs
+	/// - ${prefix}nubar_dsde_NC.dat : the singly-differential neutral-current anti-neutrino xs
+	///
+	/// Each file must cover the same range of incoming neutrino energies, with 
+	/// at least three energies being sampled. 
+	/// Each total cross section file must contain two whitespace-separated
+	/// columns, incoming neutrino energy and cross section. Entries must be 
+	/// sorted in ascending order of incoming neutrino energy. Energies must be
+	/// expressed in GeV, and cross sections in square centimeters. 
+	/// Each singly-differential cross section file must have three columns: 
+	/// incoming neutrino energy, 'z', and cross section. Energies must be in
+	/// GeV and cross sections in square centimeters, as before. 'z' is a 
+	/// unitless variable which describes the out-going lepton energy. 
+	/// 'z' is defined as:
+	///     z = (E_out-E_min)/(E_in-E_min)
+	/// where E_min is the minimum tabulated incoming neutrino energy, E_in is
+	/// the incoming neutrino energy for the table entry, and E_out is the 
+	/// out-going lepton energy. Entries must be sorted in ascending order of
+	/// incoming neutrino energy, and ascending order of 'z' for matching
+	/// incoming energies. 'z' values must be uniformly sampled over the domain
+	/// [0,1], and the same numbers of entries must be present for all incoming
+	/// neutrino energies, i.e. the table must be rectangular. At least three 
+	/// values of 'z' must be sampled. 'z' is not well-defined for the lowest 
+	/// incoming neutrino energy in the table, E_in = E_min. This can be 
+	/// ignored, as there can be no tabulated entry with E_out < E_in for this 
+	/// energy (and thus a non-zero cross section), instead the same set of z 
+	/// values as for other energies should be used, each with a cross section 
+	/// of zero. 
+	///
+	///\param prefix the common filesystem path prefix for all input files
+	void readText(const std::string& prefix);
+	
+	/// Write out a set of text files in the format expected by ReadText. 
+	///\param prefix the path prefix from which each output file's name should 
+	///              be derived
+	void writeText(const std::string& prefix) const;
+	
+	/// Read a set of cross sections from an HDF5 file. 
+	///
+	/// This will fail messily and leave the object in an inconsistent state if 
+	/// the file has the wrong structure. 
+	///
+	/// The file must contain a minimum  of ten datasets:
+	/// - energies
+	/// - zs
+	/// - s_CC_nu
+	/// - s_NC_nu
+	/// - s_CC_nubar
+	/// - s_NC_nubar
+	/// - dsdy_CC_nu
+	/// - dsdy_NC_nu
+	/// - dsdy_CC_nubar
+	/// - dsdy_NC_nubar
+	///
+	/// energies and zs must be one dimensional datasets, containing the 
+	/// base-ten logarithm of the energy values (in electronvolts) and the 
+	/// values of the 'z' transformed variable used for the other eight tables.
+	/// The z variable is defined as:
+	///     z = (E_out-E_min)/(E_in-E_min)
+	/// where E_min is the minimum tabulated incoming neutrino energy, E_in is
+	/// the incoming neutrino energy for the table entry, and E_out is the 
+	/// out-going lepton energy. 
+	/// The values in energies and zs must be sorted in ascending order (and the
+	/// other tables must have been made to correspond to this). energies and zs
+	/// must each contain at least three distinct values. 
+	/// The s_{CC|NC}_{nu|nubar} tables must be one-dimensional datasets whose 
+	/// values are the base-ten logarithms of the total cross section, in square
+	/// centimeters, for the indicated current and impinging particle type. The
+	/// cross section values must be tabulated for the same energies that are 
+	/// contained in the energies dataset. 
+	/// The dsdy_{CC|NC}_{nu|nubar} tables must be two-dimensional datasets
+	/// whose values are the base-ten logarithms of the differential cross 
+	/// section with respect to y, in square centimeters, for the indicated 
+	/// current and impinging particle type. The dimensions of these datasets 
+	/// are energy and 'z', corresponding to the values in the energies and zs
+	/// datasets. Since 'z' is not well-defined for the lowest incoming neutrino 
+	/// energy in the tables, E_in = E_min, the row corresponding to this energy 
+	/// should contain a small value (but not negative infinity), which will 
+	/// never be used directly. -50, corresponding to a cross section of 1e-50 
+	/// cm^2 can be a good choice in practice. 
+	void readHDF(const std::string& path);
+	
+	/// Write out an HDF5 file in the format expected by ReadHDF. 
+	///\param path the path to which the output should be written
+	void writeHDF(const std::string& path, unsigned int compressionLevel=0) const;
 };
 
 /// \class NeutrinoGRCrossSection
