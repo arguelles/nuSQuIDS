@@ -179,9 +179,9 @@ NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"){}
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix){
 	if(isHDF(pathOrPrefix))
-		readHDF(pathOrPrefix);
+		ReadHDF(pathOrPrefix);
 	else
-		readText(pathOrPrefix);
+		ReadText(pathOrPrefix);
 }
 
 double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
@@ -253,7 +253,7 @@ double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection
 	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
 }
 
-void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
+void NeutrinoDISCrossSectionsFromTables::ReadText(const std::string& prefix){
 	double eMinTmp, eMaxTmp;
 	std::tie(s_CC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_CC.dat");
 	Emin=eMinTmp;
@@ -282,7 +282,7 @@ void NeutrinoDISCrossSectionsFromTables::readText(const std::string& prefix){
 		throw std::runtime_error(prefix+"nubar_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
 }
 
-void NeutrinoDISCrossSectionsFromTables::writeText(const std::string& prefix) const{
+void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) const{
 	auto write1D=[this](const AkimaSpline& data, const std::string& path){
 		std::ofstream outfile(path);
 		if(!outfile)
@@ -316,7 +316,7 @@ void NeutrinoDISCrossSectionsFromTables::writeText(const std::string& prefix) co
 	write2D(dsdy_NC_nubar,prefix+"nubar_dsde_NC.dat");
 }
 
-void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
+void NeutrinoDISCrossSectionsFromTables::ReadHDF(const std::string& path){
 	auto objectExists=[](hid_t loc_id, const char* name){
 		return H5Lexists(loc_id,name,H5P_DEFAULT)>0
 		  && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
@@ -361,7 +361,7 @@ void NeutrinoDISCrossSectionsFromTables::readHDF(const std::string& path){
 	}
 }
 
-void NeutrinoDISCrossSectionsFromTables::writeHDF(const std::string& path, unsigned int compressionLevel) const{
+void NeutrinoDISCrossSectionsFromTables::WriteHDF(const std::string& path, unsigned int compressionLevel) const{
 	using StoreType=float;
 	H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
 	writeArrayH5<StoreType>(h5file, "energies", dsdy_CC_nu.getXCoords(), compressionLevel);

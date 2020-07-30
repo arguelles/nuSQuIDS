@@ -363,12 +363,12 @@ public:
 	/// of zero. 
 	///
 	///\param prefix the common filesystem path prefix for all input files
-	void readText(const std::string& prefix);
+	void ReadText(const std::string& prefix);
 	
 	/// Write out a set of text files in the format expected by ReadText. 
 	///\param prefix the path prefix from which each output file's name should 
 	///              be derived
-	void writeText(const std::string& prefix) const;
+	void WriteText(const std::string& prefix) const;
 	
 	/// Read a set of cross sections from an HDF5 file. 
 	///
@@ -413,11 +413,16 @@ public:
 	/// should contain a small value (but not negative infinity), which will 
 	/// never be used directly. -50, corresponding to a cross section of 1e-50 
 	/// cm^2 can be a good choice in practice. 
-	void readHDF(const std::string& path);
+	void ReadHDF(const std::string& path);
 	
 	/// Write out an HDF5 file in the format expected by ReadHDF. 
 	///\param path the path to which the output should be written
-	void writeHDF(const std::string& path, unsigned int compressionLevel=0) const;
+	void WriteHDF(const std::string& path, unsigned int compressionLevel=0) const;
+
+  /// \brief Returns the minimum energy in [eV]
+  double GetEmin() const {return Emin;}
+  /// \brief Returns the maximum energy in [eV]
+  double GetEmax() const {return Emax;}
 };
 
 /// \class NeutrinoGRCrossSection
