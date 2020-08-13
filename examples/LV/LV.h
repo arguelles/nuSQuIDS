@@ -155,6 +155,24 @@ class nuSQUIDSLV: public nuSQUIDS {
       }
     }
 
+    // The functions below are needed due to some nusquids gymnastics.
+    void Set_initial_state(const marray<double,1>& v, Basis basis){
+      bool lvps = lv_parameters_set;
+      nuSQUIDS::Set_initial_state(v,basis);
+      lv_parameters_set = lvps;
+    }
+
+    void Set_initial_state(const marray<double,2>& v, Basis basis){
+      bool lvps = lv_parameters_set;
+      nuSQUIDS::Set_initial_state(v,basis);
+      lv_parameters_set = lvps;
+    }
+
+    void Set_initial_state(const marray<double,3>& v, Basis basis){
+      bool lvps = lv_parameters_set;
+      nuSQUIDS::Set_initial_state(v,basis);
+      lv_parameters_set = lvps;
+    }
 };
 
 } // close nusquids namespace
