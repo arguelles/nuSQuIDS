@@ -83,6 +83,8 @@ class nuSQUIDS: public squids::SQuIDS {
   // and thus evaluate expectation values.
   template<typename,typename>
   friend class nuSQUIDSAtm;
+  template<typename,typename>
+  friend class nuSQUIDSLayers;
 protected:
   /// \brief Sets the basis in which the problem will be solved.
   ///
@@ -1841,6 +1843,592 @@ class nuSQUIDSAtm {
     }
 };
 
+
+/*
+ * The following class provides a way to calculate the evolution at a collection
+ * of nodes, where for each node an array of distances and densities are given.
+ * 
+ * This class doesn't do any interpolation between nodes, since it is unaware of the
+ * spacial relations between them. It is possible, however, to pass an interpolated
+ * state and evaluate the probability for a given energy and time.
+ * 
+ * The intention for this class is to be used together with Python bindings, such that
+ * all of the layer calculation and interpolation of states is handled in Python.
+ */
+
+template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
+class nuSQUIDSLayers {
+  public:
+    using BaseSQUIDS = BaseType;
+  private:
+    /// \brief Internal units
+    const squids::Const units;
+    /// \brief Boolean that signals that an initial state has being set.
+    bool iinistate;
+    /// \brief Boolean that signals the object correct initialization.
+    bool inusquidslayers;
+    /// \brief A list of distances for each node.
+    marray<double,2> length_arr;
+    /// \brief A list of densities for each node.
+    marray<double,2> dens_arr;
+    /// \brief A list of electron fractions for each node.
+    marray<double,2> ye_arr;
+    /// \brief The energy of each node.
+    marray<double,1> en_arr;
+    
+    /// \brief Contains the nuSQUIDS objects for each node.
+    std::vector<BaseSQUIDS> nusq_array;
+    
+    /// \brief Contains the body of constant density for each layer in each node
+    std::vector< std::vector< std::shared_ptr<ConstantDensity>>> const_dens_array;
+    /// \brief Contains the Track for each layer in each node
+    std::vector< std::vector< std::shared_ptr<ConstantDensity::Track>>> const_dens_track_array;
+    /// \brief Contains the interaction information structure.
+    std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
+    /// \brief Contains the neutrino cross section object
+    std::shared_ptr<NeutrinoCrossSections> ncs;
+    /// \brief the number of threads to use when performing the evolution
+    unsigned int evalThreads;
+  public:
+    /***********************************************************************************
+     * CONSTRUCTORS
+    *************************************************************************************/
+
+    /// \brief Basic constructor.
+    /// @param costh_array One dimensional array containing zenith angles to be calculated.
+    /// @param energy_min Minimum neutrino energy value [ev].
+    /// @param energy_max Maximum neutrino energy value [eV].
+    /// @param energy_div Number of energy divisions.
+    /// @param numneu Number of neutrino flavors.
+    /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
+    /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
+    template<typename... ArgTypes>
+    nuSQUIDSLayers(marray<double,2> length_arr,
+                   marray<double,2> dens_arr,
+                   marray<double,2> ye_arr,
+                   marray<double,1> en_arr,
+                   ArgTypes&&... args):
+    length_arr(length_arr),
+    dens_arr(dens_arr),
+    ye_arr(ye_arr),
+    en_arr(en_arr),
+    evalThreads(1)
+    {
+      for (int i = 0; i < length_arr.extent(0); i++){
+        std::vector< std::shared_ptr<ConstantDensity>> vdens;
+        std::vector< std::shared_ptr<ConstantDensity::Track>> vtrk;
+    
+        for (int j = 0; j < length_arr.extent(1); j++){
+          vdens.push_back(std::make_shared<ConstantDensity>(dens_arr[i][j], ye_arr[i][j]));
+          vtrk.push_back(std::make_shared<ConstantDensity::Track>(length_arr[i][j]));
+        }
+        const_dens_array.push_back(vdens);
+        const_dens_track_array.push_back(vtrk);
+      }
+  
+      // construct nusquids objects
+      for (int i = 0; i < length_arr.extent(0); i++){
+        nusq_array.emplace_back(args...);
+        nusq_array.back().Set_E(en_arr[i]);
+        // Set body and track to the first layer of the array of layers 
+        // corresponding to this particular nusquids object. This is necessary
+        // because it is not allowed to set an initial state without setting
+        // body and track first.
+        nusq_array.back().Set_Body(const_dens_array[i][0]);
+        nusq_array.back().Set_Track(const_dens_track_array[i][0]);
+      }
+      ncs=nusq_array.front().GetNeutrinoCrossSections();
+      
+      inusquidslayers = true;
+    }
+
+    /// \brief Move constructor.
+    nuSQUIDSLayers(nuSQUIDSLayers&& other):
+    iinistate(other.iinistate),
+    inusquidslayers(other.inusquidslayers),
+    length_arr(std::move(other.length_arr)),
+    dens_arr(std::move(other.dens_arr)),
+    ye_arr(std::move(other.ye_arr)),
+    en_arr(std::move(other.en_arr)),
+    nusq_array(std::move(other.nusq_array)),
+    const_dens_array(std::move(other.const_dens_array)),
+    const_dens_track_array(std::move(other.const_dens_track_array)),
+    int_struct(std::move(other.int_struct)),
+    ncs(std::move(other.ncs)),
+    evalThreads(other.evalThreads)
+    {
+      other.inusquidslayers = false;
+    }
+
+    //***************************************************************
+    ///\brief Move assigns a nuSQUIDSLayers object from an existing object
+    nuSQUIDSLayers& operator=(nuSQUIDSLayers&& other){
+      if(&other==this)
+        return(*this);
+
+      iinistate = other.iinistate;
+      inusquidslayers = other.inusquidslayers;
+      length_arr = std::move(other.length_arr);
+      dens_arr = std::move(other.dens_arr);
+      ye_arr = std::move(other.ye_arr);
+      en_arr = std::move(other.en_arr);
+      nusq_array = std::move(other.nusq_array);
+      const_dens_array = std::move(other.const_dens_array);
+      const_dens_track_array = std::move(other.const_dens_track_array);
+      int_struct = std::move(other.int_struct);
+      ncs = std::move(other.ncs);
+      evalThreads = other.evalThreads;
+
+      // initial nusquids object render useless
+      other.inusquidslayers = false;
+
+      return(*this);
+    }
+    /***********************************************************************************
+     * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
+    *************************************************************************************/
+    
+    /// \brief Sets same initial neutrino state for all nodes
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state The size corresponds to the number of neutrino flavors. If
+    /// the basis is flavor then the entries are interpret as nu_e, nu_mu, nu_tau,
+    /// nu_sterile_1, ..., nu_sterile_n, while if the mass basis is used then the first
+    /// entries correspond to the active mass eigenstates.
+    void Set_initial_state(const marray<double,1>& ini_flux, Basis basis=flavor){
+      unsigned int i = 0;
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_initial_state(ini_flux, basis);
+      }
+      iinistate = true;
+    }
+    
+    /// \brief Sets the initial state when only considering neutrinos or antineutrinos
+    /// @param ini_state Initial neutrino state.
+    /// @param basis Representation of the neutrino state either flavor or mass.
+    /// \details \c ini_state first dimension lenght has to be equal to the number of
+    /// nodes, the second dimension corresponds to the number of neutrino flavors. If
+    /// the basis is flavor then the entries are interpret as nu_e, nu_mu, nu_tau,
+    /// nu_sterile_1, ..., nu_sterile_n, while if the mass basis is used then the first
+    /// entries correspond to the active mass eigenstates.
+    void Set_initial_state(const marray<double,2>& ini_flux, Basis basis=flavor){
+      if(ini_flux.extent(0) != nusq_array.size())
+        throw std::runtime_error("nuSQUIDSLayers::Error::First dimension of input must equal number of nodes.");
+      unsigned int i = 0;
+      for(BaseSQUIDS& nsq : nusq_array){
+        //marray<double,1> state{ini_flux.extent(2)};
+        //for(size_t j=0; j<ini_flux.extent(2); j++)
+        //  slice[j]=ini_flux[i][j];
+        //nsq.Set_initial_state(slice,basis);
+        nsq.Set_initial_state(ini_flux[i++],basis);
+      }
+      iinistate = true;
+    }
+    // TODO: initialize both (anti)neutrinos
+
+    /// \brief Evolves the system.
+    void EvolveState(){
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
+      if(not inusquidslayers)
+        throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
+
+      if(nusq_array.front().GetUseInteractions()){
+        // setting the interaction structure also on the  main object
+        nusq_array.front().InitializeInteractions();
+        int_struct = nusq_array.front().GetInteractionStructure();
+        for(BaseSQUIDS& nsq : nusq_array){
+          nsq.int_struct=int_struct; //copy identical cross section data
+          nsq.InitializeInteractions(); //still need to initialize intermediate buffers
+        }
+      }
+
+      if(evalThreads==1){
+        std::cout << "using single task mode" << std::endl;
+        for (int n = 0; n < length_arr.extent(0); n++){
+          std::cout << "evolving nusq object " << n << std::endl;
+          for (int i = 0; i < length_arr.extent(1); i++){
+            nusq_array[n].Set_Body(const_dens_array[n][i]);
+            nusq_array[n].Set_Track(const_dens_track_array[n][i]);
+            nusq_array[n].EvolveState();
+          }
+        }
+      }
+      else{
+        std::cout << "using " << evalThreads << " threads" << std::endl;
+        for (int i = 0; i < length_arr.extent(1); i++){
+          ThreadPool tpool(evalThreads);
+          std::vector<std::future<void>> tasks;
+          tasks.reserve(nusq_array.size());
+          std::cout << "working on layer " << i << std::endl;
+          for(int n = 0; n < nusq_array.size(); n++){
+            nusq_array[n].Set_Body(const_dens_array[n][i]);
+            nusq_array[n].Set_Track(const_dens_track_array[n][i]);
+          }
+          for(nuSQUIDS& nsq : nusq_array)
+             tasks.emplace_back(tpool.enqueue([&](){ nsq.EvolveState(); }));
+          for(const auto& task : tasks){
+            task.wait();
+          }
+        }
+        ////////////////////
+        // It would probably be more efficient if every thread could do the entire 
+        // evolution through all layers, rather than waiting for each layer to finish
+        // in all nuSQuIDS calculators. I was trying to do it below, but it doesn't work...
+        // If you have better C++ skills than me, you can probably make it work. 
+        //
+        // std::cout << "using " << evalThreads << " threads" << std::endl;
+        // ThreadPool tpool(evalThreads);
+        // std::vector<std::future<void>> tasks;
+        // tasks.reserve(nusq_array.size());
+        // 
+        // for(int n = 0; n < nusq_array.size(); n++){
+        //   nuSQUIDS& nus = nusq_array[n];
+        //   std::vector< std::shared_ptr<ConstantDensity>> vdens = const_dens_array[n];
+        //   std::vector< std::shared_ptr<ConstantDensity::Track>> vtrk = const_dens_track_array[n];
+        //   
+        //   tasks.emplace_back(tpool.enqueue([&](){
+        //     for (int i = 0; i < vdens.size(); i++){
+        //       nus.Set_Body(vdens[i]);
+        //       nus.Set_Track(vtrk[i]);
+        //       nus.EvolveState();
+        //     }
+        //   }));
+        // }
+        // for(const auto& task : tasks){
+        //   task.wait();
+        // }
+        ///////////////////
+      }
+    }
+    /// \brief Returns the flavor composition at a node.
+    /// @param flv Neutrino flavor.
+    /// @param idx Node index.
+    double EvalFlavorAtNode(unsigned int flv, unsigned int idx) const {
+      // here the energy enters in eV
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
+      if(not inusquidslayers)
+        throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
+      if(idx >= nusq_array.size())
+        throw std::runtime_error("nuSQUIDSLayers::Error::Index out of range.");
+      
+      return nusq_array[idx].EvalFlavor(flv);
+    }
+
+    /// \brief Returns the flavor composition with a given (interpolated) state
+    /// @param flv Neutrino flavor.
+    /// @param time Total traversed distance (identical with time).
+    /// @param enu Neutrino energy [eV].
+    /// @param state Interaction picture state to calculate the trace with.
+    double EvalWithState(unsigned int flv, double time, double enu, marray<double,1> state) const {
+      // here the energy enters in eV
+      if(not iinistate)
+        throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
+      if(not inusquidslayers)
+        throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
+
+      // need to convert marray from input into standard vector
+      // TODO: Is there a better way?
+      std::vector<double> state_vector;
+      state_vector.reserve(state.extent(0));
+      for (int i=0; i<state.extent(0); i++){
+        state_vector.push_back(state[i]);
+      }
+      // only neutrino or antineutrino mode: rho is always zero
+      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, 0);
+      // initialize SU_vector object from given components
+      squids::SU_vector rho_int = squids::SU_vector(state_vector);
+      
+      // preevolution buffer
+      // This contains all the evaluated trigonometric functions in an array.
+      std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
+      // TODO: Enable averaging if required
+      H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
+      // rho is again always zero
+      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv, 0).Evolve(evol_buffer.get());
+
+      double phi=squids::SUTrace<squids::detail::AlignedStorage>(rho_int, evol_proj);
+      
+      return phi;
+    }
+    
+    // TODO: better to use vectors?
+    marray<double,2> GetStatesArr(){
+      marray<double,2> states {GetNumNodes(),GetNumNeu()*GetNumNeu()};
+      for(int i=0; i<nusq_array.size(); i++){
+        std::vector<double> state_vec = nusq_array[i].GetState(0, 0).GetComponents();
+        for(int j=0; j<state_vec.size(); j++)
+          states[i][j] = state_vec[j];
+      }
+      return states;
+    }
+    
+    // TODO: HDF5 capability
+
+    /// \brief Sets the mixing parameters to default.
+    void Set_MixingParametersToDefault(){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_MixingParametersToDefault();
+      }
+    }
+
+    /// \brief Sets the mixing angle th_ij.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Angle to use in radians.
+    /// \details Sets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    void Set_MixingAngle(unsigned int i, unsigned int j,double angle){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_MixingAngle(i,j,angle);
+      }
+    }
+
+    /// \brief Returns the mixing angle th_ij in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the neutrino mixing angle. In our zero-based convention, e.g., the th_12 is i = 0, j = 1.,etc.
+    double Get_MixingAngle(unsigned int i, unsigned int j) const{
+      return nusq_array[0].Get_MixingAngle(i,j);
+    }
+
+    /// \brief Sets the CP phase for the ij-rotation.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// @param angle Phase to use in radians.
+    /// \details Sets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    void Set_CPPhase(unsigned int i, unsigned int j,double angle){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_CPPhase(i,j,angle);
+      }
+    }
+
+    /// \brief Returns the CP phase of the ij-rotation in radians.
+    /// @param i the (zero-based) index of the first state
+    /// @param j the (zero-based) index of the second state
+    ///              must be larger than \c i.
+    /// \details Gets the CP phase for the ij-rotation. In our zero-based convention, e.g., the delta_13 = delta_CP  is i = 0, j = 2.,etc.
+    double Get_CPPhase(unsigned int i, unsigned int j) const{
+      return nusq_array[0].Get_CPPhase(i,j);
+    }
+
+    /// \brief Sets the square mass difference with respect to first mass eigenstate
+    /// @param i the (zero-based) index of the second state
+    ///              must be larger than \c 0.
+    /// @param sq Square mass difference in eV^2.
+    /// \details Sets square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    void Set_SquareMassDifference(unsigned int i,double sq){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_SquareMassDifference(i,sq);
+      }
+    }
+
+    /// \brief Returns the square mass difference between state-i and the first mass eigenstate.
+    /// @param i the (zero-based) index of the first state
+    ///              must be larger than \c i.
+    /// \details Returns square mass difference with respect to the first mass eigenstate. In our zero-based convention, e.g., the \f$\Delta m^2_{12}\f$ corresponds to (i = 1),etc.
+    double Get_SquareMassDifference(unsigned int i) const{
+      return nusq_array[0].Get_SquareMassDifference(i);
+    }
+
+    /// \brief Set the initial integration step size
+    /// \param h initial step size
+    void Set_h(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h(h);
+    }
+    
+    /// \brief Set the initial integration step size for a single energy node
+    /// \param h initial step size
+    /// \param idx energy node index
+    void Set_h(double h, unsigned int idx){
+      nusq_array[idx].Set_h(h);
+    }
+  
+    /// \brief Set the maximum integration step size
+    /// \param h maximum step size
+    void Set_h_max(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h_max(h);
+    }
+  
+    /// \brief Set the maximum integration step size for a single node
+    /// \param h maximum step size
+    /// \param idx node index
+    void Set_h_max(double h, unsigned int idx){
+      nusq_array[idx].Set_h_max(h);
+    }
+  
+    /// \brief Set the minimum integration step size
+    /// \param h minimum step size
+    void Set_h_min(double h){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_h_min(h);
+    }
+    
+    /// \brief Set the minimum integration step size for a single node
+    /// \param h minimum step size
+    /// \param idx energy index
+    void Set_h_min(double h, unsigned int idx){
+      nusq_array[idx].Set_h_min(h);
+    }
+
+    /// \brief Set the allowed absolute numerical error
+    /// \param eps maximum allowed error
+    void Set_abs_error(double eps){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_abs_error(eps);
+    }
+  
+    /// \brief Set the allowed absolute numerical error for a single node
+    /// \param eps maximum allowed error
+    /// \param idx energy index
+    void Set_abs_error(double eps, unsigned int idx){
+      nusq_array[idx].Set_abs_error(eps);
+    }
+
+    /// \brief Set the allowed relative numerical error
+    /// \param eps maximum allowed error
+    void Set_rel_error(double eps){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_rel_error(eps);
+    }
+  
+    /// \brief Set the allowed relative numerical error for a single node
+    /// \param eps maximum allowed error
+    /// \param idx node index
+    void Set_rel_error(double eps, unsigned int idx){
+      nusq_array[idx].Set_rel_error(eps);
+    }
+
+    /// \brief Sets the GSL solver
+    /// @param opt GSL stepper function.
+    void Set_GSL_step(gsl_odeiv2_step_type const * opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_GSL_step(opt);
+      }
+    }
+
+    // TODO: enable progress bar
+
+    /// \brief Returns the interaction structure.
+    std::shared_ptr<const nuSQUIDS::InteractionStructure> GetInteractionStructure() const {
+      return int_struct;
+    }
+
+    /// \brief Returns number of nodes.
+    size_t GetNumNodes() const{
+      return nusq_array.size();
+    }
+
+    /// \brief Returns number of layers.
+    size_t GetNumLayers() const{
+      return length_arr.extent(1);
+    }
+
+    /// \brief Returns the number of neutrino flavors.
+    unsigned int GetNumNeu() const{
+      return nusq_array[0].GetNumNeu();
+    }
+
+    /// \brief Returns the number of rho equations.
+    unsigned int GetNumRho() const{
+      return nusq_array[0].GetNumRho();
+    }
+
+    /// \brief Returns the nuSQUIDSBase object for ci-th node.
+    BaseSQUIDS& GetnuSQuIDS(unsigned int ci) {
+      if(ci >= nusq_array.size())
+        throw std::runtime_error("nuSQUIDSLayers::GetnuSQuIDS: input index out of range.");
+      return nusq_array[ci];
+    }
+
+    /// \brief Returns the vector of nuSQUIDSBase objects.
+    std::vector<BaseSQUIDS>& GetnuSQuIDS() {
+      return nusq_array;
+    }
+
+    /// \brief Toggles tau regeneration on and off.
+    /// @param opt If \c true tau regeneration will be considered.
+    void Set_TauRegeneration(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_TauRegeneration(opt);
+      }
+    }
+	
+    void Set_GlashowResonance(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_GlashowResonance(opt);
+      }
+    }
+
+    /// \brief Toggles neutrino oscillations on and off.
+    /// @param opt If \c true neutrino oscillations will be considered.
+    void Set_IncludeOscillations(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_IncludeOscillations(opt);
+      }
+    }
+
+    /// \brief Toggles if non-hard processes constant density fast evolution will be used.
+    /// \param opt If \c true fast evolution will be attempted on constatnt density.
+    void Set_AllowConstantDensityOscillationOnlyEvolution(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_AllowConstantDensityOscillationOnlyEvolution(opt);
+      }
+    }
+
+    /// \brief Toggles positivization of the flux.
+    /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
+    void Set_PositivityConstrain(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_PositivityConstrain(opt);
+      }
+    }
+    /// \brief Stes the step upon which the positivity correction would be apply.
+    /// @param step The step upon which the positivization will take place.
+    void Set_PositivityConstrainStep(double step){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_PositivityConstrainStep(step);
+      }
+    }
+  
+    /// \brief Set the number of threads used for evolution.
+    ///
+    /// \param nThreads the number of execution threads EvolveState should use.
+    /// If zero, use an automatic, system defined number.
+    void Set_EvalThreads(unsigned int nThreads){
+      evalThreads=nThreads;
+      if(evalThreads==0){ //if the user wants automatic selection
+        evalThreads=std::thread::hardware_concurrency();
+        if(evalThreads==0) //if autodetection failed
+          evalThreads=1;
+      }
+    }
+  
+    /// \brief Get the number of threads used for evolution.
+    ///
+    /// \return The number of execution threads EvolveState should use.
+    unsigned int Get_EvalThreads() const{
+      return(evalThreads);
+    }
+
+    /// \brief Returns the neutrino interaction cross sections
+    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections(){
+      return(ncs);
+    }
+    
+    /// \brief Sets the neutrino interaction cross sections
+    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs){
+      ncs=xs;
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.SetNeutrinoCrossSections(ncs);
+    }
+};
 
 } // close namespace
 #endif
