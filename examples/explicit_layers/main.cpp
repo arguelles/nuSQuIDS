@@ -85,5 +85,25 @@ int main(){
     }
     std::cout << std::endl;
   }
+  
+  // The following demonstrates evaluation with a given interaction picture state.
+  // We just use the states as they are computed at the nodes, but in real life we
+  // would do some sort of interpolation externally.
+  std::cout << "Evaluating with states:" << std::endl;
+  marray<double,1> summed_lengths = lengths.sum(1);
+  
+  for (int n = 0; n < lengths.extent(0); n ++){
+    std::cout << n << ": ";
+    for(int i = 0; i < 3; i++){
+      // Is there no way to convert the slice more easily?
+      marray<double,1> state {states.extent(1)};
+      for (int j=0; j<state.extent(0); j++)
+        state[j] = states[n][j];
+      std::cout << nus_layer.EvalWithState(
+        i, summed_lengths[n], 10.*units.GeV, state
+      ) << " ";
+    }
+    std::cout << std::endl;
+  }
   return 0;
 }
