@@ -1929,6 +1929,8 @@ class nuSQUIDSLayers {
   
       // construct nusquids objects
       for (int i = 0; i < length_arr.extent(0); i++){
+        // TODO Currently, there is no constructor for single energy mode with 
+        // interactions, so `iinteraction` won't work.
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_E(en_arr[i]);
         // Set body and track to the first layer of the array of layers 
@@ -2017,11 +2019,13 @@ class nuSQUIDSLayers {
         throw std::runtime_error("nuSQUIDSLayers::Error::First dimension of input must equal number of nodes.");
       unsigned int i = 0;
       for(BaseSQUIDS& nsq : nusq_array){
-        //marray<double,1> state{ini_flux.extent(2)};
-        //for(size_t j=0; j<ini_flux.extent(2); j++)
-        //  slice[j]=ini_flux[i][j];
-        //nsq.Set_initial_state(slice,basis);
-        nsq.Set_initial_state(ini_flux[i++],basis);
+        // marrays don't do this conversion for you, you can't just pass 
+        // ini_flux[i] as a state argument.
+        marray<double,1> slice{ini_flux.extent(2)};
+        for(size_t j=0; j<ini_flux.extent(2); j++)
+          slice[j]=ini_flux[i][j];
+        nsq.Set_initial_state(slice,basis);
+        i++;
       }
       iinistate = true;
     }
