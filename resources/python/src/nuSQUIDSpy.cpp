@@ -136,6 +136,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSAtm");
+  RegisterBasicLayerNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSLayers");
 
   class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>, boost::noncopyable >("NeutrinoCrossSections", no_init);
 

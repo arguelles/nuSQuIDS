@@ -244,6 +244,30 @@ static void wrap_nusqatm_Set_GSL_STEP(nuSQUIDSAtm<BaseType>* nusq, GSL_STEP_FUNC
   }
 }
 
+template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
+static void wrap_nusqlayer_Set_GSL_STEP(nuSQUIDSLayers<BaseType>* nusq, GSL_STEP_FUNCTIONS step_enum){
+  switch(step_enum){
+    case GSL_STEP_RK2:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk2);
+      break;
+    case GSL_STEP_RK4:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk4);
+      break;
+    case GSL_STEP_RKF45:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkf45);
+      break;
+    case GSL_STEP_RKCK:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rkck);
+      break;
+    case GSL_STEP_RK8PD:
+      nusq->Set_GSL_step(gsl_odeiv2_step_rk8pd);
+      break;
+    case GSL_STEP_MSADAMS:
+      nusq->Set_GSL_step(gsl_odeiv2_step_msadams);
+      break;
+  }
+}
+
 // overloaded function macro template creator //
 #define MAKE_OVERLOAD_TEMPLATE(name, fname, min_args, max_args) \
 template<typename T> \
@@ -419,4 +443,68 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
     }
 };
 
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_Set_initial_state,Set_initial_state,1,2)
+
+// registration for explicit layers template
+template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
+  struct RegisterBasicLayerNuSQuIDSPythonBindings {
+    const std::string class_label;
+    std::shared_ptr<class_<nuSQUIDSLayers<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSLayers<BaseType>>>> class_object;
+    RegisterBasicLayerNuSQuIDSPythonBindings(std::string class_label){
+      class_object = std::make_shared<class_<nuSQUIDSLayers<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSLayers<BaseType>>>>(class_label.c_str(), no_init);
+
+      class_object->def(init<marray<double,2>,marray<double,2>,marray<double,2>,marray<double,1>,unsigned int,NeutrinoType>(args("lengths", "densities", "ye", "energies","numneu","NT")));
+      
+      //class_object->def(init<marray<double,2>,marray<double,2>,marray<double,2>,marray<double,1>,unsigned int,NeutrinoType,bool>(args("lengths", "densities", "ye", "energies","numneu","NT","iinteraction")));
+      //class_object->def(init<marray<double,2>,marray<double,2>,marray<double,2>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<NeutrinoCrossSections>>(args("lengths", "densities", "ye", "energies","numneu","NT","iinteraction","ncs")));
+      //class_object->def(init<std::string>(args("filename")));
+      class_object->def("EvolveState",&nuSQUIDSLayers<BaseType>::EvolveState);
+      class_object->def("Set_TauRegeneration",&nuSQUIDSLayers<BaseType>::Set_TauRegeneration);
+      class_object->def("EvalFlavorAtNode",&nuSQUIDSLayers<BaseType>::EvalFlavorAtNode);
+      class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
+      class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
+      class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
+      // class_object->def("WriteStateHDF5",&nuSQUIDSLayers<BaseType>::WriteStateHDF5);
+      // class_object->def("ReadStateHDF5",&nuSQUIDSLayers<BaseType>::ReadStateHDF5);
+      class_object->def("Set_MixingAngle",&nuSQUIDSLayers<BaseType>::Set_MixingAngle);
+      class_object->def("Get_MixingAngle",&nuSQUIDSLayers<BaseType>::Get_MixingAngle);
+      class_object->def("Set_CPPhase",&nuSQUIDSLayers<BaseType>::Set_CPPhase);
+      class_object->def("Get_CPPhase",&nuSQUIDSLayers<BaseType>::Get_CPPhase);
+      class_object->def("Set_SquareMassDifference",&nuSQUIDSLayers<BaseType>::Set_SquareMassDifference);
+      class_object->def("Get_SquareMassDifference",&nuSQUIDSLayers<BaseType>::Get_SquareMassDifference);
+      class_object->def("Set_h",(void(nuSQUIDSLayers<BaseType>::*)(double))&nuSQUIDSLayers<BaseType>::Set_h);
+      class_object->def("Set_h",(void(nuSQUIDSLayers<BaseType>::*)(double,unsigned int))&nuSQUIDSLayers<BaseType>::Set_h);
+      class_object->def("Set_h_max",(void(nuSQUIDSLayers<BaseType>::*)(double))&nuSQUIDSLayers<BaseType>::Set_h_max);
+      class_object->def("Set_h_max",(void(nuSQUIDSLayers<BaseType>::*)(double,unsigned int))&nuSQUIDSLayers<BaseType>::Set_h_max);
+      class_object->def("Set_h_min",(void(nuSQUIDSLayers<BaseType>::*)(double))&nuSQUIDSLayers<BaseType>::Set_h_min);
+      class_object->def("Set_h_min",(void(nuSQUIDSLayers<BaseType>::*)(double,unsigned int))&nuSQUIDSLayers<BaseType>::Set_h_min);
+      //class_object->def("Set_ProgressBar",&nuSQUIDSLayers<BaseType>::Set_ProgressBar);
+      class_object->def("Set_MixingParametersToDefault",&nuSQUIDSLayers<BaseType>::Set_MixingParametersToDefault);
+      class_object->def("Set_GSL_step",wrap_nusqlayer_Set_GSL_STEP<BaseType>);
+      class_object->def("Set_rel_error",(void(nuSQUIDSLayers<BaseType>::*)(double))&nuSQUIDSLayers<BaseType>::Set_rel_error);
+      class_object->def("Set_rel_error",(void(nuSQUIDSLayers<BaseType>::*)(double, unsigned int))&nuSQUIDSLayers<BaseType>::Set_rel_error);
+      class_object->def("Set_abs_error",(void(nuSQUIDSLayers<BaseType>::*)(double))&nuSQUIDSLayers<BaseType>::Set_abs_error);
+      class_object->def("Set_abs_error",(void(nuSQUIDSLayers<BaseType>::*)(double, unsigned int))&nuSQUIDSLayers<BaseType>::Set_abs_error);
+      class_object->def("GetNumNeu",&nuSQUIDSLayers<BaseType>::GetNumNeu);
+      class_object->def("GetNumRho",&nuSQUIDSLayers<BaseType>::GetNumRho);
+      class_object->def("GetnuSQuIDS",(std::vector<BaseType>&(nuSQUIDSLayers<BaseType>::*)())&nuSQUIDSLayers<BaseType>::GetnuSQuIDS,boost::python::return_internal_reference<>());
+      class_object->def("GetnuSQuIDS",(BaseType&(nuSQUIDSLayers<BaseType>::*)(unsigned int))&nuSQUIDSLayers<BaseType>::GetnuSQuIDS,boost::python::return_internal_reference<>());
+      // TODO Do we want to handle neutrinos and antineutrinos at the same time?
+      class_object->def("Set_initial_state",(void(nuSQUIDSLayers<BaseType>::*)(const marray<double,1>&, Basis))&nuSQUIDSLayers<BaseType>::Set_initial_state,nuSQUIDSLayers_Set_initial_state<nuSQUIDSLayers<BaseType>>());
+      class_object->def("Set_initial_state",(void(nuSQUIDSLayers<BaseType>::*)(const marray<double,2>&, Basis))&nuSQUIDSLayers<BaseType>::Set_initial_state,nuSQUIDSLayers_Set_initial_state<nuSQUIDSLayers<BaseType>>());
+      class_object->def("Set_IncludeOscillations",&nuSQUIDSLayers<BaseType>::Set_IncludeOscillations);
+      class_object->def("Set_GlashowResonance",&nuSQUIDSLayers<BaseType>::Set_GlashowResonance);
+      class_object->def("Set_TauRegeneration",&nuSQUIDSLayers<BaseType>::Set_TauRegeneration);
+      class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&nuSQUIDSLayers<BaseType>::Set_AllowConstantDensityOscillationOnlyEvolution);
+      class_object->def("Set_PositivyConstrain",&nuSQUIDSLayers<BaseType>::Set_PositivityConstrain);
+      class_object->def("Set_PositivyConstrainStep",&nuSQUIDSLayers<BaseType>::Set_PositivityConstrainStep);
+      class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
+      class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
+      class_object->def("SetNeutrinoCrossSections",&nuSQUIDSLayers<BaseType>::SetNeutrinoCrossSections);
+      class_object->def("GetNeutrinoCrossSections",&nuSQUIDSLayers<BaseType>::GetNeutrinoCrossSections);
+    }
+    std::shared_ptr<class_<nuSQUIDSLayers<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSLayers<BaseType>>>> GetClassObject() {
+      return class_object;
+    }
+};
 #endif
