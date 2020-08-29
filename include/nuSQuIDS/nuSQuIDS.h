@@ -2049,9 +2049,9 @@ class nuSQUIDSLayers {
       }
 
       if(evalThreads==1){
-        std::cout << "using single task mode" << std::endl;
+        //std::cout << "using single task mode" << std::endl;
         for (int n = 0; n < length_arr.extent(0); n++){
-          std::cout << "evolving nusq object " << n << std::endl;
+          //std::cout << "evolving nusq object " << n << std::endl;
           for (int i = 0; i < length_arr.extent(1); i++){
             nusq_array[n].Set_Body(const_dens_array[n][i]);
             nusq_array[n].Set_Track(const_dens_track_array[n][i]);
@@ -2060,12 +2060,12 @@ class nuSQUIDSLayers {
         }
       }
       else{
-        std::cout << "using " << evalThreads << " threads" << std::endl;
+        //std::cout << "using " << evalThreads << " threads" << std::endl;
         for (int i = 0; i < length_arr.extent(1); i++){
           ThreadPool tpool(evalThreads);
           std::vector<std::future<void>> tasks;
           tasks.reserve(nusq_array.size());
-          std::cout << "working on layer " << i << std::endl;
+          //std::cout << "working on layer " << i << std::endl;
           for(int n = 0; n < nusq_array.size(); n++){
             nusq_array[n].Set_Body(const_dens_array[n][i]);
             nusq_array[n].Set_Track(const_dens_track_array[n][i]);
