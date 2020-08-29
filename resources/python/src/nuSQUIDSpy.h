@@ -461,6 +461,7 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("EvolveState",&nuSQUIDSLayers<BaseType>::EvolveState);
       class_object->def("Set_TauRegeneration",&nuSQUIDSLayers<BaseType>::Set_TauRegeneration);
       class_object->def("EvalFlavorAtNode",&nuSQUIDSLayers<BaseType>::EvalFlavorAtNode);
+      class_object->def("GetStates",&nuSQUIDSLayers<BaseType>::GetStatesArr);
       class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
