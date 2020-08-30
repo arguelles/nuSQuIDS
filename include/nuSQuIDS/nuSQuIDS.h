@@ -1878,7 +1878,11 @@ class nuSQUIDSLayers {
     
     /// \brief Contains the nuSQUIDS objects for each node.
     std::vector<BaseSQUIDS> nusq_array;
-    
+    // The following only applies if constant density mode was used. In that case,
+    // the entire system is rotated to the mass basis and evolved with the full
+    // Hamiltonian.
+    /// \brief Evolve projectors with full Hamiltonian
+    bool use_full_hamiltonian_for_projector_evolution;
     /// \brief Contains the body of constant density for each layer in each node
     std::vector< std::vector< std::shared_ptr<ConstantDensity>>> const_dens_array;
     /// \brief Contains the Track for each layer in each node
@@ -1913,6 +1917,7 @@ class nuSQUIDSLayers {
     dens_arr(dens_arr),
     ye_arr(ye_arr),
     en_arr(en_arr),
+    use_full_hamiltonian_for_projector_evolution(false),
     evalThreads(1)
     {
       for (int i = 0; i < length_arr.extent(0); i++){
@@ -1949,6 +1954,7 @@ class nuSQUIDSLayers {
     nuSQUIDSLayers(nuSQUIDSLayers&& other):
     iinistate(other.iinistate),
     inusquidslayers(other.inusquidslayers),
+    use_full_hamiltonian_for_projector_evolution(other.use_full_hamiltonian_for_projector_evolution),
     length_arr(std::move(other.length_arr)),
     dens_arr(std::move(other.dens_arr)),
     ye_arr(std::move(other.ye_arr)),
@@ -1971,6 +1977,7 @@ class nuSQUIDSLayers {
 
       iinistate = other.iinistate;
       inusquidslayers = other.inusquidslayers;
+      use_full_hamiltonian_for_projector_evolution = other.use_full_hamiltonian_for_projector_evolution;
       length_arr = std::move(other.length_arr);
       dens_arr = std::move(other.dens_arr);
       ye_arr = std::move(other.ye_arr);
@@ -2105,6 +2112,10 @@ class nuSQUIDSLayers {
         // }
         ///////////////////
       }
+      
+      // The nusquids objects decide whether the constant density mode was used.
+      // We need this information to evaluate interpolated states correctly.
+      use_full_hamiltonian_for_projector_evolution = nusq_array[0].use_full_hamiltonian_for_projector_evolution;
     }
     /// \brief Returns the flavor composition at a node.
     /// @param flv Neutrino flavor.
@@ -2140,20 +2151,27 @@ class nuSQUIDSLayers {
       for (int i=0; i<state.extent(0); i++){
         state_vector.push_back(state[i]);
       }
-      // only neutrino or antineutrino mode: rho is always zero
-      squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, 0);
+
       // initialize SU_vector object from given components
       squids::SU_vector rho_int = squids::SU_vector(state_vector);
+      // evolved projector to compute the trace with
+      squids::SU_vector evol_proj;
       
-      // preevolution buffer
-      // This contains all the evaluated trigonometric functions in an array.
-      std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
-      // TODO: Enable averaging if required
-      H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
-      // rho is again always zero
-      squids::SU_vector evol_proj = nusq_array[0].GetFlavorProj(flv, 0).Evolve(evol_buffer.get());
-
-      double phi=squids::SUTrace<squids::detail::AlignedStorage>(rho_int, evol_proj);
+      if(use_full_hamiltonian_for_projector_evolution){
+        evol_proj = nusq_array[0].GetFlavorProj(flv, 0);
+      } else {
+        // only neutrino or antineutrino mode: rho is always zero
+        squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, 0);
+        // preevolution buffer
+        // This contains all the evaluated trigonometric functions in an array.
+        std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
+        // TODO: Enable averaging if required
+        H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
+        // rho is again always zero
+        evol_proj = nusq_array[0].GetFlavorProj(flv, 0).Evolve(evol_buffer.get());
+      }
+      // The multiplication is overloaded to calculate the trace of the product
+      double phi=rho_int*evol_proj;
       
       return phi;
     }
