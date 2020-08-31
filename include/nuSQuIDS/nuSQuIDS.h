@@ -1934,7 +1934,8 @@ class nuSQUIDSLayers {
   
       // construct nusquids objects
       for (int i = 0; i < length_arr.extent(0); i++){
-        // TODO Currently, there is no constructor for single energy mode with 
+        // TODO: implement constructor with interactions
+        // Currently, there is no constructor for single energy mode with 
         // interactions, so `iinteraction` won't work.
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_E(en_arr[i]);
@@ -2161,6 +2162,7 @@ class nuSQUIDSLayers {
         evol_proj = nusq_array[0].GetFlavorProj(flv, 0);
       } else {
         // only neutrino or antineutrino mode: rho is always zero
+        // TODO: enable "both" mode
         squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, 0);
         // preevolution buffer
         // This contains all the evaluated trigonometric functions in an array.
