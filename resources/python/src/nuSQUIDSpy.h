@@ -462,7 +462,10 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_TauRegeneration",&nuSQUIDSLayers<BaseType>::Set_TauRegeneration);
       class_object->def("EvalFlavorAtNode",&nuSQUIDSLayers<BaseType>::EvalFlavorAtNode);
       class_object->def("GetStates",&nuSQUIDSLayers<BaseType>::GetStatesArr);
+      // a crutch because I couldn't handle the overload template stuff... I just made my own thin
+      // wrapper in nuSQuIDS.h
       class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
+      class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithStateAvr);
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
       // class_object->def("WriteStateHDF5",&nuSQUIDSLayers<BaseType>::WriteStateHDF5);
