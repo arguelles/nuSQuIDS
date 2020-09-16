@@ -465,7 +465,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       // a crutch because I couldn't handle the overload template stuff... I just made my own thin
       // wrapper in nuSQuIDS.h
       class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
-      class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithStateAvr);
+      class_object->def("EvalWithStateAvrScale",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrScale);
+      class_object->def("EvalWithStateAvrRange",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrRange);
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
       // class_object->def("WriteStateHDF5",&nuSQUIDSLayers<BaseType>::WriteStateHDF5);

@@ -2140,13 +2140,15 @@ class nuSQUIDSLayers {
     /// @param state Interaction picture state to calculate the trace with.
     /// @param scale Scale to use for averaging fast oscillations.
     double EvalWithStateAvr(
-      unsigned int flv, double time, double enu, marray<double,1> state, double scale = 0.
+      unsigned int flv, double time, double enu, marray<double,1> state, double scale = 0., double t_range = 0.
     ) const {
       // here the energy enters in eV
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
       if(not inusquidslayers)
         throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
+      if(scale > 0. && t_range > 0.)
+        throw std::runtime_error("nuSQUIDSLayers::Error::Cannot use both scale and range averaging!");
 
       // need to convert marray from input into standard vector
       // TODO: Is there a better way?
@@ -2170,7 +2172,7 @@ class nuSQUIDSLayers {
         // preevolution buffer
         // This contains all the evaluated trigonometric functions in an array.
         std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
-        if(scale > 0.){
+        if(scale > 0. && t_range == 0){
             // This vector stores whether a component has been averaged.
             std::vector<bool> avr {};
             // The evolution buffer contains a sine and a cosine term for each frequency
@@ -2178,6 +2180,9 @@ class nuSQUIDSLayers {
             // one half of the total buffer size.
             avr.assign(H0_at_enu.GetEvolveBufferSize()/2, false);
             H0_at_enu.PrepareEvolve(evol_buffer.get(), time, scale, avr);
+        } else if(scale == 0. && t_range > 0.){
+            double t_start = time - t_range;
+            H0_at_enu.PrepareEvolve(evol_buffer.get(), t_start, time);
         } else {
             H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
         }
@@ -2198,7 +2203,19 @@ class nuSQUIDSLayers {
     double EvalWithState(
       unsigned int flv, double time, double enu, marray<double,1> state
     ) const {
-        return EvalWithStateAvr(flv, time, enu, state, 0.);
+        return EvalWithStateAvr(flv, time, enu, state, 0., 0.);
+    }
+    
+    double EvalWithStateAvrRange(
+      unsigned int flv, double time, double enu, marray<double,1> state, double t_range
+    ) const {
+        return EvalWithStateAvr(flv, time, enu, state, 0., t_range);
+    }
+    
+    double EvalWithStateAvrScale(
+      unsigned int flv, double time, double enu, marray<double,1> state, double scale
+    ) const {
+        return EvalWithStateAvr(flv, time, enu, state, scale, 0.);
     }
     // TODO: better to use vectors?
     marray<double,2> GetStatesArr(){
