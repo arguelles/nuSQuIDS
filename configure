@@ -492,7 +492,7 @@ examples : $(EXAMPLES)
 
 $(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
-	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS)
+	@$(CXX) $(DYN_OPT) $(OBJECTS) $(LDFLAGS) -o $(DYN_PRODUCT)
 
 $(STAT_PRODUCT) : $(OBJECTS)
 	@echo Linking $(STAT_PRODUCT)
