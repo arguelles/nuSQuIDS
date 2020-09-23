@@ -23,7 +23,7 @@
 
 #include "nuSQUIDSpy.h"
 
-BOOST_PYTHON_MODULE(nuSQUIDSpy)
+BOOST_PYTHON_MODULE(nuSQuIDS)
 {
   // import numpy array definitions
   //np::initialize();
