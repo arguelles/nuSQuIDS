@@ -467,8 +467,14 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
       class_object->def("EvalWithStateAvrScale",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrScale);
       class_object->def("EvalWithStateAvrRange",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrRange);
+      class_object->def("EvalWithStateLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateLowpass);
+      class_object->def("ArrEvalWithStateLowpass",&nuSQUIDSLayers<BaseType>::ArrEvalWithStateLowpass);
+      class_object->def("EvalWithStateAvrScaleLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrScaleLowpass);
+      class_object->def("EvalWithStateAvrRangeLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrRangeLowpass);
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
+      class_object->def("Set_EvolLowPassCutoff",&nuSQUIDSLayers<BaseType>::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassScale",&nuSQUIDSLayers<BaseType>::Set_EvolLowPassScale);
       // class_object->def("WriteStateHDF5",&nuSQUIDSLayers<BaseType>::WriteStateHDF5);
       // class_object->def("ReadStateHDF5",&nuSQUIDSLayers<BaseType>::ReadStateHDF5);
       class_object->def("Set_MixingAngle",&nuSQUIDSLayers<BaseType>::Set_MixingAngle);

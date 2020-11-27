@@ -474,6 +474,10 @@ protected:
     void PositivizeFlavors();
     /// \brief Set GSL differential cross section precision.
     double gsl_int_precision = 1.e-3;
+    /// \brief Cutoff for low-pass filter applied during state density evolution
+    double evol_lowpass_cutoff = 0;
+    /// \brief Scale for low-pass filter applied during state density evolution
+    double evol_lowpass_scale = 0;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -788,6 +792,9 @@ protected:
     /// @param flv Neutrino flavor.
     double EvalFlavor(unsigned int flv) const;
 
+    void Set_EvolLowPassCutoff(double val);
+    void Set_EvolLowPassScale(double val);
+    
     /// \brief Toggles tau regeneration on and off.
     /// \param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt);
@@ -2140,7 +2147,9 @@ class nuSQUIDSLayers {
     /// @param state Interaction picture state to calculate the trace with.
     /// @param scale Scale to use for averaging fast oscillations.
     double EvalWithStateAvr(
-      unsigned int flv, double time, double enu, marray<double,1> state, double scale = 0., double t_range = 0.
+      unsigned int flv, double time, double enu, marray<double,1> state,
+      double scale = 0., double t_range = 0., double lowpass_cutoff = 0.,
+      double lowpass_scale = 0.
     ) const {
       // here the energy enters in eV
       if(not iinistate)
@@ -2172,6 +2181,7 @@ class nuSQUIDSLayers {
         // preevolution buffer
         // This contains all the evaluated trigonometric functions in an array.
         std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
+        
         if(scale > 0. && t_range == 0){
             // This vector stores whether a component has been averaged.
             std::vector<bool> avr {};
@@ -2185,6 +2195,10 @@ class nuSQUIDSLayers {
             H0_at_enu.PrepareEvolve(evol_buffer.get(), t_start, time);
         } else {
             H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
+        }
+        // a low-pass filter maybe applied in addition to other averaging
+        if (lowpass_cutoff > 0.){
+          H0_at_enu.LowPassFilter(evol_buffer.get(), lowpass_cutoff, lowpass_scale);
         }
 
         // rho is again always zero
@@ -2205,18 +2219,55 @@ class nuSQUIDSLayers {
     ) const {
         return EvalWithStateAvr(flv, time, enu, state, 0., 0.);
     }
-    
     double EvalWithStateAvrRange(
       unsigned int flv, double time, double enu, marray<double,1> state, double t_range
     ) const {
         return EvalWithStateAvr(flv, time, enu, state, 0., t_range);
     }
-    
     double EvalWithStateAvrScale(
       unsigned int flv, double time, double enu, marray<double,1> state, double scale
     ) const {
         return EvalWithStateAvr(flv, time, enu, state, scale, 0.);
     }
+    
+    // The same functions but with low-pass filter applied, again simply to deal with 
+    // Pybinding overloads
+    double EvalWithStateLowpass(
+      unsigned int flv, double time, double enu, marray<double,1> state,
+      double lp_cutoff, double lp_scale
+    ) const {
+        return EvalWithStateAvr(flv, time, enu, state, 0., 0., lp_cutoff, lp_scale);
+    }
+    double EvalWithStateAvrRangeLowpass(
+      unsigned int flv, double time, double enu, marray<double,1> state, double t_range,
+      double lp_cutoff, double lp_scale
+    ) const {
+        return EvalWithStateAvr(flv, time, enu, state, 0., t_range, lp_cutoff, lp_scale);
+    }
+    double EvalWithStateAvrScaleLowpass(
+      unsigned int flv, double time, double enu, marray<double,1> state, double scale,
+      double lp_cutoff, double lp_scale
+    ) const {
+        return EvalWithStateAvr(flv, time, enu, state, scale, 0., lp_cutoff, lp_scale);
+    }
+    
+    // Array version of the evaluation function. Looping in C is faster than looping in
+    // Python. 
+    marray<double,1> ArrEvalWithStateLowpass(
+      unsigned int flv, marray<double,1> time, marray<double,1> enu,
+      marray<double,2> state, double lp_cutoff, double lp_scale
+    ) const {
+      marray<double,1> probs {enu.extent(0)};
+      marray<double,1> one_state {state.extent(1)};
+      for (int i=0; i < enu.extent(0); i++){
+        for (int j=0; j < state.extent(1); j++){
+          one_state[j] = state[i][j];
+        }
+        probs[i] = EvalWithStateAvr(flv, time[i], enu[i], one_state, 0., 0., lp_cutoff, lp_scale);
+      }
+      return probs;
+    }
+    
     // TODO: better to use vectors?
     marray<double,2> GetStatesArr(){
       marray<double,2> states {GetNumNodes(),GetNumNeu()*GetNumNeu()};
@@ -2414,7 +2465,19 @@ class nuSQUIDSLayers {
     std::vector<BaseSQUIDS>& GetnuSQuIDS() {
       return nusq_array;
     }
-
+    
+    void Set_EvolLowPassCutoff(double val){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_EvolLowPassCutoff(val);
+      }
+    }
+    
+    void Set_EvolLowPassScale(double val){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_EvolLowPassScale(val);
+      }
+    }
+    
     /// \brief Toggles tau regeneration on and off.
     /// @param opt If \c true tau regeneration will be considered.
     void Set_TauRegeneration(bool opt){
