@@ -2448,6 +2448,10 @@ class nuSQUIDSLayers {
     unsigned int GetNumNeu() const{
       return nusq_array[0].GetNumNeu();
     }
+    
+    NeutrinoType GetNeutrinoType() const{
+      return nusq_array[0].NT;
+    }
 
     /// \brief Returns the number of rho equations.
     unsigned int GetNumRho() const{
