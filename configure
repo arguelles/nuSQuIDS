@@ -404,7 +404,7 @@ Libs: ${HDF5_LDFLAGS}
 echo "prefix=$PREFIX" > lib/nusquids.pc
 echo '
 libdir=${prefix}/'"$INSTALL_LIBDIR"'
-includedir=${prefix}/inc
+includedir=${prefix}/include
 
 Name: nuSQuIDS
 Description: Toolbox for neutrino oscillation experiments
