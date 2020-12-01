@@ -290,7 +290,7 @@ ensure_found(){
 PREFIX=/usr/local
 INSTALL_LIBDIR=lib
 
-VERSION_NUM=101001
+VERSION_NUM=101100
 VERSION=`echo $VERSION_NUM | awk '{
 	major = int($1/100000);
 	minor = int($1/100)%1000;

@@ -95,15 +95,18 @@ protected:
     /// \brief number of energy nodes.
     unsigned int ne = nx;
 
-    /// \brief Returns the number of nucleons at a given position.
-    ///
-    /// Isoscalar medium is assumed and the position is obtained
-    /// at x = track.GetX().
-    double GetNucleonNumber() const;
+    ///Get the fraction of the of the number density of targets which is of each target type. 
+    ///These fractions sum to one. 
+    ///\return a vector of fractions, in the same order as the targets in int_struct
+    std::vector<double> GetTargetNumberFractions() const;
+
+    ///Get the number density of all nuclear targets at the current position
+    ///\return a vector of number densities, in the same order as the targets in int_struct
+    std::vector<double> GetTargetNumberDensities() const;
 
     /// \brief Updates the interaction length arrays.
     ///
-    /// Uses GetNucleonNumber() together with the stored cross section
+    /// Uses GetTargetNumberDensities() together with the stored cross section
     /// information to update: nuSQUIDS#invlen_NC, nuSQUIDS#invlen_CC, and nuSQUIDS#invlen_INT.
     void UpdateInteractions();
 
@@ -115,8 +118,8 @@ protected:
     /// It has length len(E_range)-1.
     marray<double,1> delE;
 
-    /// \brief Interface that calculate and interpolates neutrino cross sections.
-    std::shared_ptr<NeutrinoCrossSections> ncs;
+    /// \brief Interface that calculates and interpolates neutrino cross sections.
+    std::shared_ptr<CrossSectionLibrary> ncs;
 
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
@@ -129,42 +132,62 @@ protected:
     constexpr static uint8_t log2(size_t n) {
       return((n>1) ? log2(n/2)+1 : 0);
     }
+    ///Round n up to the nearest multiple of preferred_alignment, doing nothing if n is already 
+    ///such a multiple
     constexpr static size_t round_up_to_aligned(size_t n){
-      return((n&~(preferred_alignment-1))+preferred_alignment);
+      return((n&~(preferred_alignment-1))+((n&(preferred_alignment-1))?preferred_alignment:0));
     }
 
   public:
     /// \brief Struct that contains all cross section information.
     struct InteractionStructure {
+        /// \brief the configured target material types
+        /// \details These are recorded in the same order that they appear in dNdE_CC, 
+        /// dNdE_NC, sigma_CC, and sigma_NC
+        std::vector<PDGCode> targets;
         /// \brief Neutrino charge current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
         /// This array is constructed when InitializeInteractionVectors() is called and
-        /// is initialized when InitializeInteractions() is called. The first dimension
-        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-        /// and the last two the initial and final energy node respectively.
-        marray<double,4,aligned_allocator<double>> dNdE_CC;
+        /// is initialized when InitializeInteractions() is called. Its dimensions are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - initial energy
+        /// - final energy
+        marray<double,5,aligned_allocator<double>> dNdE_CC;
         /// \brief Neutrino neutral current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
         /// This array is constructed when InitializeInteractionVectors() is called and
-        /// is initialized when InitializeInteractions() is called. The first dimension
-        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-        /// and the last two the initial and final energy node respectively.
-        marray<double,4,aligned_allocator<double>> dNdE_NC;
-        /// \brief Glashow resonance differential cross section (electron antineutrino only
+        /// is initialized when InitializeInteractions() is called. Its dimensions are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - initial energy
+        /// - final energy
+        marray<double,5,aligned_allocator<double>> dNdE_NC;
+        /// \brief Glashow resonance differential cross section (electron antineutrino only)
         /// \details Dimensions are initial and final energy node
         marray<double,2,aligned_allocator<double>> dNdE_GR;
         /// \brief Array that contains the neutrino charge current cross section.
-        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// \details The dimensions of this array are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - energy
+        /// Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3,aligned_allocator<double>> sigma_CC;
+        marray<double,4,aligned_allocator<double>> sigma_CC;
         /// \brief Array that contains the neutrino neutral current cross section.
-        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// \details The dimensions of this array are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - energy
+        /// Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3,aligned_allocator<double>> sigma_NC;
+        marray<double,4,aligned_allocator<double>> sigma_NC;
         /// \brief Glashow resonance cross section (electron antineutrino only)
         /// \details 1 entry per energy node, in natural units
         marray<double,1,aligned_allocator<double>> sigma_GR;
@@ -347,6 +370,7 @@ protected:
       
       if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
         return false;
+      
       // all is good - lets roll
       return true;
     }
@@ -503,7 +527,8 @@ protected:
     /// \brief Initilizes auxiliary cross section arrays.
     /// \details The arrays are initialize, but not filled with contented.
     /// To fill the arrays call InitializeInteractions().
-    void InitializeInteractionVectors();
+    /// \param nTargets the number of target species for which to allocate space
+    void InitializeInteractionVectors(unsigned int nTargets);
 
     /// \brief Fills in auxiliary cross section arrays.
     /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
@@ -569,7 +594,7 @@ protected:
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
-       bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+       bool iinteraction = false, std::shared_ptr<CrossSectionLibrary> ncs = nullptr):
     numneu(numneu),ncs(ncs),NT(NT),iinteraction(iinteraction)
     {init(E_vector);}
 
@@ -988,6 +1013,8 @@ protected:
     void Set_Debug(bool debug_){
       debug = debug_;
     }
+  
+    int Get_DebugCounter() const{ return progressbar_count; }
 
     /// \brief Returns lepton mixing matrix
     std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> GetTransformationMatrix() const {
@@ -995,12 +1022,12 @@ protected:
     }
 
     /// \brief Returns the neutrino interaction cross sections
-    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections() {
+    std::shared_ptr<CrossSectionLibrary> GetNeutrinoCrossSections() {
       return(ncs);
     }
   
     /// \brief Returns the neutrino interaction cross sections
-    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs) {
+    void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs) {
        ncs=xs;
        interactions_initialized=false;
     }
@@ -1049,7 +1076,7 @@ class nuSQUIDSAtm {
     /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
     /// \brief Contains the neutrino cross section object
-    std::shared_ptr<NeutrinoCrossSections> ncs;
+    std::shared_ptr<CrossSectionLibrary> ncs;
     /// \brief Contains the interaction information structure.
     std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
     /// \brief the number of threads to use when performing the evolution
@@ -1829,12 +1856,12 @@ class nuSQUIDSAtm {
     }
   
     /// \brief Returns the neutrino interaction cross sections
-    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections(){
+    std::shared_ptr<CrossSectionLibrary> GetNeutrinoCrossSections(){
       return(ncs);
     }
     
     /// \brief Sets the neutrino interaction cross sections
-    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs){
+    void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs){
       ncs=xs;
       for(BaseSQUIDS& nsq : nusq_array)
         nsq.SetNeutrinoCrossSections(ncs);

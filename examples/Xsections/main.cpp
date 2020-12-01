@@ -44,18 +44,21 @@ int main()
   double Emin= 1.0*units.GeV;
   double Emax=1.e3*units.GeV;
 
-  //Declaration of the nuSQUIDS object, the arguments are:
-  //(1). Minimum energy
-  //(2). Maximum energy
-  //(3). Number of energy bins
-  //(4). Number of neutrino states
-  //(5). Neutrino or anti-neutrino case
-  //(6). Energy logarithmic scale? 
-  //(7). Scattering non coherent interactions. 
-  //(8). neutrino cross section object.
-  std::shared_ptr<NeutrinoCrossSections> ncs_cc=std::make_shared<LinearCrossSections>(0.0);
-  std::shared_ptr<NeutrinoCrossSections> ncs_nc=std::make_shared<LinearCrossSections>(1.0);
+  //Declaration of cross sections. These are organized into 'libraries' for multiple targets, 
+  //but we will just include our custom cross sections for for use with generic, isoscalar nucleons
+  auto ncs_cc=std::make_shared<CrossSectionLibrary>(CrossSectionLibrary::MapType{
+        {isoscalar_nucleon, std::make_shared<LinearCrossSections>(0.0)}
+  });
+  auto ncs_nc=std::make_shared<CrossSectionLibrary>(CrossSectionLibrary::MapType{
+      {isoscalar_nucleon, std::make_shared<LinearCrossSections>(1.0)}
+  });
 
+  //Declaration of the nuSQUIDS object, the arguments are:
+  //(1). A list of nodee energies
+  //(2). Number of neutrino states
+  //(3). Neutrino or anti-neutrino case
+  //(4). Whether interactions are included  
+  //(5). Neutrino cross section library object.
   nuSQUIDS nus_cc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_cc);
   nus_cc.Set_IncludeOscillations(false);
   nuSQUIDS nus_nc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_nc);

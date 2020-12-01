@@ -317,10 +317,6 @@ void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) co
 }
 
 void NeutrinoDISCrossSectionsFromTables::ReadHDF(const std::string& path){
-	auto objectExists=[](hid_t loc_id, const char* name){
-		return H5Lexists(loc_id,name,H5P_DEFAULT)>0
-		  && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
-	};
 	try{
 	H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
 	
@@ -638,11 +634,18 @@ void NeutrinoDISCrossSectionsFromTables_V1::WriteText(std::string basePath) cons
   writeDifferential(filename_dsde_NC,dsde_NC_data,logE_data_range,GeV);
 }
   
-GlashowResonanceCrossSection::GlashowResonanceCrossSection(){
-  fermi_scale = pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi;
-  M_W = 80.385*constants.GeV;
-  W_total = 2.085*constants.GeV;
-}
+GlashowResonanceCrossSection::GlashowResonanceCrossSection():
+fermi_scale(pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi),
+M_W(80.385*constants.GeV),
+W_total(2.085*constants.GeV)
+{}
+  
+//with no non-constant data, copy construction is the same as default construction
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(const GlashowResonanceCrossSection&):
+GlashowResonanceCrossSection(){}
+//same for move construction
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(GlashowResonanceCrossSection&&):
+GlashowResonanceCrossSection(){}
   
 GlashowResonanceCrossSection::~GlashowResonanceCrossSection(){}
   
@@ -682,4 +685,29 @@ double GlashowResonanceCrossSection::B_Muon     = .1063; //unc. .0015
 double GlashowResonanceCrossSection::B_Tau      = .1138; //unc. .0021
 double GlashowResonanceCrossSection::B_Hadronic = .6741; //unc. .0027
 
+std::shared_ptr<const NeutrinoCrossSections> CrossSectionLibrary::crossSectionForTarget(PDGCode target) const{
+    auto it = data.find(target);
+    if(it==data.end())
+        return {};
+    return it->second;
+}
+    
+bool CrossSectionLibrary::hasTarget(PDGCode target) const{
+    auto it = data.find(target);
+    return(it!=data.end());
+}
+    
+CrossSectionLibrary loadDefaultCrossSections(){
+    CrossSectionLibrary lib;
+    
+    //old, isoscalar table
+    //lib.addTarget(isoscalar_nucleon, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"));
+    //shiny, new, per-target tables
+    lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_proton.h5"));
+    lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_neutron.h5"));
+    
+    lib.addTarget(electron,GlashowResonanceCrossSection());
+    return lib;
+}
+    
 } // close namespace
