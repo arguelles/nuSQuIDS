@@ -790,8 +790,9 @@ protected:
 
     /// \brief Returns the flavor composition in the single energy mode.
     /// @param flv Neutrino flavor.
-    double EvalFlavor(unsigned int flv) const;
-
+    /// @param rho Index of the equation (neutrino/antineutrino)
+    double EvalFlavor(unsigned int flv, unsigned int rho = 0) const;
+    
     void Set_EvolLowPassCutoff(double val);
     void Set_EvolLowPassScale(double val);
     
@@ -861,7 +862,10 @@ protected:
     /// \brief Return the Hamiltonian at the current time
     squids::SU_vector GetHamiltonian(unsigned int ei, unsigned int rho = 0);
     /// \brief Returns the state
-    const squids::SU_vector& GetState(unsigned int ei,unsigned int rho = 0) const{
+    const squids::SU_vector& GetState(unsigned int ei, unsigned int rho = 0) const{
+      if (rho > 0 && NT != both){
+        throw std::runtime_error("nuSQUIDS::Error::Equation index > 0 only possible in 'both' mode.");
+      }
       return state[ei].rho[rho];
     }
     /// \brief Returns the flavor projector
@@ -2128,7 +2132,7 @@ class nuSQUIDSLayers {
     /// \brief Returns the flavor composition at a node.
     /// @param flv Neutrino flavor.
     /// @param idx Node index.
-    double EvalFlavorAtNode(unsigned int flv, unsigned int idx) const {
+    double EvalFlavorAtNode(unsigned int flv, unsigned int idx, unsigned int rho = 0) const {
       // here the energy enters in eV
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
@@ -2137,27 +2141,52 @@ class nuSQUIDSLayers {
       if(idx >= nusq_array.size())
         throw std::runtime_error("nuSQUIDSLayers::Error::Index out of range.");
       
-      return nusq_array[idx].EvalFlavor(flv);
+      return nusq_array[idx].EvalFlavor(flv, rho);
     }
-
+    
+    /// \brief Returns flavor probabilities evaluated at all nodes as an array.
+    marray<double,1> EvalFlavorAtNodes(unsigned int flv, unsigned int rho = 0) const {
+        marray<double,1> probs {nusq_array.size()};
+        for (unsigned int i = 0; i < nusq_array.size(); i++){
+            probs[i] = EvalFlavorAtNode(flv, i, rho);
+        }
+        return probs;
+    }
     /// \brief Returns the flavor composition with a given (interpolated) state
     /// @param flv Neutrino flavor.
     /// @param time Total traversed distance (identical with time).
     /// @param enu Neutrino energy [eV].
     /// @param state Interaction picture state to calculate the trace with.
-    /// @param scale Scale to use for averaging fast oscillations.
-    double EvalWithStateAvr(
+    /// @param rho Index of neutrino type. If neutrino type is "both", neutrinos are 
+    ///        0 and antineutrinos are 1. If neutrino type is not "both", the index is
+    ///        always 0.
+    /// @param avr_scale Scale to use for averaging fast oscillations. This is the
+    ///        number of oscillations at which the evaluation of sine and cosine terms
+    ///        is cut off.
+    /// @param t_range Time or distance over which to average oscillations. This 
+    ///        averaging is done numerically in SQuIDS. In compatible with `avr_scale`.
+    /// @param lowpass_cutoff Frequency cut-off of the low-pass filter. Sine and cosine
+    ///        evaluations at a higher frequency are evaluated as zero. This is distinct
+    ///        from the effect of `avr_scale` because the number of completed
+    ///        oscillations doesn't matter, i.e. there is no time/distance dependence
+    ///        of this filter. 
+    /// @param lowpass_scale Distance in frequency over which a linear ramp is applied
+    ///        in the low-pass filter. Frequencies below
+    ///        `(lowpass_cutoff - lowpass_scale)` are allowed to pass fully, and the
+    ///        linear ramp scales down to zero at `lowpass_cutoff`. If this scale is 
+    ///        zero, the filter is a step-function.
+    double EvalWithState(
       unsigned int flv, double time, double enu, marray<double,1> state,
-      double scale = 0., double t_range = 0., double lowpass_cutoff = 0.,
-      double lowpass_scale = 0.
+      unsigned int rho = 0, double avr_scale = 0., double t_range = 0.,
+      double lowpass_cutoff = 0., double lowpass_scale = 0.
     ) const {
       // here the energy enters in eV
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
       if(not inusquidslayers)
         throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
-      if(scale > 0. && t_range > 0.)
-        throw std::runtime_error("nuSQUIDSLayers::Error::Cannot use both scale and range averaging!");
+      if(avr_scale > 0. && t_range > 0.)
+        throw std::runtime_error("nuSQUIDSLayers::Error::Cannot use both avr_scale and range averaging!");
 
       // need to convert marray from input into standard vector
       // TODO: Is there a better way?
@@ -2173,24 +2202,24 @@ class nuSQUIDSLayers {
       squids::SU_vector evol_proj;
       
       if(use_full_hamiltonian_for_projector_evolution){
-        evol_proj = nusq_array[0].GetFlavorProj(flv, 0);
+        evol_proj = nusq_array[0].GetFlavorProj(flv, rho);
       } else {
         // only neutrino or antineutrino mode: rho is always zero
         // TODO: enable "both" mode
-        squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, 0);
+        squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, rho);
         // preevolution buffer
         // This contains all the evaluated trigonometric functions in an array.
         std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
         
-        if(scale > 0. && t_range == 0){
+        if(avr_scale > 0. && t_range == 0){
             // This vector stores whether a component has been averaged.
             std::vector<bool> avr {};
             // The evolution buffer contains a sine and a cosine term for each frequency
             // being computed. The avr vector needs one component per frequency, i.e.
             // one half of the total buffer size.
             avr.assign(H0_at_enu.GetEvolveBufferSize()/2, false);
-            H0_at_enu.PrepareEvolve(evol_buffer.get(), time, scale, avr);
-        } else if(scale == 0. && t_range > 0.){
+            H0_at_enu.PrepareEvolve(evol_buffer.get(), time, avr_scale, avr);
+        } else if(avr_scale == 0. && t_range > 0.){
             double t_start = time - t_range;
             H0_at_enu.PrepareEvolve(evol_buffer.get(), t_start, time);
         } else {
@@ -2202,7 +2231,7 @@ class nuSQUIDSLayers {
         }
 
         // rho is again always zero
-        evol_proj = nusq_array[0].GetFlavorProj(flv, 0).Evolve(evol_buffer.get());
+        evol_proj = nusq_array[0].GetFlavorProj(flv, rho).Evolve(evol_buffer.get());
       }
       // The multiplication is overloaded to calculate the trace of the product
       double phi=rho_int*evol_proj;
@@ -2210,52 +2239,12 @@ class nuSQUIDSLayers {
       return phi;
     }
     
-    // I couldn't handle the madness in the Pybindings with default argument overlaods,
-    // so I just made them functions with different names. If someone who knows what
-    // they're doing can implement this without this crutch, they are more than welcome
-    // to do so!
-    double EvalWithState(
-      unsigned int flv, double time, double enu, marray<double,1> state
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, 0., 0.);
-    }
-    double EvalWithStateAvrRange(
-      unsigned int flv, double time, double enu, marray<double,1> state, double t_range
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, 0., t_range);
-    }
-    double EvalWithStateAvrScale(
-      unsigned int flv, double time, double enu, marray<double,1> state, double scale
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, scale, 0.);
-    }
-    
-    // The same functions but with low-pass filter applied, again simply to deal with 
-    // Pybinding overloads
-    double EvalWithStateLowpass(
-      unsigned int flv, double time, double enu, marray<double,1> state,
-      double lp_cutoff, double lp_scale
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, 0., 0., lp_cutoff, lp_scale);
-    }
-    double EvalWithStateAvrRangeLowpass(
-      unsigned int flv, double time, double enu, marray<double,1> state, double t_range,
-      double lp_cutoff, double lp_scale
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, 0., t_range, lp_cutoff, lp_scale);
-    }
-    double EvalWithStateAvrScaleLowpass(
-      unsigned int flv, double time, double enu, marray<double,1> state, double scale,
-      double lp_cutoff, double lp_scale
-    ) const {
-        return EvalWithStateAvr(flv, time, enu, state, scale, 0., lp_cutoff, lp_scale);
-    }
-    
     // Array version of the evaluation function. Looping in C is faster than looping in
     // Python. 
-    marray<double,1> ArrEvalWithStateLowpass(
+    marray<double,1> ArrEvalWithState(
       unsigned int flv, marray<double,1> time, marray<double,1> enu,
-      marray<double,2> state, double lp_cutoff, double lp_scale
+      marray<double,2> state, unsigned int rho = 0, double avr_scale = 0.,
+      double t_range = 0., double lowpass_cutoff = 0., double lowpass_scale = 0.
     ) const {
       marray<double,1> probs {enu.extent(0)};
       marray<double,1> one_state {state.extent(1)};
@@ -2263,16 +2252,19 @@ class nuSQUIDSLayers {
         for (int j=0; j < state.extent(1); j++){
           one_state[j] = state[i][j];
         }
-        probs[i] = EvalWithStateAvr(flv, time[i], enu[i], one_state, 0., 0., lp_cutoff, lp_scale);
+        probs[i] = EvalWithState(
+          flv, time[i], enu[i], one_state, rho, avr_scale,
+          t_range, lowpass_cutoff, lowpass_scale
+        );
       }
       return probs;
     }
     
-    // TODO: better to use vectors?
-    marray<double,2> GetStatesArr(){
+    marray<double,2> GetStatesArr(unsigned int rho = 0){
+      
       marray<double,2> states {GetNumNodes(),GetNumNeu()*GetNumNeu()};
       for(int i=0; i<nusq_array.size(); i++){
-        std::vector<double> state_vec = nusq_array[i].GetState(0, 0).GetComponents();
+        std::vector<double> state_vec = nusq_array[i].GetState(0, rho).GetComponents();
         for(int j=0; j<state_vec.size(); j++)
           states[i][j] = state_vec[j];
       }

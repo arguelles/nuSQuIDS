@@ -1128,8 +1128,6 @@ void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
     throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
   if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be: flavor or mass.");
-  if( NT == both )
-    throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy.");
   if( !itrack or !ibody )
@@ -1397,7 +1395,7 @@ double nuSQUIDS::EvalMass(unsigned int flv) const{
   return GetExpectationValue(b0_proj[flv], 0, 0);
 }
 
-double nuSQUIDS::EvalFlavor(unsigned int flv) const{
+double nuSQUIDS::EvalFlavor(unsigned int flv, unsigned int rho) const{
   if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
@@ -1408,12 +1406,14 @@ double nuSQUIDS::EvalFlavor(unsigned int flv) const{
     throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
   if( flv >= nsun )
     throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
+  if ( rho != 0 and NT != both )
+    throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
 
   if(basis == mass)
-    return b1_proj[0][flv]*state[0].rho[0];
+    return b1_proj[0][flv]*state[0].rho[rho];
   if(use_full_hamiltonian_for_projector_evolution)
-    return evol_b1_proj[0][flv][0]*state[0].rho[0];
-  return GetExpectationValue(b1_proj[0][flv], 0, 0);
+    return evol_b1_proj[0][flv][0]*state[0].rho[rho];
+  return GetExpectationValue(b1_proj[0][flv], rho, 0);
 }
 
 void nuSQUIDS::iniH0(){

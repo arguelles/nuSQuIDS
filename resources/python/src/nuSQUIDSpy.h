@@ -284,6 +284,7 @@ public boost::python::detail::overloads_common<name<T>>{ \
 MAKE_OVERLOAD_TEMPLATE(WriteStateHDF5Overload,WriteStateHDF5,1,5)
 MAKE_OVERLOAD_TEMPLATE(ReadStateHDF5Overload,ReadStateHDF5,1,3)
 MAKE_OVERLOAD_TEMPLATE(SetInitialStateH5Overload,Set_initial_state,1,2)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDS_EvalFlavor_overload, EvalFlavor, 1, 2)
 
 // nuSQUIDSpy module definitions
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
@@ -318,7 +319,9 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetNumNeu",&BaseType::GetNumNeu);
       class_object->def("EvalMass",(double(BaseType::*)(unsigned int) const)&BaseType::EvalMass);
       class_object->def("EvalMass",(double(BaseType::*)(unsigned int,double,unsigned int,double, std::vector<bool>&) const)&BaseType::EvalMass);
-      class_object->def("EvalFlavor",(double(BaseType::*)(unsigned int) const)&BaseType::EvalFlavor);
+      //class_object->def("EvalFlavor",(double(BaseType::*)(unsigned int) const)&BaseType::EvalFlavor);
+      class_object->def("EvalFlavor",(double(BaseType::*)(unsigned int, unsigned int) const)&BaseType::EvalFlavor,
+        nuSQUIDS_EvalFlavor_overload<BaseType>(args("flavor", "rho"), "Evaluate flavor composition in single energy mode."));
       class_object->def("EvalMass",(double(BaseType::*)(unsigned int,double,unsigned int) const)&BaseType::EvalMass);
       class_object->def("EvalFlavor",(double(BaseType::*)(unsigned int,double,unsigned int) const)&BaseType::EvalFlavor);
       class_object->def("EvalFlavor",(double(BaseType::*)(unsigned int,double,unsigned int,double, std::vector<bool>&) const)&BaseType::EvalFlavor);
@@ -444,6 +447,11 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
 };
 
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_Set_initial_state,Set_initial_state,1,2)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalFlavorAtNode_overload, EvalFlavorAtNode, 2, 3)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalFlavorAtNodes_overload, EvalFlavorAtNodes, 1, 2)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_GetStates_overload, GetStatesArr, 0, 1)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalWithState_overload, EvalWithState, 4, 9)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_ArrEvalWithState_overload, ArrEvalWithState, 4, 9)
 
 // registration for explicit layers template
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
@@ -460,17 +468,95 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       //class_object->def(init<std::string>(args("filename")));
       class_object->def("EvolveState",&nuSQUIDSLayers<BaseType>::EvolveState);
       class_object->def("Set_TauRegeneration",&nuSQUIDSLayers<BaseType>::Set_TauRegeneration);
-      class_object->def("EvalFlavorAtNode",&nuSQUIDSLayers<BaseType>::EvalFlavorAtNode);
-      class_object->def("GetStates",&nuSQUIDSLayers<BaseType>::GetStatesArr);
-      // a crutch because I couldn't handle the overload template stuff... I just made my own thin
-      // wrapper in nuSQuIDS.h
-      class_object->def("EvalWithState",&nuSQUIDSLayers<BaseType>::EvalWithState);
-      class_object->def("EvalWithStateAvrScale",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrScale);
-      class_object->def("EvalWithStateAvrRange",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrRange);
-      class_object->def("EvalWithStateLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateLowpass);
-      class_object->def("ArrEvalWithStateLowpass",&nuSQUIDSLayers<BaseType>::ArrEvalWithStateLowpass);
-      class_object->def("EvalWithStateAvrScaleLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrScaleLowpass);
-      class_object->def("EvalWithStateAvrRangeLowpass",&nuSQUIDSLayers<BaseType>::EvalWithStateAvrRangeLowpass);
+      class_object->def("EvalFlavorAtNode", (double(nuSQUIDSLayers<BaseType>::*)(unsigned int, unsigned int, unsigned int))&nuSQUIDSLayers<BaseType>::EvalFlavorAtNode,
+        nuSQUIDSLayers_EvalFlavorAtNode_overload<nuSQUIDSLayers<BaseType>>(args("flavor", "node_idx", "rho"), "Evaluate flavor state at a node."));
+      class_object->def("EvalFlavorAtNodes", (marray<double,1>(nuSQUIDSLayers<BaseType>::*)(unsigned int, unsigned int))&nuSQUIDSLayers<BaseType>::EvalFlavorAtNodes,
+        nuSQUIDSLayers_EvalFlavorAtNodes_overload<nuSQUIDSLayers<BaseType>>(args("flavor", "rho"), "Evaluate flavor state at all nodes and return as array."));
+      class_object->def("GetStates", (marray<double,2>(nuSQUIDSLayers<BaseType>::*)(unsigned int))&nuSQUIDSLayers<BaseType>::GetStatesArr,
+        nuSQUIDSLayers_GetStates_overload<nuSQUIDSLayers<BaseType>>(args("rho"), "Get evolved states of all nodes."));
+      class_object->def("EvalWithState",
+        (
+          double(nuSQUIDSLayers<BaseType>::*)(
+            unsigned int, double, double, marray<double,1>, unsigned int,
+            double, double, double, double
+          )
+        )&nuSQUIDSLayers<BaseType>::EvalWithState,
+        nuSQUIDSLayers_EvalWithState_overload<nuSQUIDSLayers<BaseType>>(
+          args("flavor", "time", "energy", "state", "rho", "avr_scale", "t_range",
+            "lowpass_cutoff", "lowpass_scale"),
+          "Returns the flavor composition with a given (interpolated) state.\n\n"
+          "Arguments\n"
+          "---------\n"
+          "  flavor (int): Flavor to be evaluated.\n"
+          "  time (double): Total evolution time. Should match the total distance of \n"
+          "      the state evolution.\n"
+          "  enu (double): Neutrino energy [eV].\n"
+          "  state (1D ndarray of double): Interaction picture state to calculate the\n"
+          "      trace with.\n"
+          "  rho (int): Index of neutrino type. If neutrino type is `both`, neutrinos\n"
+          "      are 0 and antineutrinos are 1. If neutrino type is not `both`, the\n"
+          "      index is always 0.\n"
+          "  avr_scale (double): Scale to use for averaging fast oscillations. This is\n"
+          "      the number of oscillations at which the evaluation of sine and cosine\n"
+          "      terms is cut off.\n"
+          "  t_range (double): Time or distance over which to average oscillations.\n"
+          "      This averaging is done numerically in SQuIDS. In compatible with\n"
+          "      `avr_scale`.\n"
+          "  lowpass_cutoff (double): Frequency cut-off of the low-pass filter. Sine\n"
+          "      and cosine evaluations at a higher frequency are evaluated as zero.\n"
+          "      This is distinct from the effect of `avr_scale` because the number of\n"
+          "      completed oscillations doesn't matter, i.e. there is no\n"
+          "      time/distance dependence of this filter.\n"
+          "  lowpass_scale (double): Distance in frequency over which a linear ramp is\n"
+          "      applied in the low-pass filter. Frequencies below\n"
+          "      `(lowpass_cutoff - lowpass_scale)` are allowed to pass fully, and the\n"
+          "      linear ramp scales down to zero at `lowpass_cutoff`. If this scale is\n"
+          "      zero, the filter is a step-function.\n"
+        )
+      );
+      class_object->def("EvalWithState",
+        (
+          marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
+            unsigned int, marray<double,1>, marray<double,1>, marray<double,2>,
+            unsigned int, double, double, double, double
+          )
+        )&nuSQUIDSLayers<BaseType>::ArrEvalWithState,
+        nuSQUIDSLayers_ArrEvalWithState_overload<nuSQUIDSLayers<BaseType>>(
+          args("flavor", "time", "energy", "state", "rho", "avr_scale", "t_range",
+            "lowpass_cutoff", "lowpass_scale"),
+          "Returns the flavor composition with a given (interpolated) state.\n\n"
+          "This is the array version of the function, taking in numpy arrays of time,\n"
+          "energy, and states.\n\n"
+          "Arguments\n"
+          "---------\n"
+          "  flavor (int): Flavor to be evaluated.\n"
+          "  time (1D ndarray of double): Total evolution time. Should match the total\n"
+          "      distance of the state evolution.\n"
+          "  enu (1D ndarray of double): Neutrino energy [eV].\n"
+          "  state (2D ndarray of double): Interaction picture states to calculate the\n"
+          "      trace with. The first dimension of the array has to match the number\n"
+          "      of times and energies.\n"
+          "  rho (int): Index of neutrino type. If neutrino type is `both`, neutrinos\n"
+          "      are 0 and antineutrinos are 1. If neutrino type is not `both`, the\n"
+          "      index is always 0.\n"
+          "  avr_scale (double): Scale to use for averaging fast oscillations. This is\n"
+          "      the number of oscillations at which the evaluation of sine and cosine\n"
+          "      terms is cut off.\n"
+          "  t_range (double): Time or distance over which to average oscillations. This\n"
+          "      averaging is done numerically in SQuIDS. In compatible with\n"
+          "       `avr_scale`.\n"
+          "  lowpass_cutoff (double): Frequency cut-off of the low-pass filter. Sine\n"
+          "      and cosine evaluations at a higher frequency are evaluated as zero.\n"
+          "      This is distinct from the effect of `avr_scale` because the number\n"
+          "      of completed oscillations doesn't matter, i.e. there is no\n"
+          "      time/distance dependenceof this filter.\n"
+          "  lowpass_scale (double): Distance in frequency over which a linear ramp is\n"
+          "      applied in the low-pass filter. Frequencies below\n"
+          "      `(lowpass_cutoff - lowpass_scale)` are allowed to pass fully, and the\n"
+          "      linear ramp scales down to zero at `lowpass_cutoff`. If this scale is\n"
+          "      zero, the filter is a step-function.\n"
+        )
+      );
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
       class_object->def("Set_EvolLowPassCutoff",&nuSQUIDSLayers<BaseType>::Set_EvolLowPassCutoff);
