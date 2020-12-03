@@ -482,8 +482,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           )
         )&nuSQUIDSLayers<BaseType>::EvalWithState,
         nuSQUIDSLayers_EvalWithState_overload<nuSQUIDSLayers<BaseType>>(
-          args("flavor", "time", "energy", "state", "rho", "avr_scale", "t_range",
-            "lowpass_cutoff", "lowpass_scale"),
+          args("flavor", "time", "energy", "state", "rho", "avr_scale",
+            "lowpass_cutoff", "lowpass_scale", "t_range"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "Arguments\n"
           "---------\n"
@@ -522,8 +522,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithState,
         nuSQUIDSLayers_ArrEvalWithState_overload<nuSQUIDSLayers<BaseType>>(
-          args("flavor", "time", "energy", "state", "rho", "avr_scale", "t_range",
-            "lowpass_cutoff", "lowpass_scale"),
+          args("flavor", "time", "energy", "state", "rho", "avr_scale",
+            "lowpass_cutoff", "lowpass_scale", "t_range"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "This is the array version of the function, taking in numpy arrays of time,\n"
           "energy, and states.\n\n"
@@ -556,6 +556,19 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           "      linear ramp scales down to zero at `lowpass_cutoff`. If this scale is\n"
           "      zero, the filter is a step-function.\n"
         )
+      );
+      class_object->def("EvalWithState",
+        (
+          marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
+            unsigned int, marray<double,1>, marray<double,1>, marray<double,2>,
+            unsigned int, double, double, double, marray<double,1>
+          )
+        )&nuSQUIDSLayers<BaseType>::ArrEvalWithStateTRange,
+          args("flavor", "time", "energy", "state", "rho", "avr_scale", 
+            "lowpass_cutoff", "lowpass_scale", "t_range"),
+          "Returns the flavor composition with a given (interpolated) state.\n\n"
+          "Same as the other array version of the function, but allows a different\n"
+          "averaging time for each evaluation. All other arguments must be passed.\n\n"
       );
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);

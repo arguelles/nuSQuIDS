@@ -64,8 +64,10 @@ void nuSQUIDS::init(double xini){
 
   if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
+  else if (NT == both)
+    nrhos = 2;
   else {
-    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino} not : " + std::to_string(NT));
+    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino,both} not : " + std::to_string(NT));
   }
 
   if ( numneu > SQUIDS_MAX_HILBERT_DIM )
@@ -76,7 +78,14 @@ void nuSQUIDS::init(double xini){
   nsun = numneu;
 
   //initialize SQUIDS
-  ini(ne,numneu,1,0,xini);
+  try {
+    // initialize SQUIDS
+    ini(ne,numneu,nrhos,0,xini);
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
+  }
+  
   Set_CoherentRhoTerms(true);
   Set_h(1.*params.km);
   Set_h_max(std::numeric_limits<double>::max() );
@@ -85,35 +94,46 @@ void nuSQUIDS::init(double xini){
   // set parameters to default   //
   //===============================
 
-  Set_MixingParametersToDefault();
-
-  //===============================
-  // physics CP sign for aneu    //
-  //===============================
-  if ( NT == antineutrino ){
-    for(unsigned int i = 0; i < numneu; i++){
-      for(unsigned int j = i+1; j < numneu; j++){
-        Set_CPPhase(i,j,-Get_CPPhase(i,j));
-      }
-    }
+  try{
+    Set_MixingParametersToDefault();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to set default mixing parameters [Set_MixingParametersToDetaul]");
   }
+
   //===============================
   // init projectors             //
   //===============================
 
-  iniProjectors();
+  try{
+    iniProjectors();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize projectors [iniProjectors]");
+  }
 
   //===============================
   // init square mass difference //
   //===============================
 
-  H0_array.resize(std::vector<size_t>{ne});
-  for(unsigned int ie = 0; ie < ne; ie++){
-    H0_array[ie] = squids::SU_vector(nsun);
+  try{
+    H0_array.resize(std::vector<size_t>{ne});
+    for(unsigned int ie = 0; ie < ne; ie++){
+      H0_array[ie] = squids::SU_vector(nsun);
+    }
+    iniH0();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize vaccum Hamiltonian [iniH0]");
   }
 
-  iniH0();
+  positivization_scale = 300.0*params.km;
 
+  if(iinteraction){
+    Set_NonCoherentRhoTerms(true);
+    Set_OtherRhoTerms(true);
+  }
+  
   //precompute this product for HI to avoid repeating expensive pow() calls.
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 

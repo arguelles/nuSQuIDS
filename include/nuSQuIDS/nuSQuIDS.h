@@ -2177,8 +2177,8 @@ class nuSQUIDSLayers {
     ///        zero, the filter is a step-function.
     double EvalWithState(
       unsigned int flv, double time, double enu, marray<double,1> state,
-      unsigned int rho = 0, double avr_scale = 0., double t_range = 0.,
-      double lowpass_cutoff = 0., double lowpass_scale = 0.
+      unsigned int rho = 0, double avr_scale = 0.,
+      double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
     ) const {
       // here the energy enters in eV
       if(not iinistate)
@@ -2244,8 +2244,10 @@ class nuSQUIDSLayers {
     marray<double,1> ArrEvalWithState(
       unsigned int flv, marray<double,1> time, marray<double,1> enu,
       marray<double,2> state, unsigned int rho = 0, double avr_scale = 0.,
-      double t_range = 0., double lowpass_cutoff = 0., double lowpass_scale = 0.
+      double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
     ) const {
+      if ((time.extent(0) != enu.extent(0)) || (time.extent(0) != state.extent(0)))
+        throw std::runtime_error("nuSQUIDS::Error:: Input array lengths do not match");
       marray<double,1> probs {enu.extent(0)};
       marray<double,1> one_state {state.extent(1)};
       for (int i=0; i < enu.extent(0); i++){
@@ -2254,7 +2256,35 @@ class nuSQUIDSLayers {
         }
         probs[i] = EvalWithState(
           flv, time[i], enu[i], one_state, rho, avr_scale,
-          t_range, lowpass_cutoff, lowpass_scale
+          lowpass_cutoff, lowpass_scale, t_range
+        );
+      }
+      return probs;
+    }
+    
+    // Overload with array over t_range, because we might need a different averaging
+    // distance for every point where we evaluate the probability.
+    marray<double,1> ArrEvalWithStateTRange(
+      unsigned int flv, marray<double,1> time, marray<double,1> enu,
+      marray<double,2> state, unsigned int rho, double avr_scale,
+      double lowpass_cutoff,
+      double lowpass_scale,
+      marray<double,1> t_range
+    ) const {
+      if (   time.extent(0) != enu.extent(0)
+          || time.extent(0) != state.extent(0)
+          || time.extent(0) != t_range.extent(0)){
+        throw std::runtime_error("nuSQUIDS::Error:: Input array lengths do not match");
+      }
+      marray<double,1> probs {enu.extent(0)};
+      marray<double,1> one_state {state.extent(1)};
+      for (int i=0; i < enu.extent(0); i++){
+        for (int j=0; j < state.extent(1); j++){
+          one_state[j] = state[i][j];
+        }
+        probs[i] = EvalWithState(
+          flv, time[i], enu[i], one_state, rho, avr_scale,
+          lowpass_cutoff, lowpass_scale, t_range[i]
         );
       }
       return probs;
