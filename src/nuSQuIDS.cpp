@@ -26,9 +26,14 @@
 #define H5Eset_auto_vers 2
 
 #include <nuSQuIDS/nuSQuIDS.h>
+#include <cstring>
+#include <map>
 #include <sstream>
 #include <H5Dpublic.h>
+#include <H5Epublic.h>
 #include <H5Spublic.h>
+#include "nuSQuIDS/resources.h"
+#include "nuSQuIDS/version.h"
 
 //Enable/disable finer-grained labels which can be useful for profiling
 #define USE_DEBUG_LABELS 1

@@ -25,14 +25,13 @@
 #ifndef NUSQUIDS_TAUDECAY_H
 #define NUSQUIDS_TAUDECAY_H
 
-#include "version.h"
-#include "tools.h"
-#include <string>
 #include <cmath>
-#include <math.h>
-#include <iostream>
-#include "marray.h"
-#include "aligned_alloc.h"
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
+#include "nuSQuIDS/marray.h"
+#include "nuSQuIDS/aligned_alloc.h"
 
 /*
  * FORMULAES implemented out of

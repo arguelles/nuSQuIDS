@@ -29,33 +29,28 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
-#include "version.h"
-#include "body.h"
-#include "xsections.h"
-#include "taudecay.h"
-#include "marray.h"
-#include "aligned_alloc.h"
-#include "ThreadPool.h"
-
 #include <algorithm>
-#include <cstring>
 #include <iostream>
 #include <memory>
-#include <map>
 #include <stdexcept>
 #include <vector>
 
 #include <SQuIDS/SQuIDS.h>
 
-#include "H5Epublic.h"
-#include "H5Tpublic.h"
-#include "hdf5.h"
-#include "hdf5_hl.h"
-#include "H5Gpublic.h"
-#include "H5Fpublic.h"
+#include <H5Fpublic.h>
+#include <H5Gpublic.h>
+#include <H5Ipublic.h>
+#include <H5LTpublic.h>
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+
+#include "nuSQuIDS/aligned_alloc.h"
+#include "nuSQuIDS/body.h"
+#include "nuSQuIDS/marray.h"
+#include "nuSQuIDS/taudecay.h"
+#include "nuSQuIDS/ThreadPool.h"
+#include "nuSQuIDS/xsections.h"
 
 //#define FixCrossSections
 

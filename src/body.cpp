@@ -24,6 +24,23 @@
 
 #include <nuSQuIDS/body.h>
 
+#include <cmath>
+#include <map>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+
+#include <H5Apublic.h>
+#include <H5LTpublic.h>
+#include <H5Ppublic.h>
+#include <H5Spublic.h>
+#include <H5public.h>
+#include <H5version.h>
+
+#include <SQuIDS/const.h>
+
+#include <nuSQuIDS/resources.h>
+
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
 
@@ -282,7 +299,7 @@ VariableDensity::~VariableDensity(){}
 */
 
 // constructor
-Earth::Earth():Earth(static_cast<std::string>(EARTH_MODEL_LOCATION)){}
+Earth::Earth():Earth(getResourcePath()+"/astro/EARTH_MODEL_PREM.dat"){}
 
 Earth::Earth(std::string filepath):Body()
 {
@@ -428,7 +445,7 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 */
 
 // constructor
-Sun::Sun():Sun(SUN_MODEL_LOCATION)
+Sun::Sun():Sun(getResourcePath()+"/data/astro/bs05_agsop.dat")
 {}
 
 Sun::Sun(std::string sunlocation):Body()
@@ -534,14 +551,14 @@ std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
 */
 
 // constructor
-SunASnu::SunASnu():SunASnu(SUN_MODEL_LOCATION)
+SunASnu::SunASnu():SunASnu(getResourcePath()+"/data/astro/bs05_agsop.dat")
 {}
 
 SunASnu::SunASnu(std::string sunlocation):Body()
 {
   radius = 694439.0*param.km;
 
-  sun_model = quickread(SUN_MODEL_LOCATION);
+  sun_model = quickread(sunlocation);
   arraysize = sun_model.extent(0);
 
   sun_radius.resize(arraysize);
@@ -662,7 +679,7 @@ SunASnu::~SunASnu(){}
 */
 
 // constructor
-EarthAtm::EarthAtm():EarthAtm(EARTH_MODEL_LOCATION)
+EarthAtm::EarthAtm():EarthAtm(getResourcePath()+"/astro/EARTH_MODEL_PREM.dat")
 {}
 
 // track constructor

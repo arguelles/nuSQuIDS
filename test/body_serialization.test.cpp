@@ -10,6 +10,7 @@
 #include "H5Gpublic.h"
 #include "H5Fpublic.h"
 
+#include <SQuIDS/const.h>
 #include <nuSQuIDS/body.h>
 
 #define H5Gopen_vers 2

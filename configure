@@ -3,11 +3,12 @@
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
-	which pkg-config 2>&1 > /dev/null
+	PKG_CONFIG_PATH=$(which pkg-config 2>&1)
 	if [ "$?" -ne 0 ]; then
 		echo "Error: pkg-config not found; you will need to specify library locations manually" 1>&2
 		exit 1
 	fi
+	echo " Found $PKG_CONFIG_PATH"
 	CHECKED_PKGCONFIG=1
 }
 
@@ -553,6 +554,8 @@ cd "$PREFIX"
 PREFIX=`pwd`
 cd "$OLDPWD"
 
+SOURCE_PATH=`pwd`
+
 if [ ! -d ./build/ ]; then
     mkdir build;
 fi
@@ -597,6 +600,34 @@ sed -e "s|__NUSQUIDS_VERSION__|$VERSION_NUM|g" \
     -e "s|__NUSQUIDS_VERSION_STR__|$VERSION|g" \
     < resources/version.h.in > include/nuSQuIDS/version.h
 
+INSTALL_FLAG_PREFIX="NUSQUIDS_DATA_PATH_INSTALL_FLAG_PREFIX_"
+INSTALL_FLAG_SUFFIX="_NUSQUIDS_DATA_PATH_INSTALL_FLAG_SUFFIX"
+INSTALL_FLAG_OFF="A"
+INSTALL_FLAG_ON="B"
+REPLACE_INSTALL_FLAG="s|${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_OFF}${INSTALL_FLAG_SUFFIX}|${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_ON}${INSTALL_FLAG_SUFFIX}|g"
+
+echo "Generating data path header..."
+echo "#include <cstring>
+#define SOURCE_DATA_PATH \"${SOURCE_PATH}/data/\"
+#define INSTALL_DATA_PATH \"${PREFIX}/share/nuSQuIDS/\"
+
+namespace{
+
+const char dataPathBitOffValue='$INSTALL_FLAG_OFF';
+//This needs to be volatile so that the compiler can't optimize away reads from it,
+//which is important since we plan to change the value of the constant between compile-time 
+//and run-time
+const volatile char dataPathBitContainer[] = \"${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_OFF}${INSTALL_FLAG_SUFFIX}\";
+
+bool getInstallBit(){
+	static const std::size_t prefixLen = strlen(\"${INSTALL_FLAG_PREFIX}\");
+	return dataPathBitContainer[prefixLen]!='${INSTALL_FLAG_OFF}';
+}
+
+}
+
+" > build/resource_paths.h
+
 echo "Generating makefile..."
 echo "# Compiler
 CC=$CC
@@ -630,8 +661,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Atm_BSM/atm_bsm\
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
-						examples/Constant_density_layers/const_dens_layers \
-						examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
+            examples/Constant_density_layers/const_dens_layers \
+            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
 
 CXXFLAGS= -std=c++11
 
@@ -660,7 +691,7 @@ INCnuSQUIDS=$(PATH_nuSQUIDS)/include
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
-CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
+CFLAGS= -O3 -fPIC -Ibuild -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
 LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS)
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS) -lpthread
 EXAMPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
@@ -767,10 +798,16 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) "$(PREFIX)/$(INSTALL_LIBDIR)"
+	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
+	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@chmod 755 "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)" "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a" 
 	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
-	@cp lib/nusquids.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"' >> ./Makefile
+	@cp lib/nusquids.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
+	@echo Installing physics data in $(PREFIX)/share/nuSQuIDS
+	@mkdir -p "$(PREFIX)/share/nuSQuIDS"
+	@cp -r data/* "$(PREFIX)/share/nuSQuIDS/"
+' >> ./Makefile
 
 if `pkg-config hdf5`; then
 :
@@ -830,22 +867,6 @@ else
 fi
 echo "../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
 
-nusqpath=`pwd`
-
-echo '
-#ifndef NUSQUIDS_GLOBAL_H
-#define NUSQUIDS_GLOBAL_H
-' > include/nuSQuIDS/global.h
-echo "
-#define XSECTION_LOCATION \"$nusqpath/data/xsections/\"
-#define SUN_MODEL_LOCATION  \"$nusqpath/data/astro/bs05_agsop.dat\"
-#define SUN_MODEL_NELECTRON_LOCATION \"$nusqpath/data/astro/nele_bs05op.dat\"
-#define EARTH_MODEL_LOCATION \"$nusqpath/data/astro/EARTH_MODEL_PREM.dat\"
-" >> include/nuSQuIDS/global.h
-echo '
-#endif
-' >> include/nuSQuIDS/global.h
-
 echo "Done."
 echo
 echo "To build the library, run the following: make
@@ -854,4 +875,3 @@ if [ "$PYTHON_BINDINGS" ]; then
 	echo "To build the python bindings run: make python"
 	echo "To install the python bindings run: make python-install"
 fi
-

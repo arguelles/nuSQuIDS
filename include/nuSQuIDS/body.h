@@ -29,28 +29,14 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
-#include "version.h"
+#include <cassert>
+#include <functional>
 #include <string>
-#include <math.h>
-#include <cmath>
-#include <map>
-#include <mutex>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
-#include <SQuIDS/const.h>
-#include "tools.h"
-#include "global.h"
-#include <assert.h>
 #include <memory>
-#include <exception>
-#include <iostream>
-// hdf5 serializtion
-#include "H5Epublic.h"
-#include "H5Tpublic.h"
-#include "hdf5.h"
-#include "hdf5_hl.h"
-#include "H5Gpublic.h"
-#include "H5Fpublic.h"
+#include <vector>
+#include <H5Ipublic.h>
+#include "nuSQuIDS/marray.h"
+#include "nuSQuIDS/tools.h"
 
 namespace nusquids{
 

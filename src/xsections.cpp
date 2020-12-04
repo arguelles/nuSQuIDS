@@ -22,10 +22,11 @@
  ******************************************************************************/
 
 #include <nuSQuIDS/xsections.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
-#include <nuSQuIDS/AdaptiveQuad.h>
+#include "nuSQuIDS/AdaptiveQuad.h"
+#include "nuSQuIDS/resources.h"
 
 namespace{
 	//Most of the time the cross section functions are _very_ smooth, and indeed
@@ -175,7 +176,7 @@ bool NeutrinoDISCrossSectionsFromTables::isHDF(const std::string& path){
 }
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
-NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"){}
+NeutrinoDISCrossSectionsFromTables(getResourcePath()+"/xsections/csms_square.h5"){}
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix){
 	if(isHDF(pathOrPrefix))
@@ -230,8 +231,7 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
 	return pow(10.,val)/(E1/GeV);
 }
 
-double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	std::cout.precision(16); 
+double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{ 
 	// we assume that sterile neutrinos are truly sterile
 	if (not (flavor == electron or flavor == muon or flavor == tau))
 		return 0;
@@ -488,7 +488,6 @@ void NeutrinoDISCrossSectionsFromTables_V1::ReadText(std::string root){
        std::string filename_sigma_CC = root+"sigma_CC.dat";
        std::string filename_sigma_NC = root+"sigma_NC.dat";
 
-       std::cout << filename_sigma_NC << std::endl;
        // check if files exist for this energies and divisions
        if(
           fexists(filename_dsde_CC) and
@@ -545,7 +544,7 @@ void NeutrinoDISCrossSectionsFromTables_V1::ReadText(std::string root){
 }
   
 NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1():
-  NeutrinoDISCrossSectionsFromTables_V1(XSECTION_LOCATION "csms.h5"){
+  NeutrinoDISCrossSectionsFromTables_V1(getResourcePath()+"/xsections/csms.h5"){
 }
     
 NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1(std::string path){
@@ -700,11 +699,12 @@ bool CrossSectionLibrary::hasTarget(PDGCode target) const{
 CrossSectionLibrary loadDefaultCrossSections(){
     CrossSectionLibrary lib;
     
+    std::string xsdir = getResourcePath()+"/xsections/";
     //old, isoscalar table
     //lib.addTarget(isoscalar_nucleon, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"));
     //shiny, new, per-target tables
-    lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_proton.h5"));
-    lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_neutron.h5"));
+    lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(xsdir+"csms_proton.h5"));
+    lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(xsdir+"csms_neutron.h5"));
     
     lib.addTarget(electron,GlashowResonanceCrossSection());
     return lib;

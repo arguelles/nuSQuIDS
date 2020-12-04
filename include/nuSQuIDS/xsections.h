@@ -25,15 +25,14 @@
 #ifndef NUSQUIDS_XSECTIONS_H
 #define NUSQUIDS_XSECTIONS_H
 
-#include "version.h"
-#include "tools.h"
-#include "marray.h"
-#include "global.h"
 #include <string>
 #include <cmath>
 #include <stdexcept>
 #include <unordered_map>
-#include "SQuIDS/const.h"
+#include <SQuIDS/const.h>
+#include "nuSQuIDS/version.h"
+#include "nuSQuIDS/tools.h"
+#include "nuSQuIDS/marray.h"
 
 // neutrino cross sections
 
