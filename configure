@@ -858,14 +858,18 @@ export LDFLAGS=\"${LDFLAGS}  -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAG
 " > test/env_vars.sh
 if uname | grep -q 'Darwin' ; then
 	printf "export DYLD_LIBRARY_PATH=\"" >> test/env_vars.sh
+	printf "${SOURCE_PATH}/lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}" >> test/env_vars.sh
 	if [ "$DYLD_LIBRARY_PATH" ]; then
-		printf "${DYLD_LIBRARY_PATH}:" >> test/env_vars.sh
+		printf ":${DYLD_LIBRARY_PATH}" >> test/env_vars.sh
 	fi
-	printf "/lib:/usr/lib:\${HOME}/lib:/usr/local/lib:" >> test/env_vars.sh
 else
 	printf "export LD_LIBRARY_PATH=\"" >> test/env_vars.sh
+	printf "${SOURCE_PATH}/lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}" >> test/env_vars.sh
+	if [ "$LD_LIBRARY_PATH" ]; then
+		printf ":${LD_LIBRARY_PATH}" >> test/env_vars.sh
+	fi
 fi
-echo "../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
+echo '"' >> test/env_vars.sh
 
 echo "Done."
 echo
