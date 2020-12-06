@@ -71,6 +71,10 @@ std::string getStringAttribute(hid_t loc_id, const char* obj_name, const char* a
     throw std::runtime_error("Failed to read attribute "+std::string(attr_name)+" of object "+std::string(obj_name));
   return(std::string(buffer.get(),type_size));
 }
+  
+bool objectExists(hid_t loc_id, const char* name){
+  return H5Lexists(loc_id,name,H5P_DEFAULT)>0 && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
+};
 
 } // close unnamed namespace
 
@@ -1629,7 +1633,7 @@ squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   PreDerive(Get_t());
   return H0(E_range[ei],rho)+HI(ei,rho,Get_t());
 }
-	
+
 struct H5Handle{
   H5Handle():id(-1),deleter(nullptr){}
   H5Handle(hid_t id, herr_t(*deleter)(hid_t), const char* desc):
@@ -1804,7 +1808,13 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   if ( cross_section_grp_loc == ""){
     xs_group = H5Handle(H5Gcreate(group, "crosssections", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose," create HDF5 group");
   } else {
-    xs_group = H5Handle(H5Gcreate(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 group");
+    //this location is shared, so the group may already exist
+    if(objectExists(rootGroup, cross_section_grp_loc.c_str())){
+      xs_group = H5Handle(H5Gopen(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT), H5Gclose, "open HDF5 shared crosssection group");
+    }
+    else{ //but if it does not exist, just create it
+      xs_group = H5Handle(H5Gcreate(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 shared crosssection group");
+    }
   }
 
   if(iinteraction and save_cross_section) {
@@ -2272,11 +2282,6 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
 }
 
 void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_section_grp_loc){
-  auto objectExists=[](hid_t loc_id, const char* name){
-    return H5Lexists(loc_id,name,H5P_DEFAULT)>0
-                     && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
-  };
-	
   //hid_t file_id,group_id,root_id;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
@@ -2463,9 +2468,9 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     // if intereactions will be used then reading cross section information
     H5Handle xs_grp;
     if ( cross_section_grp_loc == "") {
-      xs_grp = H5Handle(H5Gopen(group, "crosssections", H5P_DEFAULT),H5Gclose,"open HDF5 group");
+      xs_grp = H5Handle(H5Gopen(group, "crosssections", H5P_DEFAULT),H5Gclose,"open HDF5 crosssection group");
     } else {
-      xs_grp = H5Handle(H5Gopen(group, cross_section_grp_loc.c_str(), H5P_DEFAULT),H5Gclose,"open HDF5 group");
+      xs_grp = H5Handle(H5Gopen(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT),H5Gclose,"open HDF5 shared crosssection group");
     }
     
     int_struct = std::make_shared<InteractionStructure>();
