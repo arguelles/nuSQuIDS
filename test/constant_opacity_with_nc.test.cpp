@@ -35,13 +35,25 @@ int DiffEquationKernel(double t,
   double * delE = cast_params->delE;
   unsigned int number_of_energy_nodes = cast_params->number_of_energy_nodes;
   nuSQUIDS::InteractionStructure* is = cast_params->is;
-  for(unsigned int ei = 0; ei < number_of_energy_nodes; ei++)
-    dfdE[ei] = -f[ei]*num_nucleon*(is->sigma_CC[0][0][ei]+is->sigma_NC[0][0][ei]);
+  for(unsigned int ei = 0; ei < number_of_energy_nodes; ei++){
+    double total_cross_section=0;
+    for(unsigned int trg=0; trg<is->targets.size(); trg++){
+      double weight=(trg==0?ye:1-ye);
+      total_cross_section+=weight*is->sigma_CC[trg][0][0][ei];
+      total_cross_section+=weight*is->sigma_NC[trg][0][0][ei];
+    }
+    dfdE[ei] = -f[ei]*num_nucleon*total_cross_section;
+  }
 
   for(unsigned int e2 = 1; e2 < number_of_energy_nodes; e2++){
     for(unsigned int e1 = 0; e1 < e2; e1++){
+      double cross_section=0;
+      for(unsigned int trg=0; trg<is->targets.size(); trg++){
+        double weight=(trg==0?ye:1-ye);
+        cross_section+=weight*is->dNdE_NC[trg][0][0][e2][e1]*is->sigma_NC[trg][0][0][e2];
+      }
       // this only does neutrinos
-      dfdE[e1] += f[e2]*delE[e2-1]*is->dNdE_NC[0][0][e2][e1]*is->sigma_NC[0][0][e2]*num_nucleon;
+      dfdE[e1] += f[e2]*delE[e2-1]*cross_section*num_nucleon;
     }
   }
 
