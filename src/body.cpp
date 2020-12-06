@@ -445,7 +445,7 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 */
 
 // constructor
-Sun::Sun():Sun(getResourcePath()+"/data/astro/bs05_agsop.dat")
+Sun::Sun():Sun(getResourcePath()+"/astro/bs05_agsop.dat")
 {}
 
 Sun::Sun(std::string sunlocation):Body()
@@ -551,7 +551,7 @@ std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
 */
 
 // constructor
-SunASnu::SunASnu():SunASnu(getResourcePath()+"/data/astro/bs05_agsop.dat")
+SunASnu::SunASnu():SunASnu(getResourcePath()+"/astro/bs05_agsop.dat")
 {}
 
 SunASnu::SunASnu(std::string sunlocation):Body()
