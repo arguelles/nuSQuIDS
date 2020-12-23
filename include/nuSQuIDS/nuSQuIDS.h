@@ -1519,11 +1519,11 @@ class nuSQUIDSAtm {
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename){
       hid_t file_id,group_id,root_id;
-      // create HDF5 file
-      file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-      if (file_id < 0)
+      // open HDF5 file
+      H5File file(H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
+      if (file < 0)
         throw std::runtime_error("nuSQUIDSAtm::ReadStateHDF5: Unable to open file: " + hdf5_filename + ". No such file or directory");
-      root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+      root_id = H5Gopen(file, "/",H5P_DEFAULT);
       group_id = root_id;
 
       // read the zenith range dimension
@@ -1548,8 +1548,6 @@ class nuSQUIDSAtm {
       }
 
       H5Gclose(root_id);
-      H5Fclose(file_id);
-      H5close();
 
       // resize apropiately the nuSQUIDSAtm container vector
       nusq_array.clear();
