@@ -798,8 +798,8 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
-	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
 	@chmod 755 "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)" "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a" 
 	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
