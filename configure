@@ -217,7 +217,7 @@ try_find_boost(){
 		return
  	fi
 	if [ "$PYTHON_FOUND" ]; then
-		for PYV_SUFFIX in $PYV $PYVM ''; do
+		for PYV_SUFFIX in $PYV $PYVM $PYV-mt $PVM-mt ''; do
 			for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
 				if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.a -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.so -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.dylib \) ]; then
 					if [ ! "$PYV_SUFFIX" ]; then
