@@ -2443,14 +2443,14 @@ double nuSQUIDS::Get_SquareMassDifference( unsigned int i ) const {
 }
 
 void nuSQUIDS::Set_MixingParametersToDefault(void){
-  // set parameters as in arXiv:1409.5439 NO
+  // set parameters as in NuFit 5.0 (arXiv:2007.14792) NO
   // but with delta_CP = 0.0
-  Set_MixingAngle(0,1,0.583996); // th12
-  Set_MixingAngle(0,2,0.148190); // th13
-  Set_MixingAngle(1,2,0.737324); // th23
+  Set_MixingAngle(0,1,0.583638); // th12
+  Set_MixingAngle(0,2,0.149575); // th13
+  Set_MixingAngle(1,2,0.855211); // th23
 
-  Set_SquareMassDifference(1,7.5e-05); // dm^2_21
-  Set_SquareMassDifference(2,0.00257); // dm^2_31
+  Set_SquareMassDifference(1,7.420e-05); // dm^2_21
+  Set_SquareMassDifference(2,0.002514); // dm^2_31
 
   Set_CPPhase(0,2,0.0); // delta_13 = diract cp phase
 }
