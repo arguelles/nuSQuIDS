@@ -38,12 +38,10 @@ int main()
   squids::Const units;
 
   //Here we create the nusquids object reading the state from the hdf5 file.
-  //nuSQUIDS inus("./initial_state.hdf5");
-  //nuSQUIDS fnus("./final_state.hdf5");
+  nuSQUIDS inus("./initial_state.hdf5");
+  nuSQUIDS fnus("./final_state.hdf5");
 
-  nuSQUIDSAtm<> inus("./pion_atmospheric_initial.hdf5");
-  nuSQUIDSAtm<> fnus("./pion_atmospheric_2441_1.000000_0.000000_0.160875_0.000000_0.000000_0.000000.hdf5");
-  
+    
   //In this part we will save the values in a txt file to be able to plot or manipulate later.
   //Notice that this is not going to have all the information about the quantum evolution, for that 
   //we need to save the information using the HDF5 writing function.
