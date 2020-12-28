@@ -60,7 +60,7 @@ int main()
     file << lE << " " << E << " ";
     for(int fl=0; fl<numneu; fl++){
       //the ration in the second column is with the initial muon flux, the others are zero.
-      file << " " <<  fnus.EvalFlavor(fl, -1,E) << " " <<  fnus.EvalFlavor(fl,-1, E)/inus.EvalFlavor(1, -1,E);
+      file << " " <<  fnus.EvalFlavor(fl, E, 0) << " " <<  fnus.EvalFlavor(fl, E, 0)/inus.EvalFlavor(1, E, 0);
     }
     file << std::endl;
   }
