@@ -155,7 +155,7 @@ experimental results and related theoretical calculations, the
 has been firmly established and the three mixing angles, which
 parametrize the lepton mixing matrix, together with the two
 squared-mass differences, have been measured to good
-precision~\citep{Esteban:2016qun,deSalas:2017kay,Capozzi:2018ubv}. It
+precision~\citep{Esteban:2020cvm,deSalas:2017kay,Capozzi:2018ubv}. It
 is the task of on-going 
 and future experiments to determine the neutrino mass ordering 
 and the $CP$-violating phase~\citep{Hewett:2012et,
@@ -255,7 +255,7 @@ s_{12}s_{23} -c_{12}c_{23}s_{13}e^{i\delta_{13}} & - c_{12} s_{23} - s_{12} c_{2
 \end{equation}
 where $c_{ij} \equiv \cos \theta_{ij}$, $s_{ij} \equiv \sin \theta_{ij}$. In the
 three flavor scenario we use this parametrization (with
-values from \citep{Esteban:2016qun} by default).
+values from \citep{Esteban:2020cvm} by default).
 The neutrino ensemble propagation is
 described by the following quantum Von Neumann equation\footnote{In this equation and henceforth we set $c = \hbar = 1$.} 
 \begin{equation}
@@ -901,7 +901,7 @@ the screen.
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   marray<double,1> ini_state({3},{0,1,0});
   nus.Set_initial_state(ini_state,flavor);
-  // Lets print out the initial state
+  
   std::cout << "In state" << std::endl;
   for (double EE : nus.GetERange()){
     std::cout << EE/units.GeV << " ";
@@ -1096,16 +1096,19 @@ linear in the outgoing neutrino energy; see implementation in {\ttf
   exCross.cpp}. We also allow to change the proportion of charge-to-neutral
   current at the construction of the object.
 
-We construct two cross section objects: one with only charge current  interactions
+We construct two cross section libraries with the new cross section
+associated with an isoscalar nucleon targer: one with only charge current  interactions
 {\ttf ncs\_cc} and another with only neutral current {\ttf
   ncs\_nc}. Then we construct the corresponding nuSQuIDS objects {\ttf nus\_cc} and {\ttf nus\_nc}.
 We also disable neutrino oscillations in this example by means of the
 option {\ttf Set\_IncludeOscillations(false)}.
 
 \begin{lstlisting}[frame=leftline, numbers =  
-  left,breaklines=true,label = ex:sin1]
-  std::shared_ptr<NeutrinoCrossSections> ncs_cc=std::make_shared<LinearCrossSections>(0.0);
-  std::shared_ptr<NeutrinoCrossSections> ncs_nc=std::make_shared<LinearCrossSections>(1.0);
+    left,breaklines=true,label = ex:sin1]
+  auto ncs_cc=std::make_shared<CrossSectionLibrary>(CrossSectionLibrary::MapType{
+    {isoscalar_nucleon, std::make_shared<LinearCrossSections>(0.0)}});
+  auto ncs_nc=std::make_shared<CrossSectionLibrary>(CrossSectionLibrary::MapType{
+    {isoscalar_nucleon, std::make_shared<LinearCrossSections>(1.0)}});
 
   nuSQUIDS nus_cc(logspace(Emin,Emax,200),numneu,neutrino,true,ncs_cc);
   nus_cc.Set_IncludeOscillations(false);
@@ -2345,8 +2348,39 @@ Second we list the public abstract virtual functions.
   Bjorken-x ({\ttf x}), and y ({\ttf y}) should return the double
    differential cross section. Its implementation is not required to
    run {\ttf nuSQUIDS} and, by default, when evaluated, unless
-   overwritten, it will throw an error. 
+   overwritten, it will throw an error.
+ \item Averaged cross sections
+   \begin{lstlisting}
+     virtual double AverageTotalCrossSection(double EMin,
+     double EMax, NeutrinoFlavor flavor, NeutrinoType neutype,
+     Current current) const;
+
+     virtual double AverageSingleDifferentialCrossSection(double E1,
+     double E2Min, double E2Max, NeutrinoFlavor flavor,
+     NeutrinoType neutype, Current current) const;
+   \end{lstlisting}
+   Averaged total and single differential cross section in energy
+   range {\ttf Emin}-{\ttf Emax} and {\ttf E2min}-{\ttf E2max} respectively. 
 \end{itemize}
+
+\subsubsection{NullCrossSections\label{sec:null_cross_section}}
+This class is a simple implementation of the a null cross section.
+\begin{lstlisting}
+  NullCrossSections(){}
+
+  double TotalCrossSection(double Enu, NeutrinoFlavor flavor,
+  NeutrinoType neutype, Current current) const override { return 0;}
+
+  double SingleDifferentialCrossSection(double E1, double E2,
+  NeutrinoFlavor flavor, NeutrinoType neutype, Current current)
+  const override { return 0;}
+  
+  double DoubleDifferentialCrossSection(double E, double x, double y,
+  NeutrinoFlavor flavor, NeutrinoType neutype, Current current)
+  const override { return 0;}
+\end{lstlisting}
+
+
 
 \subsubsection{NeutrinoDISCrossSectionsFromTables\label{sec:neutrino_cross_section_from_tables}}
 
@@ -3952,8 +3986,8 @@ Joshua Highnight and Jessie Micallef for providing a modified version of Prob3++
 Thomas Ehrhardt for performing detailed comparison between this code speed and accuracy versus Prob3++ CPU and GPU version.
 Pedro Machado, Aaron Vincent, and Logan Wille for providing the Solar model files and useful discussion in the construction of the SolarTransition extension.
 CAA is supported by U.S. National Science Foundation (NSF) grant PHY-1505858.
-JS is supported by  EU Networks FP10 ITN ELUSIVES (H2020-MSCA-ITN-2015-674896), INVISIBLES-PLUS (H2020-MSCA-
-RISE-2015-690575),  MINECO grant FPA2016-76005-C2-1-P and Maria de Maetzu grant MDM-2014-0367 of ICCUB. 
+JS is supported by  European ITN project H2020-MSCA-ITN-2019/860881-HIDDeN, the Spanish grants FPA2016-76005-C2-1-P, 
+PID2019-108122GB-C32, PID2019-105614GB-C21.
 CNW is supported by.
 
 \bibliographystyle{elsarticle-num}
