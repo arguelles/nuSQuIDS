@@ -1349,6 +1349,8 @@ private:
 		allocator_traits::deallocate(alloc,buffer,size);
 	}
 	
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wterminate"
 	///Initialize a buffer by copy constructing objects from corresponding objects in another buffer
 	///
 	///May throw if value_type(const value_type&) throws
@@ -1370,6 +1372,7 @@ private:
 			throw;
 		}
 	}
+	#pragma GCC diagnostic pop
 };
 
 template<typename Iterator, int dummy=Iterator::marray_iterator_tag>
