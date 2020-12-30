@@ -52,7 +52,7 @@ namespace{
 			double a1=std::abs(est1);
 			double a2=std::abs(est2);
 			if(a1<a2) std::swap(a1,a2);
-			return((a2 && tol>(a1/a2)-1) || (!a2 && a1<tol));
+			return((a2 && tol>(a1/a2)-1) || (a1==a2));
 		};
 		auto x=[&](unsigned int i){ return midpoint+abcissas[i]*halfWidth; };
 		double y[5]; //array of integrand evaluations
