@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
-import nuSQUIDSpy as nsq
+import nuSQUIDS as nsq
 
 # we will use the boost injector metaclass
 
