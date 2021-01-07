@@ -2176,7 +2176,8 @@ class nuSQUIDSLayers {
     ///        linear ramp scales down to zero at `lowpass_cutoff`. If this scale is 
     ///        zero, the filter is a step-function.
     double EvalWithState(
-      unsigned int flv, double time, double enu, marray<double,1> state,
+      unsigned int flv, double time, double enu,
+      const marray<double,1>& state,
       unsigned int rho = 0, double avr_scale = 0.,
       double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
     ) const {
@@ -2235,15 +2236,14 @@ class nuSQUIDSLayers {
       }
       // The multiplication is overloaded to calculate the trace of the product
       double phi=rho_int*evol_proj;
-      
       return phi;
     }
     
     // Array version of the evaluation function. Looping in C is faster than looping in
     // Python. 
     marray<double,1> ArrEvalWithState(
-      unsigned int flv, marray<double,1> time, marray<double,1> enu,
-      marray<double,2> state, unsigned int rho = 0, double avr_scale = 0.,
+      unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
+      const marray<double,2>& state, unsigned int rho = 0, double avr_scale = 0.,
       double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
     ) const {
       if ((time.extent(0) != enu.extent(0)) || (time.extent(0) != state.extent(0)))
@@ -2265,11 +2265,11 @@ class nuSQUIDSLayers {
     // Overload with array over t_range, because we might need a different averaging
     // distance for every point where we evaluate the probability.
     marray<double,1> ArrEvalWithStateTRange(
-      unsigned int flv, marray<double,1> time, marray<double,1> enu,
-      marray<double,2> state, unsigned int rho, double avr_scale,
+      unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
+      const marray<double,2>& state, unsigned int rho, double avr_scale,
       double lowpass_cutoff,
       double lowpass_scale,
-      marray<double,1> t_range
+      const marray<double,1>& t_range
     ) const {
       if (   time.extent(0) != enu.extent(0)
           || time.extent(0) != state.extent(0)

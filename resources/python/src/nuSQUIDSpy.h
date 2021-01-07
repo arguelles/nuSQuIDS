@@ -477,7 +477,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("EvalWithState",
         (
           double(nuSQUIDSLayers<BaseType>::*)(
-            unsigned int, double, double, marray<double,1>, unsigned int,
+            unsigned int, double, double,
+            const marray<double,1>&, unsigned int,
             double, double, double, double
           )
         )&nuSQUIDSLayers<BaseType>::EvalWithState,
@@ -517,8 +518,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("EvalWithState",
         (
           marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
-            unsigned int, marray<double,1>, marray<double,1>, marray<double,2>,
-            unsigned int, double, double, double, double
+            unsigned int, const marray<double,1>&, const marray<double,1>&,
+            const marray<double,2>&, unsigned int, double, double, double, double
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithState,
         nuSQUIDSLayers_ArrEvalWithState_overload<nuSQUIDSLayers<BaseType>>(
@@ -560,8 +561,9 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("EvalWithState",
         (
           marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
-            unsigned int, marray<double,1>, marray<double,1>, marray<double,2>,
-            unsigned int, double, double, double, marray<double,1>
+            unsigned int, const marray<double,1>&, const marray<double,1>&,
+            const marray<double,2>&,
+            unsigned int, double, double, double, const marray<double,1>&
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithStateTRange,
           args("flavor", "time", "energy", "state", "rho", "avr_scale", 
