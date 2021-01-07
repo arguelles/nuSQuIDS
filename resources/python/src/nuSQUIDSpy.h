@@ -92,6 +92,11 @@ struct marray_from_python{
     //accept only numpy arrays
     if(!PyArray_Check(obj_ptr))
       return(NULL);
+    // Analogously to what is described in
+    // https://docs.python.org/3/c-api/intro.html#reference-counts,
+    // the call below always increases the reference count of the object by one and we 
+    // are left with the responsibility to decrease the reference count when we are done
+    // with it.
     PyArrayObject* numpy_array=PyArray_GETCONTIGUOUS((PyArrayObject*)obj_ptr);
     unsigned int array_dim = PyArray_NDIM(numpy_array);
     //require matching dimensions
@@ -115,7 +120,8 @@ struct marray_from_python{
       default:
         return(NULL);
     }
-
+    // Decreasing reference count
+    Py_XDECREF(numpy_array);
     return(obj_ptr);
   }
 
@@ -184,6 +190,7 @@ struct marray_from_python{
       }
     } while(iternext(iter));
     NpyIter_Deallocate(iter);
+    Py_XDECREF(numpy_array);
   }
 };
 
