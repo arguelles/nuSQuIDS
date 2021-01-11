@@ -64,8 +64,10 @@ void nuSQUIDS::init(double xini){
 
   if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
+  else if (NT == both)
+    nrhos = 2;
   else {
-    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino} not : " + std::to_string(NT));
+    throw std::runtime_error("nuSQUIDS::Error::NT = {neutrino,antineutrino,both} not : " + std::to_string(NT));
   }
 
   if ( numneu > SQUIDS_MAX_HILBERT_DIM )
@@ -76,7 +78,14 @@ void nuSQUIDS::init(double xini){
   nsun = numneu;
 
   //initialize SQUIDS
-  ini(ne,numneu,1,0,xini);
+  try {
+    // initialize SQUIDS
+    ini(ne,numneu,nrhos,0,xini);
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
+  }
+  
   Set_CoherentRhoTerms(true);
   Set_h(1.*params.km);
   Set_h_max(std::numeric_limits<double>::max() );
@@ -85,35 +94,46 @@ void nuSQUIDS::init(double xini){
   // set parameters to default   //
   //===============================
 
-  Set_MixingParametersToDefault();
-
-  //===============================
-  // physics CP sign for aneu    //
-  //===============================
-  if ( NT == antineutrino ){
-    for(unsigned int i = 0; i < numneu; i++){
-      for(unsigned int j = i+1; j < numneu; j++){
-        Set_CPPhase(i,j,-Get_CPPhase(i,j));
-      }
-    }
+  try{
+    Set_MixingParametersToDefault();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying to set default mixing parameters [Set_MixingParametersToDetaul]");
   }
+
   //===============================
   // init projectors             //
   //===============================
 
-  iniProjectors();
+  try{
+    iniProjectors();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize projectors [iniProjectors]");
+  }
 
   //===============================
   // init square mass difference //
   //===============================
 
-  H0_array.resize(std::vector<size_t>{ne});
-  for(unsigned int ie = 0; ie < ne; ie++){
-    H0_array[ie] = squids::SU_vector(nsun);
+  try{
+    H0_array.resize(std::vector<size_t>{ne});
+    for(unsigned int ie = 0; ie < ne; ie++){
+      H0_array[ie] = squids::SU_vector(nsun);
+    }
+    iniH0();
+  } catch (std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize vaccum Hamiltonian [iniH0]");
   }
 
-  iniH0();
+  positivization_scale = 300.0*params.km;
 
+  if(iinteraction){
+    Set_NonCoherentRhoTerms(true);
+    Set_OtherRhoTerms(true);
+  }
+  
   //precompute this product for HI to avoid repeating expensive pow() calls.
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
@@ -125,7 +145,7 @@ void nuSQUIDS::init(double xini){
 
 void nuSQUIDS::Set_E(double Enu){
   if( ne != 1 )
-    throw std::runtime_error("nuSQUIDS::Error:Cannot use Set_E in single energy mode.");
+    throw std::runtime_error("nuSQUIDS::Error:Can only use Set_E in single energy mode.");
   E_range = marray<double,1>{1};
   E_range[0] = Enu;
   Set_xrange(std::vector<double>{Enu});
@@ -280,6 +300,19 @@ void nuSQUIDS::EvolveProjectors(double x){
   std::unique_ptr<double[]> evol_buf(new double[H0_array[0].GetEvolveBufferSize()]);
   for(unsigned int ei = 0; ei < ne; ei++){
     H0_array[ei].PrepareEvolve(evol_buf.get(),x-Get_t_initial());
+    if (evol_lowpass_cutoff > 0){
+      // std::cout << "evol_buf: ";
+      // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
+      //   std::cout << evol_buf.get()[i] << "  ";
+      // }
+      // std::cout << std::endl;
+      H0_array[ei].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff, evol_lowpass_scale);
+      // std::cout << "evol_buf after filter: ";
+      // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
+      //   std::cout << evol_buf.get()[i] << "  ";
+      // }
+      // std::cout << std::endl;
+    }
     for(unsigned int rho = 0; rho < nrhos; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
         // will only evolve the flavor projectors
@@ -1115,8 +1148,6 @@ void nuSQUIDS::Set_initial_state(const marray<double,1>& v, Basis basis){
     throw std::runtime_error("nuSQUIDS::Error::Initial state size not compatible with number of flavors.");
   if( not (basis == flavor || basis == mass ))
     throw std::runtime_error("nuSQUIDS::Error::BASIS can be: flavor or mass.");
-  if( NT == both )
-    throw std::runtime_error("nuSQUIDS::Error::Only supplied neutrino/antineutrino initial state, but set to both.");
   if( ne != 1 )
     throw std::runtime_error("nuSQUIDS::Error::nuSQUIDS initialized in multienergy mode, while state is only single energy.");
   if( !itrack or !ibody )
@@ -1384,7 +1415,7 @@ double nuSQUIDS::EvalMass(unsigned int flv) const{
   return GetExpectationValue(b0_proj[flv], 0, 0);
 }
 
-double nuSQUIDS::EvalFlavor(unsigned int flv) const{
+double nuSQUIDS::EvalFlavor(unsigned int flv, unsigned int rho) const{
   if(state == nullptr)
     throw std::runtime_error("nuSQUIDS::Error::State not initialized.");
   if(not inusquids)
@@ -1395,12 +1426,14 @@ double nuSQUIDS::EvalFlavor(unsigned int flv) const{
     throw std::runtime_error("nuSQUIDS::Error::Use this function only in single energy mode.");
   if( flv >= nsun )
     throw std::runtime_error("nuSQUIDS::Error::Flavor index greater than number of initialized flavors.");
+  if ( rho != 0 and NT != both )
+    throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
 
   if(basis == mass)
-    return b1_proj[0][flv]*state[0].rho[0];
+    return b1_proj[0][flv]*state[0].rho[rho];
   if(use_full_hamiltonian_for_projector_evolution)
-    return evol_b1_proj[0][flv][0]*state[0].rho[0];
-  return GetExpectationValue(b1_proj[0][flv], 0, 0);
+    return evol_b1_proj[0][flv][0]*state[0].rho[rho];
+  return GetExpectationValue(b1_proj[0][flv], rho, 0);
 }
 
 void nuSQUIDS::iniH0(){
@@ -2386,6 +2419,13 @@ void nuSQUIDS::Set_ProgressBar(bool opt){
   progressbar = opt;
 }
 
+void nuSQUIDS::Set_EvolLowPassCutoff(double val){
+  evol_lowpass_cutoff = val;
+}
+
+void nuSQUIDS::Set_EvolLowPassScale(double val){
+  evol_lowpass_scale = val;
+}
 
 void nuSQUIDS::Set_IncludeOscillations(bool opt){
   ioscillations = opt;

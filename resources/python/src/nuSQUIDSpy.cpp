@@ -136,6 +136,7 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
 
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSAtm");
+  RegisterBasicLayerNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSLayers");
 
   class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>, boost::noncopyable >("NeutrinoCrossSections", no_init);
 
@@ -177,6 +178,8 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
   ;
 
   class_<squids::Const, boost::noncopyable>("Const")
+    .def_readonly("GF",&squids::Const::GF)
+    .def_readonly("Na",&squids::Const::Na)
     .def_readonly("PeV",&squids::Const::PeV)
     .def_readonly("TeV",&squids::Const::TeV)
     .def_readonly("GeV",&squids::Const::GeV)
