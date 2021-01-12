@@ -2048,7 +2048,6 @@ class nuSQUIDSLayers {
       }
       iinistate = true;
     }
-    // TODO: initialize both (anti)neutrinos
 
     /// \brief Evolves the system.
     void EvolveState(){
@@ -2205,8 +2204,9 @@ class nuSQUIDSLayers {
       if(use_full_hamiltonian_for_projector_evolution){
         evol_proj = nusq_array[0].GetFlavorProj(flv, rho);
       } else {
-        // only neutrino or antineutrino mode: rho is always zero
-        // TODO: enable "both" mode
+        // If the neutrino mode is `both`, then the index `rho` controls whether we are
+        // evaluating neutrinos (0) or antineutrinos (1). Otherwise, if we are only
+        // propagating neutrinos or antineutrinos, `rho` is always zero.
         squids::SU_vector H0_at_enu = nusq_array[0].H0(enu, rho);
         // preevolution buffer
         // This contains all the evaluated trigonometric functions in an array.
@@ -2230,8 +2230,6 @@ class nuSQUIDSLayers {
         if (lowpass_cutoff > 0.){
           H0_at_enu.LowPassFilter(evol_buffer.get(), lowpass_cutoff, lowpass_scale);
         }
-
-        // rho is again always zero
         evol_proj = nusq_array[0].GetFlavorProj(flv, rho).Evolve(evol_buffer.get());
       }
       // The multiplication is overloaded to calculate the trace of the product
