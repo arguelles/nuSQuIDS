@@ -580,6 +580,24 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           "Same as the other array version of the function, but allows a different\n"
           "averaging time for each evaluation. All other arguments must be passed.\n\n"
       );
+      class_object->def("EvalWithState",
+        (
+          marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
+            unsigned int, const marray<double,1>&, const marray<double,1>&,
+            const marray<double,2>&,
+            unsigned int, double,
+            const marray<double,1>&,
+            const marray<double,1>&,
+            const marray<double,1>&
+          )
+        )&nuSQUIDSLayers<BaseType>::ArrEvalWithStateTRangeLPFilter,
+          args("flavor", "time", "energy", "state", "rho", "avr_scale", 
+            "lowpass_cutoff", "lowpass_scale", "t_range"),
+          "Returns the flavor composition with a given (interpolated) state.\n\n"
+          "Same as the other array version of the function, but allows a different\n"
+          "averaging time and low-pass filter settings for each evaluation.\n"
+          "All other arguments must be passed.\n\n"
+      );
       class_object->def("Set_EvalThreads",&nuSQUIDSLayers<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSLayers<BaseType>::Get_EvalThreads);
       class_object->def("Set_EvolLowPassCutoff",&nuSQUIDSLayers<BaseType>::Set_EvolLowPassCutoff);

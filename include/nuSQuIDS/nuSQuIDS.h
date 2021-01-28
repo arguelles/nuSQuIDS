@@ -2288,6 +2288,36 @@ class nuSQUIDSLayers {
       return probs;
     }
     
+    // Overload with array over t_range and low-pass filter cutoff. This allows one to
+    // change the filter for each position in phase space and to turn it off for certain
+    // regions (i.e. above the horizon where fast oscillations don't average out).
+    marray<double,1> ArrEvalWithStateTRangeLPFilter(
+      unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
+      const marray<double,2>& state, unsigned int rho, double avr_scale,
+      const marray<double,1>& lowpass_cutoff,
+      const marray<double,1>& lowpass_scale,
+      const marray<double,1>& t_range
+    ) const {
+      if (   time.extent(0) != enu.extent(0)
+          || time.extent(0) != state.extent(0)
+          || time.extent(0) != t_range.extent(0)
+          || time.extent(0) != lowpass_cutoff.extent(0)){
+        throw std::runtime_error("nuSQUIDS::Error:: Input array lengths do not match");
+      }
+      marray<double,1> probs {enu.extent(0)};
+      marray<double,1> one_state {state.extent(1)};
+      for (int i=0; i < enu.extent(0); i++){
+        for (int j=0; j < state.extent(1); j++){
+          one_state[j] = state[i][j];
+        }
+        probs[i] = EvalWithState(
+          flv, time[i], enu[i], one_state, rho, avr_scale,
+          lowpass_cutoff[i], lowpass_scale[i], t_range[i]
+        );
+      }
+      return probs;
+    }
+    
     marray<double,2> GetStatesArr(unsigned int rho = 0){
       
       marray<double,2> states {GetNumNodes(),GetNumNeu()*GetNumNeu()};
