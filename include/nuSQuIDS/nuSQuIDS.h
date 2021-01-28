@@ -472,6 +472,10 @@ protected:
     void PositivizeFlavors();
     /// \brief Set GSL differential cross section precision.
     double gsl_int_precision = 1.e-3;
+    /// \brief Cutoff for low-pass filter applied during state density evolution
+    double evol_lowpass_cutoff = 0;
+    /// \brief Scale for low-pass filter applied during state density evolution
+    double evol_lowpass_scale = 0;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -785,6 +789,14 @@ protected:
     /// \brief Returns the flavor composition in the single energy mode.
     /// @param flv Neutrino flavor.
     double EvalFlavor(unsigned int flv) const;
+    
+    /// \brief Sets the cutoff for the state evolution low-pass filter.
+    /// @param val cutoff value 
+    void Set_EvolLowPassCutoff(double val);
+
+    /// \brief Sets the linear ramp size for the state evolution low-pass filter.
+    /// @param val Range in frequency space over which the linear ramp is applied. 
+    void Set_EvolLowPassScale(double val);
 
     /// \brief Toggles tau regeneration on and off.
     /// \param opt If \c true tau regeneration will be considered.
@@ -1731,6 +1743,24 @@ class nuSQUIDSAtm {
       return nusq_array[0].GetNumRho();
     }
 
+    /// \brief Returns number of nodes.
+    size_t GetNumNodes() const{
+      return nusq_array.size();
+    }
+
+    /// \brief Returns the (evolved) states of all nodes
+    /// @param rho Index of equation. In `both` propagation mode, neutrinos = 0 and 
+    /// antineutrinos = 1.
+    marray<double,2> GetStates(unsigned int rho = 0){
+      marray<double,2> states {GetNumNodes(),GetNumNeu()*GetNumNeu()};
+      for(int i=0; i<nusq_array.size(); i++){
+        std::vector<double> state_vec = nusq_array[i].GetState(0, rho).GetComponents();
+        for(int j=0; j<state_vec.size(); j++)
+          states[i][j] = state_vec[j];
+      }
+      return states;
+    }
+
     /// \brief Returns the energy nodes values.
     marray<double,1> GetERange() const{
       return enu_array;
@@ -1838,6 +1868,18 @@ class nuSQUIDSAtm {
       ncs=xs;
       for(BaseSQUIDS& nsq : nusq_array)
         nsq.SetNeutrinoCrossSections(ncs);
+    }
+
+    void Set_EvolLowPassCutoff(double val){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_EvolLowPassCutoff(val);
+      }
+    }
+
+    void Set_EvolLowPassScale(double val){
+      for(BaseSQUIDS& nsq : nusq_array){
+        nsq.Set_EvolLowPassScale(val);
+      }
     }
 };
 
