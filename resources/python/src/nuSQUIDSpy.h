@@ -311,6 +311,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetHamiltonian",&BaseType::GetHamiltonian);
       class_object->def("GetState",(const squids::SU_vector&(BaseType::*)(unsigned int))&BaseType::GetState, return_value_policy<copy_const_reference>());
       class_object->def("GetState",(const squids::SU_vector&(BaseType::*)(unsigned int, unsigned int))&BaseType::GetState, return_value_policy<copy_const_reference>());
+      class_object->def("Set_EvolLowPassCutoff", &BaseType::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassScale", &BaseType::Set_EvolLowPassScale);
       class_object->def("Set_h_min",&BaseType::Set_h_min);
       class_object->def("Set_h_max",&BaseType::Set_h_max);
       class_object->def("Set_h",&BaseType::Set_h);
@@ -358,6 +360,7 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
 // nuSQUIDSAtm-like overloads factories
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_Set_initial_state,Set_initial_state,1,2)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_GetStates_overload, GetStates, 0, 1)
 
 // registration for atmospheric template
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
@@ -400,6 +403,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_rel_error",(void(nuSQUIDSAtm<BaseType>::*)(double, unsigned int))&nuSQUIDSAtm<BaseType>::Set_rel_error);
       class_object->def("Set_abs_error",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_abs_error);
       class_object->def("Set_abs_error",(void(nuSQUIDSAtm<BaseType>::*)(double, unsigned int))&nuSQUIDSAtm<BaseType>::Set_abs_error);
+      class_object->def("Set_EvolLowPassCutoff",&nuSQUIDSAtm<BaseType>::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassScale",&nuSQUIDSAtm<BaseType>::Set_EvolLowPassScale);
       class_object->def("GetNumE",&nuSQUIDSAtm<BaseType>::GetNumE);
       class_object->def("GetNumCos",&nuSQUIDSAtm<BaseType>::GetNumCos);
       class_object->def("GetNumNeu",&nuSQUIDSAtm<BaseType>::GetNumNeu);
@@ -408,6 +413,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetnuSQuIDS",(BaseType&(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,boost::python::return_internal_reference<>());
       class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
       class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
+      class_object->def("GetStates", (marray<double,2>(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetStates,
+        nuSQUIDSAtm_GetStates_overload<nuSQUIDSAtm<BaseType>>(args("rho"), "Get evolved states of all nodes"));
       class_object->def("GetERange",&nuSQUIDSAtm<BaseType>::GetERange);
       class_object->def("GetCosthRange",&nuSQUIDSAtm<BaseType>::GetCosthRange);
       class_object->def("Set_IncludeOscillations",&nuSQUIDSAtm<BaseType>::Set_IncludeOscillations);
