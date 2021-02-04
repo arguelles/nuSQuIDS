@@ -403,6 +403,8 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
+    /// \brief The external flux from the body at the current point on the track
+    marray<double,3> current_external_flux;
 
     /// \brief Mass basis projectors.
     /// \details The i-entry corresponds to the projector in the ith mass eigenstate.
@@ -491,6 +493,8 @@ protected:
     void PositivizeFlavors();
     /// \brief Set GSL differential cross section precision.
     double gsl_int_precision = 1.e-3;
+    /// \brief If true the bodies can act as neutrino sources.
+    bool enable_neutrino_sources = false;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -1025,6 +1029,20 @@ protected:
     void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs) {
        ncs=xs;
        interactions_initialized=false;
+    }
+
+    /// \brief Enables neutrino flux emission from bodies
+    void Set_NeutrinoSources(bool enable_neutrino_sources_){
+      if(enable_neutrino_sources_){
+        current_external_flux.resize(std::vector<size_t>{ne,nrhos,numneu});
+        std::fill(current_external_flux.begin(),current_external_flux.end(),0.0);
+      }
+      enable_neutrino_sources = enable_neutrino_sources_;
+    }
+
+    /// \brief Returns true if neutrino flux emission from bodies is considered
+    bool Get_NeutrinoSources(){
+      return enable_neutrino_sources;
     }
 };
 

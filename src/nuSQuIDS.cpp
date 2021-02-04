@@ -283,6 +283,10 @@ void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
   current_ye = body->ye(*track);
   current_density = body->density(*track);
+  if(enable_neutrino_sources){
+    body->injected_neutrino_flux(current_external_flux,*track,*this);
+    assert(current_external_flux.extent(0) == ne && current_external_flux.extent(1) == nrhos && current_external_flux.extent(2) == numneu);
+  }
   if( basis != mass and ioscillations){
     EvolveProjectors(x);
   }
@@ -362,8 +366,16 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   if(iinteraction && !ioscillations) //can use precomputed result from UpdateInteractions
     return(interaction_cache[index_rho][e1]);
 
-  if (not iinteraction)
+  if (not iinteraction and not enable_neutrino_sources)
     return squids::SU_vector(nsun);
+  else if (not iinteraction) {
+    squids::SU_vector external_flux_contribution(current_external_flux[e1][index_rho][0]*evol_b1_proj[index_rho][0][e1]);
+    for(unsigned int i = 1; i < numneu; i++)
+      external_flux_contribution+=squids::detail::guarantee
+                                  <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                  (current_external_flux[e1][index_rho][i]*evol_b1_proj[index_rho][i][e1]);
+    return external_flux_contribution;
+  }
 
   // NC interactions
   double factor_e  =nc_factors[index_rho][0][e1];
@@ -389,7 +401,14 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   interaction_term+=squids::detail::guarantee
                     <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
                     (factor_tau*evol_b1_proj[index_rho][2][e1]);
-  
+
+  if(enable_neutrino_sources){
+    for(unsigned int i = 0; i < numneu; i++)
+      interaction_term+=squids::detail::guarantee
+                        <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                        (current_external_flux[e1][index_rho][i]*evol_b1_proj[index_rho][i][e1]);
+  }
+
   return interaction_term;
 }
 
@@ -802,6 +821,19 @@ void nuSQUIDS::UpdateInteractions(){
                                     <squids::detail::EqualSizes | squids::detail::AlignedStorage>
                                     (factors_nu_tau[e1]*projector_tau);
       }
+
+    if(enable_neutrino_sources){
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        for(unsigned int e1=0; e1<ne; e1++){
+          for(unsigned int i = 0; i < numneu; i++){
+            interaction_cache+=squids::detail::guarantee
+                              <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                              (current_external_flux[e1][rho][i]*evol_b1_proj[rho][i][e1]);
+          }
+        }
+      }
+    }
+
     }
 
   } //end of no oscillation handling

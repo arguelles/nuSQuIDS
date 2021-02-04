@@ -40,6 +40,9 @@
 
 namespace nusquids{
 
+// Forward declaration of nuSQuIDS class
+class nuSQUIDS;
+
 /// \class Body
 /// \brief Abstract body class.
 /// \details This abstract class serves as a prototype
@@ -122,6 +125,12 @@ class Body{
     virtual bool IsConstantDensity() const {return is_constant_density;}
     /// \brief Return true if the body is a constant density.
     virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
+    /// \brief Sets the injected neutrino flux from the Body at a given Track location.
+    /// \details This function is called by nuSQuIDS during the calculation to obtain the injected flux.
+    /// @param flux Is a three dimensional array with dimensions: energy, rho, and flavor, which has previously been allocated by nuSQuIDS.
+    /// @param Track Trajectory object.
+    /// @param nuSQuIDS nuSQuIDS object that queries the flux.
+    virtual void injected_neutrino_flux(marray<double,3>& flux, const Track&, const nuSQUIDS&) {}
 };
 
 // type defining
