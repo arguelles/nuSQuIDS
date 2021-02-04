@@ -826,9 +826,9 @@ void nuSQUIDS::UpdateInteractions(){
       for(unsigned int rho = 0; rho < nrhos; rho++){
         for(unsigned int e1=0; e1<ne; e1++){
           for(unsigned int i = 0; i < numneu; i++){
-            interaction_cache+=squids::detail::guarantee
-                              <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                              (current_external_flux[e1][rho][i]*evol_b1_proj[rho][i][e1]);
+            interaction_cache[rho][e1]+=squids::detail::guarantee
+                                        <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
+                                        (current_external_flux[e1][rho][i]*evol_b1_proj[rho][i][e1]);
           }
         }
       }
