@@ -393,6 +393,14 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     factor_mu +=gr_factors[e1];
     factor_tau+=gr_factors[e1];
   }
+
+  // add explicitly
+  if(enable_neutrino_sources){
+    factor_e  +=current_external_flux[e1][index_rho][0];
+    factor_mu +=current_external_flux[e1][index_rho][1];
+    factor_tau+=current_external_flux[e1][index_rho][2];
+  }
+
   // Add the weighted projectors
   squids::SU_vector interaction_term(factor_e*evol_b1_proj[index_rho][0][e1]);
   interaction_term+=squids::detail::guarantee
@@ -403,10 +411,11 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
                     (factor_tau*evol_b1_proj[index_rho][2][e1]);
 
   if(enable_neutrino_sources){
-    for(unsigned int i = 0; i < numneu; i++)
+    for(unsigned int i = 3; i < numneu; i++){
       interaction_term+=squids::detail::guarantee
                         <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
                         (current_external_flux[e1][index_rho][i]*evol_b1_proj[index_rho][i][e1]);
+    }
   }
 
   return interaction_term;
