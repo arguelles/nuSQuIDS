@@ -29,8 +29,8 @@ class EmittingVacuum: public Vacuum {
       flavor(flavor),decay_length(decay_length){}
     void injected_neutrino_flux(marray<double,3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override {
       double x_cur = track.GetX();
-      for(unsigned int rhoi = 0; rhoi < nusquids.GetNumRho(); rhoi++){
-        for(unsigned int ei=0; ei < nusquids.GetNumE(); ei++){
+      for(unsigned int ei=0; ei < nusquids.GetNumE(); ei++){
+        for(unsigned int rhoi = 0; rhoi < nusquids.GetNumRho(); rhoi++){
           for(unsigned int flv = 0; flv < nusquids.GetNumNeu(); flv++){
             flux[ei][rhoi][flv] = (flv == flavor) ? exp(-x_cur/decay_length) : 0.0;
           }

@@ -1037,6 +1037,8 @@ protected:
         current_external_flux.resize(std::vector<size_t>{ne,nrhos,numneu});
         std::fill(current_external_flux.begin(),current_external_flux.end(),0.0);
       }
+      if(not iinteraction and enable_neutrino_sources_)
+        Set_OtherRhoTerms(true);
       enable_neutrino_sources = enable_neutrino_sources_;
     }
 
