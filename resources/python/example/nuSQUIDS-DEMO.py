@@ -2,7 +2,7 @@
 # # $\nu$-SQuIDS Demo: Welcome!
 
 import matplotlib as mpl
-import nuSQUIDSpy as nsq
+import nuSQuIDS as nsq
 import matplotlib.pyplot as plt
 
 import nuSQUIDSTools
@@ -185,7 +185,7 @@ plt.xlabel(r"$E_\nu [{\rm GeV}]$")
 plt.ylabel(r"$P(\nu_\mu \to \nu_\mu)$")
 plt.plot(energy_values,nu_mu_to_nu_e, lw = 2, color = 'blue')
 
-# #### Propagating in a constant density slap ####
+# #### Propagating in a constant density slab ####
 
 nuSQ = nsq.nuSQUIDS(3,nsq.NeutrinoType.neutrino)
 nuSQ.Set_Body(nsq.ConstantDensity(13.0,0.5))
