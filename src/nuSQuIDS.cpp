@@ -1083,25 +1083,27 @@ void nuSQUIDS::GetCrossSections(){
       for(unsigned int flv = 0; flv < numneu; flv++){
         for(unsigned int e1 = 0; e1 < ne; e1++){
           // differential cross sections
-          for(unsigned int e2 = 0; e2 < e1; e2++){
-            dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+          dsignudE_NC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+          validateCrossSection(dsignudE_NC[neutype][flv][e1][0],cm2GeV,"NC",true,E_range[e1],E_range[0],flv);
+          dsignudE_CC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+          validateCrossSection(dsignudE_CC[neutype][flv][e1][0],cm2GeV,"CC",true,E_range[e1],E_range[0],flv);
+          for(unsigned int e2 = 1; e2 < e1; e2++){
+            dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
             validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
-            dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+            dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
             validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
           }
           // total cross sections
-          if(e1<ne-1){
-            int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-          } else {
+          if(e1>0) {
+            int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+            int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+          }
+          else {
             int_struct->sigma_CC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-            validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
-          }
-          if(e1<ne-1) {
-            int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-          } else {
             int_struct->sigma_NC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-            validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
           }
+          validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
+          validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
         }
       }
     }
@@ -1140,14 +1142,13 @@ void nuSQUIDS::GetCrossSections(){
         throw std::runtime_error("Glashow Resonance handling is active, but the supplied cross sections do not include a cross section for electrons");
       marray<double,2> dsignudE_GR{ne,ne};
       for(unsigned int e1 = 0; e1 < ne; e1++){
-        if(e1<ne-1) {
-          int_struct->sigma_GR[e1] = gr_cs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
-        } else {
+        if(e1>0)
+          int_struct->sigma_GR[e1] = gr_cs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
+        else
           int_struct->sigma_GR[e1] = gr_cs->TotalCrossSection(E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
-        }
-        for(unsigned int e2 = 0; e2 < e1; e2++){
-          dsignudE_GR[e1][e2] = gr_cs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
-        }
+        dsignudE_GR[e1][0] = gr_cs->SingleDifferentialCrossSection(E_range[e1],E_range[0],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
+        for(unsigned int e2 = 1; e2 < e1; e2++)
+          dsignudE_GR[e1][e2] = gr_cs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
       }
       for(unsigned int e1 = 0; e1 < ne; e1++){
         for(unsigned int e2 = 0; e2 < e1; e2++){
