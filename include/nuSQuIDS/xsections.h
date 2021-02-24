@@ -50,30 +50,50 @@ class NeutrinoCrossSections{
     enum Current { CC, NC, GR };
     /// \brief Returns the total neutrino cross section
     /// \details Used to interpolate the total cross sections.
+    /// \param Enu Incident lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The cross section in cm^2
     virtual double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
-    /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+    /// \brief Returns the differential cross section with respect to the outgoing lepton energy.
     /// \details The cross section will be returned in cm^2 GeV^-1.
-    /// @param E1 Incident lepton energy.
-    /// @param E2 Outgoing lepton energy.
-    /// @param flavor Flavor index.
-    /// @param neutype Can be either neutrino or antineutrino.
-    /// @param current Can be either CC or NC.
+    /// \param E1 Incident lepton energy.
+    /// \param E2 Outgoing lepton energy.
+    /// \param flavor Flavor index.
+    /// \param neutype Can be either neutrino or antineutrino.
+    /// \param current Can be either CC or NC.
     virtual double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
     /// \brief Returns the double differential cross section with respect to x and y.
-    /// \details The cross section will be returned in cm^2 GeV^-1. As this cross sections is not requiered and thus not called by the program
-    /// its implementation is optional.
-    /// @param E Incident lepton energy.
-    /// @param x bjorken-x.
-    /// @param y bjorken-y.
-    /// @param flavor Flavor index.
-    /// @param neutype Can be either neutrino or antineutrino.
-    /// @param current Can be either CC or NC.
+    /// \details The cross section will be returned in cm^2 GeV^-1. As this cross sections is not  
+    /// generally used by the library, implementation of this function is optional. 
+    /// \param E Incident lepton energy.
+    /// \param x bjorken-x.
+    /// \param y bjorken-y.
+    /// \param flavor Flavor index.
+    /// \param neutype Can be either neutrino or antineutrino.
+    /// \param current Can be either CC or NC.
     virtual double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const {
       throw std::runtime_error("NeutrinoCrossSections::Error::DoubleDifferentialCrossSection is not implemented.");
       return 0;
     }
     
+    /// \brief Returns the total neutrino cross section, averaged over the specified energy range.
+    /// \param EMin Minimum incident lepton energy
+    /// \param EMax Maximum incident lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The average cross section from EMin to Emax in cm^2
     virtual double AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
+    /// \brief Returns the the differential cross section, with respect to the outgoing lepton energy, averaged over the specified energy range.
+    /// \param E1 Incident lepton energy
+    /// \param E2Min Minimum out-going lepton energy
+    /// \param E2Max Maximum out-going lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The average cross section from EMin to Emax in cm^2 GeV^-1
     virtual double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
 };
 
