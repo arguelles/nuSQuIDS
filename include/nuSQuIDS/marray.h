@@ -29,7 +29,6 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
-#include "version.h"
 #include <array>
 #include <cassert>
 #include <functional>
@@ -1350,6 +1349,10 @@ private:
 		allocator_traits::deallocate(alloc,buffer,size);
 	}
 	
+	#ifndef __clang__
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wterminate"
+	#endif
 	///Initialize a buffer by copy constructing objects from corresponding objects in another buffer
 	///
 	///May throw if value_type(const value_type&) throws
@@ -1371,6 +1374,9 @@ private:
 			throw;
 		}
 	}
+	#ifndef __clang__
+	#pragma GCC diagnostic pop
+	#endif
 };
 
 template<typename Iterator, int dummy=Iterator::marray_iterator_tag>

@@ -22,10 +22,11 @@
  ******************************************************************************/
 
 #include <nuSQuIDS/xsections.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
-#include <nuSQuIDS/AdaptiveQuad.h>
+#include "nuSQuIDS/AdaptiveQuad.h"
+#include "nuSQuIDS/resources.h"
 
 namespace{
 	//Most of the time the cross section functions are _very_ smooth, and indeed
@@ -51,7 +52,7 @@ namespace{
 			double a1=std::abs(est1);
 			double a2=std::abs(est2);
 			if(a1<a2) std::swap(a1,a2);
-			return((a2 && tol>(a1/a2)-1) || (!a2 && a1<tol));
+			return((a2 && tol>(a1/a2)-1) || (a1==a2));
 		};
 		auto x=[&](unsigned int i){ return midpoint+abcissas[i]*halfWidth; };
 		double y[5]; //array of integrand evaluations
@@ -175,7 +176,7 @@ bool NeutrinoDISCrossSectionsFromTables::isHDF(const std::string& path){
 }
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
-NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"){}
+NeutrinoDISCrossSectionsFromTables(getResourcePath()+"/xsections/csms_square.h5"){}
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix){
 	if(isHDF(pathOrPrefix))
@@ -230,8 +231,7 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
 	return pow(10.,val)/(E1/GeV);
 }
 
-double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	std::cout.precision(16); 
+double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{ 
 	// we assume that sterile neutrinos are truly sterile
 	if (not (flavor == electron or flavor == muon or flavor == tau))
 		return 0;
@@ -317,10 +317,6 @@ void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) co
 }
 
 void NeutrinoDISCrossSectionsFromTables::ReadHDF(const std::string& path){
-	auto objectExists=[](hid_t loc_id, const char* name){
-		return H5Lexists(loc_id,name,H5P_DEFAULT)>0
-		  && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
-	};
 	try{
 	H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
 	
@@ -492,7 +488,6 @@ void NeutrinoDISCrossSectionsFromTables_V1::ReadText(std::string root){
        std::string filename_sigma_CC = root+"sigma_CC.dat";
        std::string filename_sigma_NC = root+"sigma_NC.dat";
 
-       std::cout << filename_sigma_NC << std::endl;
        // check if files exist for this energies and divisions
        if(
           fexists(filename_dsde_CC) and
@@ -549,7 +544,7 @@ void NeutrinoDISCrossSectionsFromTables_V1::ReadText(std::string root){
 }
   
 NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1():
-  NeutrinoDISCrossSectionsFromTables_V1(XSECTION_LOCATION "csms.h5"){
+  NeutrinoDISCrossSectionsFromTables_V1(getResourcePath()+"/xsections/csms.h5"){
 }
     
 NeutrinoDISCrossSectionsFromTables_V1::NeutrinoDISCrossSectionsFromTables_V1(std::string path){
@@ -638,11 +633,18 @@ void NeutrinoDISCrossSectionsFromTables_V1::WriteText(std::string basePath) cons
   writeDifferential(filename_dsde_NC,dsde_NC_data,logE_data_range,GeV);
 }
   
-GlashowResonanceCrossSection::GlashowResonanceCrossSection(){
-  fermi_scale = pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi;
-  M_W = 80.385*constants.GeV;
-  W_total = 2.085*constants.GeV;
-}
+GlashowResonanceCrossSection::GlashowResonanceCrossSection():
+fermi_scale(pow(constants.GF/constants.cm, 2)*constants.electron_mass/constants.pi),
+M_W(80.385*constants.GeV),
+W_total(2.085*constants.GeV)
+{}
+  
+//with no non-constant data, copy construction is the same as default construction
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(const GlashowResonanceCrossSection&):
+GlashowResonanceCrossSection(){}
+//same for move construction
+GlashowResonanceCrossSection::GlashowResonanceCrossSection(GlashowResonanceCrossSection&&):
+GlashowResonanceCrossSection(){}
   
 GlashowResonanceCrossSection::~GlashowResonanceCrossSection(){}
   
@@ -682,4 +684,30 @@ double GlashowResonanceCrossSection::B_Muon     = .1063; //unc. .0015
 double GlashowResonanceCrossSection::B_Tau      = .1138; //unc. .0021
 double GlashowResonanceCrossSection::B_Hadronic = .6741; //unc. .0027
 
+std::shared_ptr<const NeutrinoCrossSections> CrossSectionLibrary::crossSectionForTarget(PDGCode target) const{
+    auto it = data.find(target);
+    if(it==data.end())
+        return {};
+    return it->second;
+}
+    
+bool CrossSectionLibrary::hasTarget(PDGCode target) const{
+    auto it = data.find(target);
+    return(it!=data.end());
+}
+    
+CrossSectionLibrary loadDefaultCrossSections(){
+    CrossSectionLibrary lib;
+    
+    std::string xsdir = getResourcePath()+"/xsections/";
+    //old, isoscalar table
+    //lib.addTarget(isoscalar_nucleon, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"));
+    //shiny, new, per-target tables
+    lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(xsdir+"csms_proton.h5"));
+    lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(xsdir+"csms_neutron.h5"));
+    
+    lib.addTarget(electron,GlashowResonanceCrossSection());
+    return lib;
+}
+    
 } // close namespace

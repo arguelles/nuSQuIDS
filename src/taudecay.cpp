@@ -24,6 +24,10 @@
 
 #include <nuSQuIDS/taudecay.h>
 
+#include <cmath>
+#include <stdexcept>
+#include <vector>
+
 #define SQR(x)      ((x)*(x))                        // x^2
 
 // decay formulaes

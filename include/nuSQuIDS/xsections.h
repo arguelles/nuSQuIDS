@@ -25,14 +25,14 @@
 #ifndef NUSQUIDS_XSECTIONS_H
 #define NUSQUIDS_XSECTIONS_H
 
-#include "version.h"
-#include "tools.h"
-#include "marray.h"
-#include "global.h"
 #include <string>
 #include <cmath>
 #include <stdexcept>
-#include "SQuIDS/const.h"
+#include <unordered_map>
+#include <SQuIDS/const.h>
+#include "nuSQuIDS/version.h"
+#include "nuSQuIDS/tools.h"
+#include "nuSQuIDS/marray.h"
 
 // neutrino cross sections
 
@@ -50,30 +50,50 @@ class NeutrinoCrossSections{
     enum Current { CC, NC, GR };
     /// \brief Returns the total neutrino cross section
     /// \details Used to interpolate the total cross sections.
+    /// \param Enu Incident lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The cross section in cm^2
     virtual double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
-    /// \brief Returns the Differential cross section with respect to the outgoing lepton energy.
+    /// \brief Returns the differential cross section with respect to the outgoing lepton energy.
     /// \details The cross section will be returned in cm^2 GeV^-1.
-    /// @param E1 Incident lepton energy.
-    /// @param E2 Outgoing lepton energy.
-    /// @param flavor Flavor index.
-    /// @param neutype Can be either neutrino or antineutrino.
-    /// @param current Can be either CC or NC.
+    /// \param E1 Incident lepton energy.
+    /// \param E2 Outgoing lepton energy.
+    /// \param flavor Flavor index.
+    /// \param neutype Can be either neutrino or antineutrino.
+    /// \param current Can be either CC or NC.
     virtual double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const = 0;
     /// \brief Returns the double differential cross section with respect to x and y.
-    /// \details The cross section will be returned in cm^2 GeV^-1. As this cross sections is not requiered and thus not called by the program
-    /// its implementation is optional.
-    /// @param E Incident lepton energy.
-    /// @param x bjorken-x.
-    /// @param y bjorken-y.
-    /// @param flavor Flavor index.
-    /// @param neutype Can be either neutrino or antineutrino.
-    /// @param current Can be either CC or NC.
+    /// \details The cross section will be returned in cm^2 GeV^-1. As this cross sections is not  
+    /// generally used by the library, implementation of this function is optional. 
+    /// \param E Incident lepton energy.
+    /// \param x bjorken-x.
+    /// \param y bjorken-y.
+    /// \param flavor Flavor index.
+    /// \param neutype Can be either neutrino or antineutrino.
+    /// \param current Can be either CC or NC.
     virtual double DoubleDifferentialCrossSection(double E, double x, double y, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const {
       throw std::runtime_error("NeutrinoCrossSections::Error::DoubleDifferentialCrossSection is not implemented.");
       return 0;
     }
     
+    /// \brief Returns the total neutrino cross section, averaged over the specified energy range.
+    /// \param EMin Minimum incident lepton energy
+    /// \param EMax Maximum incident lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The average cross section from EMin to Emax in cm^2
     virtual double AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
+    /// \brief Returns the the differential cross section, with respect to the outgoing lepton energy, averaged over the specified energy range.
+    /// \param E1 Incident lepton energy
+    /// \param E2Min Minimum out-going lepton energy
+    /// \param E2Max Maximum out-going lepton energy
+    /// \param flavor Incident lepton flavor
+    /// \param neutype Incident lepton matter/anti-matter type
+    /// \param current Interaction type
+    /// \return The average cross section from EMin to Emax in cm^2 GeV^-1
     virtual double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
 };
 
@@ -432,6 +452,9 @@ public:
   virtual ~GlashowResonanceCrossSection();
 
   GlashowResonanceCrossSection();
+  
+  GlashowResonanceCrossSection(const GlashowResonanceCrossSection&);
+  GlashowResonanceCrossSection(GlashowResonanceCrossSection&&);
 
   /// \brief Returns the total neutrino cross section
   double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
@@ -460,11 +483,11 @@ public:
 
 private:
   const squids::Const constants;
-  double fermi_scale;
+  const double fermi_scale;
   ///W mass
-  double M_W;
+  const double M_W;
   ///W full decay width
-  double W_total;
+  const double W_total;
   
   ///W^+ -> e^+ + \nu_e branching ratio
   static double B_Electron;
@@ -475,6 +498,64 @@ private:
   ///W^+ -> hadrons branching ratio
   static double B_Hadronic;
 };
+	
+///\brief A type alias for PDG MC numbering codes.
+///The largest magnitude codes in the PDG MC numbering scheme at this time are nuclear codes
+///which are "10-digit numbers ±10LZZZAAAI". Given that sign must be included, this fits within 32 
+///bits with a factor of ~2 to spare.
+///It is not necessary that every possible particle type be enumerated here, as non-enumerated 
+///values within the range of the type may still be used. We therefore include only the most common
+///codes explictly.
+enum PDGCode : int32_t{
+    electron=11,
+    ///A pseduoparticle with the average properties of a proton and neutron
+    isoscalar_nucleon=81,
+    proton=2212,
+    neutron=2112,
+};
+  
+namespace detail{
+struct PDGCodeHash{
+private:
+    using underlying_type=typename std::underlying_type<PDGCode>::type;
+    using hash_type=std::hash<underlying_type>;
+public:
+    using result_type=typename hash_type::result_type;
+    using argument_type=PDGCode;
+    result_type operator()(argument_type arg) const{
+        return hash_(arg);
+    }
+private:
+    hash_type hash_;
+};
+}
+  
+class CrossSectionLibrary{
+public:
+    ///The type used to map target type codes to cross section objects
+    using MapType=std::unordered_map<PDGCode,std::shared_ptr<const NeutrinoCrossSections>,detail::PDGCodeHash>;
+    
+    CrossSectionLibrary(){}
+    CrossSectionLibrary(const MapType& crosssections):data(crosssections){}
+    ///\return the requested cross section, or a null pointer if it is not found
+	std::shared_ptr<const NeutrinoCrossSections> crossSectionForTarget(PDGCode target) const;
+	bool hasTarget(PDGCode target) const;
+    template <typename CrossSection>
+    void addTarget(PDGCode target, CrossSection&& xs){
+        if(hasTarget(target))
+			throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
+        data.emplace(target, std::make_shared<CrossSection>(std::move(xs)));
+    }
+    void addTarget(PDGCode target, std::shared_ptr<NeutrinoCrossSections> xs){
+        if(hasTarget(target))
+            throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
+        data.emplace(target, xs);
+    }
+private:
+    MapType data;
+};
+    
+CrossSectionLibrary loadDefaultCrossSections();
 
 } // close namespace
 

@@ -25,19 +25,23 @@
 #ifndef NUSQUIDS_TOOLS_H
 #define NUSQUIDS_TOOLS_H
 
-#include "version.h"
 #include <algorithm>
+#include <cassert>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
-#include "marray.h"
-#include <gsl/gsl_complex.h>
-#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_integration.h>
-#include "hdf5.h"
-#include "H5Apublic.h"
-#include "H5Dpublic.h"
-#include "H5Spublic.h"
-#include "H5Tpublic.h"
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_matrix_complex_double.h>
+#include <H5Apublic.h>
+#include <H5Dpublic.h>
+#include <H5Fpublic.h>
+#include <H5Ipublic.h>
+#include <H5Ppublic.h>
+#include <H5Spublic.h>
+#include <H5Tpublic.h>
+#include "nuSQuIDS/marray.h"
 
 namespace nusquids{
 

@@ -3,11 +3,12 @@
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
-	which pkg-config 2>&1 > /dev/null
+	PKG_CONFIG_PATH=$(which pkg-config 2>&1)
 	if [ "$?" -ne 0 ]; then
 		echo "Error: pkg-config not found; you will need to specify library locations manually" 1>&2
 		exit 1
 	fi
+	echo " Found $PKG_CONFIG_PATH"
 	CHECKED_PKGCONFIG=1
 }
 
@@ -108,38 +109,161 @@ find_hdf5(){
 	HDF5_FOUND=1
 }
 
+# less searching for python than verfying that the given executable works and extracting relevant paths
+try_find_python(){
+	echo "Looking for python"
+
+	if which ${PYTHON_EXE} > /dev/null 2>&1; then
+		PYTHON_EXE=$(which ${PYTHON_EXE} 2>/dev/null)
+		echo " Using python executable ${PYTHON_EXE}"
+	else
+		echo " ${PYTHON_EXE} is not a valid python executable"
+		return
+	fi
+
+	PYTHON_VERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
+	if [ "$?" -ne 0 ]; then
+		echo "Unable to use python executable ${PYTHON_EXE} (version check failed)"
+		return
+	fi
+	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+str(sys.version_info.minor))'`
+	
+	PYTHON_INCDIR=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_python_inc())'`
+	if [ -d "$PYTHON_INCDIR" ]; then
+		echo " Found python include dir $PYTHON_INCDIR"
+	else
+		echo " Unable to locate the python include dir"
+		return
+	fi
+
+	# This is the directory to which libraries should be installed for python to find them
+	PYTHON_MODULEDIR=`${PYTHON_EXE} -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True, standard_lib=False))'`
+	if [ "$PYTHON_MODULEDIR" ]; then
+		echo " Python module install dir is $PYTHON_MODULEDIR"
+	else
+		echo " Unable to locate the python module dir"
+		return
+	fi
+	
+	# This is the directory that python claims contains its standard library, 
+	# which may or may not include the actual libpython
+	PYTHON_STDLIBDIR=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=True,standard_lib=True))'`
+	# This may contain a suffix which appears after the version like in 'libpython3.6m'
+	# See https://www.python.org/dev/peps/pep-3149/#proposal
+	PYTHONLIBSUFFIX=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.build_flags)' 2>/dev/null`
+
+	# Here we just try to guess every location anyone has ever seen a libpython in the wild
+	POSSIBLE_PYTHON_LIBDIRS="/lib /lib64 /usr/lib /usr/lib64 /usr/local/lib /usr/local/lib64 ${PYTHON_STDLIBDIR} ${PYTHON_STDLIBDIR}/lib"
+	# sometimes Apple puts a symlink in ${PYTHONSTDLIBDIR}/lib, sometimes it doesn't
+	TMP=`echo "$PYTHON_STDLIBDIR" | sed -n s'|\(.*/lib\)/python'"${PYTHON_VERSION}"'|\1|p'`
+	if [ "$TMP" ]; then POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} ${TMP}"; fi
+	# Ubuntu is special, of course
+	if uname -a | grep -i 'ubuntu' > /dev/null; then
+		POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} /usr/lib/$(uname -i)-linux-gnu"
+	fi
+
+	for PYTHON_LIBDIR in $POSSIBLE_PYTHON_LIBDIRS; do
+		for PV in $PYTHON_VERSION $PYTHONVERSIONSIMPLE; do
+			#echo "  Looking for ${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.(a|so|dylib)"
+			if [ -d $PYTHON_LIBDIR ]; then
+				if [ -e ${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.a ]; then
+					PYTHON_LIBRARY=${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.a
+					break
+				elif [ -e ${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.so ];then
+					PYTHON_LIBRARY=${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.so
+					break
+				elif [ -e ${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.dylib ]; then
+					PYTHON_LIBRARY=${PYTHON_LIBDIR}/libpython${PV}${PYTHONLIBSUFFIX}.dylib
+					break
+				fi
+			fi
+		done
+	done
+	if [ -e "$PYTHON_LIBRARY" ]; then
+		echo " Found python library $PYTHON_LIBRARY"
+	else
+		echo " Unable to locate the python library"
+		return
+	fi
+
+	PYTHON_CFLAGS="-I${PYTHON_INCDIR}"
+	PYTHON_LDFLAGS="-L${PYTHON_LIBDIR} -l$(echo "$PYTHON_LIBRARY" | sed 's|.*lib\(python.*\)\.[a-z]*|\1|')"
+	PYTHON_FOUND=1
+}
+
 try_find_boost(){
-	GUESS_DIR=$1
-	PYV=$2
 	PKG=boost
 	VAR_PREFIX=`echo $PKG | tr [:lower:] [:upper:]`
 	TMP_FOUND=`eval echo "$"${VAR_PREFIX}_FOUND`
 	if [ "$TMP_FOUND" ]; then return; fi
-	echo "Looking for $PKG in $GUESS_DIR..."
-	POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
-	POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
-	for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
-		if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so -o -e $BOOST_LIBDIR/libboost_python${PYV}.dylib \) ]; then
-			break
-		fi
-	done
-	if [ ! -d $BOOST_LIBDIR -o ! \( -e $BOOST_LIBDIR/libboost_python${PYV}.a -o -e $BOOST_LIBDIR/libboost_python${PYV}.so -o -e $BOOST_LIBDIR/libboost_python${PYV}.dylib \) ]; then
-		echo " Unable to locate the boost_python${PYV} libray in $GUESS_DIR"
+	if [ "$PYTHON_FOUND" ]; then
+		PYV=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+str(sys.version_info.minor))'`
+		PYVM=`${PYTHON_EXE} -c 'import sys; print(sys.version_info.major)'`
+		echo "Looking for $PKG built for python ${PYV} in $GUESS_DIR..."
+	else
+		echo "Looking for $PKG in $GUESS_DIR..."
+	fi
+	
+ 	if [ "$#" -eq 1 ]; then
+ 		GUESS_DIR=$1
+ 		POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
+		POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
+	elif [ "$#" -eq 2 ]; then
+		GUESS_DIR="$1 and $2"
+		POSSIBLE_BOOST_LIBDIRS="$2"
+		POSSIBLE_BOOST_INCDIRS="$1"
+	else
+		echo "Wrong number of arguments to try_find_boost"
 		return
+ 	fi
+	if [ "$PYTHON_FOUND" ]; then
+		for PYV_SUFFIX in $PYV $PYVM $PYV-mt $PVM-mt ''; do
+			for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
+				if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.a -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.so -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.dylib \) ]; then
+					if [ ! "$PYV_SUFFIX" ]; then
+						echo " Found boost_python with no python version tag; hoping it is compatible"
+					fi
+					BOOST_PYTHON_FOUND=1
+					BOOST_PYTHON_LDFLAGS="-lboost_python${PYV_SUFFIX}"
+					break
+				fi
+			done
+			if [ "$BOOST_PYTHON_FOUND" ]; then break; fi
+		done
+		if [ ! "$BOOST_PYTHON_FOUND" ]; then
+			echo " Unable to locate the boost_python library in $GUESS_DIR"
+		fi
 	fi
 	for BOOST_INCDIR in $POSSIBLE_BOOST_INCDIRS; do
-		if [ -d $BOOST_INCDIR -a -e $BOOST_INCDIR/boost/python.hpp ]; then
+		if [ -d $BOOST_INCDIR -a -e $BOOST_INCDIR/boost/version.hpp ]; then
 			break
 		fi
 	done
-	if [ ! -d $BOOST_INCDIR -o ! $BOOST_INCDIR/boost/python.hpp ]; then
-		echo " Unable to locate boost/python.hpp in $GUESS_DIR"
+	if [ ! -d "$BOOST_INCDIR" -o ! -e "$BOOST_INCDIR/boost/version.hpp" ]; then
+		echo " Unable to locate boost/version.hpp in $GUESS_DIR"
 		return
 	fi
 	BOOST_CFLAGS="-I${BOOST_INCDIR}"
-	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR} -lboost_python${PYV}"
+	BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L${BOOST_LIBDIR}"
 	BOOST_FOUND=1
 	echo " Found boost in $GUESS_DIR"
+	echo " Boost include directory is ${BOOST_INCDIR}"
+	if [ "$BOOST_LIBDIR" ]; then
+		echo " Boost library directory is ${BOOST_LIBDIR}"
+	fi
+}
+
+find_numpy(){
+	echo "Looking for numpy..."
+	NUMPY_INCDIR=$(${PYTHON_EXE} -c 'import numpy; print(numpy.get_include())')
+	if [ "$?" -ne 0 ]; then
+		echo "Unable to import numpy using ${PYTHON_EXE}"
+		return
+	fi
+	NUMPY_CFLAGS="-I${NUMPY_INCDIR}"
+	NUMPY_FOUND=1
+	echo " Found numpy"
+	echo " Numpy include directory is ${NUMPY_INCDIR}"
 }
 
 ensure_found(){
@@ -167,7 +291,7 @@ ensure_found(){
 PREFIX=/usr/local
 INSTALL_LIBDIR=lib
 
-VERSION_NUM=101001
+VERSION_NUM=101100
 VERSION=`echo $VERSION_NUM | awk '{
 	major = int($1/100000);
 	minor = int($1/100)%1000;
@@ -184,13 +308,15 @@ GUESS_LD=ld
 if [ "$OS_NAME" = Linux ]; then
 	DYN_SUFFIX=.so
 	DYN_OPT='-shared -Wl,-soname,$(shell basename $(DYN_PRODUCT))'
+	DYN_OPT_PY='-shared -Wl,-soname,$(shell basename $(PYTHON_LIB))'
 fi
 if [ "$OS_NAME" = Darwin ]; then
 	GUESS_CC=clang
 	GUESS_CXX=clang++
 	GUESS_LD=clang++
 	DYN_SUFFIX=.dylib
-  DYN_OPT='-dynamiclib -compatibility_version $(VERSION) -current_version $(VERSION)'
+	DYN_OPT='-dynamiclib -compatibility_version $(VERSION) -current_version $(VERSION)'
+	DYN_OPT_PY='-dynamiclib -compatibility_version $(VERSION) -current_version $(VERSION)'
 fi
 
 CC=${CC-$GUESS_CC}
@@ -199,6 +325,11 @@ AR=${AR-$GUESS_AR}
 LD=${LD-$GUESS_LD}
 
 PYTHON_EXE="python"
+if which "$PYTHON_EXE" > /dev/null 2>&1; then
+	: # good, keep our initial guess
+elif which "python3" > /dev/null 2>&1; then
+	PYTHON_EXE="python3"
+fi
 
 HELP="Usage: ./configure [OPTION]... 
 
@@ -217,21 +348,21 @@ Fine tuning of the installation directories:
 
 The following options can be used to maunally specify the 
 locations of dependencies:
-  --with-gsl=DIR           use the copy of GSL in DIR
-                           assuming headers are in DIR/include
-                           and libraries in DIR/lib
-  --with-gsl-incdir=DIR    use the copy of GSL in DIR
-  --with-gsl-libdir=DIR    use the copy of GSL in DIR
-  --with-hdf5=DIR          use the copy of HDF5 in DIR
-                           assuming headers are in DIR/include
-                           and libraries in DIR/lib
-  --with-hdf5-incdir=DIR   use the copy of HDF5 in DIR
-  --with-hdf5-libdir=DIR   use the copy of HDF5 in DIR
-  --with-squids=DIR        use the copy of SQuIDS in DIR
-                           assuming headers are in DIR/include
-                           and libraries in DIR/lib
-  --with-squids-incdir=DIR        use the copy of SQuIDS in DIR
-  --with-squids-libdir=DIR        use the copy of SQuIDS in DIR
+  --with-gsl=DIR                 use the copy of GSL in DIR
+                                 assuming headers are in DIR/include
+                                 and libraries in DIR/lib
+  --with-gsl-incdir=DIR          use the copy of GSL in DIR
+  --with-gsl-libdir=DIR          use the copy of GSL in DIR
+  --with-hdf5=DIR                use the copy of HDF5 in DIR
+                                 assuming headers are in DIR/include
+                                 and libraries in DIR/lib
+  --with-hdf5-incdir=DIR         use the copy of HDF5 in DIR
+  --with-hdf5-libdir=DIR         use the copy of HDF5 in DIR
+  --with-squids=DIR              use the copy of SQuIDS in DIR
+                                 assuming headers are in DIR/include
+                                 and libraries in DIR/lib
+  --with-squids-incdir=DIR       use the copy of SQuIDS in DIR
+  --with-squids-libdir=DIR       use the copy of SQuIDS in DIR
 For the python bindings the following flags are used:
   --with-python-bindings         enable python binding compilation
   --with-boost-incdir=DIR        use the copy of Boost in DIR
@@ -241,6 +372,10 @@ For the python bindings the following flags are used:
                                  and libraries in DIR/lib
   --python-bin=PYTHON_EXECUTABLE use this python executable
                                  (default is 'python')
+  --python-module-dir=DIR        install python module to this directory, rather
+                                 than the default system location. The special 
+                                 value site.USER_SITE will be automatically
+                                 expanded using the python interpreter
 
 Some influential environment variables:
 CC          C compiler command
@@ -314,6 +449,8 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--python-bin=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then PYTHON_EXE=$TMP; continue; fi
+	TMP=`echo "$var" | sed -n 's/^--python-module-dir=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then USER_PYTHON_MODULE_DIR="${TMP}"; continue; fi
 
 	echo "config.sh: Unknown or malformed option '$var'" 1>&2
 	exit 1
@@ -372,9 +509,52 @@ fi
 
 find_package squids 1.2
 
+if [ $PYTHON_BINDINGS ]; then
+	try_find_python
+	if [ "$PYTHON_FOUND" != 1 ]; then
+		echo "*** Failed to find python; python bindings will not be built ***"
+		unset PYTHON_BINDINGS
+	else
+		if [ "$USER_PYTHON_MODULE_DIR" ]; then
+			if [ "$USER_PYTHON_MODULE_DIR" == "site.USER_SITE" ]; then
+				PYTHON_MODULEDIR=`${PYTHON_EXE} -c 'import site; print(site.USER_SITE)'`
+			else
+				PYTHON_MODULEDIR="$USER_PYTHON_MODULE_DIR"
+			fi
+		fi
+	fi
+
+	if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
+		echo "Checking manually specified boost..."
+		try_find_boost "$BOOST_INCDIR" "$BOOST_LIBDIR"
+		if [ ! "$BOOST_FOUND" ]; then
+			echo "Warning: manually specifed boost not found; will attempt auto detection"
+		fi
+	fi
+	try_find_boost /usr
+	try_find_boost /usr/local
+	if [ "$BOOST_PYTHON_FOUND" != 1 ]; then
+		echo "*** Failed to find boost python; python bindings will not be built ***"
+		unset PYTHON_BINDINGS
+	fi
+	find_numpy
+	if [ "$NUMPY_FOUND" != 1 ]; then
+		echo "*** Failed to find numpy; python bindings will not be built ***"
+		unset PYTHON_BINDINGS
+	fi
+fi
+
 ensure_found gsl
 ensure_found hdf5
 ensure_found squids
+
+# Resolve PREFIX absolutely
+OLDPWD=`pwd`
+cd "$PREFIX"
+PREFIX=`pwd`
+cd "$OLDPWD"
+
+SOURCE_PATH=`pwd`
 
 if [ ! -d ./build/ ]; then
     mkdir build;
@@ -420,6 +600,34 @@ sed -e "s|__NUSQUIDS_VERSION__|$VERSION_NUM|g" \
     -e "s|__NUSQUIDS_VERSION_STR__|$VERSION|g" \
     < resources/version.h.in > include/nuSQuIDS/version.h
 
+INSTALL_FLAG_PREFIX="NUSQUIDS_DATA_PATH_INSTALL_FLAG_PREFIX_"
+INSTALL_FLAG_SUFFIX="_NUSQUIDS_DATA_PATH_INSTALL_FLAG_SUFFIX"
+INSTALL_FLAG_OFF="A"
+INSTALL_FLAG_ON="B"
+REPLACE_INSTALL_FLAG="s|${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_OFF}${INSTALL_FLAG_SUFFIX}|${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_ON}${INSTALL_FLAG_SUFFIX}|g"
+
+echo "Generating data path header..."
+echo "#include <cstring>
+#define SOURCE_DATA_PATH \"${SOURCE_PATH}/data/\"
+#define INSTALL_DATA_PATH \"${PREFIX}/share/nuSQuIDS/\"
+
+namespace{
+
+const char dataPathBitOffValue='$INSTALL_FLAG_OFF';
+//This needs to be volatile so that the compiler can't optimize away reads from it,
+//which is important since we plan to change the value of the constant between compile-time 
+//and run-time
+const volatile char dataPathBitContainer[] = \"${INSTALL_FLAG_PREFIX}${INSTALL_FLAG_OFF}${INSTALL_FLAG_SUFFIX}\";
+
+bool getInstallBit(){
+	static const std::size_t prefixLen = strlen(\"${INSTALL_FLAG_PREFIX}\");
+	return dataPathBitContainer[prefixLen]!='${INSTALL_FLAG_OFF}';
+}
+
+}
+
+" > build/resource_paths.h
+
 echo "Generating makefile..."
 echo "# Compiler
 CC=$CC
@@ -429,6 +637,7 @@ LD=$LD
 
 DYN_SUFFIX=$DYN_SUFFIX
 DYN_OPT=$DYN_OPT
+DYN_OPT_PY=$DYN_OPT_PY
 
 VERSION=$VERSION
 PREFIX=$PREFIX
@@ -452,8 +661,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Atm_BSM/atm_bsm\
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
-						examples/Constant_density_layers/const_dens_layers \
-						examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
+            examples/Constant_density_layers/const_dens_layers \
+            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
 
 CXXFLAGS= -std=c++11
 
@@ -468,6 +677,13 @@ echo "HDF5_LDFLAGS=$HDF5_LDFLAGS" >> ./Makefile
 echo "SQUIDS_CFLAGS=$SQUIDS_CFLAGS" >> ./Makefile
 echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 
+if [ "$PYTHON_BINDINGS" ]; then
+	echo "PYTHON_CFLAGS=$PYTHON_CFLAGS" >> ./Makefile
+	echo "PYTHON_LDFLAGS=$PYTHON_LDFLAGS" >> ./Makefile
+	echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
+	echo "PYTHON_MODULEDIR=$PYTHON_MODULEDIR" >> ./Makefile
+	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
+fi
 
 echo '
 
@@ -475,7 +691,7 @@ INCnuSQUIDS=$(PATH_nuSQUIDS)/include
 LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 
 # FLAGS
-CFLAGS= -O3 -fPIC -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
+CFLAGS= -O3 -fPIC -Ibuild -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
 LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS)
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS) -lpthread
 EXAMPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
@@ -484,6 +700,7 @@ EXAMPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
 NAME=nuSQuIDS
 STAT_PRODUCT=lib/lib$(NAME).a
 DYN_PRODUCT=lib/lib$(NAME)$(DYN_SUFFIX)
+PYTHON_LIB:=lib/$(NAME).so
 
 # Compilation rules
 all: $(STAT_PRODUCT) $(DYN_PRODUCT)
@@ -563,7 +780,7 @@ examples/Constant_density_layers/const_dens_layers : $(DYN_PRODUCT) examples/Con
 clean:
 	@echo Erasing generated files
 	@rm -f $(PATH_nuSQUIDS)/build/*.o
-	@rm -f $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT)
+	@rm -f $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT) $(PATH_nuSQUIDS)/$(PYTHON_LIB)
 
 doxygen:
 	@mkdir -p ./docs
@@ -581,10 +798,16 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@cp $(DYN_PRODUCT) $(STAT_PRODUCT) "$(PREFIX)/$(INSTALL_LIBDIR)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@chmod 755 "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)" "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a" 
 	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
-	@cp lib/nusquids.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"' >> ./Makefile
+	@cp lib/nusquids.pc "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
+	@echo Installing physics data in $(PREFIX)/share/nuSQuIDS
+	@mkdir -p "$(PREFIX)/share/nuSQuIDS"
+	@cp -r data/* "$(PREFIX)/share/nuSQuIDS/"
+' >> ./Makefile
 
 if `pkg-config hdf5`; then
 :
@@ -602,6 +825,31 @@ uninstall:
 	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig/nusquids.pc"
 ' >> ./Makefile
 
+if [ "$PYTHON_BINDINGS" ]; then
+	echo '
+
+python : $(PYTHON_LIB)
+
+$(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
+	@echo Linking python bindings
+	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(BOOST_PYTHON_LDFLAGS) $(PYTHON_LDFLAGS) -o $(PYTHON_LIB)
+
+build/nuSQUIDSpy.o : resources/python/src/nuSQUIDSpy.cpp
+	@echo Compiling python bindings
+	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+
+python-install : $(PYTHON_LIB)
+	@echo Installing python module in $(PYTHON_MODULEDIR)
+	@mkdir -p $(PYTHON_MODULEDIR)
+	@cp $(PYTHON_LIB) $(PYTHON_MODULEDIR)
+
+python-uninstall : $(PYTHON_LIB)
+	@echo Removing python module from $(PYTHON_MODULEDIR)
+	@rm $(PYTHON_MODULEDIR)/$(NAME).so
+
+' >> ./Makefile
+fi
+
 echo "
 export CXX=\"${CXX}\"
 export CFLAGS=\"${CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS}\"
@@ -610,166 +858,24 @@ export LDFLAGS=\"${LDFLAGS}  -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAG
 " > test/env_vars.sh
 if uname | grep -q 'Darwin' ; then
 	printf "export DYLD_LIBRARY_PATH=\"" >> test/env_vars.sh
+	printf "${SOURCE_PATH}/lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}" >> test/env_vars.sh
 	if [ "$DYLD_LIBRARY_PATH" ]; then
-		printf "${DYLD_LIBRARY_PATH}:" >> test/env_vars.sh
+		printf ":${DYLD_LIBRARY_PATH}" >> test/env_vars.sh
 	fi
-	printf "/lib:/usr/lib:\${HOME}/lib:/usr/local/lib:" >> test/env_vars.sh
 else
 	printf "export LD_LIBRARY_PATH=\"" >> test/env_vars.sh
+	printf "${SOURCE_PATH}/lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}" >> test/env_vars.sh
+	if [ "$LD_LIBRARY_PATH" ]; then
+		printf ":${LD_LIBRARY_PATH}" >> test/env_vars.sh
+	fi
 fi
-echo "../lib:${SQUIDS_LIBDIR}:${GSL_LIBDIR}:${HDF5_LIBDIR}\"" >> test/env_vars.sh
-
-if [ $PYTHON_BINDINGS ]; then
-	echo "Generating Python bindings makefile..."
-
-	PYTHONVERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
-	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
-  PYTHONVERSIONSIMPLE=${PYTHONVERSIONSIMPLE//.}
-
-  PYTHONLIBPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'`
-  PYTHONBLDLIB=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("BLDLIBRARY"))'`
-	if [ -z "$PYTHONBLDLIB" ]; then
-    PYTHONBLDLIB=-lpython${PYTHONVERSION}
-	fi
-
-  PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
-  PYTHON_CFLAGS+=" -I${PYTHONINCPATH}"
-  # this fpermissive flag is due to a bug on numpy import_array() function on pythonv3
-  PYTHON_CFLAGS+=" -fpermissive"
-
-	PYTHONNUMPYCHECK=`${PYTHON_EXE} ./resources/check_numpy.py`
-	if [ -z "$PYTHONNUMPYCHECK" ]; then
-		echo "Error: numpy not found. Specify numpy installation location with --with-numpy-incdir."
-		exit 1
-	fi
-	PYTHONNUMPYINC=$PYTHONNUMPYCHECK
-  
-  # check if python library was compiled with 
-  PYTHONINCPATH=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_config_var("INCLUDEPY"))'`
-
-	if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
-		echo "Checking manually specified boost..."
-		if [ -d "$BOOST_INCDIR" \
-		  -a -d "$BOOST_LIBDIR" \
-		  -a -e "$BOOST_INCDIR/boost/python.hpp" \
-		  -a -e "$BOOST_LIBDIR/libboost_python$PYTHONVERSIONSIMPLE.a" ]; then
-			BOOST_FOUND=1
-			BOOST_CFLAGS="-I$BOOST_INCDIR"
-			BOOST_LDFLAGS="-Wl,-rpath -Wl,${BOOST_LIBDIR} -L$BOOST_LIBDIR -lboost_python$PYTHONVERSIONSIMPLE"
-		else
-			echo "Warning: manually specifed boost not found; will attempt auto detection"
-		fi
-	fi
-
-	try_find_boost /usr ${PYTHONVERSIONSIMPLE}
-	try_find_boost /usr/local ${PYTHONVERSIONSIMPLE}
-	try_find_boost /usr "-py27"
-	try_find_boost /usr ""
-	try_find_boost /usr/local ""
-
-	if [ -z $BOOST_LIBDIR ] && [ -z $BOOST_INCDIR ]; then
-		echo "Error: Specify BOOST library path using --with-boost-libdir and BOOST include path using --with-boost-incdir."
-		exit 1
-	fi
-	if [ -z $BOOST_LIBDIR ]; then
-		echo "Error: Specify BOOST library path using  --with-boost-libdir."
-		exit 1
-	fi
-	if [ -z $BOOST_INCDIR ]; then
-		echo "Error: Specify BOOST include path using  --with-boost-incdir."
-		exit 1
-	fi
-
-	echo "
-# Compiler
-CC=$CC
-CXX=$CXX
-AR=$AR
-LD=$LD
-
-DYN_SUFFIX=.so
-DYN_OPT=$DYN_OPT
-
-PYTHON_VERSION = ${PYTHONVERSION}
-LDFLAGS+= -L${PYTHONLIBPATH}  -L${PYTHONLIBPATH}/..
-LDFLAGS+= ${PYTHONBLDLIB}
-LDFLAGS+= ${BOOST_LDFLAGS}
-LDFLAGS+= ${SQUIDS_LDFLAGS} -lnuSQuIDS ${GSL_LDFLAGS} ${HDF5_LDFLAGS}
-INCCFLAGS+= ${PYTHON_CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} -I../include/
-INCCFLAGS+= ${BOOST_CFLAGS}
-INCCFLAGS+= -I${PYTHONNUMPYINC}
-" > resources/python/src/Makefile
-
-echo '
-PATH_nuSQUIDS= $(shell pwd)/../../../
-PATH_nuSQUIDSpy= $(shell pwd)/../
-
-SOURCES = $(wildcard *.cpp)
-OBJECTS = $(SOURCES:.cpp=.o)
-
-# Directories
-LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
-INCnuSQUIDS=$(PATH_nuSQUIDS)/include
-
-LDFLAGS+= -L$(LIBnuSQUIDS) -lnuSQuIDS
-INCCFLAGS+= -I$(INCnuSQUIDS) -I$(PATH_nuSQUIDSpy)/inc
-CXXFLAGS= -O3 -fPIC -std=c++11 $(INCCFLAGS)
-' >> resources/python/src/Makefile
-
-echo '
-
-# Project files
-NAME=nuSQUIDSpy
-STAT_PRODUCT=$(PATH_nuSQUIDSpy)/bindings/$(NAME).a
-DYN_PRODUCT=$(PATH_nuSQUIDSpy)/bindings/$(NAME)$(DYN_SUFFIX)
-
-OS_NAME=$(shell uname -s)
-ifeq ($(OS_NAME),Linux)
-	DYN_SUFFIX=.so
-	DYN_OPT=-shared -Wl,-soname,$(DYN_PRODUCT)
-endif
-ifeq ($(OS_NAME),Darwin)
-	DYN_SUFFIX=.so
-	DYN_OPT=-dynamiclib -install_name $(PATH_nuSQUIDSpy)/bindings/$(DYN_PRODUCT)
-endif
-
-# Compilation rules
-all: $(STAT_PRODUCT) $(DYN_PRODUCT)
-
-$(DYN_PRODUCT) : $(OBJECTS)
-	@echo Linking $(DYN_PRODUCT)
-	@$(CXX) $(DYN_OPT)  $(LDFLAGS) -o $(DYN_PRODUCT) $(OBJECTS) $(LDFLAGS)
-
-$(STAT_PRODUCT) : $(OBJECTS)
-	@echo Linking $(STAT_PRODUCT)
-	@$(AR) -rcs $(STAT_PRODUCT) $(OBJECTS)
-
-%.o : %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-.PHONY: clean
-clean:
-	rm -f *.o ../bindings/*.so ../bindings/*.a
-' >> resources/python/src/Makefile
-
-fi
-
-nusqpath=`pwd`
-
-echo '
-#ifndef NUSQUIDS_GLOBAL_H
-#define NUSQUIDS_GLOBAL_H
-' > include/nuSQuIDS/global.h
-echo "
-#define XSECTION_LOCATION \"$nusqpath/data/xsections/\"
-#define SUN_MODEL_LOCATION  \"$nusqpath/data/astro/bs05_agsop.dat\"
-#define SUN_MODEL_NELECTRON_LOCATION \"$nusqpath/data/astro/nele_bs05op.dat\"
-#define EARTH_MODEL_LOCATION \"$nusqpath/data/astro/EARTH_MODEL_PREM.dat\"
-" >> include/nuSQuIDS/global.h
-echo '
-#endif
-' >> include/nuSQuIDS/global.h
+echo '"' >> test/env_vars.sh
 
 echo "Done."
-echo "To build library, run the following: make
+echo
+echo "To build the library, run the following: make
 After, to build examples: make examples"
+if [ "$PYTHON_BINDINGS" ]; then
+	echo "To build the python bindings run: make python"
+	echo "To install the python bindings run: make python-install"
+fi

@@ -29,30 +29,19 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
-#include "version.h"
+#include <cassert>
+#include <functional>
 #include <string>
-#include <math.h>
-#include <cmath>
-#include <map>
-#include <mutex>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
-#include <SQuIDS/const.h>
-#include "tools.h"
-#include "global.h"
-#include <assert.h>
 #include <memory>
-#include <exception>
-#include <iostream>
-// hdf5 serializtion
-#include "H5Epublic.h"
-#include "H5Tpublic.h"
-#include "hdf5.h"
-#include "hdf5_hl.h"
-#include "H5Gpublic.h"
-#include "H5Fpublic.h"
+#include <vector>
+#include <H5Ipublic.h>
+#include "nuSQuIDS/marray.h"
+#include "nuSQuIDS/tools.h"
 
 namespace nusquids{
+
+// Forward declaration of nuSQuIDS class
+class nuSQUIDS;
 
 /// \class Body
 /// \brief Abstract body class.
@@ -136,6 +125,12 @@ class Body{
     virtual bool IsConstantDensity() const {return is_constant_density;}
     /// \brief Return true if the body is a constant density.
     virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
+    /// \brief Sets the injected neutrino flux from the Body at a given Track location.
+    /// \details This function is called by nuSQuIDS during the calculation to obtain the injected flux.
+    /// @param flux Is a three dimensional array with dimensions: energy, rho, and flavor, which has previously been allocated by nuSQuIDS.
+    /// @param Track Trajectory object.
+    /// @param nuSQuIDS nuSQuIDS object that queries the flux.
+    virtual void injected_neutrino_flux(marray<double,3>& flux, const Track&, const nuSQUIDS&) {}
 };
 
 // type defining

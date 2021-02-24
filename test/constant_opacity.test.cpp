@@ -57,7 +57,13 @@ int main(){
   for(unsigned int ei = 0 ; ei < nus.GetNumE(); ei++){
     for(unsigned int rho = 0; rho < 2; rho++){
       for(unsigned int flv = 0; flv < numneu; flv++){
-        double exp_analytic = exp(-column_density*(int_structure->sigma_CC[rho][flv][ei]+int_structure->sigma_NC[rho][flv][ei]));
+        double total_cross_section=0;
+        for(unsigned int trg=0; trg<int_structure->targets.size(); trg++){
+          double weight=(trg==0?ye:1-ye);
+          total_cross_section+=weight*int_structure->sigma_CC[trg][rho][flv][ei];
+          total_cross_section+=weight*int_structure->sigma_NC[trg][rho][flv][ei];
+        }
+        double exp_analytic = exp(-column_density*total_cross_section);
         double exp_nusquids = nus.EvalFlavorAtNode(flv,ei,rho);
         if( std::abs(exp_nusquids - exp_analytic)/exp_analytic > 5.0e-3 )
           std::cout << flv << ' ' << rho << ' ' << ei << ' ' << exp_nusquids << " " << exp_analytic <<" " << exp_nusquids/exp_analytic << std::endl;

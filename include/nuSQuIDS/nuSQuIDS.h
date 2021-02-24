@@ -29,33 +29,28 @@
 #error C++11 compiler required. Update your compiler and use the flag -std=c++11
 #endif
 
-#include "version.h"
-#include "body.h"
-#include "xsections.h"
-#include "taudecay.h"
-#include "marray.h"
-#include "aligned_alloc.h"
-#include "ThreadPool.h"
-
 #include <algorithm>
-#include <cstring>
 #include <iostream>
 #include <memory>
-#include <map>
 #include <stdexcept>
 #include <vector>
 
 #include <SQuIDS/SQuIDS.h>
 
-#include "H5Epublic.h"
-#include "H5Tpublic.h"
-#include "hdf5.h"
-#include "hdf5_hl.h"
-#include "H5Gpublic.h"
-#include "H5Fpublic.h"
+#include <H5Fpublic.h>
+#include <H5Gpublic.h>
+#include <H5Ipublic.h>
+#include <H5LTpublic.h>
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+
+#include "nuSQuIDS/aligned_alloc.h"
+#include "nuSQuIDS/body.h"
+#include "nuSQuIDS/marray.h"
+#include "nuSQuIDS/taudecay.h"
+#include "nuSQuIDS/ThreadPool.h"
+#include "nuSQuIDS/xsections.h"
 
 //#define FixCrossSections
 
@@ -95,15 +90,18 @@ protected:
     /// \brief number of energy nodes.
     unsigned int ne = nx;
 
-    /// \brief Returns the number of nucleons at a given position.
-    ///
-    /// Isoscalar medium is assumed and the position is obtained
-    /// at x = track.GetX().
-    double GetNucleonNumber() const;
+    ///Get the fraction of the of the number density of targets which is of each target type. 
+    ///These fractions sum to one. 
+    ///\return a vector of fractions, in the same order as the targets in int_struct
+    std::vector<double> GetTargetNumberFractions() const;
+
+    ///Get the number density of all nuclear targets at the current position
+    ///\return a vector of number densities, in the same order as the targets in int_struct
+    std::vector<double> GetTargetNumberDensities() const;
 
     /// \brief Updates the interaction length arrays.
     ///
-    /// Uses GetNucleonNumber() together with the stored cross section
+    /// Uses GetTargetNumberDensities() together with the stored cross section
     /// information to update: nuSQUIDS#invlen_NC, nuSQUIDS#invlen_CC, and nuSQUIDS#invlen_INT.
     void UpdateInteractions();
 
@@ -115,8 +113,8 @@ protected:
     /// It has length len(E_range)-1.
     marray<double,1> delE;
 
-    /// \brief Interface that calculate and interpolates neutrino cross sections.
-    std::shared_ptr<NeutrinoCrossSections> ncs;
+    /// \brief Interface that calculates and interpolates neutrino cross sections.
+    std::shared_ptr<CrossSectionLibrary> ncs;
 
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
@@ -129,42 +127,62 @@ protected:
     constexpr static uint8_t log2(size_t n) {
       return((n>1) ? log2(n/2)+1 : 0);
     }
+    ///Round n up to the nearest multiple of preferred_alignment, doing nothing if n is already 
+    ///such a multiple
     constexpr static size_t round_up_to_aligned(size_t n){
-      return((n&~(preferred_alignment-1))+preferred_alignment);
+      return((n&~(preferred_alignment-1))+((n&(preferred_alignment-1))?preferred_alignment:0));
     }
 
   public:
     /// \brief Struct that contains all cross section information.
     struct InteractionStructure {
+        /// \brief the configured target material types
+        /// \details These are recorded in the same order that they appear in dNdE_CC, 
+        /// dNdE_NC, sigma_CC, and sigma_NC
+        std::vector<PDGCode> targets;
         /// \brief Neutrino charge current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
         /// This array is constructed when InitializeInteractionVectors() is called and
-        /// is initialized when InitializeInteractions() is called. The first dimension
-        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-        /// and the last two the initial and final energy node respectively.
-        marray<double,4,aligned_allocator<double>> dNdE_CC;
+        /// is initialized when InitializeInteractions() is called. Its dimensions are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - initial energy
+        /// - final energy
+        marray<double,5,aligned_allocator<double>> dNdE_CC;
         /// \brief Neutrino neutral current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
         /// This array is constructed when InitializeInteractionVectors() is called and
-        /// is initialized when InitializeInteractions() is called. The first dimension
-        /// is number of neutrino types (neutrino/antineutrino/both), the second the neutrino flavor,
-        /// and the last two the initial and final energy node respectively.
-        marray<double,4,aligned_allocator<double>> dNdE_NC;
-        /// \brief Glashow resonance differential cross section (electron antineutrino only
+        /// is initialized when InitializeInteractions() is called. Its dimensions are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - initial energy
+        /// - final energy
+        marray<double,5,aligned_allocator<double>> dNdE_NC;
+        /// \brief Glashow resonance differential cross section (electron antineutrino only)
         /// \details Dimensions are initial and final energy node
         marray<double,2,aligned_allocator<double>> dNdE_GR;
         /// \brief Array that contains the neutrino charge current cross section.
-        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// \details The dimensions of this array are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - energy
+        /// Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3,aligned_allocator<double>> sigma_CC;
+        marray<double,4,aligned_allocator<double>> sigma_CC;
         /// \brief Array that contains the neutrino neutral current cross section.
-        /// \details The first dimension corresponds to the neutrino type, the second to the flavor, and
-        /// the final one to the energy node. Its contents are in natural units, i.e. eV^-2. It is
+        /// \details The dimensions of this array are:
+        /// - target type (proton, neutron, etc.)
+        /// - neutrino type (neutrino, antineutrino)
+        /// - neutrino flavor (electron, muon, tau)
+        /// - energy
+        /// Its contents are in natural units, i.e. eV^-2. It is
         /// initialized by InitializeInteractions() .
-        marray<double,3,aligned_allocator<double>> sigma_NC;
+        marray<double,4,aligned_allocator<double>> sigma_NC;
         /// \brief Glashow resonance cross section (electron antineutrino only)
         /// \details 1 entry per energy node, in natural units
         marray<double,1,aligned_allocator<double>> sigma_GR;
@@ -347,6 +365,7 @@ protected:
       
       if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
         return false;
+      
       // all is good - lets roll
       return true;
     }
@@ -384,6 +403,8 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
+    /// \brief The external flux from the body at the current point on the track
+    marray<double,3> current_external_flux;
 
     /// \brief Mass basis projectors.
     /// \details The i-entry corresponds to the projector in the ith mass eigenstate.
@@ -476,6 +497,8 @@ protected:
     double evol_lowpass_cutoff = 0;
     /// \brief Scale for low-pass filter applied during state density evolution
     double evol_lowpass_scale = 0;
+    /// \brief If true the bodies can act as neutrino sources.
+    bool enable_neutrino_sources = false;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -507,7 +530,8 @@ protected:
     /// \brief Initilizes auxiliary cross section arrays.
     /// \details The arrays are initialize, but not filled with contented.
     /// To fill the arrays call InitializeInteractions().
-    void InitializeInteractionVectors();
+    /// \param nTargets the number of target species for which to allocate space
+    void InitializeInteractionVectors(unsigned int nTargets);
 
     /// \brief Fills in auxiliary cross section arrays.
     /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
@@ -573,7 +597,7 @@ protected:
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
-       bool iinteraction = false, std::shared_ptr<NeutrinoCrossSections> ncs = nullptr):
+       bool iinteraction = false, std::shared_ptr<CrossSectionLibrary> ncs = nullptr):
     numneu(numneu),ncs(ncs),NT(NT),iinteraction(iinteraction)
     {init(E_vector);}
 
@@ -1000,6 +1024,8 @@ protected:
     void Set_Debug(bool debug_){
       debug = debug_;
     }
+  
+    int Get_DebugCounter() const{ return progressbar_count; }
 
     /// \brief Returns lepton mixing matrix
     std::unique_ptr<gsl_matrix_complex,void (*)(gsl_matrix_complex *)> GetTransformationMatrix() const {
@@ -1007,14 +1033,30 @@ protected:
     }
 
     /// \brief Returns the neutrino interaction cross sections
-    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections() {
+    std::shared_ptr<CrossSectionLibrary> GetNeutrinoCrossSections() {
       return(ncs);
     }
   
     /// \brief Returns the neutrino interaction cross sections
-    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs) {
+    void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs) {
        ncs=xs;
        interactions_initialized=false;
+    }
+
+    /// \brief Enables neutrino flux emission from bodies
+    void Set_NeutrinoSources(bool enable_neutrino_sources_){
+      if(enable_neutrino_sources_){
+        current_external_flux.resize(std::vector<size_t>{ne,nrhos,numneu});
+        std::fill(current_external_flux.begin(),current_external_flux.end(),0.0);
+      }
+      if(not iinteraction and enable_neutrino_sources_)
+        Set_OtherRhoTerms(true);
+      enable_neutrino_sources = enable_neutrino_sources_;
+    }
+
+    /// \brief Returns true if neutrino flux emission from bodies is considered
+    bool Get_NeutrinoSources(){
+      return enable_neutrino_sources;
     }
 };
 
@@ -1061,7 +1103,7 @@ class nuSQUIDSAtm {
     /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
     /// \brief Contains the neutrino cross section object
-    std::shared_ptr<NeutrinoCrossSections> ncs;
+    std::shared_ptr<CrossSectionLibrary> ncs;
     /// \brief Contains the interaction information structure.
     std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
     /// \brief the number of threads to use when performing the evolution
@@ -1509,11 +1551,11 @@ class nuSQUIDSAtm {
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename){
       hid_t file_id,group_id,root_id;
-      // create HDF5 file
-      file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-      if (file_id < 0)
+      // open HDF5 file
+      H5File file(H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
+      if (file < 0)
         throw std::runtime_error("nuSQUIDSAtm::ReadStateHDF5: Unable to open file: " + hdf5_filename + ". No such file or directory");
-      root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
+      root_id = H5Gopen(file, "/",H5P_DEFAULT);
       group_id = root_id;
 
       // read the zenith range dimension
@@ -1538,8 +1580,6 @@ class nuSQUIDSAtm {
       }
 
       H5Gclose(root_id);
-      H5Fclose(file_id);
-      H5close();
 
       // resize apropiately the nuSQUIDSAtm container vector
       nusq_array.clear();
@@ -1859,12 +1899,12 @@ class nuSQUIDSAtm {
     }
   
     /// \brief Returns the neutrino interaction cross sections
-    std::shared_ptr<NeutrinoCrossSections> GetNeutrinoCrossSections(){
+    std::shared_ptr<CrossSectionLibrary> GetNeutrinoCrossSections(){
       return(ncs);
     }
     
     /// \brief Sets the neutrino interaction cross sections
-    void SetNeutrinoCrossSections(std::shared_ptr<NeutrinoCrossSections> xs){
+    void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs){
       ncs=xs;
       for(BaseSQUIDS& nsq : nusq_array)
         nsq.SetNeutrinoCrossSections(ncs);

@@ -13,7 +13,7 @@ static squids::Const param;
 */
 
   void EarthMod::Mod(double frho1, double frho2, double frho3){
-    marray<double,2> earth_model = quickread(static_cast<std::string>(EARTH_MODEL_LOCATION));
+    marray<double,2> earth_model = quickread(getResourcePath()+"/astro/EARTH_MODEL_PREM.dat");
     size_t arraysize = earth_model.extent(0);
     earth_radius.resize(arraysize);
     earth_density.resize(arraysize);

@@ -23,7 +23,7 @@
 
 #include "nuSQUIDSpy.h"
 
-BOOST_PYTHON_MODULE(nuSQUIDSpy)
+BOOST_PYTHON_MODULE(nuSQuIDS)
 {
   // import numpy array definitions
   //np::initialize();
@@ -159,6 +159,23 @@ BOOST_PYTHON_MODULE(nuSQUIDSpy)
     .def("WriteHDF",&NeutrinoDISCrossSectionsFromTables::WriteHDF)
     .def("WriteText",&NeutrinoDISCrossSectionsFromTables::WriteText)
   ;
+  
+  enum_<PDGCode>("PDGCode")
+    .value("electron",electron)
+    .value("isoscalar_nucleon",isoscalar_nucleon)
+    .value("proton",proton)
+    .value("neutron",neutron)
+  ;
+    
+  class_<CrossSectionLibrary, std::shared_ptr<CrossSectionLibrary>>("CrossSectionLibrary")
+    .def(init<>())
+    //TODO: map constructor?
+    .def("crossSectionForTarget", &CrossSectionLibrary::crossSectionForTarget)
+    .def("hasTarget", (bool(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type))&CrossSectionLibrary::hasTarget)
+    .def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::hasTarget)
+  ;
+  
+  bp::def("loadDefaultCrossSections",loadDefaultCrossSections);
 
   class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>, boost::noncopyable>("TauDecaySpectra")
     .def(init<marray<double,1>>())
