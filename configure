@@ -3,12 +3,12 @@
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
-	PKG_CONFIG_PATH=$(which pkg-config 2>&1)
+	PKG_CONFIG_BIN=$(which pkg-config 2>&1)
 	if [ "$?" -ne 0 ]; then
 		echo "Error: pkg-config not found; you will need to specify library locations manually" 1>&2
 		exit 1
 	fi
-	echo " Found $PKG_CONFIG_PATH"
+	echo " Found $PKG_CONFIG_BIN"
 	CHECKED_PKGCONFIG=1
 }
 
