@@ -819,8 +819,8 @@ uninstall:
 	@echo Removing headers from $(PREFIX)/include/nuSQuIDS
 	@rm -rf "$(PREFIX)/include/nuSQuIDS"
 	@echo Removing libraries from $(PREFIX)/$(INSTALL_LIBDIR)
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)"
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
 	@echo Removing config information from $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig/nusquids.pc"
 ' >> ./Makefile
