@@ -320,6 +320,7 @@ The neutrino (antineutrino), $\rho$ $(\bar\rho)$, kinetic equations are
 \pa{\bar\rho(E,x)}{x} &=& i [ H^*_1 (E,x), \bar\rho(E,x) ] - \left\{ \bar\Gamma(E,x),
   \rho(E,x) \right\} + \bar F\left[\rho,\bar\rho;E,x\right] ,
 \end{eqnarray}
+\label{eq:kinetic_equations}
 \end{subequations}
 where $\Gamma$ and $\bar\Gamma$  are functions that incorporate the effect of attenuation due to
 non-coherent interactions, and $F$ and $\bar F$  are  functionals on
@@ -1541,7 +1542,7 @@ oscillations from other terms, such as $H_I$, won't be
 averaged out.
 
 
-\subsection{Atmospheric Mode: Standard \textnormal{({\ttf
+\subsection{Atmospheric mode: Standard \textnormal{({\ttf
       examples/Atm\_default})}}
 \label{sec:atmexample}
 In this example we show how to use the atmospheric mode. This mode is
@@ -1642,6 +1643,97 @@ derived class constructor arguments.
   double epsilon_mutau=1e-2;
   nuSQUIDSAtm<nuSQUIDSNSI> nus_atm(linspace(czmin,czmax,40),epsilon_mutau,logspace(Emin,Emax,100),numneu,both,true);
 \end{lstlisting}
+
+\subsection{Extended neutrino sources \textnormal{({\ttf
+      examples/Extended\_Source})}}
+\label{sec:extended_source}
+
+Some neutrino evolution problem cannot be formulated as an starting flux
+of neutrinos, as shown in the examples above.
+For example, in the case of solar neutrinos the emission of neutrinos happens
+over an extended region of the Sun; the same is true for atmospheric neutrinos
+which are produced predominantly 20~km above the Earth surface, but which have varying production
+height of tens of kilometers.
+nuSQUIDS provides a way to handle these scenarios, which we will illustrate in this example.
+
+A source term is added to the nuSQuIDS kinetic equations Eq.~\eqref{eq:kinetic_equations},
+which allows to add (or substract) neutrinos from the ensemble.
+This term depends on the location of the ensemble in the traversed body.
+For this reason it is in the body class where the user needs to implement this term; namely it is
+a property of the objected been traversed rather than the ensemble.
+
+In this example, we will start with an empty neutrino ensemble that traverses a neutrino-emitting
+vacuum. We define the following \texttt{EmittingVacuum} class that inherits from \texttt{Vacuum}:
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+  double epsilon_mutau=1e-2;
+class EmittingVacuum: public Vacuum {
+  private:
+    const unsigned int flavor;
+    const double decay_length;
+  public :
+    EmittingVacuum(unsigned int flavor, double decay_length):
+      flavor(flavor),decay_length(decay_length){}
+    void injected_neutrino_flux(marray<double,3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override {
+      double x_cur = track.GetX();
+      for(unsigned int ei=0; ei < nusquids.GetNumE(); ei++){
+        for(unsigned int rhoi = 0; rhoi < nusquids.GetNumRho(); rhoi++){
+          for(unsigned int flv = 0; flv < nusquids.GetNumNeu(); flv++){
+            flux[ei][rhoi][flv] = (flv == flavor) ? exp(-x_cur/decay_length) : 0.0;
+          }
+        }
+      }
+    }
+  };
+\end{lstlisting}
+
+The constructor of this class has the following signature:
+
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+    EmittingVacuum(unsigned int flavor, double decay_length)
+\end{lstlisting}
+where we ask the user to provide two parameters: a flavor (\texttt{decay\_length}) to inject and an injection length (\texttt{decay\_length}).
+The flavor is specified in the standard nuSQUIDS flavor notation: 0 for electrons, 1 for muons, and 2 for taus, etc.
+The injection of neutrinos in our example will follow an exponential emission energy profile, namely
+\begin{equation}
+  S(t) = \Pi_\alpha \exp(-x/L),
+\end{equation}
+where $\Pi_\alpha$ represents the projector of the neutrino state of flavor $\alpha$, $x$ is the distance along the trayectory,  and $L$ is our exponential decay length.
+For a given body to emit neutrinos the following member function with the following signature must be overriden:
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+    void injected_neutrino_flux(marray<double,3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override
+\end{lstlisting}
+The user is given a container, \texttt{flux}, which has three indexes that correspond to the energy index, neutrino or antineutrino index, and flavor index.
+Additionally, the user is given constant references of a track and the nuSQUIDS object that query the body.
+The user can use the track information to find the current position in the ensemble evolution and can use the nuSQUIDS object
+to obtain additional information that they may need to fill in the container.
+For example, the user may need access to the energy nodes of the calculation, which can be obtained by calling the corresponding member function of the nuSQUIDS class.
+It is important to note that the type of track that is passed by nuSQUIDS to the body object member function is a \texttt{GenericTrack}, which is necesarry internally
+so that this operation can work with all the body types. If needed, in the implementation of the member function the user can cast this to the track type they prefer.
+Finally, we have added at the end of the signature above the optional keyword \texttt{override}, which ensures that this member function is overriding the correct signature used
+internally by nuSQUIDS. This keyword will trigger a compile-time error, if the user accidentally declares a new member function and thus guarantees that the correct member function
+is been overriden.
+
+Once your body has been constructed and pass to nuSQUIDS by means of the usual \texttt{Set\_Body} and \texttt{Set\_Track} member functions, we need to inform nuSQUIDS that we will be considering neutrino injection into the ensemble in the calculation.
+This is not enabled by default in order to avoid additional calls to virtual member functions that just add zero to the differential equation.
+In order to enable this one needs to set
+\begin{lstlisting}[frame=leftline, numbers =
+  left,breaklines=true,label = ex:sin1,firstnumber=last]
+    nus.Set_NeutrinoSources(true);
+\end{lstlisting}
+where here \texttt{nus} corresponds to the instance of the nuSQUIDS object that we have created.
+The result of running this code can be seen in Fig.~\ref{fig:extended_sources}, where the starting conditions are an empty 
+ensemble, and the injection is a muon-neutrino only source. The tau and electron contributions that appear are from oscillations.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.6\textwidth]{fig/extended_sources.eps}
+  \caption{Final flux obtained from the extended source emission as a function of the neutrino energy.}
+  \label{fig:extended_sources}
+\end{figure}
 
 \section{Performance and precision}
 \label{sec:performance} 
