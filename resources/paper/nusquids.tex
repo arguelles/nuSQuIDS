@@ -1867,6 +1867,11 @@ description of what they test.
   Checks that propagating by concatenating a series of tracks in
   vacuum is the same as propagating with a single track with the total length. 
   
+\item {\ttf test/external\_flux.test}
+  
+  Checks that the emitting body feature works. This is done by propagating 
+  an initially empty neutrino ensemble on a medium that emits neutrinos and comparing the 
+  result with an analytical solution.
 
 \end{itemize}
 
@@ -4041,6 +4046,9 @@ header where the new class of interest is defined. In this code we have used two
 This module needs to be compiled with the same dependencies as our nominal python bindings, for which we suggest the user
 to copy our Makefile and modify the name of the library to be generated to match the module name. As a final step the user
 should place the resulting shared object library in the system {\ttf PYTHONPATH}.
+
+\section{Additional resources}
+\label{sec:resources}
 
 \section{Conclusions}
 \label{sec:conclu}
