@@ -104,10 +104,9 @@
 \ead{carguelles@fas.harvard.edu}
 \author[UB]{Jordi Salvado}
 \ead{jsalvado@icc.ub.edu}
-\author[UC]{Christopher N. Weaver}
+\author{Christopher N. Weaver}
 \ead{chris.weaver@icecube.wisc.edu}
 \address[HU]{Department of Physics \& Laboratory for Particle Physics and Cosmology, Harvard University, Cambridge, MA 02138, USA}
-\address[UC]{Enrico Fermi Institute, University of Chicago, Chicago IL 60637, USA}
 \address[UB]{Departament de F\'isica Qu\`antica i Astrofísica and Institut de Ciencies del Cosmos,
 Universitat de Barcelona, Diagonal 647, E-08028 Barcelona, Spain}
 
@@ -1735,14 +1734,21 @@ ensemble, and the injection is a muon-neutrino only source. The tau and electron
   \label{fig:extended_sources}
 \end{figure}
 
-\section{Performance and precision}
+\section{Performance and Precision}
 \label{sec:performance} 
 
-Machine 1 is configured with an Intel 6700K CPU, with a `base' frequency of 4.0 GHz. All tests were performed with the `Turbo Boost' feature disabled. 
+In the tests described in this section, Machine 1 is configured with an Intel Core\texttrademark~i7-6700K CPU, with a `base' frequency of 4.0 GHz. All tests were performed with the `Turbo Boost' feature disabled, preventing frequency scaling. 
 
-The time evolution and basis transformations performed by SQuIDS on SU\_vector objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. As a result, run time is strongly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. 
-The differences are illustrated in Table~\ref{tab:trig_perf}, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation. Broadly, it is apparent that the calculations using the math implementations from the GNU C library (glibc) are significantly slower than the versions using other math libraries. Furthermore, the glibc calculations appear to benefit only slightly from the opportunity to fuse sine and cosine calculations; while they are not as slow as might be expected from a simple doubling of the time to compute a single sine they are also not much better. 
-This is in contrast to the other implementations which are able to compute both functions in essentially the same time as a single function (or with relatively low overhead, in the case of BSD libc). In addition to this overhead, the glibc time to compute a single trigonometric function is approximately twice that of the other libraries (it is unclear why the result is far worse for clang 5.0.1 on CentOS 7, but this was deemed to have little practical relevance to this work and was not further investigated). Unfortunately, the conclusion is that the choice of compiler can be extremely important to maximizing the performance of nuSQuIDs. The benchmarks shown in this section will use the Intel compiler, version 18.0.3 on Cent OS 7, unless otherwise noted. 
+The time evolution and basis transformations performed on \lstinline{squids::SU_vector} objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. 
+These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. 
+As a result, run time is significantly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. 
+The differences are illustrated in Table~\ref{tab:trig_perf}, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). 
+A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. 
+The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation. 
+Broadly, it is apparent that the calculations using the math implementations from the older version of the GNU C library (glibc) are significantly slower than the versions using other math libraries. 
+The approximately factor of two difference in fused sine/cosine performance between glibc 2.17 and 2.28 translates into a 10-25\% difference in the overall runtime of nuSQuIDS oscillation calculations. 
+The user is therefore cautioned that the choice of compiler and runtime libraries can be important to maximizing the performance of nuSQuIDs. 
+The benchmarks shown in this section will use the GNU compiler, version 8.3.1 (Red Hat 8.3.1-5) on CentOS 8, as this is a combination with good performance which is likely to be relevant to many users. 
 
 \begin{table*}
 	\begin{tabular}{ llcccl }
@@ -1751,14 +1757,213 @@ This is in contrast to the other implementations which are able to compute both 
 		CentOS 7 & gcc 7.3.1 & 2.7 ns & 37.1 ns & 63.3 ns & GNU C Library  2.17 \\
 		CentOS 7 & clang 5.0.1 & 4.8 ns & 96.4 ns & 69.0 ns & GNU C Library  2.17 \\
 		CentOS 7 & icc 18.0.3 & 4.0 ns & 20.9 ns & 22.2 ns & libimf 2018.3.222\\
+		CentOS 8 & gcc 8.3.1 & 2.7 ns & 26.8 ns & 31.3 ns & GNU C Library  2.28\\
 		Darwin 16.7.0 & clang 5.0.0 & 2.9 ns & 19.1 ns & 20.1 ns & libsystem\_m  3121.6.0 \\
 		FreeBSD 11.2 & clang 6.0.1 & 2.9 ns & 22.3 ns & 30.8 ns & BSD libc
 	\end{tabular}
 	\caption{
-		Measured time to compute trigonometric functions using different compilers and operating systems. In each case the same stream of $10^8$ pseudo-random arguments in the domain [-100,100] was used, and the average time per call was computed, including the time necessary for the PRNG to compute the next argument value. 
+		Measured time to compute trigonometric functions using different compilers and operating systems on Machine 1. In each case the same stream of $10^8$ pseudo-random arguments in the domain [-100,100] was used, and the average time per call was computed, including the time necessary for the PRNG to compute the next argument value. 
 	}
 	\label{tab:trig_perf}
 \end{table*}
+
+\subsection{Parameters Affecting Precision}
+\label{ssec:precision_parameters} 
+
+The primary quantity defining the size of the problem solved by {\ttf nuSQuIDS} in its multiple energy mode is the number of energy nodes included in the calculation. 
+It is important to note that the interpolation provided by {\ttf nuSQuIDS} allows arbitrary energies within the range of the energy nodes to be evaluated after propagating, so it is not necessary to calculate a node for every energy at which the final flux may be needed. 
+Rather, the minimum number of nodes should be chosen so that the calculation is suitably precise at each node and when interpolated between nodes. 
+
+It is difficult to give specific guidance for all of the many types of problems to which nuSQuIDS is applied, so users are advised to be prepared to perform their own tests of how many nodes are needed to get good results for their use cases. 
+However, it can be noted that for most problems the authors have attempted to compute numbers of nodes in the range 100-300 have typically been found sufficient. 
+It is also important that while it is often convenient to place nodes uniformly in energy or the logarithm of energy, this is by no means required by {\ttf nuSQuIDS}, so it can be advantageous to place nodes more densely in regions of particular interest or where sharp spectral features are expected, such as the vicinity of the Glashow resonance. 
+
+A second key parameter is the requested error tolerance for the ODE integration, which effectively controls the number of steps the integrator must take, while the number of energy nodes causes the amount of work required to compute each step to vary. 
+As with the number of nodes, it is impossible to give one-size-fits-all advice on selecting the tolerance. 
+In general, problems which include greater variation in the magnitudes of the flux values at different energies (e.g. steep power law fluxes) or for different flavors require more demanding tolerances in order for the small components to be computed precisely in the presence of the larger components. 
+Similar to selecting the number of energy nodes, the necessary tolerance may be found by incrementally tightening it until subsequent calculations produce results which are equivalent to within the desired precision. 
+While this process is manual and somewhat annoying, having been performed for one problem, the result can usually be applied to modified versions of the problem without retesting, as long as the changes are not drastic. 
+
+\begin{lstlisting}[float=ht,frame=lines,label=lst:prec_comp,caption={A simple routine for comparing the precision of two different calculations with  {\ttf nuSQuIDS}. Error checking, that numbers of energy ranges, number of flavors, etc. are compatible is advisable but omitted here for brevity.}]
+void compare_fluxes(const nuSQUIDS& nus1, const nuSQUIDS& nus2, 
+                    unsigned int oversampling, double tolerance){
+  auto er1 = nus1.GetERange(), er2 = nus2.GetERange();
+  marray<double,1> samples = er1;
+  if(oversampling>1)
+    samples=logspace(er1.front(), er1.back(), 
+                     er1.size()*oversampling - 1);
+  double GeV=squids::Const().GeV;
+  double maxErr=0;
+  for(double e : samples){
+    for(unsigned int fl=0; fl<nus1.GetNumNeu(); fl++){
+      for(unsigned int rho=0; rho<nus1.GetNumRho(); rho++){
+        double val1 = nus1.EvalFlavor(fl,e,rho);
+        double val2 = nus2.EvalFlavor(fl,e,rho);
+        double err = std::abs(val2-val1)/val1;
+        if(err > tolerance)
+          std::cout << "Disagreement: " << err << " for energy " 
+            << e/GeV << " GeV flavor " << fl << " rho " << rho
+            << " (" << val1 << " vs. " << val2 << ")\n";
+        if(err > maxErr)
+          maxErr = err;
+      }
+    }
+  }
+  if(maxErr > tolerance)
+    std::cout << "Maximum disagreement: " << maxErr << std::endl;
+}
+\end{lstlisting}
+
+A simple comparison function for guiding these selections is shown in Listing~\ref{lst:prec_comp}. 
+Two \lstinline{nuSQUIDS} objects are compared over the full energy range for which the first was calculated, with some oversampling factor which may be greater than 1 to check results for energies using interpolation as well as at the energy nodes of the first object. 
+Any evaluation point at which the relative difference of the second \lstinline{nuSQUIDS} object's result from that of the first is greater than the specified tolerance is reported, and the greatest such discrepancy is reported at the end. 
+This generic routine may not be suitable in all situations, but gives a basis for users to begin assessing the parameter choices needed for their problems. 
+It was used to determine integration error tolerances and in relevant cases node counts for the test shown in the rest of this section. 
+
+\subsection{Propagation Time Scaling with Problem Size}
+\label{ssec:propagation_scaling}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig/propagation-scaling.pdf}
+  \caption{Propagation time scaling with problem size on Machine 1. Only the time to run \lstinline{EvolveState} is included, omitting cross section preparation time for the cases with interactions. This initialization can be separated (by calling \lstinline{InitializeInteractions} manually), and is shown as `Cross Section Initialization'. Propagation with only oscillation effects scaling which is very close to linear in the number of energies, while propagation with interactions takes time which is approximately quadratic in the number of energies.}
+  \label{fig:propagation_scaling}
+\end{figure}
+
+Several tests were performed to demonstrate how the time to perform multi-energy propagations scales with the number of energy nodes included, depending on the use of some of the library's major features. 
+The results of these tests are shown in Fig.~\ref{fig:propagation_scaling}. 
+
+The `Low-energy Oscillations' tests used a flat input spectrum  over an energy range of 1~GeV - 10~GeV, initially consisting of $\nu_\mu$ only. 
+For these tests non-coherent interactions were disabled. 
+The `Broad-energy Interactions' test used an $E^{-2}$ input spectrum over 10~GeV - $10^7$~GeV with an initially equal mixture of flavors. 
+All tests propagated the input flux through the full diameter of the Earth, using {\ttf nuSQuIDS} version of PREM for the density. 
+Each propagation was tested for various sets of energy nodes, distributed uniformly in the logarithm of energy, from 50 to 1000 nodes, in increments of 50. 
+Each measurement was repeated five times and the median duration reported, unless the standard deviation of the distribution was greater than 1\% of the mean, which was taken to indicate an unstable set of measurements, in which case the entire set of measurements was repeated. 
+
+The oscillation-only propagations are expected to scale linearly with the number of nodes, as the calculation performed for each integration step consists primarily of evolving the flavor projectors (needed to compute $H_1(E,x)$ and $H^*_1(E,x)$) and commutator forming the first terms on the right hand sides of Eqs.~\ref{eq:kinetic_equations}, which must be repeated for each energy node, neutrino flavor, and particle type (neutrino and anti-neutrino).
+This is borne out quite well by the measurements. 
+
+The oscillation calculation including a fourth, sterile neutrino flavor (`Low-energy Oscillations with Sterile') is significantly slower than the standard three-flavor calculation (`Low-energy Oscillations'), as is to be expected. 
+The representation of the four-flavor state for each component has sixteen components to the three-flavor state's nine, so a decrease in speed of at least $16/9 = 1.77$ times may be expected, to start with. 
+The addition of the sterile flavor also forces the ODE integrator to use a smaller step size for the integration, taking nearly eight times as many steps to complete the propagation. 
+The combination of these effects seems to plausibly account for the observed decrease in speed. 
+
+The time for propagations including non-coherent interactions (`Broad-energy Interactions') can be expected to scale quadratically in the number of energy nodes, due to the need to calculate the cascading of particles at each node down to all lower energy nodes. 
+In addition, calculating the interactions requires an additional initialization step, in which the cross section data governing the cascading processes, is gathered. 
+Since this extra step is needed only once for a \lstinline{nuSQUIDS} object to be able to perform multiple propagations with the same set of energy nodes, which is often relevant as various hypothesis input fluxes are tested, it is accounted separately in Fig.~\ref{fig:propagation_scaling} as `Cross Section Initialization'. 
+Both the cross section initialization and the propagations with interactions show approximately the expected quadratic scaling, and the calculation of both interactions and oscillations together (`Broad-energy Interactions with Oscillations') exhibits the additional cost of including both types of effects. 
+A brief departure from the expected power law form of the propagation time scaling is observed at intermediate numbers of energy nodes is also observed for the tests with interactions; in Fig.~\ref{fig:propagation_scaling} this appears approximately between 200 and 300 energy nodes. 
+This is believed to be a result of the calculation's memory use growing comparable in size to the CPU's last-level cache (8 MB, for Machine 1). 
+It appears reliably, but moves to higher node counts for CPUs with larger cache sizes. 
+See Sec.~\ref{ssec:memory} for a discussion of memory use and some representative numbers which support this hypothesis. 
+
+\subsection{Flux Evaluation Performance}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig/evaluation-scaling.pdf}
+  \caption{Flux evaluation speed scaling with problem size on Machine 1. As expected, only a weak dependence on the problem size is observed. }
+  \label{fig:evaluation_scaling}
+\end{figure}
+
+The purpose of propagating a flux with {\ttf nuSQuIDS} is to determine the spectrum or composition after propagation, so the efficiency with which this information can be extracted is the second critical half of the library's performance. 
+
+Evaluation of the propagated flux for a given energy, flavor, particle type combination consists of three parts: Mapping the physical energy to a logical position within the energy nodes of the propagated state, interpolating the state components from the nearest nodes to form the requested state, and application of the suitably evolved $H_0$ operator to that state. 
+Locating the nearest energy nodes for interpolation depends on the total number of such nodes, due to the allowance for arbitrary node distributions, and is performed using a binary search. 
+The interpolation of the state, computation and evolution of the $H_0$ operator, and application of the operator to the interpolated state do not depend on the number of nodes, but do depend on the size of each state component, determined by the number of neutrino flavors considered. 
+
+Fig.~\ref{fig:evaluation_scaling} shows how the rate of flux evaluations scales with the number of energy nodes treated for the four example problems introduced in Sec.~\ref{ssec:propagation_scaling}. 
+As expected, due to the binary search for adjacent nodes, a weak dependence on number of nodes is observed. 
+A marked drop in performance also occurs between the three flavor and four flavor oscillation calculations, as expected from the corresponding increase in the complexity of both the states and operators. 
+
+\subsubsection{Concurrent Evaluation}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig/evaluation-concurrency-scaling.pdf}
+  \caption{Flux evaluation speed scaling with number of threads. Fairly good linearity is observed on both machines until the number of physical CPU cores is exhausted, at 4 and 16 threads, respectively. Both processors tested support 2-way simultaneous multithreading, but using it for this task is not productive on Machine 1 as shown by the lack of significant increase in total throughput when the number of threads is increased from 4 to 8, while Machine 2 initially suffers a penalty (the drop in throughput from 16 to 17 threads), but recovers and shows increased throughput as all logical CPU cores are used. }
+  \label{fig:evaluation_threads}
+\end{figure}
+
+The \lstinline{nuSQUIDS} object is not generally concurrency-safe for modification, but concurrent use of non-modifying member functions, including \lstinline{EvalFlavor}, is safe and supported. 
+This is potentially useful when computing large numbers of flux evaluations for tasks such as weighting large numbers of simulated neutrino interactions in a detector to form an expected observation. 
+Fig.~\ref{fig:evaluation_threads} shows an example of the application of this technique to evaluating the flux computed by the `Low Energy Oscillations' calculation introduced previously. 
+A problem size of 200 energy nodes was tested with a variable number of worker threads each being assigned to perform $10^7$ flux evaluations. 
+Due to the limited number of processor cores available to Machine 1, a second hardware configuration was introduced for this test. 
+Machine 2 used an AMD Ryzen\texttrademark~9 3950X CPU, having a `base' operating frequency of 3.5 GHz, with frequency scaling disabled. 
+
+Scaling to many flux evaluation threads appears to work well until the number of physical CPU cores is saturated, in spite of memory allocations which are required by the internals of the calculation. 
+An important optimization to enable this result was thread-local reuse of memory buffers, avoiding the need to serialize execution between threads even when the system memory allocator might use globally shared state. 
+For numbers of evaluation threads beyond the available number of physical processor cores, simultaneous multithreading (SMT) is used, and produces mixed results which depend significantly on the CPU architecture. 
+SMT does not enable a useful increase in throughput for Machine 1, while on Machine 2, additional SMT threads provide less marginal benefit than full physical cores, but aside from a small loss in total throughput when a small number of physical cores are running multiple SMT threads, throughput generally benefits. 
+As this is not a thorough survey of available CPU models, users are advised to perform their own checks to determine whether use of SMT will be productive on their hardware. 
+
+\subsection{Memory Requirements}
+\label{ssec:memory}
+
+For a {\ttf nuSQuIDS} object configured with $M$ energy nodes, $N$ neutrino flavors, $P$ particle types, and $T$ target species for interactions (if non-coherent interactions are enabled), neglecting constant terms, the amount of memory used may be broken down as follows. 
+Essentially all data allocated by the {\ttf nuSQuIDS} object is either in the form of machine pointers or double-precision floating-point numbers, assuming that the non-pointer components of \lstinline{squids::SU_vector} are small enough that padding and alignment requirements fit them into space equivalent to two additional pointers, making the direct size of an \lstinline{SU_vector} three pointers. 
+The underlying {\ttf squids::SQuIDS} object then requires:
+
+\begin{subequations}
+\label{eq:squids_memory}
+\begin{align}
+(PN^2 + 1)M &~\textrm{doubles}\\
+9(P+1)M &~\textrm{pointers}
+\end{align}
+\end{subequations}
+
+This omits some amount of memory which the GSL ODE integration library will allocate for its own internal state. 
+The size of this state will be proportional to $PN^2M$ doubles, with the constant of proportionality typically being around 10 (e.g. it is 12 when using the {\ttf nuSQuIDS} default Runge-Kutta-Fehlberg 4-5 stepper, RKF45). 
+
+Without structures needed for non-coherent interactions, the {\ttf nuSQuIDS} object additionally allocates:
+
+\begin{subequations}
+\label{eq:nusquids_memory}
+\begin{align}
+(2PN^3 + N^2 + 6PN + 5)M + (P+1)N^3 + 3(P+1)N &~\textrm{doubles}\\
+3(2PN + 1)M + 3(P+1)N &~\textrm{pointers}
+\end{align}
+\end{subequations}
+
+The data structures for computing non-coherent interactions (neglecting any memory allocated by the cross section and $\tau$ decay objects themselves) require:
+
+\begin{subequations}
+\label{eq:intereaction_memory}
+\begin{align}
+(2(NT+1)P + 1)M^2 + (PN^2 + (2T + 3)PN + 12)M &~\textrm{doubles}\\
+3PM &~\textrm{pointers}
+\end{align}
+\end{subequations}
+
+If the external neutrino source feature is used, it requires a buffer of another $PNM$ doubles. 
+
+It should be noted that $P$ can only take on the values 1 and 2, $T$ is typically 2, and $N$ is generally 3 or 4. 
+
+As an example, a modestly sized 3 flavor neutrino oscillation calculation might use 100 energy nodes and not consider non-coherent interactions, so $M=100$, $N=3$, $P=2$ (if both neutrinos and anti-neutrinos are considered), and $T$ is irrelevant. 
+Assuming typical data sizes of 8 bytes for both pointers and double-precision floating-point numbers, such a calculation will then require $24435 * 8$ bytes or approximately 191 kilobytes of memory, plus approximately another 170 kilobytes allocated by GSL (for the RKF45 stepper). 
+
+Due to the quadratic scaling with number of energy nodes (of the differential charged- and neutral-current interaction cross sections and $\tau$ decay spectra), memory requirements are much higher for calculations with non-coherent interactions. 
+An interaction calculation with 100 energy nodes and all interaction effects enabled would have $M=100$, $N=3$, $P=2$, and $T=2$, leading to a memory requirement of $322235 * 8$ bytes, or approximately 2.5 megabytes, and increasing to 300 nodes ($M=300$) would require $2706435 * 8$ bytes, or approximately 20.6 megabytes (with the size of the GSL state also increasing to 506 kilobytes). 
+Use of the external neutrino source feature, even with this larger problem size, would require only an additional $1800 * 8$ bytes or 14 kilobytes. 
+
+\subsection{Efficient Use}
+\label{ssec:efficient_use}
+
+Besides configuring the number of energy nodes and the error tolerance to the lowest and loosest values which will provide the desired precision, there are several other considerations for using {\ttf nuSQuIDS} with the best possible efficiency. 
+
+On simple trick is to turn off features which are not needed for a given calculation. 
+If neutrino oscillations are not relevant in the regime covered by a given propagation problem, they can be disabled, and the same is true for non-coherent interactions. 
+With oscillations disabled, {\ttf nuSQuIDS} is able to skip computing the evolution of the flavor projection operators, and with interactions disabled it can omit obtaining interaction cross sections, updating interaction lengths for the matter density at each step, and computing the contribution to each energy node from the neutrinos cascading down from higher energy nodes. 
+Additionally, some particular types of interactions can be enabled or disabled as needed, in particular, tau regeneration and Glashow resonance effects. 
+For example, to propagate a high energy atmospheric neutrino flux, not only are oscillations potentially unnecessary, but the flavor composition of the flux may mean the tau regeneration is irrelevant as well. 
+If a flux is being calculated which involves no anti-neutrinos, the effects of the Glashow resonance will not appear, and they may be turned off without changing the result. 
+In general, {\ttf nuSQuIDS} attempts to detect possibilities at runtime to minimize work performed, and this is fairly successful in the case of tau regeneration, so turning this feature off may not produce much change in computation time. 
+Handling of the Glashow resonance, though, requires additional interaction length updates which the existing structure of the code is unable to optimize away even when it turns out to be unused, so turning this capability off when it is not needed can have a useful impact. 
+
+The cross section data required to compute non-coherent interactions is dependent only on the placement of the energy nodes, not on the flux being propagated. 
+As a result, if many fluxes are to be calculated over the same set of nodes, it is most efficient to reuse the same \lstinline{nuSQUIDS} object, merely resetting the initial flux with \lstinline{Set_initial_state} before calling \lstinline{EvolveState} again, so that this initialization is not repeated. 
+As shown in \ref{fig:propagation_scaling} the initialization can take 5-15\% of the time for the propagation, so this can represent an important savings over many propagations. 
 
 \section{Test suite}
 \label{sec:tests}
