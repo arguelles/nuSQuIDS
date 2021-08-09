@@ -458,8 +458,11 @@ MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_Set_initial_state,Set_initial_state,1,2)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalFlavorAtNode_overload, EvalFlavorAtNode, 2, 3)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalFlavorAtNodes_overload, EvalFlavorAtNodes, 1, 2)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_GetStates_overload, GetStatesArr, 0, 1)
-MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalWithState_overload, EvalWithState, 4, 9)
-MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_ArrEvalWithState_overload, ArrEvalWithState, 4, 9)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_EvalWithState_overload, EvalWithState, 4, 10)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_ArrEvalWithState_overload, ArrEvalWithState, 4, 10)
+// Because it's not possible to have a default marray argument, we can only make overloads
+// for the last two double parameters that control the low-pass filter.
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSLayers_ArrEvalWithStateTRange_overload, ArrEvalWithStateTRange, 8, 10)
 
 // registration for explicit layers template
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
@@ -487,12 +490,12 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           double(nuSQUIDSLayers<BaseType>::*)(
             unsigned int, double, double,
             const marray<double,1>&, unsigned int,
-            double, double, double, double
+            double, double, double, double, double
           )
         )&nuSQUIDSLayers<BaseType>::EvalWithState,
         nuSQUIDSLayers_EvalWithState_overload<nuSQUIDSLayers<BaseType>>(
-          args("flavor", "time", "energy", "state", "rho", "avr_scale",
-            "lowpass_cutoff", "lowpass_scale", "t_range"),
+          args("flavor", "time", "energy", "state", "rho", "avg_cutoff", "avg_scale",
+            "t_range", "lowpass_cutoff", "lowpass_scale"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "Arguments\n"
           "---------\n"
@@ -505,15 +508,17 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           "  rho (int): Index of neutrino type. If neutrino type is `both`, neutrinos\n"
           "      are 0 and antineutrinos are 1. If neutrino type is not `both`, the\n"
           "      index is always 0.\n"
-          "  avr_scale (double): Scale to use for averaging fast oscillations. This is\n"
+          "  avg_cutoff (double): Scale to use for averaging fast oscillations. This is\n"
           "      the number of oscillations at which the evaluation of sine and cosine\n"
           "      terms is cut off.\n"
+          "  avg_scale (double): Distance from `avg_cutoff` over which to apply linear\n"
+          "      ramp to smooth the transition between averaged and non-averaged regions.\n"
           "  t_range (double): Time or distance over which to average oscillations.\n"
           "      This averaging is done numerically in SQuIDS. In compatible with\n"
-          "      `avr_scale`.\n"
+          "      `avg_cutoff`.\n"
           "  lowpass_cutoff (double): Frequency cut-off of the low-pass filter. Sine\n"
           "      and cosine evaluations at a higher frequency are evaluated as zero.\n"
-          "      This is distinct from the effect of `avr_scale` because the number of\n"
+          "      This is distinct from the effect of `avg_cutoff` because the number of\n"
           "      completed oscillations doesn't matter, i.e. there is no\n"
           "      time/distance dependence of this filter.\n"
           "  lowpass_scale (double): Distance in frequency over which a linear ramp is\n"
@@ -527,12 +532,12 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
         (
           marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
             unsigned int, const marray<double,1>&, const marray<double,1>&,
-            const marray<double,2>&, unsigned int, double, double, double, double
+            const marray<double,2>&, unsigned int, double, double, double, double, double
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithState,
         nuSQUIDSLayers_ArrEvalWithState_overload<nuSQUIDSLayers<BaseType>>(
-          args("flavor", "time", "energy", "state", "rho", "avr_scale",
-            "lowpass_cutoff", "lowpass_scale", "t_range"),
+          args("flavor", "time", "energy", "state", "rho", "avg_cutoff", "avg_scale",
+            "t_range", "lowpass_cutoff", "lowpass_scale"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "This is the array version of the function, taking in numpy arrays of time,\n"
           "energy, and states.\n\n"
@@ -548,15 +553,17 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
           "  rho (int): Index of neutrino type. If neutrino type is `both`, neutrinos\n"
           "      are 0 and antineutrinos are 1. If neutrino type is not `both`, the\n"
           "      index is always 0.\n"
-          "  avr_scale (double): Scale to use for averaging fast oscillations. This is\n"
+          "  avg_cutoff (double): Scale to use for averaging fast oscillations. This is\n"
           "      the number of oscillations at which the evaluation of sine and cosine\n"
           "      terms is cut off.\n"
+          "  avg_scale (double): Distance from `avg_cutoff` over which to apply linear\n"
+          "      ramp to smooth the transition between averaged and non-averaged regions.\n"
           "  t_range (double): Time or distance over which to average oscillations. This\n"
           "      averaging is done numerically in SQuIDS. In compatible with\n"
-          "       `avr_scale`.\n"
+          "       `avg_cutoff`.\n"
           "  lowpass_cutoff (double): Frequency cut-off of the low-pass filter. Sine\n"
           "      and cosine evaluations at a higher frequency are evaluated as zero.\n"
-          "      This is distinct from the effect of `avr_scale` because the number\n"
+          "      This is distinct from the effect of `avg_cutoff` because the number\n"
           "      of completed oscillations doesn't matter, i.e. there is no\n"
           "      time/distance dependenceof this filter.\n"
           "  lowpass_scale (double): Distance in frequency over which a linear ramp is\n"
@@ -570,29 +577,31 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
         (
           marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
             unsigned int, const marray<double,1>&, const marray<double,1>&,
-            const marray<double,2>&,
-            unsigned int, double, double, double, const marray<double,1>&
+            const marray<double,2>&, unsigned int, double, double,
+            const marray<double,1>&, double, double
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithStateTRange,
-          args("flavor", "time", "energy", "state", "rho", "avr_scale", 
-            "lowpass_cutoff", "lowpass_scale", "t_range"),
+        nuSQUIDSLayers_ArrEvalWithStateTRange_overload<nuSQUIDSLayers<BaseType>>(
+          args("flavor", "time", "energy", "state", "rho", "avg_cutoff", "avg_scale",
+            "t_range", "lowpass_cutoff", "lowpass_scale"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "Same as the other array version of the function, but allows a different\n"
           "averaging time for each evaluation. All other arguments must be passed.\n\n"
+        )
       );
       class_object->def("EvalWithState",
         (
           marray<double,1>(nuSQUIDSLayers<BaseType>::*)(
             unsigned int, const marray<double,1>&, const marray<double,1>&,
             const marray<double,2>&,
-            unsigned int, double,
+            unsigned int, double, double,
             const marray<double,1>&,
             const marray<double,1>&,
             const marray<double,1>&
           )
         )&nuSQUIDSLayers<BaseType>::ArrEvalWithStateTRangeLPFilter,
-          args("flavor", "time", "energy", "state", "rho", "avr_scale", 
-            "lowpass_cutoff", "lowpass_scale", "t_range"),
+          args("flavor", "time", "energy", "state", "rho", "avg_cutoff", "avg_scale",
+            "t_range", "lowpass_cutoff", "lowpass_scale"),
           "Returns the flavor composition with a given (interpolated) state.\n\n"
           "Same as the other array version of the function, but allows a different\n"
           "averaging time and low-pass filter settings for each evaluation.\n"

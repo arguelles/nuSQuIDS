@@ -2159,14 +2159,15 @@ class nuSQUIDSLayers {
     /// @param rho Index of neutrino type. If neutrino type is "both", neutrinos are 
     ///        0 and antineutrinos are 1. If neutrino type is not "both", the index is
     ///        always 0.
-    /// @param avr_scale Scale to use for averaging fast oscillations. This is the
-    ///        number of oscillations at which the evaluation of sine and cosine terms
-    ///        is cut off.
+    /// @param avr_cutoff Number of oscillations (frequency * time) at which the
+    ///        evaluation of sine and cosine terms is cut off to zero.
+    /// @param avr_scale Distance in (frequency * time) over which the linear ramp is
+    ///        applied until the complete cut-off is reached.
     /// @param t_range Time or distance over which to average oscillations. This 
     ///        averaging is done numerically in SQuIDS. In compatible with `avr_scale`.
     /// @param lowpass_cutoff Frequency cut-off of the low-pass filter. Sine and cosine
     ///        evaluations at a higher frequency are evaluated as zero. This is distinct
-    ///        from the effect of `avr_scale` because the number of completed
+    ///        from the effect of `avr_cutoff` because the number of completed
     ///        oscillations doesn't matter, i.e. there is no time/distance dependence
     ///        of this filter. 
     /// @param lowpass_scale Distance in frequency over which a linear ramp is applied
@@ -2177,16 +2178,14 @@ class nuSQUIDSLayers {
     double EvalWithState(
       unsigned int flv, double time, double enu,
       const marray<double,1>& state,
-      unsigned int rho = 0, double avr_scale = 0.,
-      double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
+      unsigned int rho = 0, double avg_cutoff = 0, double avg_scale = 0,
+      double t_range = 0, double lowpass_cutoff = 0, double lowpass_scale = 0
     ) const {
       // here the energy enters in eV
       if(not iinistate)
         throw std::runtime_error("nuSQUIDSLayers::Error::State not initialized.");
       if(not inusquidslayers)
         throw std::runtime_error("nuSQUIDSLayers::Error::nuSQUIDSLayers not initialized.");
-      if(avr_scale > 0. && t_range > 0.)
-        throw std::runtime_error("nuSQUIDSLayers::Error::Cannot use both avr_scale and range averaging!");
 
       // need to convert marray from input into standard vector
       // TODO: Is there a better way?
@@ -2200,7 +2199,7 @@ class nuSQUIDSLayers {
       squids::SU_vector rho_int = squids::SU_vector(state_vector);
       // evolved projector to compute the trace with
       squids::SU_vector evol_proj;
-      
+
       if(use_full_hamiltonian_for_projector_evolution){
         evol_proj = nusq_array[0].GetFlavorProj(flv, rho);
       } else {
@@ -2212,22 +2211,21 @@ class nuSQUIDSLayers {
         // This contains all the evaluated trigonometric functions in an array.
         std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
         
-        if(avr_scale > 0. && t_range == 0){
-            // This vector stores whether a component has been averaged.
-            std::vector<bool> avr {};
-            // The evolution buffer contains a sine and a cosine term for each frequency
-            // being computed. The avr vector needs one component per frequency, i.e.
-            // one half of the total buffer size.
-            avr.assign(H0_at_enu.GetEvolveBufferSize()/2, false);
-            H0_at_enu.PrepareEvolve(evol_buffer.get(), time, avr_scale, avr);
-        } else if(avr_scale == 0. && t_range > 0.){
+        if(t_range > 0){
             double t_start = time - t_range;
             H0_at_enu.PrepareEvolve(evol_buffer.get(), t_start, time);
         } else {
             H0_at_enu.PrepareEvolve(evol_buffer.get(), time);
         }
-        // a low-pass filter maybe applied in addition to other averaging
-        if (lowpass_cutoff > 0.){
+        // Averaging as function of number of oscillations (frequency * time).
+        // This filter can be combined with the averaging over a distance.
+        if (avg_cutoff > 0){
+          H0_at_enu.AvgRampFilter(evol_buffer.get(), time, avg_cutoff, avg_scale);
+        }
+        // Averaging as function of frequency (without time dependence).
+        // While it is technically possible to use both avg and low-pass filtering, it
+        // is not recommended to do so.
+        if (lowpass_cutoff > 0){
           H0_at_enu.LowPassFilter(evol_buffer.get(), lowpass_cutoff, lowpass_scale);
         }
         evol_proj = nusq_array[0].GetFlavorProj(flv, rho).Evolve(evol_buffer.get());
@@ -2241,8 +2239,9 @@ class nuSQUIDSLayers {
     // Python. 
     marray<double,1> ArrEvalWithState(
       unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
-      const marray<double,2>& state, unsigned int rho = 0, double avr_scale = 0.,
-      double lowpass_cutoff = 0., double lowpass_scale = 0., double t_range = 0.
+      const marray<double,2>& state, unsigned int rho = 0, double avg_cutoff = 0,
+      double avg_scale = 0, double t_range = 0,
+      double lowpass_cutoff = 0, double lowpass_scale = 0
     ) const {
       if ((time.extent(0) != enu.extent(0)) || (time.extent(0) != state.extent(0)))
         throw std::runtime_error("nuSQUIDS::Error:: Input array lengths do not match");
@@ -2253,8 +2252,8 @@ class nuSQUIDSLayers {
           one_state[j] = state[i][j];
         }
         probs[i] = EvalWithState(
-          flv, time[i], enu[i], one_state, rho, avr_scale,
-          lowpass_cutoff, lowpass_scale, t_range
+          flv, time[i], enu[i], one_state, rho, avg_cutoff, avg_scale, t_range,
+          lowpass_cutoff, lowpass_scale
         );
       }
       return probs;
@@ -2264,10 +2263,10 @@ class nuSQUIDSLayers {
     // distance for every point where we evaluate the probability.
     marray<double,1> ArrEvalWithStateTRange(
       unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
-      const marray<double,2>& state, unsigned int rho, double avr_scale,
-      double lowpass_cutoff,
-      double lowpass_scale,
-      const marray<double,1>& t_range
+      const marray<double,2>& state, unsigned int rho,
+      double avg_cutoff, double avg_scale,
+      const marray<double,1>& t_range,
+      double lowpass_cutoff = 0, double lowpass_scale = 0
     ) const {
       if (   time.extent(0) != enu.extent(0)
           || time.extent(0) != state.extent(0)
@@ -2281,8 +2280,8 @@ class nuSQUIDSLayers {
           one_state[j] = state[i][j];
         }
         probs[i] = EvalWithState(
-          flv, time[i], enu[i], one_state, rho, avr_scale,
-          lowpass_cutoff, lowpass_scale, t_range[i]
+          flv, time[i], enu[i], one_state, rho, avg_cutoff, avg_scale, t_range[i],
+          lowpass_cutoff, lowpass_scale
         );
       }
       return probs;
@@ -2293,10 +2292,11 @@ class nuSQUIDSLayers {
     // regions (i.e. above the horizon where fast oscillations don't average out).
     marray<double,1> ArrEvalWithStateTRangeLPFilter(
       unsigned int flv, const marray<double,1>& time, const marray<double,1>& enu,
-      const marray<double,2>& state, unsigned int rho, double avr_scale,
+      const marray<double,2>& state, unsigned int rho,
+      double avg_cutoff, double avg_scale,
+      const marray<double,1>& t_range,
       const marray<double,1>& lowpass_cutoff,
-      const marray<double,1>& lowpass_scale,
-      const marray<double,1>& t_range
+      const marray<double,1>& lowpass_scale
     ) const {
       if (   time.extent(0) != enu.extent(0)
           || time.extent(0) != state.extent(0)
@@ -2311,8 +2311,8 @@ class nuSQUIDSLayers {
           one_state[j] = state[i][j];
         }
         probs[i] = EvalWithState(
-          flv, time[i], enu[i], one_state, rho, avr_scale,
-          lowpass_cutoff[i], lowpass_scale[i], t_range[i]
+          flv, time[i], enu[i], one_state, rho, avg_cutoff, avg_scale, t_range[i],
+          lowpass_cutoff[i], lowpass_scale[i]
         );
       }
       return probs;
