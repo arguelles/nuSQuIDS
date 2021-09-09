@@ -172,7 +172,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     //TODO: map constructor?
     .def("crossSectionForTarget", &CrossSectionLibrary::crossSectionForTarget)
     .def("hasTarget", (bool(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type))&CrossSectionLibrary::hasTarget)
-    .def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::hasTarget)
+    .def("addTarget", (void(CrossSectionLibrary::*)(PDGCode, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::addTarget)
   ;
   
   bp::def("loadDefaultCrossSections",loadDefaultCrossSections);
