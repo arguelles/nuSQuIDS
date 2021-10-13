@@ -120,10 +120,7 @@ double TauDecaySpectra::TauDecayToAll(double E_tau, double E_nu) const{
 // define tau decay object
 
 void TauDecaySpectra::SetParameters(bool neutrino_type){
-  if(neutrino_type)
-    TauPolarization = -1.0;
-  else
-    TauPolarization = 1.0;
+  TauPolarization = -1.0; // due to CP symmetry both tau and antitau spectra are the same
   RPion = SQR(0.07856); RRho = SQR(0.43335); RA1 = SQR(0.70913);
   BrLepton = 0.18; BrPion = 0.12; BrRho = 0.26; BrRA1 = 0.13; BrHadron = 0.13;
 }
@@ -144,10 +141,7 @@ void TauDecaySpectra::Init(marray<double,1> E_range){
   dNdEle_Lep_tbl.resize(std::vector<size_t>{neutrino_number,e_size,e_size});
 
   for(unsigned int neutype = 0; neutype < neutrino_number; neutype++){
-    if(neutype == 0)
-      TauPolarization = -1.0;
-    else
-      TauPolarization = 1.0;
+    TauPolarization = -1.0; // due to CP symmetry both tau and antitau spectra are the same
     for(unsigned int e1 = 0 ; e1 < e_size ; e1 ++){
         double Enu1 = E_range[e1]/GeV; // tau energy
         for(unsigned int e2 = 0 ; e2 < e_size ; e2 ++){
