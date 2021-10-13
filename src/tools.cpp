@@ -475,6 +475,10 @@ double BiCubicInterpolator::operator()(double x, double y) const{
 	result=result*t + ((c0[3]*u+c0[2])*u+c0[1])*u+c0[0];
 	return result;
 }
+
+bool h5ObjectExists(hid_t loc_id, const char* name){
+    return H5Lexists(loc_id,name,H5P_DEFAULT)>0 && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
+};
     
 template<>
 void addH5Attribute<std::string>(hid_t object, std::string name, const std::string& contents){
