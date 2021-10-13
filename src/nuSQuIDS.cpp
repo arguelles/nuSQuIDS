@@ -71,10 +71,6 @@ std::string getStringAttribute(hid_t loc_id, const char* obj_name, const char* a
     throw std::runtime_error("Failed to read attribute "+std::string(attr_name)+" of object "+std::string(obj_name));
   return(std::string(buffer.get(),type_size));
 }
-  
-bool objectExists(hid_t loc_id, const char* name){
-  return H5Lexists(loc_id,name,H5P_DEFAULT)>0 && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
-};
 
 } // close unnamed namespace
 
@@ -1689,41 +1685,6 @@ squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   return H0(E_range[ei],rho)+HI(ei,rho,Get_t());
 }
 
-struct H5Handle{
-  H5Handle():id(-1),deleter(nullptr){}
-  H5Handle(hid_t id, herr_t(*deleter)(hid_t), const char* desc):
-  id(id),deleter(deleter){
-    if(id<0){
-      if(desc)
-        throw std::runtime_error(std::string("Failed to ")+desc);
-      else
-        throw std::runtime_error("Failed to get HDF5 object");
-    }
-  }
-  H5Handle(const H5Handle&)=delete;
-  H5Handle(H5Handle&& other):
-  id(other.id),deleter(other.deleter){
-    other.id=-1;
-  }
-  ~H5Handle(){
-    if(id>=0)
-    (*deleter)(id);
-  }
-  H5Handle& operator=(H5Handle&)=delete;
-  H5Handle& operator=(H5Handle&& other){
-    if(&other!=this){
-      std::swap(id,other.id);
-      std::swap(deleter,other.deleter);
-    }
-    return *this;
-  }
-  hid_t get() const{ return id; }
-  operator hid_t() const{ return id; }
-private:
-  hid_t id;
-  herr_t(*deleter)(hid_t);
-};
-
 void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc, bool overwrite) const{
   if ( body == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::BODY is a NULL pointer");
@@ -1864,7 +1825,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     xs_group = H5Handle(H5Gcreate(group, "crosssections", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose," create HDF5 group");
   } else {
     //this location is shared, so the group may already exist
-    if(objectExists(rootGroup, cross_section_grp_loc.c_str())){
+    if(h5ObjectExists(rootGroup, cross_section_grp_loc.c_str())){
       xs_group = H5Handle(H5Gopen(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT), H5Gclose, "open HDF5 shared crosssection group");
     }
     else{ //but if it does not exist, just create it
