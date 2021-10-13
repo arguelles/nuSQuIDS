@@ -456,7 +456,7 @@ namespace{
 			int val;
 			herr_t err=H5Otoken_cmp(loc, &addr, &other.addr, &val);
 			if(err<0)
-				throw std::runtime_error("Unable to compare HDF5 tokens")
+				throw std::runtime_error("Unable to compare HDF5 tokens");
 			return val==0;
 #endif
 		}
