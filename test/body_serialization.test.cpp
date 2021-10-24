@@ -189,7 +189,8 @@ int main(){
   // testing earthatm
   // ************************************
   EarthAtm earthatm;
-  EarthAtm::Track earthatmt(10.*units.km,acos(-1.0));
+  earthatm.SetAtmosphereHeight(50/*km*/);
+  EarthAtm::Track earthatmt(10.*units.km,acos(-1.0),earthatm.GetRadius(),earthatm.GetAtmosphereHeight());
 
   // open groups
   hid_t earthatm_group_id = H5Gcreate(file_id, "earthatm", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

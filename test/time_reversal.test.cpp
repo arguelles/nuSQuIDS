@@ -12,7 +12,7 @@ int main(){
   nuSQUIDS nus(logspace(1.e2*units.GeV,1.e6*units.GeV,60),3,both,true);
 
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(acos(-1.));
+  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(-1));
 
   nus.Set_Body(earth_atm);
   nus.Set_Track(track_atm);

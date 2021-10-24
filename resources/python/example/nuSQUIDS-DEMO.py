@@ -1,14 +1,20 @@
 # coding: utf-8
 # # $\nu$-SQuIDS Demo: Welcome!
 
-import matplotlib as mpl
 import nuSQuIDS as nsq
-import matplotlib.pyplot as plt
 
-import nuSQUIDSTools
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    mpl.rc('font', family='serif', size=20)
+    if hasattr(plt, "style"):
+        plt.style.use('./paper.mplstyle')
+except ImportError:
+    print("matplotlib not found, disabling plotting")
+    from unittest.mock import MagicMock
+    plt = MagicMock()
+
 import numpy as np
-mpl.rc('font', family='serif', size=20)
-plt.style.use('./paper.mplstyle')
 
 
 # Welcome to the $\nu$-SQuIDS demo. In 
@@ -137,8 +143,9 @@ nuSQ.Set_MixingParametersToDefault()
 # As in the C++ implementation we can change the `Body` by means of the `Set_Body` function and in similar way we can change the `Track`. Lets do an atmospheric oscillation example =).
 
 nuSQ = nsq.nuSQUIDS(3,nsq.NeutrinoType.neutrino)
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(nsq.EarthAtm.Track(earth.MakeTrackWithCosine(-1)))
 nuSQ.Set_rel_error(1.0e-17)
 nuSQ.Set_abs_error(1.0e-17)
 
@@ -236,8 +243,9 @@ nuSQ.GetERange()
 
 # Lets propage this neutrino through the Earth in an atmospheric neutrino telescope setting. We can do that by setting the following `Body` and `Track`:
 
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1))
 
 # Lets assume that $\phi_\nu = N_0 E^{-2}$, with flavor composition $\phi_e:\phi_\mu:\phi_\tau$ = $0:1:0$. $\nu$-SQuIDS input flux is a `numpy.ndarray` formatted in the following way : 
 # 
@@ -340,8 +348,9 @@ nuSQ.Set_abs_error(1.0e-10)
 nuSQ.Set_h_max(500.0*units.km)
 nuSQ.Set_MixingParametersToDefault()
 
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1.0)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1.0))
 nuSQ.Set_initial_state(InitialFlux,nsq.Basis.flavor)
 
 nuSQ.EvolveState()
@@ -427,9 +436,9 @@ nuSQ.Set_abs_error(1.0e-7)
 nuSQ.Set_h_max(500.0*units.km)
 nuSQ.Set_MixingParametersToDefault()
 
-
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1.0)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1.0))
 nuSQ.Set_initial_state(InitialFlux,nsq.Basis.flavor)
 nuSQ.Set_TauRegeneration(True)
 
@@ -482,8 +491,9 @@ neutrino_flavors = 4
 
 nuSQ = nsq.nuSQUIDS(energy_nodes,neutrino_flavors,nsq.NeutrinoType.antineutrino,interactions)
 
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1))
 
 nuSQ.Set_MixingParametersToDefault()
 nuSQ.Set_SquareMassDifference(3,1.)
@@ -589,21 +599,6 @@ plt.ylabel(r"$\phi^{atm}_\nu (E_\nu)$")
 plt.grid()
 
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, fontsize = 14, fancybox = True)
-
-
-# We can use the convenient python-only PlotFlavor member function to plot the nu mu flux as a function
-# of the energy and zenith.
-
-numu = 1
-neutrino = 0
-figure = nsq_atm.PlotFlavor(numu,neutrino)
-
-
-# Similarly the muon antineutrino
-
-numu = 1
-antineutrino = 1
-figure = nsq_atm.PlotFlavor(numu,antineutrino)
 
 
 # # References

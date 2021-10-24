@@ -164,7 +164,7 @@ int main()
   std::cout << "******** Earth Atmospheric Neutrino Osc **********" << std::endl;
 
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> earth_atm_track = std::make_shared<EarthAtm::Track>(phi);
+  auto earth_atm_track = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
 
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
@@ -216,7 +216,7 @@ int main()
   std::cout << "***** Earth Modified Atmospheric Neutrino Osc ****" << std::endl;
 
   std::shared_ptr<EarthMod> earth_mod = std::make_shared<EarthMod>(0.1,0.1,0.1);
-  std::shared_ptr<EarthMod::Track> earth_mod_track = std::make_shared<EarthMod::Track>(phi);
+  auto earth_mod_track = std::make_shared<EarthMod::Track>(earth_atm->MakeTrack(phi));
   earth_mod->Mod(0.1,0.1,0.1);
   
   nus.Set_Body(earth_mod);

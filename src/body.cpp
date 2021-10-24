@@ -683,18 +683,15 @@ EarthAtm::EarthAtm():EarthAtm(getResourcePath()+"/astro/EARTH_MODEL_PREM.dat")
 {}
 
 // track constructor
-EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
+EarthAtm::Track::Track(double phi_input,double earth_radius_,double atmheight_):Body::Track(0,0)
 {
-  radius_nu = 6371.0*param.km;
-  atmheight = 22.*param.km;
+  earth_radius = earth_radius_;
+  atmheight = atmheight_;
 
   cosphi = cos(phi_input);
   double sinsqphi = 1-cosphi*cosphi;
 
-  double R = radius_nu;
-  double r = atmheight;
-
-  L = sqrt(SQR(R+r)-R*R*sinsqphi)-R*cosphi;
+  L = sqrt(SQR(earth_radius+atmheight)-earth_radius*earth_radius*sinsqphi)-earth_radius*cosphi;
 
   x = 0.0;
   xini = 0.0;
@@ -710,17 +707,30 @@ EarthAtm::Track::Track(double phi_input):Body::Track(0,0)
 }
 
 void EarthAtm::Track::Serialize(hid_t group) const {
-  addStringAttribute(group,"name", GetName().c_str());
-  addDoubleAttribute(group,"x",x);
-  addDoubleAttribute(group,"xini",xini);
-  addDoubleAttribute(group,"xend",xend);
-  addDoubleAttribute(group,"cosphi",cosphi);
+  addH5Attribute(group,"name", GetName());
+  addH5Attribute(group,"x",x);
+  addH5Attribute(group,"xini",xini);
+  addH5Attribute(group,"xend",xend);
+  addH5Attribute(group,"cosphi",cosphi);
+  addH5Attribute(group,"earth_radius",earth_radius);
+  addH5Attribute(group,"atmheight",atmheight);
 }
 
 std::shared_ptr<EarthAtm::Track> EarthAtm::Track::Deserialize(hid_t group){
-  double x_   =readDoubleAttribute(group,"x");
-  double cosphi_   =readDoubleAttribute(group,"cosphi");
-  return std::make_shared<EarthAtm::Track>(x_,acos(cosphi_));
+  double x, cosphi;
+  readH5Attribute(group,"x", x);
+  readH5Attribute(group,"cosphi",cosphi);
+  // these parameters were originally not seriailzed, so give them default values equal to what
+  // was originally hard-coded
+  double earth_radius = 6371.0*param.km;
+  double atmheight = 22.*param.km;
+  if(h5ObjectExists(group,"earth_radius"))
+    readH5Attribute(group,"earth_radius", earth_radius);
+  if(h5ObjectExists(group,"atmheight"))
+    readH5Attribute(group,"atmheight", atmheight);
+  auto track=std::make_shared<EarthAtm::Track>(EarthAtm::Track::MakeWithCosine(cosphi,earth_radius,atmheight));
+  track->SetX(x);
+  return track;
 }
 
 void EarthAtm::Serialize(hid_t group) const {
@@ -730,6 +740,8 @@ void EarthAtm::Serialize(hid_t group) const {
   H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius.data());
   H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density.data());
   H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
+  addH5Attribute(group,"radius",radius);
+  addH5Attribute(group,"atm_height",atm_height);
 }
 
 std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
@@ -738,21 +750,31 @@ std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
   H5LTread_dataset_double(group,"earth_radius",x_vec.data());
   H5LTread_dataset_double(group,"earth_density",rho_vec.data());
   H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
-  return std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
+  // these parameters were originally not seriailzed, so give them default values equal to what
+  // was originally hard-coded
+  double radius = 6371.0;
+  double atm_height = 22.;
+  if(h5ObjectExists(group,"radius"))
+    readH5Attribute(group,"radius", radius);
+  if(h5ObjectExists(group,"atm_height"))
+    readH5Attribute(group,"atm_height", atm_height);
+  auto earthAtm = std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
+  earthAtm->radius = radius;
+  earthAtm->SetAtmosphereHeight(atm_height);
+  return earthAtm;
 }
 
 EarthAtm::Track::Track():
-Body::Track(0,0),radius_nu(6371.0*param.km),atmheight(22.*param.km){}
+Body::Track(0,0),earth_radius(6371.0*param.km),atmheight(22.*param.km){}
 
 EarthAtm::Track
-EarthAtm::Track::makeWithCosine(double cosphi){
+EarthAtm::Track::MakeWithCosine(double cosphi, double earth_radius_, double atmheight_){
   Track track;
 
   track.cosphi = cosphi;
   double sinsqphi = 1-track.cosphi*track.cosphi;
-  double R = track.radius_nu;
 
-  track.L = sqrt(SQR(R+track.atmheight)-R*R*sinsqphi)-R*cosphi;
+  track.L = sqrt(SQR(earth_radius_+atmheight_)-earth_radius_*earth_radius_*sinsqphi)-earth_radius_*cosphi;
   track.x = 0.0;
   track.xini = 0.0;
   track.xend = track.L;
@@ -761,18 +783,28 @@ EarthAtm::Track::makeWithCosine(double cosphi){
 }
 
 void EarthAtm::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
-	TrackParams.push_back(acos(cosphi));
+  TrackParams.push_back(acos(cosphi));
+  TrackParams.push_back(earth_radius);
+  TrackParams.push_back(atmheight);
 }
-
+    
+EarthAtm::Track EarthAtm::MakeTrack(double phi){
+  return Track(phi, GetRadius()*param.km, GetAtmosphereHeight()*param.km);
+}
+    
+EarthAtm::Track EarthAtm::MakeTrackWithCosine(double cosphi){
+  return Track::MakeWithCosine(cosphi, GetRadius()*param.km, GetAtmosphereHeight()*param.km);
+}
+    
 double EarthAtm::density(const GenericTrack& track_input) const
 {
   const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
   double xkm = track_earthatm.GetX()/param.km;
   double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
-  double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
-
+    
   double rel_r = r/earth_with_atm_radius;
   if ( rel_r < x_radius_min ){
     return x_rho_min;
@@ -795,7 +827,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
   double xkm = track_earthatm.GetX()/param.km;
   double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
-  double dL = sqrt(SQR(radius+atm_height)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
 
@@ -864,6 +896,11 @@ inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 }
 
 EarthAtm::~EarthAtm(){}
+    
+void EarthAtm::SetAtmosphereHeight(double height){
+  atm_height = height;
+  earth_with_atm_radius = radius + atm_height;
+}
 
 // body registration stuff
 

@@ -2762,9 +2762,10 @@ void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, 
         }
       case 7:
         {
-          body = std::make_shared<EarthAtm>();
+          auto earth = std::make_shared<EarthAtm>();
+          body = earth;
           // track_param[2] corresponds to the zenith angle
-          track = std::make_shared<EarthAtm::Track>(track_params[2]);
+          track = std::make_shared<EarthAtm::Track>(earth->MakeTrack(track_params[2]));
           break;
         }
       default:

@@ -703,7 +703,7 @@ class EarthAtm: public Body{
         /// \brief Cosine of the zenith angle.
         double cosphi;
         /// \brief Radius of the Earth.
-        double radius_nu;
+        double earth_radius;
         /// \brief Height of the atmosphere.
         double atmheight;
         /// \brief Baseline.
@@ -716,15 +716,16 @@ class EarthAtm: public Body{
         /// \brief Construct trajectory.
         /// @param x_ current position [eV^-1].
         /// @param phi Zenith angle in radians.
-        Track(double x_,double phi):Track(phi){x=x_; assert(x >= 0);};
+        Track(double x_,double phi,double earth_radius_,double atmheight_):
+        Track(phi,earth_radius_,atmheight_){x=x_; assert(x >= 0);};
         /// \brief Construct trajectory.
         /// @param phi Zenith angle in radians.
-        Track(double phi);
+        Track(double phi,double earth_radius_,double atmheight_);
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
         virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
         ///Construct a track with the cosine of the zenith angle
-        static Track makeWithCosine(double cosphi);
+        static Track MakeWithCosine(double cosphi,double earth_radius_,double atmheight_);
         /// \brief Serialization function
         void Serialize(hid_t group) const;
         /// \brief Deserialization function
@@ -742,8 +743,23 @@ class EarthAtm: public Body{
     double ye(const GenericTrack&) const;
     /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}
-    /// \brief Returns the neutrino production altitude in km.
-    double GetProductionAltitude() const {return atm_height;}
+    /// \brief Returns the altitude of the top of the simulated atmosphere in km.
+    /// This is the altitude from which any initial neutrino flux will begin propagating.
+    double GetAtmosphereHeight() const {return atm_height;}
+    /// \brief Set the altitude of the top of the simulated atmosphere.
+    /// This function invalidates all tracks previously constructed for this body, so be sure to
+    /// use it before constructing any tracks, or to replace any previously constructed tracks. 
+    /// \param height New height of the top of the atmosphere, in km.
+    void SetAtmosphereHeight(double height);
+    
+    /// \brief Construst a track with the given zenith angle, starting at the top of the atmosphere
+    /// \param phi Zenith angle with which the track will arrive at the surface of the Earth,
+    ///            possibly after passing through the Earth
+    Track MakeTrack(double phi);
+    /// \brief Construst a track with the given zenith angle, starting at the top of the atmosphere
+    /// \param cosphi Cosine of the zenith angle with which the track will arrive at the surface of
+    ///               the Earth, possibly after passing through the Earth
+    Track MakeTrackWithCosine(double cosphi);
 };
 
   // type defining

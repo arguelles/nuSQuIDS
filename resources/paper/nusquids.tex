@@ -577,9 +577,9 @@ we apply these objects to the nuSQuIDS object.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   double phi = acos(-1.0);
-  std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> earth_atm_track =
-  std::make_shared<EarthAtm::Track>(phi);
+  auto earth_atm = std::make_shared<EarthAtm>();
+  auto earth_atm_track = std::make_shared<EarthAtm::Track>(
+                           earth_atm->MakeTrackWithCosine(phi));
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
 \end{lstlisting}
@@ -671,8 +671,9 @@ where neutrinos will propagate.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
   label = ex:sin1,firstnumber=last]
   double phi = acos(-1.);
-  std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
+  auto earth_atm = std::make_shared<EarthAtm>();
+  auto track_atm = std::make_shared<EarthAtm::Track>(
+                     earth_atm->MakeTrackWithCosine(phi));
   nus.Set_Body(earth_atm);
   nus.Set_Track(track_atm);
 \end{lstlisting}
@@ -958,13 +959,15 @@ are omitting this for the next cases.
 
 \item {\ttf EarthAtm}
 
-In this example we use the {\ttf EarthAtm} body. The
-track is defined by the zenith angle of the trajectory.
+In this example we use the {\ttf EarthAtm} body. 
+This body includes botht he Earth and its atmosphere. 
+The track is defined by the zenith angle of the trajectory, and begins at the top of the atmosphere. 
+Because the track depends on the height of the atmosphere being treated, it is most conveniently constructed from the body, using the {\ttf MakeTrack} function, which takes a zenith angle and creates a track with the necessary details of the body automatically included. 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   double phi = acos(-1.0);
-  std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> earth_atm_track = std::make_shared<EarthAtm::Track>(phi);
+  auto earth_atm = std::make_shared<EarthAtm>();
+  auto earth_atm_track = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
 
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
@@ -2525,34 +2528,48 @@ path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:too
 \end{itemize}
 
 \subsubsection{EarthAtm\label{sec:earthatm}}
-This is to be used when the relevant parameter is the zenith angle of
-the path.
+This body includes both the density profile of the Earth and a simple model of its atmosphere. 
+Paths end at the surface of the Earth, and are expressed in terms of their local zenith angle at the endpoint. 
+The deafult atmosphere height is 22 km, and a scale height of 7.594 km is used for its density. 
 \begin{itemize}
 \item {\ttf EarthAtm}
   \begin{lstlisting}
-    Earth();
+    EarthAtm();
   \end{lstlisting}
   Initializes an {\ttf Earth} environment as defined by the PREM~\citep{dziewonski1981preliminary}.
   \begin{lstlisting}
-    Earth(std::string earthmodel);
+    EarthAtm(std::string earthmodel);
   \end{lstlisting}
-  Initializes an {\ttf Earth} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: radius (where 0 is center and 1 is surface), density (${\rm g}/{\rm cm}^3$), and $y_e$ (dimensionless). 
+  Initializes an {\ttf EarthAtm} environment as defined by a table given in the file specified by {\ttf filepath}. The table should have three columns: relative radius (dimensionless, where 0 is the center and 1 the is surface), density (${\rm g}/{\rm cm}^3$), and electron fraction $y_e$ (dimensionless). 
   \begin{lstlisting}
-    Earth(std::vector<double> x,std::vector<double> rho,
+    EarthAtm(std::vector<double> x,std::vector<double> rho,
     std::vector<double> ye);
   \end{lstlisting}
-  Initialize an {\ttf earth} whose radial density is specified by the
+  Initialize an {\ttf EarthAtm} whose radial density is specified by the
   values in the vector {\ttf rho} in ${\rm g}/{\rm cm}^3$, the
-  electron fraction in the vector {\ttf ye}, and the radial positions
-  in the vector {\ttf x} in centimeters. 
+  electron fraction in the vector {\ttf ye}, and the relative radial positions
+  in the vector {\ttf x}. 
+  \begin{lstlisting}
+    void SetAtmosphereHeight(double height);
+  \end{lstlisting}
+  Change the height of the top of the atmosphere. 
+  \begin{lstlisting}
+    EarthAtm::Track MakeTrack(double phi);
+  \end{lstlisting}
+  Create a track which arrives at the surface with the given zenith angle and an initial position at the top of the atmosphere.
+  \begin{lstlisting}
+    EarthAtm::Track MakeTrackWithCosine(double cosphi);
+  \end{lstlisting}
+  The same as {\ttf MakeTrack}, but takes the cosine of the zenith angle, which is a more convenient variable in many contexts.
 
 \item {\ttf EarthAtm::Track}
   \begin{lstlisting}
-    Track(double x_,double phi):Track(phi){x=x_;};
-    Track(double phi);
+    Track(double x, double phi, 
+          double earth_radius, double atmheight);
+    Track(double phi, double earth_radius, double atmheight);
   \end{lstlisting}
   Initialize the corresponding {\ttf Track} by specifying the zenith
-  angle in radians ({\ttf phi}) and the current position along the
+  angle in radians ({\ttf phi}), radius of the Earth ({\ttf earth\_radius}) in eV$^{-1}$, height of the atmosphere ({\ttf atmheight}) in eV$^{-1}$, and the current position along the
   track ({\ttf x}) in eV$^{-1}$.
   
   \begin{lstlisting}
@@ -2561,9 +2578,11 @@ the path.
   Returns the baseline in eV$^{-1}$.
 
   \begin{lstlisting}
-    static Track makeWithCosine(double cosphi);
+    static Track makeWithCosine(double cosphi, 
+                                double earth_radius, 
+                                double atmheight);
   \end{lstlisting}
-  Initialize the track with the cosine of the zenith angle ({\ttf cosphi}) instead. 
+  Create a track with the cosine of the zenith angle ({\ttf cosphi}) instead of the angle. 
   
 \end{itemize}
 
@@ -3989,8 +4008,9 @@ We can propagate a neutrino ensemble through the Earth in an atmospheric neutrin
 We can do that by setting the following Body and Track:
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1))
 \end{lstlisting}
 
 For the initial flux we will assume that it's given by $\phi_\nu = N_0 E^{-2}$,
@@ -4198,8 +4218,9 @@ We can propagate a neutrino ensemble through the Earth in an atmospheric neutrin
 We can do that by setting the following Body and Track:
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1))
 \end{lstlisting}
 
 For the initial flux we will assume that it's given by $\phi_\nu = N_0 E^{-2}$,
@@ -4297,8 +4318,9 @@ for i,E in enumerate(nuSQ.GetERange()):
 
 \begin{lstlisting}[language=Python, frame=leftline, numbers=left, breaklines=true]
 nuSQ.Set_MixingParametersToDefault()
-nuSQ.Set_Body(nsq.EarthAtm())
-nuSQ.Set_Track(nsq.EarthAtm.Track(np.arccos(-1.0)))
+earth = nsq.EarthAtm()
+nuSQ.Set_Body(earth)
+nuSQ.Set_Track(earth.MakeTrackWithCosine(-1))
 nuSQ.Set_initial_state(InitialFlux,nsq.Basis.flavor)
 \end{lstlisting}
 An important phenomena in this scenario is that of tau-regeneration, which we can enable by

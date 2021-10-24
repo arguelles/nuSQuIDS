@@ -1133,7 +1133,7 @@ class nuSQUIDSAtm {
 
       earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
-        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
+        track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
 
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
@@ -1369,8 +1369,7 @@ class nuSQUIDSAtm {
         eit--;
       size_t loge_M=std::distance(enu_array.begin(),eit);
       
-      //EarthAtm::Track track(acos(costh));
-      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
+      EarthAtm::Track track=earth_atm->MakeTrackWithCosine(costh);
       double delta_t_final = track.GetFinalX()-track.GetInitialX();
       if (randomize_production_height){
         double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
@@ -1463,8 +1462,7 @@ class nuSQUIDSAtm {
         eit--;
       size_t loge_M=std::distance(enu_array.begin(),eit);
       
-      //EarthAtm::Track track(acos(costh));
-      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
+      EarthAtm::Track track=earth_atm->MakeTrackWithCosine(costh);
       double delta_t_final = track.GetFinalX()-track.GetInitialX();
       
       // assuming offsets are zero
@@ -1593,11 +1591,13 @@ class nuSQUIDSAtm {
           if(nsq.iinteraction)
             int_struct = nsq.GetInteractionStructure();
         } else {
-          // read the cross sections stored in /crosssections
+          // re-use the shared cross sections
           nsq.ReadStateHDF5Internal(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
         }
         i++;
       }
+      earth_atm = std::dynamic_pointer_cast<EarthAtm>(nusq_array.front().GetBody());
+      assert(earth_atm);
 
       iinistate = true;
       inusquidsatm = true;
@@ -1920,6 +1920,11 @@ class nuSQUIDSAtm {
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_EvolLowPassScale(val);
       }
+    }
+    
+    void Set_NeutrinoSources(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_NeutrinoSources(opt);
     }
 };
 

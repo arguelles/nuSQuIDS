@@ -75,7 +75,7 @@ int main()
   //here we set the zenith angle the object ant the track, that is basically parametrized with the zenith angle
   double phi = acos(-1.0);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> earth_atm_track = std::make_shared<EarthAtm::Track>(phi);  
+  auto earth_atm_track = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));  
   nus.Set_Body(earth_atm);
   nus.Set_Track(earth_atm_track);
 

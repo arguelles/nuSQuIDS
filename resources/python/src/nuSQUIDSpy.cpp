@@ -353,10 +353,16 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     scope outer
     = class_<EarthAtm, bases<Body>, boost::noncopyable, std::shared_ptr<EarthAtm> >("EarthAtm")
     .def(init<std::string>())
+    .def("GetRadius",&EarthAtm::GetRadius)
+    .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
+    .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
+    .def("MakeTrack",&EarthAtm::MakeTrack)
+    .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;
 
-    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<double>())
-    .def(init<double,double>())
+    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<EarthAtm::Track>())
+    .def(init<double,double,double>())
+    .def(init<double,double,double,double>())
     .def("GetInitialX",&EarthAtm::Track::GetInitialX)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)
