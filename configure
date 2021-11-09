@@ -1,5 +1,60 @@
 #!/bin/bash
 
+check_os_arch(){
+	if [ -x /usr/bin/lsb_release ]; then
+		OS_DISTRIB=$(lsb_release -si|tr '[:upper:]' '[:lower:]')
+		OS_VERSION=`lsb_release -sr`
+	elif [ -e /etc/os-release ]; then
+		OS_DISTRIB=$(cat /etc/os-release|grep '^ID='|cut -d '=' -f 2|sed s/\"//g|tr '[:upper:]' '[:lower:]')
+		OS_VERSION=$(cat /etc/os-release|grep '^VERSION='|cut -d '=' -f 2|cut -d ' ' -f 1|sed s/\"//g)
+	elif [ -e /etc/redhat-release ]; then
+		OS_DISTRIB="centos"
+		OS_VERSION=$(cat /etc/redhat-release|sed s/\ /\\\\n/g|grep '\.')
+	else
+		OS_DISTRIB=$(uname -s|tr '[:upper:]' '[:lower:]')
+		OS_VERSION=$(uname -r)
+	fi
+	ARCH=$(uname -m)
+	OS_NAME=$(uname -s)
+
+	case $OS_DISTRIB in
+		"redhatenterpriseclient" | "redhatenterpriseserver" | "rhel" | "scientificsl" | "scientific" | "centos" | "scientificfermi" | "scientificcernslc")
+			OS_DISTRIB="RHEL"
+			OS_VERSION=$(echo "${VERSION}" | cut -d '.' -f 1)
+			;;
+		"ubuntu")
+			OS_DISTRIB="Ubuntu"
+			;;
+		"debian")
+			OS_DISTRIB="Ubuntu"
+			;;
+		"linuxmint")
+			OS_DISTRIB="Ubuntu"
+			;;
+		"freebsd")
+			OS_DISTRIB="FreeBSD"
+			OS_VERSION=$(uname -r | cut -d '.' -f 1)
+			ARCH=$(uname -p)
+			;;
+		"darwin")
+			OS_DISTRIB="OSX"
+			OS_VERSION=$(uname -r | cut -d '.' -f 1)
+			;;
+		"linux")
+			if echo $OS_VERSION | grep -q '\.el7\.\?'; then
+				OS_DISTRIB="RHEL"
+				OS_VERSION=7
+			elif echo $OS_VERSION | grep -q '\.el6\.\?'; then
+				OS_DISTRIB="RHEL"
+				OS_VERSION=6
+			elif echo $OS_VERSION | grep -q '\.el5\.\?'; then
+				OS_DISTRIB="RHEL"
+				OS_VERSION=5
+			fi
+	esac
+	OS_ARCH=${OS_DISTRIB}_${OS_VERSION}_${ARCH}
+}
+
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
@@ -158,7 +213,7 @@ try_find_python(){
 	TMP=`echo "$PYTHON_STDLIBDIR" | sed -n s'|\(.*/lib\)/python'"${PYTHON_VERSION}"'|\1|p'`
 	if [ "$TMP" ]; then POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} ${TMP}"; fi
 	# Ubuntu is special, of course
-	if uname -a | grep -i 'ubuntu' > /dev/null; then
+	if [ $OS_DISTRIB = "Ubuntu" ]; then
 		POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} /usr/lib/$(uname -i)-linux-gnu"
 	fi
 
@@ -299,7 +354,7 @@ VERSION=`echo $VERSION_NUM | awk '{
 	print major"."minor"."patch;
 }'`
 
-OS_NAME=`uname -s`
+check_os_arch
 
 GUESS_CC=gcc
 GUESS_CXX=g++
