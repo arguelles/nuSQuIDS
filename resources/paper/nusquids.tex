@@ -11,6 +11,7 @@
 \usepackage{cleveref}
 \usepackage{color}
 \usepackage{listings}
+\usepackage{array}
 \usepackage{natbib}
 \biboptions{numbers,sort&compress}
 
@@ -61,6 +62,8 @@
     {#2}
   \end{lstlisting}
 }
+
+\newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
 
 
 \definecolor{mauve}{rgb}{1,0,1}
@@ -513,6 +516,65 @@ such as oscillations in the early universe~\cite{Hernandez:2016kel}.
 \subsection{Serializable input and output}
 
 \subsection{{\ttf C++} and {\ttf Python} interfaces}
+
+\section{Comparison to Other Software}
+
+A number of other software packages are available which perform related calculations. 
+In this section we summarize how a number of these differ from {\ttf nuSQuIDS}. 
+Most neutrino propagation software can be divided into categories based on whether it was designed to handle neutrino oscillation physics or neutrino absorption physics. 
+{\ttf nuSQuIDS} is unusual in this regard, as it is designed to calculate both types of effect simultaneously. 
+Another important categorization is the calculation method used, which tends to have implications for the physics effects which can be readily calculated: 
+Three prevalent methods, each with different strengths and weaknesses are algebraic matrix diagonalization, ordinary differential equation (ODE) integration, and Monte-Carlo (MC) sampling. 
+Matrix diagonalization is frequently used for coherent effects (e.g. neutrino oscillation) in uniform media, for which the system of differential equations can be written down and solved analytically, as introduced in \cite{barger1980matter}. 
+This has the advantage of taking a small, constant time to solve, but loses efficiency when variations in the propagation medium must be approximated by repeating the calculation in many small steps, and is not normally applicable to physics effects which couple fluxes besides those of different flavors at the same energy (such as energy losses due to neural current interactions). 
+ODE integration, the method used by {\ttf nuSQuIDS}, consists of writing down all physics effects in terms of their differential effects on neutrino fluxes and numerically solving the resulting system of equations. 
+This provides a quite natural framework for treating variable media and arbitrary coupling between fluxes, but requires care in discretizing the problem (e.g. in neutrino energy), in structuring the problem numerically for handling by a standard ODE integration routine, and in selecting the parameters of the integration routine to get precise results rapidly. 
+Monte Carlo sampling is in some sense the more literal method, consisting of simulating individual particles and randomly sampling the interactions they undergo. 
+This sampling has both the benefit and disadvantage that it discovers not only the average behavior but also the full distribution of variations from it. 
+This is indispensable when the full distribution is required, but has relatively slow convergence to precisely extract the mean behavior if that is all that is sought. 
+Monte Carlo sampling can not only naturally treat variable media, but requires no discretization. 
+
+\begin{table}
+	\centering
+	\begin{tabular}{l | c | c | c | C{5em}}
+		\textbf{Package} & \textbf{Method} & \textbf{Oscillation} & \textbf{Absorption} & \textbf{Variable Density}\\
+		\hline
+    		GLoBES & AD & \checkmark & ~ & ~\\
+    		Prob3++ & AD & \checkmark & ~ & ~\\
+    		nuCraft & ODE & \checkmark & ~ & \checkmark\\
+    		nuFATE & ODE & ~ & \checkmark & \checkmark\\
+    		nuPropEarth & MC & ~ & \checkmark & \checkmark\\
+    		ANIS & MC & ~ & \checkmark & \checkmark\\
+    		nuSQuIDS & ODE & \checkmark & \checkmark & \checkmark\\
+	\end{tabular}
+	\caption{Simple classification of neutrino evolution codes by calculation technique (analytic diagonalization--AD, differential equation integration--ODE, or Monte Carlo sampling--MC), whether they treat neutrino oscillation, absorption, or both, and whether they directly support propagation in variable density media.}
+\end{table}
+
+The General Long baseline Experiment Simulator (GLoBES)~\cite{Huber:2007ji} is a toolkit to enable analyzing the capabilities of neutrino oscillation experiments, and combinations of experiments. 
+Calculating neutrino flux evolutions is thus not the package's primary purpose, but is nonetheless one of its key components. 
+GLoBES calculates only oscillation effects, via the analytic diagonalization method. 
+Via its add-on system the package can treat new physics effects, including sterile neutrinos via the {\ttf snu} add-on. 
+
+Prob3++~\cite{prob3pp} is designed specifically to calculate neutrino oscillation probabilities for the Super-Kamiokande collaboration. 
+As such, it calculates only oscillation effects, and only for up to three flavors, although Lorentz invariance-violating oscillations are also supported for searches for new physics. 
+As the package uses the analytic diagonalization method, only constant density media are directly supported, although to support atmospheric neutrino measurements, the full Earth may be approximated as a set of spherically concentric shells of material, with a distinct density and electron fraction for each shell. 
+
+nuCraft~\cite{Wallraff:2014vl} is a package created specifically to facilitate searches for sterile neutrino effects in the atmospheric neutrino flux, so it focuses on the computation of oscillation effects with support for four or more neutrino flavors, and has a continuous treatment of the density profile of the Earth. 
+Unlike the other pure oscillation calculators, nuCraft is an ODE integration-based system, which makes inclusion of the variable material density convenient. 
+
+Turning to packages designed for higher energies with a focus on neutrino absorption, the All Neutrino Interaction Simulation (ANIS)~\cite{ANIS} is intended for use as an event generator for neutrino observatories. 
+For this reason it uses a Monte-Carlo sampling approach, and not only simulates neutrinos passing through the bulk of the Earth, with a continuously parameterized density profile, but also includes forcing final interactions in a volume defined as the vicinity of a detector. (This volume typically being larger than the instrumented volume of the detector in order to fully sample muons produced by charge-current $\nu_\mu$ interactions entering the detector from outside.)
+While ANIS treats all deep-inelastic scattering and Glashow resonance (resonant $W^\pm$ production) processes as well as tau propagation and decay, it does not calculate oscillations. 
+DIS The code requires DIS cross sections in the somewhat unusual form of Bjorken x, y pairs, pre-sampled at natural frequencies from the desired cross section. 
+While this enables the propagation code to run rapidly and without direct dependencies on other software, the user must beware that systematic biases will result if sufficiently large tables are not used. 
+
+nuPropEarth~\cite{nuPropEarth2020} is a newer package which is similar to ANIS, but adds treatment of a number of subdominant interaction processes, such as nuclear effects. 
+It also uses a Monte-Carlo sampling method, and does not treat oscillations. 
+Choosing different tradeoffs than ANIS, nuPropEarth links directly to the GENIE/HEDIS, TAUOLA++, and TAUSIC packages to enable the use of recent and highly detailed cross sections treatments, but with the disadvantage of a considerable set of dependencies required to build the package. 
+
+Finally, nuFATE~\cite{nuFATE2017} is a tool for calculation of neutrino flux attenuations at high energies, which uses a particularly efficient differential equation solution method which avoids the need for using a general ODE-integration routine by applying an integrating factor transformation, so that only the material density profile must be integrated, rather than the coupled system of equations. 
+While this mechanism does support deep inelastic scattering, the Glashow resonance, and tau-regeneration all in a continuously variable medium, in its current form the package does not support distinct cross sections for different target species, either at the level of individual nucleon types, or different nuclei. 
+
 
 \section{Examples}
 \label{sec:examples}
