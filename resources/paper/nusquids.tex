@@ -104,11 +104,13 @@
 \ead{carguelles@fas.harvard.edu}
 \author[UB]{Jordi Salvado}
 \ead{jsalvado@icc.ub.edu}
-\author{Christopher N. Weaver}
+\author[MSU]{Christopher N. Weaver}
 \ead{chris.weaver@icecube.wisc.edu}
+
 \address[HU]{Department of Physics \& Laboratory for Particle Physics and Cosmology, Harvard University, Cambridge, MA 02138, USA}
 \address[UB]{Departament de F\'isica Qu\`antica i Astrofísica and Institut de Ciencies del Cosmos,
 Universitat de Barcelona, Diagonal 647, E-08028 Barcelona, Spain}
+\address[MSU]{Dept. of Physics and Astronomy, Michigan State University, East Lansing, MI 48824, USA}
 
 \tnotetext[t1]{The code can be found in \url{https://github.com/arguelles/nuSQuIDS}}
 \journal{arXiv}
@@ -143,7 +145,7 @@ In recent decades a plethora of evidence that neutrinos change
 flavor as they propagate macroscopic distances due to the
 non-alignment of their mass and flavor eigenstates has accumulated from
 solar~\citep{Abe:2010hy, Borexino2014},
-atmospheric~\citep{PhysRevD.91.072004,Richard:2015aua},
+atmospheric~\citep{PhysRevD.91.072004,Richard:2015aua,IceCube:2019dqi,ANTARES:2018rtf},
 accelerator~\citep{PhysRevLett.112.181801,
   PhysRevD.93.051104,PhysRevLett.116.151806, PhysRevLett.110.251801}, and
 reactor~\citep{An:2013zwz,Abe:2015rcp, Kim:2016yvm} experiments.
@@ -154,18 +156,18 @@ experimental results and related theoretical calculations, the
 has been firmly established and the three mixing angles, which
 parametrize the lepton mixing matrix, together with the two
 squared-mass differences, have been measured to good
-precision~\citep{Esteban:2020cvm,deSalas:2017kay,Capozzi:2018ubv}. It
+precision~\citep{Esteban:2020cvm,deSalas:2017kay,Capozzi:2018ubv,deSalas:2020pgw}. It
 is the task of on-going 
 and future experiments to determine the neutrino mass ordering 
 and the $CP$-violating phase~\citep{Hewett:2012et,
   Acciarri:2016crz,Aartsen:2014oha, Kouchner:2016pqa,DeRosa:2016ifc}. 
 Also, the IceCube Neutrino Observatory has recently made precise measurements of the atmospheric
 spectrum above 100~GeV, where the Earth is no longer transparent to
-neutrinos~\citep{Donini:2018tsg}, allowing new physics
+neutrinos~\citep{Donini:2018tsg,Bustamante:2017xuy,IceCube:2020rnc}, allowing new physics
 models to be constrained~\citep{Aartsen:2014gkd,TheIceCube:2016oqi}.
 The identification of high-energy
-extraterrestrial neutrinos~\citep{ Aartsen:2014gkd, Aartsen:2015rwa}
-has opened the possibility of exploring new physics at these energies as well~\citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc}. 
+extraterrestrial neutrinos~\citep{Aartsen:2014gkd,Aartsen:2015rwa,IceCube:2020wum}
+has opened the possibility of exploring new physics at these energies as well~\citep{Arguelles:2015dca, Bustamante:2015waa, Baerwald:2012kc,Arguelles:2019rbn, Esteban:2021tub}. 
 
 Matter effects play a fundamental role in the explanation of solar
 neutrinos~\citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of new flavor
@@ -179,7 +181,7 @@ neutrino framework, some puzzling anomalies still remain
   Dentler:2018sju}. These may be explained 
 by introducing new light neutrino states~\citep{kopp2013sterile,
   Collin:2016rao, Abazajian:2012rf,Blennow:2018hto, Dentler:2018sju, Diaz:2019fwt, Boser:2019rta} and other new physics
-~\citep{Bai:2015ztj,PalomaresRuiz:2005vf,Gninenko:2011xa}.
+~\citep{Palomares-Ruiz:2005zbh,Gninenko:2009ks,Nelson:2010hz,Fan:2012ca,Bai:2015ztj,Bertuzzo:2018itn,Ballett:2019pyw,Arguelles:2018mtc,Dentler:2019dhz,Ahn:2019jbm,deGouvea:2019qre,Abdallah:2020vgg,Hostert:2020oui,Brdar:2020tle,Abdallah:2020biq,Dutta:2021cip,Vergani:2021tgc}.
 Also, the interplay between cosmology and neutrino
 oscillation has been widely studied in the literature
 ~\citep{Bergstrom:2014fqa, Giusarma:2016phn,
@@ -194,10 +196,15 @@ In classical computer when the only effect of propagation is neutrino oscillatio
 and {\ttf nuCRAFT}~\citep{Wallraff:2014vl} are
 available; for a recent comparison of oscillation calculations comparisons see~\cite{Parke:2019vbs}.
 On quantum computers, such as the IBM-Q systems, implementations using two entangled qubits have also been developed~\cite{Arguelles:2019phs}.
-Unfortunately, when non-coherent interactions are 
-important they are no longer applicable. Furthermore, the ability to
-allow the user to incorporate new physics models or to change the
-propagation medium is also limited. {\ttf nuSQuIDS} seeks to
+Unfortunately, when non-coherent interactions~\cite{Formaggio:2012cpf,Gandhi:1998ri,Zhou:2019frk,Zhou:2019vxt} are
+important they are no longer applicable.
+In the high-energy regime, when oscillations can be neglected tools, have been developed
+to propagate neutrinos taking into account non-coherent interactions, for example \texttt{TauRunner}~\cite{Safa:2021ghs}, \texttt{NuPropEarth}~\cite{Garcia:2020jwr}, \texttt{nuFATE}~\cite{Vincent:2017svp}, \texttt{JuLiET}~\cite{Yoshida:2003js,shigeruyoshida_2020_4018117}, among others~\citep{Gazizov:2004va,DeYoung:865626}.
+Beyond these general purpose codes, packages have also been developed to propagate specifically tau neutrinos, \textit{e.g.} \texttt{NuTAuSim}~\cite{Alvarez-Muniz:2018owm} and \texttt{nuPyProp}~\cite{NuSpaceSim:2021hgs}.
+However, none of the aboved mentioned packaged are able to take into account simultaneously 
+coherent and non-coherent neutrino interactions.
+Furthermore, the ability to allow the user to incorporate new physics models or to change the
+propagation medium is also limited in some of these packages. {\ttf nuSQuIDS} seeks to
 address all of these problems by providing a highly customizable
 package, while at the same time remaining numerically efficient.
 
@@ -239,7 +246,8 @@ U(\theta_{ij}\delta_{ij})=R_{N-1\, N} R_{N-2\, N} ... R_{45} R_{35} R_{25} R_{15
 R_{34} R_{24} R_{14} R_{23} R_{13} R_{12}, 
 \end{equation}
 determined by angles, $\{\theta_{ij}\}$, and phases, $\{ \delta_{ij}
-\}$~\cite{SQUIDS}. When considering the standard three flavor paradigm
+\}$~\cite{SQUIDS}; see~\cite{Denton:2020igp} for a recent discussion about parameterizations of the PMNS matrix.
+When considering the standard three flavor paradigm
 the following parametrization is often used:
 \begin{equation}
 U
@@ -340,11 +348,11 @@ In {\ttf nuSQuIDS} the attenuation terms are
 where $\Pi_\alpha(E,x)$ is the neutrino projector onto flavor $\alpha \in
 \{e,\mu,\tau\}$, $\lambda^\alpha_{\rm CC}$ ($\lambda^\alpha_{\rm NC}$)
 is the charged (neutral) current neutrino interaction length,
-given by $(N_{nuc}(x)\sigma^\alpha_{\rm CC(NC)}(E))^{-1}$\citep{CooperSarkar:2011pa}, and
+given by $(N_{nuc}(x)\sigma^\alpha_{\rm CC(NC)}(E))^{-1}$\citep{Formaggio:2012cpf,Gandhi:1998ri,Zhou:2019frk,Zhou:2019vxt,CooperSarkar:2011pa}, and
 $\bar\lambda^e_{\rm GR}$ is the mean free path due to the Glashow
 resonance $(N_{e}(x)\sigma^e_{\rm GR}(E))^{-1}$~\citep{Gandhi:1998ri}. Notice that we assume
 the matter only contains electrons, protons, and neutrons,
-i.e. $\bar\lambda^\mu_{\rm GR}=\bar\lambda^\tau_{\rm GR}=0$.
+\textit{i.e.} $\bar\lambda^\mu_{\rm GR}=\bar\lambda^\tau_{\rm GR}=0$.
 The other interaction terms are as follows:
 \begin{subequations}
   \begin{eqnarray}
@@ -498,9 +506,47 @@ such as oscillations in the early universe~\cite{Hernandez:2016kel}.
 
 \subsection{Standard oscillations in matter and vaccum}
 
+{\ttf nuSQuIDS} is able to compute the neutrino oscillation probability in the presence of matter.
+The neutrino oscillation can be computed for up to six neutrino flavors out of the box, though it can be extended to an arbitrary number of
+neutrino flavors by producing additional tables using the provided {\ttf Mathematica} files.
+Additionally, the calculation allows to set both the mixing angles and the CP-violating phases.
+Using the {\ttf Body} and {\ttf Track} objects, {\ttf nuSQuIDS} can compute the oscillation probability in any media provided by the user.
+Default media, such as the Earth, the Sun, a constant density slab, and others are avaialble for prompt use.
+In general, no constraint exist in the trajectory of the neutirno oscillation, though in the provided implementations all neutrinos are assumed
+to travel in straight lines, which should cover most applications.
+
+Though some of this functionality is available in other neutrino oscillation
+calculators~\citep{Huber:2007ji,prob3pp,Calland:2013vaa,Wallraff:2014vl} the solution
+implemented in {\ttf nuSQuIDS} is unique and provides advantages over other implementation.
+By working in the neutrino interacttion basis the fast oscillations due the the vacuum part of the neutrino Hamiltonian are solved analytically.
+This provides significant speed up in propagating neutrinos in dense environments, specially for slowly changing or small matter densities.
+A unique feature of {\ttg nuSQuIDS} is that it solves the neutrino oscillation problem over a grid of energies;
+though solving the problem using an individual fix neutrino energy is also possible, as in other software.
+In this operating mode, {\ttf nuSQuIDS} can interpolate the interaction-picture solutions of the neutrino evolution problem for energy values
+that are in between the nodes where the calculation is performed.
+This allows accurate and fast evaluation of the neutrino oscillation probability using a coarse grid and efficient.
+This is particularly important when evaluating the neutrino oscillation probability over a larger number of energies, which is often the case
+when reweighting large Monte Carlo data sets.
+
 \subsection{Extendability to new physics scenarios}
 
+{\ttf nuSQuIDS} implements the standard neutrino oscillation hamiltonian with matter effects;
+however, this can be extended to include additional terms that may appear on the Hamiltonian.
+This can be achieved as illustrated in examples~\ref{}, where the user creates an inherited class of the main {\ttf nuSQuIDS} class and implements
+the desired new physics operators.
+In order to write the operators the user needs to write them using the SUN vectors, which represent arbitrary hermitian matrices.
+Additionally, {\ttf SQuIDS} implements operations between matrices and scalars that typically arise in writing these terms,
+\textit{e.g.} matrix-scalar multipication, conmutator between matrices, \textit{etc}.
+Once the new hamiltonian is defined by the user no further change is needed. The user will be able to use all the funcionality
+of {\ttf nuSQuIDS} with the new physics.
+Finally, {\ttf nuSQuIDS} allows for the serialization of user-defined values which allow for new physics operator definiting constants to be serialized as
+part of {\ttf nuSQuIDS} serialization.
+
 \subsection{Neutrino transport in dense media}
+
+{\ttf nuSQuIDS} implements non-coherent neutrino interactions that are relevant in very dense media or when neutrinos have high energies.
+This funcionality is comparable to other neutrino propagators used in neutrino telescopes~\cite{Safa:2021ghs,Garcia:2020jwr,Vincent:2017svp,Yoshida:2003js,shigeruyoshida_2020_4018117,Gazizov:2004va,DeYoung:865626,Alvarez-Muniz:2018owm,NuSpaceSim:2021hgs}.
+However, none of the aboved mentioned packaged are able to take into account simultaneously 
 
 \subsection{Scenarios with neutrino oscillations and interactions}
 
