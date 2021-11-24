@@ -1835,7 +1835,7 @@ derived class constructor arguments.
       examples/Extended\_Source})}}
 \label{sec:extended_source}
 
-Some neutrino evolution problem cannot be formulated as an starting flux
+Some neutrino evolution problems cannot be formulated as an starting flux
 of neutrinos, as shown in the examples above.
 For example, in the case of solar neutrinos the emission of neutrinos happens
 over an extended region of the Sun; the same is true for atmospheric neutrinos
@@ -1844,7 +1844,7 @@ height of tens of kilometers.
 nuSQUIDS provides a way to handle these scenarios, which we will illustrate in this example.
 
 A source term is added to the nuSQuIDS kinetic equations Eq.~\eqref{eq:kinetic_equations},
-which allows to add (or substract) neutrinos from the ensemble.
+which allows adding (or subtracting) neutrinos from the ensemble.
 This term depends on the location of the ensemble in the traversed body.
 For this reason it is in the body class where the user needs to implement this term; namely it is
 a property of the objected been traversed rather than the ensemble.
@@ -1887,8 +1887,8 @@ The injection of neutrinos in our example will follow an exponential emission en
 \begin{equation}
   S(t) = \Pi_\alpha \exp(-x/L),
 \end{equation}
-where $\Pi_\alpha$ represents the projector of the neutrino state of flavor $\alpha$, $x$ is the distance along the trayectory,  and $L$ is our exponential decay length.
-For a given body to emit neutrinos the following member function with the following signature must be overriden:
+where $\Pi_\alpha$ represents the projector of the neutrino state of flavor $\alpha$, $x$ is the distance along the trajectory,  and $L$ is our exponential decay length.
+For a given body to emit neutrinos the following member function with the following signature must be overridden:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
     void injected_neutrino_flux(marray<double,3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override
