@@ -720,13 +720,13 @@ std::shared_ptr<EarthAtm::Track> EarthAtm::Track::Deserialize(hid_t group){
   double x, cosphi;
   readH5Attribute(group,"x", x);
   readH5Attribute(group,"cosphi",cosphi);
-  // these parameters were originally not seriailzed, so give them default values equal to what
+  // these parameters were originally not serialized, so give them default values equal to what
   // was originally hard-coded
   double earth_radius = 6371.0*param.km;
   double atmheight = 22.*param.km;
-  if(h5ObjectExists(group,"earth_radius"))
+  if(H5Aexists(group,"earth_radius"))
     readH5Attribute(group,"earth_radius", earth_radius);
-  if(h5ObjectExists(group,"atmheight"))
+  if(H5Aexists(group,"atmheight"))
     readH5Attribute(group,"atmheight", atmheight);
   auto track=std::make_shared<EarthAtm::Track>(EarthAtm::Track::MakeWithCosine(cosphi,earth_radius,atmheight));
   track->SetX(x);
@@ -750,13 +750,13 @@ std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
   H5LTread_dataset_double(group,"earth_radius",x_vec.data());
   H5LTread_dataset_double(group,"earth_density",rho_vec.data());
   H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
-  // these parameters were originally not seriailzed, so give them default values equal to what
+  // these parameters were originally not serialized, so give them default values equal to what
   // was originally hard-coded
   double radius = 6371.0;
   double atm_height = 22.;
-  if(h5ObjectExists(group,"radius"))
+  if(H5Aexists(group,"radius"))
     readH5Attribute(group,"radius", radius);
-  if(h5ObjectExists(group,"atm_height"))
+  if(H5Aexists(group,"atm_height"))
     readH5Attribute(group,"atm_height", atm_height);
   auto earthAtm = std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
   earthAtm->radius = radius;
@@ -804,7 +804,7 @@ double EarthAtm::density(const GenericTrack& track_input) const
   double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
-    
+  
   double rel_r = r/earth_with_atm_radius;
   if ( rel_r < x_radius_min ){
     return x_rho_min;
