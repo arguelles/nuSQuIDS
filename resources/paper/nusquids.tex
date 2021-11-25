@@ -177,7 +177,7 @@ neutrinos~\citep{ Davis:1968cp,Bethe:1986ej}, which has motivated the study of n
 changing neutrino interactions~\citep{Barger:1991ae, Roulet:1991sm, GonzalezGarcia:2011my,
   Gonzalez-Garcia:2013usa, Pospelov:2011dp, Kopp:2014nosterile,
   Maltoni:2015kca,Esteban:2018ppq}.
-Even though most of the data can be explained in the standard three
+Even though most data can be explained in the standard three
 neutrino framework, some puzzling anomalies still remain
 ~\citep{LSND,Mention:2011rr,MiniBoone:2012dn,Aguilar-Arevalo:2018gpe,Alekseev:2016llm,
   Ko:2016owz, Ashenfelter:2018iov, Abreu:2018pxg,
@@ -194,23 +194,24 @@ fundamental physics tests~\citep{Hewett:2012et,Aartsen:2017ibm,Mewes:2018cze,Bar
 
 Tools are needed to accurately and reliably compute neutrino
 propagation.
-In classical computer when the only effect of propagation is neutrino oscillations libraries such as {\ttf GLoBES}
+In classical computations, where the only effect of propagation is neutrino oscillation, libraries such as {\ttf GLoBES}
 ~\citep{Huber:2007ji}, {\ttf Prob3++}~\citep{prob3pp, Calland:2013vaa},
 and {\ttf nuCRAFT}~\citep{Wallraff:2014vl} are
 available; for a recent comparison of oscillation calculations comparisons see~\cite{Parke:2019vbs}.
 On quantum computers, such as the IBM-Q systems, implementations using two entangled qubits have also been developed~\cite{Arguelles:2019phs}.
 Unfortunately, when non-coherent interactions~\cite{Formaggio:2012cpf,Gandhi:1998ri,Zhou:2019frk,Zhou:2019vxt} are
-important they are no longer applicable.
-In the high-energy regime, when oscillations can be neglected tools, have been developed
+important these methods are no longer applicable.
+In the high-energy regime, when oscillations can be neglected, tools have been developed
 to propagate neutrinos taking into account non-coherent interactions, for example \texttt{TauRunner}~\cite{Safa:2021ghs}, \texttt{NuPropEarth}~\cite{Garcia:2020jwr}, \texttt{nuFATE}~\cite{Vincent:2017svp}, \texttt{JuLiET}~\cite{Yoshida:2003js,shigeruyoshida_2020_4018117}, among others~\citep{Gazizov:2004va,DeYoung:865626}.
 Beyond these general purpose codes, packages have also been developed to propagate specifically tau neutrinos, \textit{e.g.} \texttt{NuTAuSim}~\cite{Alvarez-Muniz:2018owm} and \texttt{nuPyProp}~\cite{NuSpaceSim:2021hgs}.
-However, none of the aboved mentioned packaged are able to take into account simultaneously 
+However, none of the above mentioned packages are able to simultaneously take into account 
 coherent and non-coherent neutrino interactions.
 Furthermore, the ability to allow the user to incorporate new physics models or to change the
 propagation medium is also limited in some of these packages. {\ttf nuSQuIDS} seeks to
-address all of these problems by providing a highly customizable
+address all of these limitations by providing a highly customizable
 package, while at the same time remaining numerically efficient.
 
+% TODO: revisit this paragraph after editing complete
 The rest of the paper is organized as follows: in section~\ref{sec:theory}
 we review neutrino oscillation theory; in section~\ref{sec:examples}
 we show the use of the code in typical
@@ -507,29 +508,29 @@ such as oscillations in the early universe~\cite{Hernandez:2016kel}.
 \section{Features}
 \label{sec:features}
 
-\subsection{Standard oscillations in matter and vaccum}
+\subsection{Standard oscillations in matter and vacuum}
 
-{\ttf nuSQuIDS} is able to compute the neutrino oscillation probability in the presence of matter.
-The neutrino oscillation can be computed for up to six neutrino flavors out of the box, though it can be extended to an arbitrary number of
+{\ttf nuSQuIDS} is able to compute the neutrino oscillation probabilities in the presence of matter.
+Neutrino oscillations can be computed for up to six neutrino flavors out of the box, though it can be extended to an arbitrary number of
 neutrino flavors by producing additional tables using the provided {\ttf Mathematica} files.
-Additionally, the calculation allows to set both the mixing angles and the CP-violating phases.
+The calculation allows setting both the mixing angles and the CP-violating phases.
 Using the {\ttf Body} and {\ttf Track} objects, {\ttf nuSQuIDS} can compute the oscillation probability in any media provided by the user.
-Default media, such as the Earth, the Sun, a constant density slab, and others are avaialble for prompt use.
-In general, no constraint exist in the trajectory of the neutirno oscillation, though in the provided implementations all neutrinos are assumed
+Default media, such as the Earth, the Sun, a constant density slab, and others are provided for immediate use.
+In general, no constraints exist in the trajectory of the neutrino oscillation, though in the provided implementations all neutrinos are assumed
 to travel in straight lines, which should cover most applications.
 
 Though some of this functionality is available in other neutrino oscillation
 calculators~\citep{Huber:2007ji,prob3pp,Calland:2013vaa,Wallraff:2014vl} the solution
-implemented in {\ttf nuSQuIDS} is unique and provides advantages over other implementation.
-By working in the neutrino interacttion basis the fast oscillations due the the vacuum part of the neutrino Hamiltonian are solved analytically.
+implemented in {\ttf nuSQuIDS} is unique and provides advantages over others.
+By working in the neutrino interaction basis the fast oscillations due the the vacuum part of the neutrino Hamiltonian are solved analytically.
 This provides significant speed up in propagating neutrinos in dense environments, specially for slowly changing or small matter densities.
-A unique feature of {\ttf nuSQuIDS} is that it solves the neutrino oscillation problem over a grid of energies;
+An unusual feature of {\ttf nuSQuIDS} is that it solves the neutrino oscillation problem over a grid of energies;
 though solving the problem using an individual fix neutrino energy is also possible, as in other software.
 In this operating mode, {\ttf nuSQuIDS} can interpolate the interaction-picture solutions of the neutrino evolution problem for energy values
 that are in between the nodes where the calculation is performed.
 This allows accurate and fast evaluation of the neutrino oscillation probability using a coarse grid and efficient.
 This is particularly important when evaluating the neutrino oscillation probability over a larger number of energies, which is often the case
-when reweighting large Monte Carlo data sets.
+when re-weighting large Monte Carlo data sets.
 
 \subsection{Extendability to new physics scenarios}
 
@@ -646,7 +647,7 @@ Monte Carlo sampling can not only naturally treat variable media, but requires n
 	\caption{Simple classification of neutrino evolution codes by calculation technique (analytic diagonalization--AD, differential equation integration--ODE, or Monte Carlo sampling--MC), whether they treat neutrino oscillation, absorption, or both, and whether they directly support propagation in variable density media.}
 \end{table}
 
-The General Long baseline Experiment Simulator (GLoBES)~\cite{Huber:2007ji} is a toolkit to enable analyzing the capabilities of neutrino oscillation experiments, and combinations of experiments. 
+The General Long Baseline Experiment Simulator (GLoBES)~\cite{Huber:2007ji} is a toolkit to enable analyzing the capabilities of neutrino oscillation experiments, and combinations of experiments. 
 Calculating neutrino flux evolutions is thus not the package's primary purpose, but is nonetheless one of its key components. 
 GLoBES calculates only oscillation effects, via the analytic diagonalization method. 
 Via its add-on system the package can treat new physics effects, including sterile neutrinos via the {\ttf snu} add-on. 
