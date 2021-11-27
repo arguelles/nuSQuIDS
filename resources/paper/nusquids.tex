@@ -213,13 +213,19 @@ package, while at the same time remaining numerically efficient.
 
 % TODO: revisit this paragraph after editing complete
 The rest of the paper is organized as follows: in section~\ref{sec:theory}
-we review neutrino oscillation theory; in section~\ref{sec:examples}
-we show the use of the code in typical
+we review neutrino oscillation and interaction theory; 
+in section~\ref{sec:features} we summarize the main features of the code;
+in section~\ref{sec:comparison} we discuss how this code compares to other software;
+in section~\ref{sec:examples} we show the use of the code in typical
 scenarios; in section~\ref{sec:performance} we show the performance of
-the library; in section~\ref{sec:tests} we describe the unit tests that
+the library; and finally section~\ref{sec:conclu} presents concluding remarks.
+
+Additionally, the paper contains an extended appendix that provides
+further useful information of the code. This appendix is arranged 
+as follows. In section~\ref{sec:tests} we describe the unit tests that
 are provided with the library; in section~\ref{sec:code} we describe
-the main classes and structure of the code; in section~\ref{sec:python}
-we describe the library {\ttf Python} interface. Finally, section~\ref{sec:conclu} presents concluding remarks.
+the main classes and structure of the code; and finally, in section~\ref{sec:python}
+we describe the library {\ttf Python} interface. 
 
 \section{Neutrino Oscillations}
 \subsection{Density Matrix Formalism}
@@ -614,6 +620,7 @@ This is becasue the extended body requires the user to provide a function that d
 For similar reasons, extensions to {\ttf nuSQuIDS} by the user are strongly encouraged to be performed in {\ttf C++} since,\textit{e.g.} adding new terms in the Hamiltonian will require calling the user-defined functions very often.
 
 \section{Comparison to Other Software}
+\label{sec:comparison}
 
 A number of other software packages are available which perform related calculations. 
 In this section we summarize how a number of these differ from {\ttf nuSQuIDS}. 
