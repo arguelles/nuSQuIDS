@@ -460,9 +460,9 @@ neutrinos produced in the Glashow resonance due to $W^-$ decay.
 
 These equations are implemented by discretizing the problem in bins that the user
 specifies. The user should be aware that the discretization used can introduce errors due to
-bin spill-over. Special care should be taken for hard spectrums,
+bin spill-over. Special care should be taken for hard spectra,
 {\it e.g.} $\phi(E_\nu) = E^{-1}$, where this maybe more relevant and the user is encouraged
-to check the effect of discretization by modifying the energy nodes spacing and cross sections granularity.
+to check the effect of discretization by modifying the energy nodes spacing and cross sections' granularity.
 
 \subsection{Fast Oscillations Approximation}
 
@@ -531,71 +531,69 @@ implemented in {\ttf nuSQuIDS} is unique and provides advantages over others.
 By working in the neutrino interaction basis the fast oscillations due the the vacuum part of the neutrino Hamiltonian are solved analytically.
 This provides significant speed up in propagating neutrinos in dense environments, specially for slowly changing or small matter densities.
 An unusual feature of {\ttf nuSQuIDS} is that it solves the neutrino oscillation problem over a grid of energies;
-though solving the problem using an individual fix neutrino energy is also possible, as in other software.
-In this operating mode, {\ttf nuSQuIDS} can interpolate the interaction-picture solutions of the neutrino evolution problem for energy values
+though solving the problem (when considering only coherent effects) using an individual, fixed neutrino energy is also possible, as in other software.
+In the multi-energy operating mode, {\ttf nuSQuIDS} can interpolate the interaction-picture solutions of the neutrino evolution problem for energy values
 that are in between the nodes where the calculation is performed.
-This allows accurate and fast evaluation of the neutrino oscillation probability using a coarse grid and efficient.
+This allows accurate and fast evaluation of the neutrino oscillation probability using a relatively coarse grid.
 This is particularly important when evaluating the neutrino oscillation probability over a larger number of energies, which is often the case
 when re-weighting large Monte Carlo data sets.
 
 \subsection{Extendability to new physics scenarios}
 
 {\ttf nuSQuIDS} implements the standard neutrino oscillation hamiltonian with matter effects;
-however, this can be extended to include additional terms that may appear on the Hamiltonian.
-This can be achieved as illustrated in examples~\ref{}, where the user creates an inherited class of the main {\ttf nuSQuIDS} class and implements
+however, this can be extended to include additional terms that may appear in the Hamiltonian.
+This can be achieved as illustrated in examples~\ref{sec:NSI} and \ref{sec:LV}, where the user creates an inherited class of the main {\ttf nuSQuIDS} class and implements
 the desired new physics operators.
-In order to write the operators the user needs to write them using the SUN vectors, which represent arbitrary hermitian matrices.
+In order to write the operators the user needs to write in terms of the {\ttf SQuIDS} SU(N) vector type, which represents arbitrary hermitian matrices.
 Additionally, {\ttf SQuIDS} implements operations between matrices and scalars that typically arise in writing these terms,
-\textit{e.g.} matrix-scalar multipication, conmutator between matrices, \textit{etc}.
-Once the new hamiltonian is defined by the user no further change is needed. The user will be able to use all the funcionality
+\textit{e.g.} matrix-scalar multiplication, commutator between matrices, \textit{etc}.
+Once the new hamiltonian is defined by the user no further change is needed. The user will be able to use all the functionality
 of {\ttf nuSQuIDS} with the new physics.
-Finally, {\ttf nuSQuIDS} allows for the serialization of user-defined values which allow for new physics operator definiting constants to be serialized as
+Finally, {\ttf nuSQuIDS} allows for the serialization of user-defined values which allow for constants used by new physics operators to be serialized as
 part of {\ttf nuSQuIDS} serialization.
 
 \subsection{Neutrino transport in dense media}
 
 {\ttf nuSQuIDS} implements non-coherent neutrino interactions that are relevant in very dense media or when neutrinos have high energies.
-This funcionality is comparable to other neutrino propagators used in neutrino telescopes~\cite{Safa:2021ghs,Garcia:2020jwr,Vincent:2017svp,Yoshida:2003js,shigeruyoshida_2020_4018117,Gazizov:2004va,DeYoung:865626,Alvarez-Muniz:2018owm,NuSpaceSim:2021hgs}.
-At high-energies the neutrino interaction length is comparable to the size of the Earth making the neutrino transport non-trivial.
-{\ttf nuSQuIDS} takes into account charged-current and neutral current interactions with the nucleus through deep-inelastic scattering, which is the dominant interaction at the relevant energies~\citep{Formaggio:2012cpf,Gandhi:1998ri,Zhou:2019frk,Zhou:2019vxt,CooperSarkar:2011pa}.
-Additionally, we take into account neutrino-electron scattering, which is only relevant for resonant electron-antineutrino scattering at neutrino energies close to 6.4~PeV~\cite{Glashow:1960zz}.
-A subdominant contribution from neutrino-photon scattering is not implemented~\cite{Seckel:1997kk,Alikhanov:2014uja,Alikhanov:2015kla,Zhou:2019frk,Zhou:2019vxt}, but can be easily extended in our framework; see~\cite{} for a publicly available implementation of this cross section~\cite{Garcia:2020jwr}.
-Finally, the production of neutrinos from lepton decay is neglected for all flavors, excepto for tau neutrinos.
+This functionality is comparable to other neutrino propagators used in neutrino telescopes~\cite{Safa:2021ghs,Garcia:2020jwr,Vincent:2017svp,Yoshida:2003js,shigeruyoshida_2020_4018117,Gazizov:2004va,DeYoung:865626,Alvarez-Muniz:2018owm,NuSpaceSim:2021hgs}.
+At high energies the neutrino interaction length is comparable to the size of the Earth making the neutrino transport non-trivial.
+{\ttf nuSQuIDS} takes into account charged-current and neutral current interactions with nucleons through deep-inelastic scattering, which is the dominant interaction at the relevant energies~\citep{Formaggio:2012cpf,Gandhi:1998ri,Zhou:2019frk,Zhou:2019vxt,CooperSarkar:2011pa}.
+Additionally, it takes into account neutrino-electron scattering, which is only relevant for resonant electron-antineutrino scattering at neutrino energies close to 6.4~PeV~\cite{Glashow:1960zz}.
+A subdominant contribution from neutrino-photon scattering is not implemented~\cite{Seckel:1997kk,Alikhanov:2014uja,Alikhanov:2015kla,Zhou:2019frk,Zhou:2019vxt}, but can be easily extended in our framework; see~\cite{Garcia:2020jwr} for a publicly available implementation of this cross section.
+Finally, the production of neutrinos from lepton decay is neglected for all flavors, except to for tau neutrinos.
 In this case, we account for the contribution of neutrinos from tau decay in the approximation that the tau decays promptly so that it does not undergo significant energy losses.
 This approximation is good below approximately 10~PeV and breaks down at higher energies; see~\cite{Safa:2021ghs,Garcia:2020jwr,NuSpaceSim:2021hgs} for recent work on implementing tau neutrino propagation at very high energies.
 
 \subsection{Scenarios with neutrino oscillations and interactions}
 
 {\ttf nuSQuIDS} is able to take into account simultaneously the presence of oscillations and non-coherent interactions in a consistent manner.
-For neutrino transport in the Earth and when standard neutrino oscillations are considered this scenario is never an issue, since oscillations are important only below 100~GeV, while interactions appear above 10~TeV.
-However, this is not the case for neutrino transport in larger astropysical objects, \textit{e.g.} high-energy neutrinos produced in cosmic-ray collisions~\cite{Moskalenko:1991hm,Seckel:1991ffa,Ingelman:1996mj,Masip:2017gvw,Ng:2017aur,Edsjo:2017kjk,Arguelles:2017eao,IceCube:2021koo} or produced from dark matter decay or annihilation~\cite{Srednicki:1986vj,Kamionkowski:1991nj,Cirelli:2005gh,Blennow:2007tw,Barger:2007xf,Liu:2020ckq} in the Sun undergo oscillations and interactions simultaneously.
+For neutrino transport in the Earth and when standard neutrino oscillations are considered this scenario is never an issue, since oscillations are important only below $\sim100$~GeV, while interactions appear above $\sim10$~TeV.
+However, this is not the case for neutrino transport in larger astrophysical objects, \textit{e.g.} high-energy neutrinos produced in cosmic-ray collisions~\cite{Moskalenko:1991hm,Seckel:1991ffa,Ingelman:1996mj,Masip:2017gvw,Ng:2017aur,Edsjo:2017kjk,Arguelles:2017eao,IceCube:2021koo} or produced from dark matter decay or annihilation~\cite{Srednicki:1986vj,Kamionkowski:1991nj,Cirelli:2005gh,Blennow:2007tw,Barger:2007xf,Liu:2020ckq} in the Sun undergo oscillations and interactions simultaneously.
 Additionally, this is not the case for non-standard neutrino oscillations, notably for light sterile neutrinos motivated by the short-baseline anomalies, where flavor conversion can happen at high energies where interactions are relevant~\cite{Akhmedov:1988kd,Krastev:1989ix,Chizhov:1998ug,Chizhov:1999az,Akhmedov:1999va,Nunokawa:2003ep,Choubey:2007ji,Barger:2011rc,Esmaili:2012nz,Esmaili:2013vza,Lindner:2015iaa}.
-
-\subsection{Techniques for high-performance Monte Carlo evaluation}
 
 \subsection{Handling of extended sources}
 
 Neutrino emission does not happen as a physical point source, but rather there exist finite emission regions.
-Though, since the neutrino oscillation and interaction scales are much larger that the production region or detector size, in most scenarios, we can consider the neutrino emission to be point like to good approximation.
-However, there are scenarios where this approximation breaksdown.
-For example, for neutrinos produced from dark matter decay through an intermediate mediator, an scenario known as secluded dark matter~\cite{Pospelov:2007mp}, the neutrinos are produced according to an exponential distribution that can be as large as the radius of the Earth or Sun depending on the model parameters~\cite{Niblaeus:2019gjk,Liu:2020ckq}.
+However, since the neutrino oscillation and interaction scales are much larger that the production region or detector size, in most scenarios, we can consider the neutrino emission to be point like to good approximation.
+Nonetheless, there are scenarios where this approximation is not applicable.
+For example, for neutrinos produced from dark matter decay through an intermediate mediator, a scenario known as secluded dark matter~\cite{Pospelov:2007mp}, the neutrinos are produced according to an exponential distribution that can be as large as the radius of the Earth or Sun depending on the model parameters~\cite{Niblaeus:2019gjk,Liu:2020ckq}.
 This scenario can be implemented in nuSQuIDS~\cite{Liu:2020ckq} by introducing a source term that follows the exponential yield of neutrinos.
-Another scenario that is relevant is that of production of neutrinos in pion or kaon decay in flight, \textit{e.g.} in accelerator neutrino experiments or in cosmic-ray airshowers.
-Though for standard neutrino oscillation parameters the distribution of lengths induced by the varying decay position does not significantly impact the oscillation probability, this is not the case for new physics models that introduce small oscillations scales, \text{e.g.} when heavier neutrinos are introduced.
+Another scenario that is relevant is that of production of neutrinos in pion or kaon decay in flight, \textit{e.g.} in accelerator neutrino experiments or in cosmic-ray air-showers.
+Though for standard neutrino oscillation parameters the distribution of lengths induced by the varying decay position do not significantly impact the oscillation probability, this is not the case for new physics models that introduce small oscillations scales, \text{e.g.} when heavier neutrinos are introduced.
 A similar scenario is that of experiments looking for fast oscillations close to cores of nuclear reactors where the size of the core is relevant.
 
 \subsection{Efficient fast oscillations and fully delocalized neutrino emission}
 
-Neutrino oscillations can be extremely fastly varying with the neutrino energy, specially at small energies where the neutrino Hamiltonian in vaccum is large. 
+Neutrino oscillations can be extremely rapidly varying with the neutrino energy, specially at small energies where the neutrino Hamiltonian in vacuum is large. 
 It is numerically expensive to solve the neutrino evolution on a very dense grid or for enough energies to be able to produce a meaningful oscillation pattern.
 {\ttf nuSQuIDS} introduces a novel solution to this problem by permitting the evaluation of fast oscillations in a way that the oscillations due to vacuum are tracked analytically.
-The evaluation of oscillations on a grid of notes that has been already computed has been significantly optimized making it such that it possible to evaluate the oscillation probability for large Monte Carlo data sets much faster than computing the individual oscillation probabilities at each of the Monte Carlo event energies.
+The evaluation of oscillations on a grid of nodes that has been already computed has been significantly optimized making it such that it possible to evaluate the oscillation probability for large Monte Carlo data sets much faster than computing the individual oscillation probabilities at each of the Monte Carlo event energies.
 
 As noted in the previous point the issue of fast oscillations and the localization of the neutrino emission is related. 
 Neutrinos emitted by an extended source smear out the neutrino oscillation probability statistically.
 {\ttf nuSQuIDS} provides an option to analytically perform the smearing of the oscillation probability, in which the user provides the size of the oscillation length that they which to smear.
 This calculation has no significant overhead and is much more efficient than performing integrals over the production region.
-This feature is most useful in computing the oscillation expected from a nuclear reactor on a nearby detector, where one typically needs to smear over the reactor core size, or in computing the yield of atmospheric neutrino oscillations where one nees to smear over the production region in the atmosphere, which is several kilometers in size.
+This feature is most useful in computing the oscillation expected from a nuclear reactor on a nearby detector, where one typically needs to smear over the reactor core size, or in computing the yield of atmospheric neutrino oscillations where one needs to smear over the production region in the atmosphere, which is several kilometers in size.
 
 \subsection{Serializable input and output}
 
@@ -606,18 +604,25 @@ For example, a calculation can be complex and lengthy, and the user may choose t
 In this scenario, the user can stop the calculation at a given point and then recover the {\ttf nuSQuIDS} object where it was left and continue.
 Another scenario of interest is that related to not knowing at execution time which energies will need to be computed.
 In this case, the user performs a calculation on a grid of energies and then stores the output of {\ttf nuSQuIDS} in a file.
-Then later when the user wants to evaluate the result on specific energies, they can recovere the object and perform the necesary evaluations.
+Then, later when the user wants to evaluate the result at specific energies, they can recover the object and perform the necessary evaluations.
+This is also useful when the same calculation will be reused many times. 
+
+\subsection{Techniques for high-performance Monte Carlo evaluation}
+{\ttf nuSQuIDS} separates the calculation of a result flux from an input flux at the user's selected energy nodes from evaluating that result flux at arbitrary energies (provided those energies are within the span of energy nodes for which the propagation was performed). 
+As discussed previously, this latter step evaluates vacuum oscillations analytically, and interpolates all other effects between the nearest energy nodes. 
+As the final flux evaluation is often desired for very large numbers of energies (\textit{e.g.} for every event produced in a Monte-Carlo simulation), it has been optimized for speed, and furthermore to permit concurrent evaluation. 
+While the majority of the classes and functions in {\ttf nuSQuIDS} are not safe to access concurrently from multiple threads of execution, such use is specifically supported for all for the flux evaluation functions. 
+While not applicable in all cases, concurrent evaluation may provide considerable speed improvements for some users. 
 
 \subsection{{\ttf C++} and {\ttf Python} interfaces}
 
-{\ttf nuSQuIDS} has been written in {\ttf C++} sinze this compile-time language provides the best execution time. 
-This is because internally {\ttf nuSQuIDS} operations are written in a way that they can be promptly optimize by the compiler.
-In particular, the algebra of SU(N) operators significantly benefits from this optimization.
+{\ttf nuSQuIDS} has been written in {\ttf C++} since this compiled language provides the best execution efficiency. 
+Extensive use is made internally of templating, inlining, and auto-vectorization to produce efficient machine code. 
+In particular, the algebra of SU(N) operators significantly benefits from these types of optimization.
 All {\ttf nuSQuIDS} functions can be access in {\ttf C++}; however, recently, there has been great interest in designing particle physics software in interpreted languages such as {\ttf Python}.
-To facilitate the usage of {\ttf nuSQuIDS} with {\ttf Python}-based physics software, we have implemented an interface to {\ttf Python} by means of the Boost library.
-Most of the standards {\ttf nuSQuIDS} funcionalities are available through the {\ttf Python} interface, with the notable exception of the extended body object.
-This is becasue the extended body requires the user to provide a function that describes the yield of neutrinos at a given position of the track, which if written in {\ttf Python} would produce a significant amount of overhead.
-For similar reasons, extensions to {\ttf nuSQuIDS} by the user are strongly encouraged to be performed in {\ttf C++} since,\textit{e.g.} adding new terms in the Hamiltonian will require calling the user-defined functions very often.
+To facilitate the usage of {\ttf nuSQuIDS} with {\ttf Python}-based physics software, an interface to {\ttf Python} is implemented by means of the Boost library.
+Most of the functionality of {\ttf nuSQuIDS} is available through the {\ttf Python} interface, with the notable exception of new body objects and new physics operators. 
+These limitations arise because these types of extensions require user-provided functions which must be evaluated very frequently during the propagation calculation, which if written in {\ttf Python} would produce a significant amount of overhead.
 
 \section{Comparison to Other Software}
 \label{sec:comparison}
