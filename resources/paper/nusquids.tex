@@ -720,10 +720,10 @@ square difference in electron-volt squared, and a value for the $CP$
 phase in radians.
 In order to do so we use the {\ttf Set\_MixingAngle} member function
 whose first two arguments are the indices of the rotation, starting
-from zero. Similarly for the $CP$ phase function.
+from zero. The $CP$ phase function is similar.
 In the case of the square mass difference, the first argument of the function is
 the mass eigenvalue index and the second argument the value. These
-square mass differences are always with respect to the lightest mass state.
+square mass differences are always with respect to the lightest mass state (whose index is zero).
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
@@ -763,9 +763,10 @@ we apply these objects to the nuSQuIDS object.
 \end{lstlisting}
 
 Now we set the initial neutrino flavor composition. In this example we start with
-a muon neutrino, which we represent represented by an {\ttf marray} of rank 1 and length {\ttf
+a pure muon neutrino state, represented by an {\ttf marray} (multi-dimensional array) of rank 1 and length {\ttf
   \{3\}}, corresponding to the number of flavors, and with value given
 by {\ttf\{0,1,0\}}.
+We indicate that this state is described in the flavor basis when applying it to the {\ttf nuSQuIDS} object:
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   marray<double,1> ini_state({3},{0,1,0});
@@ -810,8 +811,8 @@ propagation is done by calling the function {\ttf nus.EvolveState()}
 \subsection{Multiple Energy \textnormal{({\ttf examples/Multiple\_energy})}}
 This is a more realistic example where we consider an ensemble of
 neutrinos in an energy range. With this setup
-we can model the neutrino energy and flavor changes.
-For example interactions such as charged and neutral current.
+we can model the neutrino energy and flavor changes, 
+including the effects of charged and neutral current interactions.
 In the following we describe the code for the example.
 
 As before we construct the {\ttf Const} object to have a set of useful physical parameters.
@@ -819,7 +820,7 @@ As before we construct the {\ttf Const} object to have a set of useful physical 
   squids::Const units;
 \end{lstlisting}
 
-In the following we allow the possibility of choosing to compute
+In the following we allow the choice to compute
 the propagation for three active neutrinos or three active and one sterile.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
@@ -833,17 +834,17 @@ the propagation for three active neutrinos or three active and one sterile.
 
 In the next line, we construct the nuSQUIDS object. For the
 multiple energy constructor we need to provide the following arguments:
-list of neutrino energy nodes
+a list of neutrino energy nodes
 (\lstinline[columns=fixed,breaklines=true]{logspace(1.*units.GeV,1.e4*units.GeV,200)}),
 number of neutrino flavors ({\ttf numneu}= 3 or 4), neutrino or
-anti-neutrino type ({\ttf neutrino}), and non-coherent scattering
+anti-neutrino type ({\ttf neutrino}), and whether to compute non-coherent scattering
 interactions ({\ttf false}). 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
   label = ex:sin1,firstnumber=last]
   nuSQUIDS nus(logspace(1.*units.GeV,1.e4*units.GeV,200),numneu,neutrino,false);
 \end{lstlisting}
 
-As in the single energy mode we must define the body and the path
+As in the single energy mode, we must define the body and the path
 where neutrinos will propagate.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
@@ -857,7 +858,7 @@ where neutrinos will propagate.
 \end{lstlisting}
 
 We also set the neutrino oscillation parameters and if a sterile
-neutrino is considered we set it's parameters to $\theta_{24}=0.1$ and
+neutrino is considered we set its parameters to $\theta_{24}=0.1$ and
 $\Delta m_{41}^2=0.1{\rm eV}^2$.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
@@ -866,16 +867,15 @@ $\Delta m_{41}^2=0.1{\rm eV}^2$.
   nus.Set_SquareMassDifference(1,7.65e-05);
   nus.Set_SquareMassDifference(2,0.00247);
 
-  if(numneu==4){
-    // sterile neutrino parameters
+  if(numneu==4){ // sterile neutrino parameters
     nus.Set_SquareMassDifference(3,0.1);
     nus.Set_MixingAngle(1,3,0.1);
   }
 \end{lstlisting}
 
 Next we set some of the integration parameters: the maximum
-step for the evolution,  the GSL stepper algorithm (all the steppers in
-the GSL libraries can be used), maximum relative and absolute error.
+step size for the evolution, the GSL stepper algorithm (all the steppers in
+the GSL libraries can be used), and maximum relative and absolute error tolerances.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_h_max( 500.0*units.km );
@@ -891,10 +891,11 @@ progress of the propagation.
   nus.Set_ProgressBar(true);
 \end{lstlisting}
 
-We can ask nuSQUIDS to give back the array containing the values of
-the energy nodes. We use this here to fill a multiple array with the initial
+We can ask {\ttf nuSQuIDS} to give back the array containing the values of
+the energy nodes. We use this here to fill a multi-dimensional array with the initial
 state of the system; in this case a $E^{-2}$ power-law for the muon
-flavor and zero for the others.
+flavor and zero for the other flavors.
+Unlike the single-energy example, the array now has rank 2, with dimensions for both energy and flavor. 
  
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   marray<double,1> E_range = nus.GetERange();
@@ -908,14 +909,13 @@ flavor and zero for the others.
   nus.Set_initial_state(inistate,flavor);
 \end{lstlisting}
 
-Here we evolve the state.
+We can then evolve the state:
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.EvolveState();
 \end{lstlisting}
 
-Finally we write the propagated fluxes in a file called {\ttf
-  flux\_flavor.txt} and after that we ask to run the plotting script.
+Finally, we write the propagated fluxes to a file and ask whether to run the plotting script:
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   std::ofstream file("fluxes_flavor.txt");
@@ -942,6 +942,7 @@ Finally we write the propagated fluxes in a file called {\ttf
   return system("./plot.plt");
 \end{lstlisting}
 
+Note that while we explicitly propagated 200 energies, we evaluate the resulting flux at 1000 energies, taking advantage of the automatic interpolation. 
 
 \begin{figure}[h!]
   \label{fig:multimode}
@@ -957,53 +958,53 @@ for the case with sterile neutrino.
 \label{sec:readwrite}
 In this example we illustrate the use of the functions to
 read and write {\ttf HDF5} files. The file contains the full
-information of the system: all settings, body, track (including
-current position in the track), and the density matrix at each node.
-This serialization allows to save the system
-in the middle of a complex propagation and read it later to continue
-the calculation. Saving the system using this and loading it from
+information of the system: all settings, body, track (including the
+current position along the track), and the density matrix at each node.
+This serialization allows saving the system
+in the middle of a complex propagation and reading it later to continue
+the calculation. Saving the system and then loading it from
 the file restores the system to the saved state allowing the user to
-compute any quantum mechanical observable.
+compute any quantum-mechanical observable.
 
-This example is based upon the multiple energy example but
-split in two parts. The first part computes the evolution and saves the
+This example is based upon the multiple energy example, but
+split into two parts. The first part computes the evolution and saves the
 state of the system ({\ttf write.cpp}). The second reads the
-state,  extract the flavor fluxes, and  prints them to a file ({\ttf
-  read.cpp}).
+state, extracts the flavor fluxes, and prints them to a file ({\ttf read.cpp}).
 
 In the following we describe lines that are relevant for reading and writing.
 
 In the file {\ttf write.cpp} we save the system before and after the
-evolution.
+evolution:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-  nus.WriteStateHDF5(``./initial_state.hdf5'');
+  nus.WriteStateHDF5("./initial_state.hdf5");
   nus.EvolveState();
-  nus.WriteStateHDF5(``./final_state.hdf5'');
+  nus.WriteStateHDF5("./final_state.hdf5");
 \end{lstlisting}
 
-And in order to recover that in the {\ttf read.cpp} file we use the
-constructor that takes as an argument the name of the file.
+In order to recover that state in {\ttf read.cpp}, we use the
+constructor that takes as an argument the name of the file:
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
-  nuSQUIDS inus(``./initial_state.hdf5'');
-  nuSQUIDS fnus(``./final_state.hdf5''); 
+  nuSQUIDS inus("./initial_state.hdf5");
+  nuSQUIDS fnus("./final_state.hdf5"); 
 \end{lstlisting}
 
 
 \subsection{Construction and use of bodies \textnormal{({\ttf
       examples/Bodies})}}
 \label{sec:body}
-One of the main classes in the nuSQUIDS library are the body and the
-track. These two do not have defaults in the code and always need to
+Two of the main classes in the {\ttf nuSQuIDS} library are the body and the
+track. 
+These properties of the {\ttf nuSQuIDS} object itself do not have defaults, and always need to
 be specified.
 In this example we show how to use the objects already implemented in
-the library and also how to create some objects from the classes
+the library and also how to create , derived types from the classes
 already defined.
 
-The folder {\ttf examples/Bodies/} contains a new body and track
-definitions in the files {\ttf exBody.h} and {\ttf exBody.cpp}.
+The folder {\ttf examples/Bodies/} contains definitions of a new body and track
+in the files {\ttf exBody.h} and {\ttf exBody.cpp}.
 It also contains the file {\ttf main.cpp} whose main function 
 uses all the pre-existing objects in nuSQUIDS and the new objects
 of these examples.
@@ -1011,12 +1012,13 @@ of these examples.
 
 \subsubsection{Construct a derived body}
 
-Here is an example of how to define a derived object of the EarthAtm
+Here is an example of how to define a derived class from the EarthAtm
 body. In this simple case the object is just an Earth model with some
 parameters that weight the relative densities in the different layers
 of the Earth's inner core, outer core, and mantle.
 
-In order to implement it we suggest to do it inside the {\ttf nusquids}
+% TODO: Is this actually a good idea? Seems like a recipe for user code to be unnecessarily broken if we add things
+The new classes may be placed inside the {\ttf nusquids}
 namespace. We define a new class called {\ttf EarthMod}, which is a derived class of {\ttf
   EarthAtm}. Because of this the new class will have all the properties,
 values, and functions of the parent class. 
@@ -1027,17 +1029,16 @@ class EarthMod: public EarthAtm{
 public:
 \end{lstlisting}
 
-Our object constructors require the following inputs:
-based Earth model file name ({\ttf earthmodel}), inner core weight
-({\ttf frho1}), outer core weight ({\ttf frho2}), mantle weight ({\ttf
+Our object's constructors require the following inputs:
+base Earth model file name ({\ttf earthmodel}), inner core weight
+({\ttf frho1}), outer core weight ({\ttf frho2}), and mantle weight ({\ttf
   frho3}).
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
-  EarthMod(std::string earthmodel, double frho1, double frho2, double
-  frho3);
+  EarthMod(std::string earthmodel, double frho1, double frho2, double frho3);
 \end{lstlisting}
-The function {\ttf Mod} allows to change the parameters once the
-object is already defined.
+The {\ttf Mod} function allows changing the parameters once the
+object is already initialized.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   void  Mod(double frho1, double frho2, double frho3);
@@ -1046,7 +1047,7 @@ object is already defined.
 \end{lstlisting}
 
 The implementation of the functions that set the density arrays with
-the modified values are given in the files {\ttf exBody.cpp}.
+the modified values are given in the file {\ttf exBody.cpp}.
 
 \subsubsection{Use of the bodies}
 
@@ -1080,22 +1081,21 @@ oscillation parameters and the neutrino energy.
 The first example is the {\ttf Earth} body. In this case the track is
 parametrized by the baseline of the experiment. Here we define the
 body and track. For the track we need to specify the initial and final
-position as well as the baseline. 
+position as well as the baseline: 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   double baseline = 500.0*units.km;
   std::shared_ptr<Earth> earth = std::make_shared<Earth>();
   std::shared_ptr<Earth::Track> earth_track = std::make_shared<Earth::Track>(0.0,baseline,baseline);
 \end{lstlisting}
-And we set the Body and Track to the nuSQuIDS object.
+We apply the Body and Track to the nuSQuIDS object:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_Body(earth);
   nus.Set_Track(earth_track);
 \end{lstlisting}
 
-We first set the initial state of the system and print the state on
-the screen.
+We then set the initial state of the system and print it:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   marray<double,1> ini_state({3},{0,1,0});
@@ -1110,7 +1110,7 @@ the screen.
     std::cout << std::endl;
   }
 \end{lstlisting}
-We set the numerical error and maximum step for the GSL integrator.
+We set the numerical error and maximum step for the GSL integrator:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_h_max( 200.0*units.km );
@@ -1118,7 +1118,7 @@ We set the numerical error and maximum step for the GSL integrator.
   nus.Set_abs_error(1.0e-12);
 \end{lstlisting}
 
-Finally we evolve the state and print on the screen the final state of
+Finally we evolve the state and print the final state of
 the system.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -1132,8 +1132,7 @@ the system.
     std::cout << std::endl;
   }
 \end{lstlisting}
-These last steps in the code are the same in all the bodies examples and we
-are omitting this for the next cases.
+These last steps in the code are the same in all the bodies examples and so are omitted for the following cases.
 
 \item {\ttf EarthAtm}
 
