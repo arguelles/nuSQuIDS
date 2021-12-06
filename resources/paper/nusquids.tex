@@ -677,7 +677,7 @@ Unlike the other pure oscillation calculators, nuCraft is an ODE integration-bas
 Turning to packages designed for higher energies with a focus on neutrino absorption, the All Neutrino Interaction Simulation (ANIS)~\cite{ANIS} is intended for use as an event generator for neutrino observatories. 
 For this reason it uses a Monte-Carlo sampling approach, and not only simulates neutrinos passing through the bulk of the Earth, with a continuously-parameterized density profile, but also includes forcing final interactions in a volume defined as the vicinity of a detector. (This volume is typically larger than the instrumented volume of the detector in order to fully sample muons produced by charge-current $\nu_\mu$ interactions entering the detector from outside.)
 While ANIS treats all deep-inelastic scattering (DIS) and Glashow resonance (resonant $W^\pm$ production) processes as well as tau propagation and decay, it does not calculate oscillations. 
-DIS The code requires DIS cross sections in the somewhat unusual form of Bjorken x, y pairs, pre-sampled at natural frequencies from the desired cross section. 
+The code requires DIS cross sections in the somewhat unusual form of Bjorken x, y pairs, pre-sampled at natural frequencies from the desired cross section. 
 While this enables the propagation code to run rapidly and without direct dependencies on other software, the user must beware that systematic biases will result if sufficiently large tables are not used. 
 
 nuPropEarth~\cite{nuPropEarth2020} is a newer package which is similar to ANIS, but adds treatment of a number of subdominant interaction processes, such as nuclear effects. 
@@ -784,7 +784,7 @@ The parameters and errors are defined as in the standard GSL libraries.
   nus.Set_abs_error(1.0e-20);
 \end{lstlisting}
 
-Finally we show the result before and after propagation. The
+Finally, we show the result before and after propagation. The
 propagation is done by calling the function {\ttf nus.EvolveState()}
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
@@ -813,17 +813,17 @@ propagation is done by calling the function {\ttf nus.EvolveState()}
 
 \subsection{Multiple Energy \textnormal{({\ttf examples/Multiple\_energy})}}
 This is a more realistic example where we consider an ensemble of
-neutrinos in an energy range. With this setup
+neutrinos in an energy range. With this setup,
 we can model the neutrino energy and flavor changes, 
 including the effects of charged and neutral current interactions.
 In the following we describe the code for the example.
 
-As before we construct the {\ttf Const} object to have a set of useful physical parameters.
+As before, we construct the {\ttf Const} object to have a set of useful physical parameters.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
   squids::Const units;
 \end{lstlisting}
 
-In the following we allow the choice to compute
+In the following, we allow the choice to compute
 the propagation for three active neutrinos or three active and one sterile.
 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
@@ -836,7 +836,7 @@ the propagation for three active neutrinos or three active and one sterile.
 \end{lstlisting}
 
 In the next line, we construct the nuSQUIDS object. For the
-multiple energy constructor we need to provide the following arguments:
+multiple energy constructor, we need to provide the following arguments:
 a list of neutrino energy nodes
 (\lstinline[columns=fixed,breaklines=true]{logspace(1.*units.GeV,1.e4*units.GeV,200)}),
 number of neutrino flavors ({\ttf numneu}= 3 or 4), neutrino or
@@ -860,8 +860,8 @@ where neutrinos will propagate.
   nus.Set_Track(track_atm);
 \end{lstlisting}
 
-We also set the neutrino oscillation parameters and if a sterile
-neutrino is considered we set its parameters to $\theta_{24}=0.1$ and
+We set the neutrino oscillation parameters, and if a sterile
+neutrino is considered, we set its parameters to $\theta_{24}=0.1$ and
 $\Delta m_{41}^2=0.1{\rm eV}^2$.
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.Set_MixingAngle(0,1,0.563942);
@@ -951,22 +951,22 @@ Note that while we explicitly propagated 200 energies, we evaluate the resulting
   \label{fig:multimode}
   \centering
   \includegraphics[width=0.7\textwidth]{fig/Multiplot.eps} 
-  \caption{Output for the multiple energy mode with sterile neutrino (3+1)} 
+  \caption{Output for the multiple-energy mode with sterile neutrino (3+1)} 
 \end{figure}
  
-In Fig.~\ref{fig:multimode} we show the results of running this example
+In Fig.~\ref{fig:multimode}, we show the results of running this example
 for the case with sterile neutrino.
 
 \subsection{Read and Write \textnormal{({\ttf examples/HDF5\_Write\_Read})}}
 \label{sec:readwrite}
-In this example we illustrate the use of the functions to
+In this example, we illustrate the use of the functions to
 read and write {\ttf HDF5} files. The file contains the full
 information of the system: all settings, body, track (including the
 current position along the track), and the density matrix at each node.
 This serialization allows saving the system
-in the middle of a complex propagation and reading it later to continue
+in the middle of a complex propagation, and reading it later to continue
 the calculation. Saving the system and then loading it from
-the file restores the system to the saved state allowing the user to
+the file restores the system to the saved state, allowing the user to
 compute any quantum-mechanical observable.
 
 This example is based upon the multiple energy example, but
@@ -974,9 +974,9 @@ split into two parts. The first part computes the evolution and saves the
 state of the system ({\ttf write.cpp}). The second reads the
 state, extracts the flavor fluxes, and prints them to a file ({\ttf read.cpp}).
 
-In the following we describe lines that are relevant for reading and writing.
+In the following, we describe lines that are relevant for reading and writing.
 
-In the file {\ttf write.cpp} we save the system before and after the
+In the file {\ttf write.cpp}, we save the system before and after the
 evolution:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -986,7 +986,7 @@ evolution:
 \end{lstlisting}
 
 In order to recover that state in {\ttf read.cpp}, we use the
-constructor that takes as an argument the name of the file:
+constructor that takes the name of the file as an argument:
 
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1]
@@ -1002,13 +1002,13 @@ Two of the main classes in the {\ttf nuSQuIDS} library are the body and the
 track. 
 These properties of the {\ttf nuSQuIDS} object itself do not have defaults, and always need to
 be specified.
-In this example we show how to use the objects already implemented in
-the library and also how to create , derived types from the classes
+In this example, we show how to use the objects already implemented in
+the library, and also how to create derived types from the classes
 already defined.
 
-The folder {\ttf examples/Bodies/} contains definitions of a new body and track
+The folder {\ttf examples/Bodies/} contains new body and track definitions
 in the files {\ttf exBody.h} and {\ttf exBody.cpp}.
-It also contains the file {\ttf main.cpp} whose main function 
+It also contains the file {\ttf main.cpp}, whose main function 
 uses all the pre-existing objects in nuSQUIDS and the new objects
 of these examples.
 
@@ -1023,7 +1023,7 @@ of the Earth's inner core, outer core, and mantle.
 % TODO: Is this actually a good idea? Seems like a recipe for user code to be unnecessarily broken if we add things
 The new classes may be placed inside the {\ttf nusquids}
 namespace. We define a new class called {\ttf EarthMod}, which is a derived class of {\ttf
-  EarthAtm}. Because of this the new class will have all the properties,
+  EarthAtm}. Because of this, the new class will have all the properties,
 values, and functions of the parent class. 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,label = ex:sin1]
 namespace nusquids{
@@ -1049,20 +1049,18 @@ object is already initialized.
 
 \end{lstlisting}
 
-The implementation of the functions that set the density arrays with
+The implementations of the functions that set the density arrays with
 the modified values are given in the file {\ttf exBody.cpp}.
 
 \subsubsection{Use of the bodies}
 
-In this part we will describe what is implemented in {\ttf
-  main.cpp}.
-This file defines a nuSQUIDS object and sets different bodies and
-tracks. For each of these it evolves the system and shows the
-probabilities on the screen.
+The {\ttf main.cpp} file defines a nuSQUIDS object and sets different bodies and
+tracks. For each of these, it evolves the system and displays the resulting oscillation
+probabilities.
 For simplicity we use the single energy mode Sec.~\ref{sec:single}, but the use of the body
 and track would be the same for the multiple energy case.
 
-First we construct the nuSQUIDS object for three neutrinos, then we set the
+First, we construct the nuSQUIDS object for three neutrinos, then we set the
 oscillation parameters and the neutrino energy.
 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1081,7 +1079,7 @@ oscillation parameters and the neutrino energy.
 \begin{enumerate}
 \item {\ttf Earth}
 
-The first example is the {\ttf Earth} body. In this case the track is
+The first example is the {\ttf Earth} body. In this case, the track is
 parametrized by the baseline of the experiment. Here we define the
 body and track. For the track we need to specify the initial and final
 position as well as the baseline: 
@@ -1121,8 +1119,7 @@ We set the numerical error and maximum step for the GSL integrator:
   nus.Set_abs_error(1.0e-12);
 \end{lstlisting}
 
-Finally we evolve the state and print the final state of
-the system.
+Finally, we evolve the state and print it:
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
   nus.EvolveState();
@@ -1140,7 +1137,7 @@ These last steps in the code are the same in all the bodies examples and so are 
 \item {\ttf EarthAtm}
 
 In this example we use the {\ttf EarthAtm} body. 
-This body includes botht he Earth and its atmosphere. 
+This body includes both the Earth and its atmosphere. 
 The track is defined by the zenith angle of the trajectory, and begins at the top of the atmosphere. 
 Because the track depends on the height of the atmosphere being treated, it is most conveniently constructed from the body, using the {\ttf MakeTrack} function, which takes a zenith angle and creates a track with the necessary details of the body automatically included. 
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1155,10 +1152,10 @@ Because the track depends on the height of the atmosphere being treated, it is m
 
 \item {\ttf earth\_mod}
 
-  In this case we use the modified Earth object.
-  As before the track is defined by the zenith angle of
+  In this case, we use the modified Earth object.
+  As before, the track is defined by the zenith angle of
   the trajectory. In the constructor we set all the weights to $0.1$.
-  Finally we set the body and track to nuSQUIDS.
+  Finally, we set the body and track to nuSQUIDS.
   
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
@@ -1173,7 +1170,7 @@ Because the track depends on the height of the atmosphere being treated, it is m
 
 \item {\ttf VariableDensity}
 
-In this case we use the variable density body and a track of $200{\rm km}$
+In this case, we use the variable density body and a track of $200{\rm km}$
 First we define the density, position, and electron fraction arrays
 with the corresponding values.
 \begin{lstlisting}[frame=leftline, numbers =
@@ -1943,14 +1940,14 @@ ensemble, and the injection is a muon-neutrino only source. The tau and electron
 In the tests described in this section, Machine 1 is configured with an Intel Core\texttrademark~i7-6700K CPU, with a `base' frequency of 4.0 GHz. All tests were performed with the `Turbo Boost' feature disabled, preventing frequency scaling. 
 
 The time evolution and basis transformations performed on \lstinline{squids::SU_vector} objects rely heavily on trigonometric functions, specifically sines and cosines, mostly in matched pairs. 
-These operations are in turn used by several of the key portions of nuSQuIDS, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. 
-As a result, run time is significantly dependent on the performance of the underlying math library, which is usually supplied by the operating system, and sometimes the compiler. 
+These operations are in turn used by several of the key portions of {\ttf nuSQuIDs}, and for oscillation-only calculations evaluation of trigonometric functions can be the single largest part of time consumed by the library. 
+As a result, runtime is significantly dependent on the performance of the underlying math library, which is usually supplied by the operating system, or sometimes the compiler. 
 The differences are illustrated in Table~\ref{tab:trig_perf}, which shows measurements performed on Machine 1 with several combinations of operating system and compiler of the cost of computing a single sine function or the combination of sine and cosine for the same argument (which should ideally be performed by an efficient, fused calculation). 
 A measurement was also made of the time to run the pseudo-random number generator (PRNG) by itself. 
 The time spent for the PRNG varies somewhat, assumedly due to different optimization choices by the various compilers, but amounts to a small fraction of the time for the trigonometric calculation. 
 Broadly, it is apparent that the calculations using the math implementations from the older version of the GNU C library (glibc) are significantly slower than the versions using other math libraries. 
-The approximately factor of two difference in fused sine/cosine performance between glibc 2.17 and 2.28 translates into a 10-25\% difference in the overall runtime of nuSQuIDS oscillation calculations. 
-The user is therefore cautioned that the choice of compiler and runtime libraries can be important to maximizing the performance of nuSQuIDs. 
+The (approximately) factor of two difference in fused sine/cosine performance between glibc 2.17 and 2.28 translates into a 10-25\% difference in the overall runtime of {\ttf nuSQuIDs} oscillation calculations. 
+The user is therefore cautioned that the choice of compiler and runtime libraries can be important to maximizing the performance of {\ttf nuSQuIDs}. 
 The benchmarks shown in this section will use the GNU compiler, version 8.3.1 (Red Hat 8.3.1-5) on CentOS 8, as this is a combination with good performance which is likely to be relevant to many users. 
 
 \begin{table*}
@@ -1965,7 +1962,7 @@ The benchmarks shown in this section will use the GNU compiler, version 8.3.1 (R
 		FreeBSD 11.2 & clang 6.0.1 & 2.9 ns & 22.3 ns & 30.8 ns & BSD libc
 	\end{tabular}
 	\caption{
-		Measured time to compute trigonometric functions using different compilers and operating systems on Machine 1. In each case the same stream of $10^8$ pseudo-random arguments in the domain [-100,100] was used, and the average time per call was computed, including the time necessary for the PRNG to compute the next argument value. 
+		Measured time to compute trigonometric functions using different compilers and operating systems on Machine 1. In each case, the same stream of $10^8$ pseudo-random arguments in the domain [-100,100] was used, and the average time per call was computed, including the time necessary for the PRNG to compute the next argument value. 
 	}
 	\label{tab:trig_perf}
 \end{table*}
@@ -1977,17 +1974,17 @@ The primary quantity defining the size of the problem solved by {\ttf nuSQuIDS} 
 It is important to note that the interpolation provided by {\ttf nuSQuIDS} allows arbitrary energies within the range of the energy nodes to be evaluated after propagating, so it is not necessary to calculate a node for every energy at which the final flux may be needed. 
 Rather, the minimum number of nodes should be chosen so that the calculation is suitably precise at each node and when interpolated between nodes. 
 
-It is difficult to give specific guidance for all of the many types of problems to which nuSQuIDS is applied, so users are advised to be prepared to perform their own tests of how many nodes are needed to get good results for their use cases. 
+It is difficult to give specific guidance for all of the many types of problems to which {\ttf nuSQuIDs} is applied, so users are advised to be prepared to perform their own tests of how many nodes are needed to get good results for their use cases. 
 However, it can be noted that for most problems the authors have attempted to compute numbers of nodes in the range 100-300 have typically been found sufficient. 
-It is also important that while it is often convenient to place nodes uniformly in energy or the logarithm of energy, this is by no means required by {\ttf nuSQuIDS}, so it can be advantageous to place nodes more densely in regions of particular interest or where sharp spectral features are expected, such as the vicinity of the Glashow resonance. 
+It is also important that, while it is often convenient to place nodes uniformly in energy or the logarithm of energy, this is by no means required by {\ttf nuSQuIDS}, so it can be advantageous to place nodes more densely in regions of particular interest or where sharp spectral features are expected, such as the vicinity of the Glashow resonance. 
 
 A second key parameter is the requested error tolerance for the ODE integration, which effectively controls the number of steps the integrator must take, while the number of energy nodes causes the amount of work required to compute each step to vary. 
 As with the number of nodes, it is impossible to give one-size-fits-all advice on selecting the tolerance. 
-In general, problems which include greater variation in the magnitudes of the flux values at different energies (e.g. steep power law fluxes) or for different flavors require more demanding tolerances in order for the small components to be computed precisely in the presence of the larger components. 
+In general, problems which include greater variation in the magnitudes of the flux values at different energies (e.g. steep power law fluxes), or for different flavors, require more demanding tolerances in order for the small components to be computed precisely in the presence of the larger components. 
 Similar to selecting the number of energy nodes, the necessary tolerance may be found by incrementally tightening it until subsequent calculations produce results which are equivalent to within the desired precision. 
 While this process is manual and somewhat annoying, having been performed for one problem, the result can usually be applied to modified versions of the problem without retesting, as long as the changes are not drastic. 
 
-\begin{lstlisting}[float=ht,frame=lines,label=lst:prec_comp,caption={A simple routine for comparing the precision of two different calculations with  {\ttf nuSQuIDS}. Error checking, that numbers of energy ranges, number of flavors, etc. are compatible is advisable but omitted here for brevity.}]
+\begin{lstlisting}[float=ht,frame=lines,label=lst:prec_comp,caption={A simple routine for comparing the precision of two different calculations with  {\ttf nuSQuIDS}. Error checking, that numbers of energy ranges, number of flavors, etc. are compatible is advisable, but omitted here for brevity.}]
 void compare_fluxes(const nuSQUIDS& nus1, const nuSQUIDS& nus2, 
                     unsigned int oversampling, double tolerance){
   auto er1 = nus1.GetERange(), er2 = nus2.GetERange();
@@ -2018,7 +2015,7 @@ void compare_fluxes(const nuSQUIDS& nus1, const nuSQUIDS& nus2,
 \end{lstlisting}
 
 A simple comparison function for guiding these selections is shown in Listing~\ref{lst:prec_comp}. 
-Two \lstinline{nuSQUIDS} objects are compared over the full energy range for which the first was calculated, with some oversampling factor which may be greater than 1 to check results for energies using interpolation as well as at the energy nodes of the first object. 
+Two \lstinline{nuSQUIDS} objects are compared over the full energy range for which the first was calculated, with some oversampling factor which may be greater than 1 to check results for energies using interpolation, as well as at the energy nodes of the first object. 
 Any evaluation point at which the relative difference of the second \lstinline{nuSQUIDS} object's result from that of the first is greater than the specified tolerance is reported, and the greatest such discrepancy is reported at the end. 
 This generic routine may not be suitable in all situations, but gives a basis for users to begin assessing the parameter choices needed for their problems. 
 It was used to determine integration error tolerances and in relevant cases node counts for the test shown in the rest of this section. 
@@ -2029,7 +2026,7 @@ It was used to determine integration error tolerances and in relevant cases node
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.9\textwidth]{fig/propagation-scaling.pdf}
-  \caption{Propagation time scaling with problem size on Machine 1. Only the time to run \lstinline{EvolveState} is included, omitting cross section preparation time for the cases with interactions. This initialization can be separated (by calling \lstinline{InitializeInteractions} manually), and is shown as `Cross Section Initialization'. Propagation with only oscillation effects shows scaling which is very close to linear in the number of energies, while propagation with interactions takes time which is approximately quadratic in the number of energies.}
+  \caption{Propagation time scaling with problem size on Machine 1. Only the time to run \lstinline{EvolveState} is included, omitting cross-section preparation time for the cases with interactions. This initialization can be separated by calling \lstinline{InitializeInteractions} manually, and is shown as `Cross Section Initialization'. Propagation with only oscillation effects shows scaling which is very close to linear in the number of energies, while propagation with interactions takes time which is approximately quadratic in the number of energies.}
   \label{fig:propagation_scaling}
 \end{figure}
 
@@ -2037,11 +2034,11 @@ Several tests were performed to demonstrate how the time to perform multi-energy
 The results of these tests are shown in Fig.~\ref{fig:propagation_scaling}. 
 
 The `Low-energy Oscillations' tests used a flat input spectrum  over an energy range of 1~GeV - 10~GeV, initially consisting of $\nu_\mu$ only. 
-For these tests non-coherent interactions were disabled. 
+For these tests, non-coherent interactions were disabled. 
 The `Broad-energy Interactions' test used an $E^{-2}$ input spectrum over 10~GeV - $10^7$~GeV with an initially equal mixture of flavors. 
 All tests propagated the input flux through the full diameter of the Earth, using {\ttf nuSQuIDS} version of PREM for the density. 
 Each propagation was tested for various sets of energy nodes, distributed uniformly in the logarithm of energy, from 50 to 1000 nodes, in increments of 50. 
-Each measurement was repeated five times and the median duration reported, unless the standard deviation of the distribution was greater than 1\% of the mean, which was taken to indicate an unstable set of measurements, in which case the entire set of measurements was repeated. 
+Each measurement was repeated five times, and the median duration reported, unless the standard deviation of the distribution was greater than 1\% of the mean, which was taken to indicate an unstable set of measurements, in which case the entire set of measurements was repeated. 
 
 The oscillation-only propagations are expected to scale linearly with the number of nodes, as the calculation performed for each integration step consists primarily of evolving the flavor projectors (needed to compute $H_1(E,x)$ and $H^*_1(E,x)$) and commutator forming the first terms on the right hand sides of Eqs.~\ref{eq:kinetic_equations}, which must be repeated for each energy node, neutrino flavor, and particle type (neutrino and anti-neutrino).
 This is borne out quite well by the measurements. 
@@ -2051,11 +2048,11 @@ The representation of the four-flavor state for each component has sixteen compo
 The addition of the sterile flavor also forces the ODE integrator to use a smaller step size for the integration, taking nearly eight times as many steps to complete the propagation. 
 The combination of these effects seems to plausibly account for the observed decrease in speed. 
 
-The time for propagations including non-coherent interactions (`Broad-energy Interactions') can be expected to scale quadratically in the number of energy nodes, due to the need to calculate the cascading of particles at each node down to all lower energy nodes. 
-In addition, calculating the interactions requires an additional initialization step, in which the cross section data governing the cascading processes, is gathered. 
+The time for propagations, including non-coherent interactions (`Broad-energy Interactions'), can be expected to scale quadratically in the number of energy nodes, due to the need to calculate the cascading of particles at each node down to all lower energy nodes. 
+In addition, calculating the interactions requires an additional initialization step, in which the cross section data governing the cascading processes is gathered. 
 Since this extra step is needed only once for a \lstinline{nuSQUIDS} object to be able to perform multiple propagations with the same set of energy nodes, which is often relevant as various hypothesis input fluxes are tested, it is accounted separately in Fig.~\ref{fig:propagation_scaling} as `Cross Section Initialization'. 
 Both the cross section initialization and the propagations with interactions show approximately the expected quadratic scaling, and the calculation of both interactions and oscillations together (`Broad-energy Interactions with Oscillations') exhibits the additional cost of including both types of effects. 
-A brief departure from the expected power law form of the propagation time scaling is observed at intermediate numbers of energy nodes is also observed for the tests with interactions; in Fig.~\ref{fig:propagation_scaling} this appears approximately between 200 and 300 energy nodes. 
+A brief departure from the expected power law form of the propagation time scaling is observed at intermediate numbers of energy nodes is also observed for the tests with interactions; in Fig.~\ref{fig:propagation_scaling}, this appears approximately between 200 and 300 energy nodes. 
 This is believed to be a result of the calculation's memory use growing comparable in size to the CPU's last-level cache (8 MB, for Machine 1). 
 It appears reliably, but moves to higher node counts for CPUs with larger cache sizes. 
 See Sec.~\ref{ssec:memory} for a discussion of memory use and some representative numbers which support this hypothesis. 
@@ -2077,7 +2074,7 @@ The interpolation of the state, computation and evolution of the $H_0$ operator,
 
 Fig.~\ref{fig:evaluation_scaling} shows how the rate of flux evaluations scales with the number of energy nodes treated for the four example problems introduced in Sec.~\ref{ssec:propagation_scaling}. 
 As expected, due to the binary search for adjacent nodes, a weak dependence on number of nodes is observed. 
-A marked drop in performance also occurs between the three flavor and four flavor oscillation calculations, as expected from the corresponding increase in the complexity of both the states and operators. 
+A marked drop in performance also occurs between the three-flavor and four-flavor oscillation calculations, as expected from the corresponding increase in the complexity of both the states and operators. 
 
 \subsubsection{Concurrent Evaluation}
 
@@ -2143,7 +2140,7 @@ If the external neutrino source feature is used, it requires a buffer of another
 
 It should be noted that $P$ can only take on the values 1 and 2, $T$ is typically 2, and $N$ is generally 3 or 4. 
 
-As an example, a modestly sized 3 flavor neutrino oscillation calculation might use 100 energy nodes and not consider non-coherent interactions, so $M=100$, $N=3$, $P=2$ (if both neutrinos and anti-neutrinos are considered), and $T$ is irrelevant. 
+As an example, a modestly-sized three-flavor neutrino oscillation calculation might use 100 energy nodes and not consider non-coherent interactions, so $M=100$, $N=3$, $P=2$ (if both neutrinos and anti-neutrinos are considered), and $T$ is irrelevant. 
 Assuming typical data sizes of 8 bytes for both pointers and double-precision floating-point numbers, such a calculation will then require $24435 * 8$ bytes or approximately 191 kilobytes of memory, plus approximately another 170 kilobytes allocated by GSL (for the RKF45 stepper). 
 
 Due to the quadratic scaling with number of energy nodes (of the differential charged- and neutral-current interaction cross sections and $\tau$ decay spectra), memory requirements are much higher for calculations with non-coherent interactions. 
@@ -2155,29 +2152,26 @@ Use of the external neutrino source feature, even with this larger problem size,
 
 Besides configuring the number of energy nodes and the error tolerance to the lowest and loosest values which will provide the desired precision, there are several other considerations for using {\ttf nuSQuIDS} with the best possible efficiency. 
 
-On simple trick is to turn off features which are not needed for a given calculation. 
+One simple trick is to turn off features which are not needed for a given calculation. 
 If neutrino oscillations are not relevant in the regime covered by a given propagation problem, they can be disabled, and the same is true for non-coherent interactions. 
 With oscillations disabled, {\ttf nuSQuIDS} is able to skip computing the evolution of the flavor projection operators, and with interactions disabled it can omit obtaining interaction cross sections, updating interaction lengths for the matter density at each step, and computing the contribution to each energy node from the neutrinos cascading down from higher energy nodes. 
 Additionally, some particular types of interactions can be enabled or disabled as needed, in particular, tau regeneration and Glashow resonance effects. 
-For example, to propagate a high energy atmospheric neutrino flux, not only are oscillations potentially unnecessary, but the flavor composition of the flux may mean the tau regeneration is irrelevant as well. 
+For example, to propagate a high-energy atmospheric neutrino flux, not only are oscillations potentially unnecessary, but the flavor composition of the flux may mean the tau regeneration is irrelevant as well. 
 If a flux is being calculated which involves no anti-neutrinos, the effects of the Glashow resonance will not appear, and they may be turned off without changing the result. 
 In general, {\ttf nuSQuIDS} attempts to detect possibilities at runtime to minimize work performed, and this is fairly successful in the case of tau regeneration, so turning this feature off may not produce much change in computation time. 
 Handling of the Glashow resonance, though, requires additional interaction length updates which the existing structure of the code is unable to optimize away even when it turns out to be unused, so turning this capability off when it is not needed can have a useful impact. 
 
-The cross section data required to compute non-coherent interactions is dependent only on the placement of the energy nodes, not on the flux being propagated. 
+The cross-section data required to compute non-coherent interactions is dependent only on the placement of the energy nodes, not on the flux being propagated. 
 As a result, if many fluxes are to be calculated over the same set of nodes, it is most efficient to reuse the same \lstinline{nuSQUIDS} object, merely resetting the initial flux with \lstinline{Set_initial_state} before calling \lstinline{EvolveState} again, so that this initialization is not repeated. 
 As shown in \ref{fig:propagation_scaling} the initialization can take 5-15\% of the time for the propagation, so this can represent an important savings over many propagations. 
 
 \section{Conclusions}
 \label{sec:conclu}
 
-In this article we have written in detail the equations that guide the evolution of an ensemble of neutrinos
-in a dense medium, and described the \nuSQUIDS~ library that solves these equations. We have provided examples
-of the core features of the library and discussed its performance.
 \nuSQUIDS~  provides a complete solution to neutrino propagation while accounting for neutrino oscillations and scattering. 
 We find that it is competitive with dedicated neutrino oscillation calculators, when the number of evaluations of the oscillation probability
-is large; which is the typical case of interest in neutrino experiments.
-The library also has a {\ttf Python} extension which we also discuss. Finally, the \nuSQUIDS~ library has been designed to be easily extendable 
+is large, which is the typical case of interest in neutrino experiments.
+The library also has a {\ttf Python} extension. Finally, the \nuSQUIDS~ library has been designed to be easily extendable 
 to both new media and new physics scenarios. User contributions to the project are encouraged and a number of additional
 models have already been implemented and are linked in {\ttf resources/user\_contributions}.
 
@@ -2207,7 +2201,6 @@ Pedro Machado, Aaron Vincent, and Logan Wille for providing the Solar model file
 CAA is supported by the Faculty of Arts and Sciences of Harvard University, the Alfred P. Sloan Foundation, and was supported by U.S. National Science Foundation (NSF) grant PHY-1505858 through this work.
 JS is supported by  European ITN project H2020-MSCA-ITN-2019/860881-HIDDeN, the Spanish grants FPA2016-76005-C2-1-P, 
 PID2019-108122GB-C32, PID2019-105614GB-C21.
-CNW is supported by.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{nusquids}
