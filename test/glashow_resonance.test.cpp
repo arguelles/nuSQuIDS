@@ -52,8 +52,10 @@ int main (int argc, char const *argv[])
   const unsigned int numneu = 3;
   const unsigned int num_steps = 201;
   squids::Const units;
-  std::shared_ptr<NullCrossSections> ndcs = std::make_shared<NullCrossSections>();
-  nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true,ndcs);
+  auto gr_only = std::make_shared<CrossSectionLibrary>();
+  gr_only->addTarget(electron,GlashowResonanceCrossSection());
+  gr_only->addTarget(isoscalar_nucleon, NullCrossSections());
+  nuSQUIDS squid(logspace(1e4*units.GeV,1e7*units.GeV,num_steps),numneu,both,true,gr_only);
 
   std::shared_ptr<ConstantDensity> const_dens = std::make_shared<ConstantDensity>(10.,0.5);
   std::shared_ptr<ConstantDensity::Track> const_dens_track = std::make_shared<ConstantDensity::Track>(10000.*units.km);
@@ -100,21 +102,6 @@ int main (int argc, char const *argv[])
     output << squid.EvalFlavorAtNode(1,i,1)*ee << " ";
     output << squid.EvalFlavorAtNode(2,i,1)*ee << " ";
     output << std::endl;
-    /*
-    for (auto flav=0; flav<3; flav++) {
-      assert(squid.EvalFlavorAtNode(flav,i,0) == 0);
-      // Extra interaction channel suppresses nue_bar more than other flavors
-      //assert(squid.EvalFlavorAtNode(flav,i,1) >= squid.EvalFlavorAtNode(0,i,1));
-      if(squid.EvalFlavorAtNode(flav,i,1) < squid.EvalFlavorAtNode(0,i,1))
-        output << "nu_e bar not smaller than other flavors: " << flav << ' ' << i << ' '
-         << squid.EvalFlavorAtNode(flav,i,1) << ' ' << squid.EvalFlavorAtNode(0,i,1) << std::endl;;
-      // If there is some nue_bar flux left over, there must also be some other flavors
-      if (flav!=0 && squid.EvalFlavorAtNode(0,i,1)>0 && squid.EvalFlavorAtNode(flav,i,1)<=0){
-        output << "Unexpected lack of flux: " << flav << ' ' << i
-         << ' ' << squid.EvalFlavorAtNode(0,i,1) << ' ' << squid.EvalFlavorAtNode(flav,i,1) << std::endl;
-      }
-    }
-    */
   }
 
   return 0;
