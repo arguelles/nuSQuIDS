@@ -2810,7 +2810,7 @@ twelve text files, containing all cross sections related to a single target spec
 (e.g. all cross sections for DIS neutrino interactions with protons). 
 
 When an {\ttf HDF5} file is used, it must have an internal structure as shown 
-in Table~\ref{tab:hdf_cross_layout}. All cross sections must be tabulated with the same set of incident neutrino energies, and each singly-differential cross section must be tabulated for the same set of out-going lepton energies, expressed in the $z$ variable described in Sec.~\ref{ssssec:differential_tabulation}. 
+in Table~\ref{tab:hdf_cross_layout}. All cross sections must be tabulated with the same set of incident neutrino energies, and each singly-differential cross section must be tabulated for the same set of out-going lepton energies, expressed in the $z$ variable described in Sec.~\ref{sec:differential_tabulation}. 
 These common energy and $z$ values are stored in the one-dimensional {\ttf energies} and {\ttf zs} datasets. 
 For the energies, more specifically, the base-10 logarithms of the energies in GeV are stored. 
 All total cross section tables are one-dimensional datasets containing the base-10 logarithm of the cross section values in cm$^2$, and all singly-differential cross section tables are two-dimensional datasets with dimensions incident and out-going energy containing the base-10 logarithm of the cross section values in cm$^2$. 
@@ -2868,79 +2868,6 @@ and the differential cross section in cm$^2$.
   \caption{HDF5 cross section format. `CC' and `NC' are abbreviations for charged-current and neutral current, respectively. For the common case that two flavors (e.g. electron and muon) have indistinguishable cross section values, one group may be a link to the other within the file.}
   \label{tab:hdf_cross_layout}
 \end{figure}
-
-\subsubsubsection{Singly-Differential Cross Section Tabulation}
-\label{ssssec:differential_tabulation}
-Efforts to precisely and consistently capture the physics of the singly-differential DIS cross sections have lead to using a slightly unusual tabulation scheme, the details of which we describe here. 
-
-First, in order to interpolate cross section values for arbitrary incident and out-going energies, it is convenient that values be tabulated on some rectangular grid. 
-The natural choice is to use a common set of out-going energies energies for all incident energies. 
-Clearly, such a set of out-going energies should extend up to the maximum tabulated incident energy. 
-However, the cross section is meaningless for out-going energies greater than the incident energy, so for all table rows corresponding to incident energies less than the maximum tabulated, some of the higher out-going energy entries will be undefined, and must be filled with some dummy value (or a non-rectangular storage format must be used). 
-This layout is shown in the left panel of Fig.~\ref{fig:dsdy_tab}. 
-The presence of this diagonal boundary through the table between physical and unphysical regions frustrates simple interpolation schemes in the region near the boundary, as the method used must not allow the undefined or placeholder values to contribute to the calculation of the interpolated value. 
-This can be addressed by switching interpolation methods depending on location in the table (such as using linear interpolation via barycentric coordinates on a triangle for points in cells with only three physically allowed corner points but typical rectangular bilinear interpolation in other cells), but this adds complexity and is hostile to using higher-order interpolation methods. 
-As a more minor point, when typical rectangular storage formats are used, the unphysical region wastes storage space. 
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.9\textwidth]{fig/dsdy_tabulation.eps}
-  \caption{Schematic depiction of the two tabulation schemes discussed for singly-differential cross sections. (a) shows simple tabulation in $E_{in}$ and $E_{out}$, while (b) shows the scheme introduced here using $E_{in}$ and the transformed $z$ variable, and indicates the $z = 1$ entries which are replaced by the values chosen to approximate the peak as a function of $E_{out}$ or $z$. It is assumed that $E_{out}$ ranges over the same set of values as $E_{in}$, and that $z$ ranges over [0, 1].}
-  \label{fig:dsdy_tab}
-\end{figure}
-
-Second, the cross sections have considerable curvature, which leads to systematic errors when linear interpolation is used. 
-These errors are illustrated in the lower panel of Fig.~\ref{fig:cross_interp} where the relative error of the interpolated cross section grows periodically to between the tabulated cross section points. 
-It should be the case that the integral of the singly-differential cross section over out-going energy for a given incident energy should equal the total cross section (up to truncation effects due to the limited domain of tabulation). 
-If this is not the case, errors gradually accumulate when solving the evolution of a neutrino flux undergoing interactions with matter, producing non-physical artifacts in the final computed flux. 
-This effect is particularly pernicious because it is difficult to detect in calculations using a coarse energy node spacing, with its nature only becoming clearly evident for node spacings finer than the cross section tabulation spacing. 
-Importantly, neither calculation will be correct, but efforts to determine a suitably dense node spacing can be frustrated by the appearance of the unphysical artifacts when more dense spacing are tested for comparison. 
-
-\begin{figure}
-  \centering
-  \includegraphics[width=0.9\textwidth]{fig/cross_section_interpolation.pdf}
-  \caption{Illustration of problems interpolating the singly-differential DIS cross section at high energies and the effects of different mitigations discussed in the text. The 'Dense Tabulation' represents an essentially ideal treatment which unfortunately uses far too many samples for general practicality (10,000 samples per decade in $E_out$). The 'Coarse Tabulation' uses are more normal 50 samples per decade. The tabulation points for the coarse table are visible as the points in the the lower panel where the error of the interpolation disappears, since the values tabulated in both tables are identical where they both exist. The linear interpolation of the coarse table is efficient to compute, but has problematically large errors in near the centers of the table bins due to being unable to represent curvature. Approximation with cubic splines greatly reduces this type of error. Simple interpolation with the final table entry (for $E_{out} = E_{in}$) being the formally correct zero value shows a very large error due to entirely missing the peak of the function. Replacing the final sample with a carefully chosen approximation eliminates this severe effect, although the true shape of the peak still cannot be captured.}
-  \label{fig:cross_interp}
-\end{figure}
-
-Third, as incident neutrino energies increase, the cross section as a function of out-going energy develops a sharp peak structure for out-going energies close to the incident energy. 
-Inevitably this peak will at some energy become too narrow to be sampled accurately by the tabulation spacing, whatever it has been chosen to be. 
-This problem is greatly exacerbated by the additional fact that when the out-going energy is equal to the incident energy, the cross section must be zero. 
-Taken literally, this forces the final table entry in each row to be zero, which causes the interpolation between the last two table entries to fall sharply, even when one would wish for it to first rise to the peak. 
-Since a large portion of the integral of the differential cross section can be contained in this peak this causes a sizable discrepancy between the integral of the (interpolated) differential cross section and the total cross section. 
-This is illustrated in Fig.~\ref{fig:cross_interp} by the severe disagreement between the ideal sufficiently dense tabulation and the (practically realizable) coarse tabulation with linear interpolation over the latter's last table bin. 
-
-To address the first and second problems, it is desirable to use a rectangular tabulation which has no unphysical entries and will permit simple use of higher order interpolation methods, such as cubic splines (or bicubic interpolation based on cubic splines, given the two-dimensional nature of the table). 
-It is therefore useful to introduce a variable $z$:
-
-\begin{equation}
-  z = {E_{out} - E_{out,min} \over E_{in} - E_{out,min}}
-\end{equation}
-
-where $E_{in}$ is the incident neutrino energy, $E_{out}$ is the out-going lepton energy, and $E_{out,min}$ is the minimum tabulated out-going lepton energy. 
-This variable has the property that for $E_{out}$ ranging over $[E_{out,min}, E_{in}]$, $z$ takes on values from $[0, 1]$ for all $E_{in}$. 
-If one tabulates in some set of $z$ values distributed over $[0, 1]$, the range of $E_{out}$ values covered will differ for different $E_{in}$, but in a useful way, since all will be physically meaningful, and while no $E_{out}$ values except $E_{out,min}$ will generally be shared between different $E_{in}$ values, this does no particular harm, since interpolation can simply be performed in the $(E_{in}, z)$ space. 
-Tabulation in $z$ eliminates the first concern and significantly mitigates the second by enabling convenient use of higher order interpolation schemes, as shown in Fig.~\ref{fig:cross_interp}, where the spline interpolation shows greatly reduced errors for all except the last bin (which merits a separate discussion) compared to the linear interpolation. 
-It should be noted that $z$ is undefined for $E_{in} = E_{out,min}$, but there can be no non-zero cross section for this table row (shown in the right panel Fig.~\ref{fig:dsdy_tab} as white points) if it is included anyway, so {\ttf nuSQuIDS} will never explicitly refer to these entries and they can be safely set to any convenient values (such as values similar to the entries for the next row with greater $E_{out}$, in order to give well-behaved interpolation). 
-
-Unfortunately, tabulation in $z$ does nothing useful to address the third concern. 
-More additional, valid tabulated values are added for lower incident energies, which have less need to resolve a sharp peak. 
-Instead, another approach is needed. 
-As previously mentioned, the $E_{out} = E_{in}$ (or $z = 1$) column of the table (shown as gray points in the right panel of Fig.~\ref{fig:dsdy_tab}) is known to always be formally zero, and so like the $E_{in} = E_{out,min}$ row it is not explicitly needed. 
-Since this column is also a major driver of the bad interpolation of the peak when it is unresolvable inside the final table bin, replacing it is doubly useful for changing the interpolation to be something more suitable. 
-Since the only strictly physically correct value to place in this column is zero, any other choice is an approximation, and which approximation is `best' is a matter of interpretation. 
-Since the shape of the peak itself cannot be represented faithfully, we choose to attempt to preserve its integral instead, and choose to replace the final entry in the two with one selected so that the average of the last two values is equal to the true average computed from a detailed integral of the cross section over the bin. 
-That is, if $T_i$ are the tabulated cross section values, of which there are $N$ in the table row, we set:
-
-\begin{equation}
-  T_{N} = {2 \over y(E_{out,N}) - y(E_{out,N-1})}\int^{y(E_{out,N})}_{y(E_{out,N-1})}{{d\sigma \over dy} dy} - T_{N-1}
-\end{equation}
-
-where $y$ is the standard scaling variable $y = (E_{in} - E_{out}) / E_{in}$. 
-This choice gives the correct integral when the table is interpolated linearly, and gives similarly close results for common choices of higher-order interpolation, and can be interpreted as `smearing out' the contribution of the peak uniformly across the table bin in a cumulative sense. 
-The two curves shown in Fig.~\ref{fig:cross_interp} with `Peak Approximation' in their labels show this scheme in action. 
-While some residual error in the interpolated cross section remains due to the approximation cutting through the peak rather than following it exactly, the situation is vastly improved over the interpolation without approximation which drops rapidly to zero (extremely so, due to interpolation being done in the space of the logarithm of the cross section). 
-From the figure it is clear that this much more accurately captures the contribution of this bin to the integral. 
 
 
 \subsubsection{Constructors}
@@ -4456,6 +4383,79 @@ header where the new class of interest is defined. In this code we have used two
 This module needs to be compiled with the same dependencies as our nominal python bindings, for which we suggest the user
 to copy our Makefile and modify the name of the library to be generated to match the module name. As a final step the user
 should place the resulting shared object library in the system {\ttf PYTHONPATH}.
+
+\section{Singly-Differential Cross-Section Tabulation}
+\label{sec:differential_tabulation}
+Efforts to precisely and consistently capture the physics of the singly-differential DIS cross sections have lead to using a slightly unusual tabulation scheme, the details of which we describe here. 
+
+First, in order to interpolate cross section values for arbitrary incident and out-going energies, it is convenient that values be tabulated on some rectangular grid. 
+The natural choice is to use a common set of out-going energies energies for all incident energies. 
+Clearly, such a set of out-going energies should extend up to the maximum tabulated incident energy. 
+However, the cross section is meaningless for out-going energies greater than the incident energy, so for all table rows corresponding to incident energies less than the maximum tabulated, some of the higher out-going energy entries will be undefined, and must be filled with some dummy value (or a non-rectangular storage format must be used). 
+This layout is shown in the left panel of Fig.~\ref{fig:dsdy_tab}. 
+The presence of this diagonal boundary through the table between physical and unphysical regions frustrates simple interpolation schemes in the region near the boundary, as the method used must not allow the undefined or placeholder values to contribute to the calculation of the interpolated value. 
+This can be addressed by switching interpolation methods depending on location in the table (such as using linear interpolation via barycentric coordinates on a triangle for points in cells with only three physically allowed corner points but typical rectangular bilinear interpolation in other cells), but this adds complexity and is hostile to using higher-order interpolation methods. 
+As a more minor point, when typical rectangular storage formats are used, the unphysical region wastes storage space. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig/dsdy_tabulation.eps}
+  \caption{Schematic depiction of the two tabulation schemes discussed for singly-differential cross sections. (a) shows simple tabulation in $E_{in}$ and $E_{out}$, while (b) shows the scheme introduced here using $E_{in}$ and the transformed $z$ variable, and indicates the $z = 1$ entries which are replaced by the values chosen to approximate the peak as a function of $E_{out}$ or $z$. It is assumed that $E_{out}$ ranges over the same set of values as $E_{in}$, and that $z$ ranges over [0, 1].}
+  \label{fig:dsdy_tab}
+\end{figure}
+
+Second, the cross sections have considerable curvature, which leads to systematic errors when linear interpolation is used. 
+These errors are illustrated in the lower panel of Fig.~\ref{fig:cross_interp} where the relative error of the interpolated cross section grows periodically to between the tabulated cross section points. 
+It should be the case that the integral of the singly-differential cross section over out-going energy for a given incident energy should equal the total cross section (up to truncation effects due to the limited domain of tabulation). 
+If this is not the case, errors gradually accumulate when solving the evolution of a neutrino flux undergoing interactions with matter, producing non-physical artifacts in the final computed flux. 
+This effect is particularly pernicious because it is difficult to detect in calculations using a coarse energy node spacing, with its nature only becoming clearly evident for node spacings finer than the cross section tabulation spacing. 
+Importantly, neither calculation will be correct, but efforts to determine a suitably dense node spacing can be frustrated by the appearance of the unphysical artifacts when more dense spacing are tested for comparison. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig/cross_section_interpolation.pdf}
+  \caption{Illustration of problems interpolating the singly-differential DIS cross section at high energies and the effects of different mitigations discussed in the text. The `Dense Tabulation' represents an essentially ideal treatment which unfortunately uses far too many samples for general practicality (10,000 samples per decade in $E_{out}$). The `Coarse Tabulation' uses are more normal 50 samples per decade. The tabulation points for the coarse table are visible as the points in the the lower panel where the error of the interpolation disappears, since the values tabulated in both tables are identical where they both exist. The linear interpolation of the coarse table is efficient to compute, but has problematically large errors in near the centers of the table bins due to being unable to represent curvature. Approximation with cubic splines greatly reduces this type of error. Simple interpolation with the final table entry (for $E_{out} = E_{in}$) being the formally correct zero value shows a very large error due to entirely missing the peak of the function. Replacing the final sample with a carefully chosen approximation eliminates this severe effect, although the true shape of the peak still cannot be captured.}
+  \label{fig:cross_interp}
+\end{figure}
+
+Third, as incident neutrino energies increase, the cross section as a function of out-going energy develops a sharp peak structure for out-going energies close to the incident energy. 
+Inevitably this peak will at some energy become too narrow to be sampled accurately by the tabulation spacing, whatever it has been chosen to be. 
+This problem is greatly exacerbated by the additional fact that when the out-going energy is equal to the incident energy, the cross section must be zero. 
+Taken literally, this forces the final table entry in each row to be zero, which causes the interpolation between the last two table entries to fall sharply, even when one would wish for it to first rise to the peak. 
+Since a large portion of the integral of the differential cross section can be contained in this peak this causes a sizable discrepancy between the integral of the (interpolated) differential cross section and the total cross section. 
+This is illustrated in Fig.~\ref{fig:cross_interp} by the severe disagreement between the ideal sufficiently dense tabulation and the (practically realizable) coarse tabulation with linear interpolation over the latter's last table bin. 
+
+To address the first and second problems, it is desirable to use a rectangular tabulation which has no unphysical entries and will permit simple use of higher order interpolation methods, such as cubic splines (or bicubic interpolation based on cubic splines, given the two-dimensional nature of the table). 
+It is therefore useful to introduce a variable $z$:
+
+\begin{equation}
+  z = {E_{out} - E_{out,min} \over E_{in} - E_{out,min}}
+\end{equation}
+
+where $E_{in}$ is the incident neutrino energy, $E_{out}$ is the out-going lepton energy, and $E_{out,min}$ is the minimum tabulated out-going lepton energy. 
+This variable has the property that for $E_{out}$ ranging over $[E_{out,min}, E_{in}]$, $z$ takes on values from $[0, 1]$ for all $E_{in}$. 
+If one tabulates in some set of $z$ values distributed over $[0, 1]$, the range of $E_{out}$ values covered will differ for different $E_{in}$, but in a useful way, since all will be physically meaningful, and while no $E_{out}$ values except $E_{out,min}$ will generally be shared between different $E_{in}$ values, this does no particular harm, since interpolation can simply be performed in the $(E_{in}, z)$ space. 
+Tabulation in $z$ eliminates the first concern and significantly mitigates the second by enabling convenient use of higher order interpolation schemes, as shown in Fig.~\ref{fig:cross_interp}, where the spline interpolation shows greatly reduced errors for all except the last bin (which merits a separate discussion) compared to the linear interpolation. 
+It should be noted that $z$ is undefined for $E_{in} = E_{out,min}$, but there can be no non-zero cross section for this table row (shown in the right panel Fig.~\ref{fig:dsdy_tab} as white points) if it is included anyway, so {\ttf nuSQuIDS} will never explicitly refer to these entries and they can be safely set to any convenient values (such as values similar to the entries for the next row with greater $E_{out}$, in order to give well-behaved interpolation). 
+
+Unfortunately, tabulation in $z$ does nothing useful to address the third concern. 
+More additional, valid tabulated values are added for lower incident energies, which have less need to resolve a sharp peak. 
+Instead, another approach is needed. 
+As previously mentioned, the $E_{out} = E_{in}$ (or $z = 1$) column of the table (shown as gray points in the right panel of Fig.~\ref{fig:dsdy_tab}) is known to always be formally zero, and so like the $E_{in} = E_{out,min}$ row it is not explicitly needed. 
+Since this column is also a major driver of the bad interpolation of the peak when it is unresolvable inside the final table bin, replacing it is doubly useful for changing the interpolation to be something more suitable. 
+Since the only strictly physically correct value to place in this column is zero, any other choice is an approximation, and which approximation is `best' is a matter of interpretation. 
+Since the shape of the peak itself cannot be represented faithfully, we choose to attempt to preserve its integral instead, and choose to replace the final entry in the row with one selected so that the average of the last two values is equal to the true average computed from a detailed integral of the cross section over the bin. 
+That is, if $T_i$ are the tabulated cross section values, of which there are $N$ in the table row, we set:
+
+\begin{equation}
+  T_{N} = {2 \over y(E_{out,N}) - y(E_{out,N-1})}\int^{y(E_{out,N})}_{y(E_{out,N-1})}{{d\sigma \over dy} dy} - T_{N-1}
+\end{equation}
+
+where $y$ is the standard scaling variable $y = (E_{in} - E_{out}) / E_{in}$. 
+This choice gives the correct integral when the table is interpolated linearly, and gives similarly close results for common choices of higher-order interpolation, and can be interpreted as `smearing out' the contribution of the peak uniformly across the table bin in a cumulative sense. 
+The two curves shown in Fig.~\ref{fig:cross_interp} with `Peak Approximation' in their labels show this scheme in action. 
+While some residual error in the interpolated cross section remains due to the approximation cutting through the peak rather than following it exactly, the situation is vastly improved over the interpolation without approximation which drops rapidly to zero (extremely so, due to interpolation being done in the space of the logarithm of the cross section). 
+From the figure it is clear that this much more accurately captures the contribution of this bin to the integral. 
 
 
 \section{Test suite}
