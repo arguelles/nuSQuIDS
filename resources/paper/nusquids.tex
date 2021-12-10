@@ -230,8 +230,8 @@ are provided with the library, in \ref{sec:code} we describe
 the main classes and structure of the code; and finally, in \ref{sec:python}
 we describe the library {\ttf Python} interface. 
 
-\section{Neutrino Oscillations}
-\subsection{Density Matrix Formalism}
+\section{Mathematical Framework}
+\subsection{Neutrino Oscillations}
 \label{sec:theory} 
 In this section we briefly review neutrino oscillations
 using the density matrix formalism.
@@ -323,7 +323,8 @@ The corresponding evolution equation  for the neutrino state is
 \label{eq:schrodinger_int}
 \end{equation}
 
-So far we have only incorporated vacuum oscillations and matter
+\subsection{Non-coherent Interactions}
+So far, we have only incorporated vacuum oscillations and matter
 effects through coherent interactions, but we now wish to extend this
 formalism to incorporate non-coherent interactions and collective
 neutrino behavior. In what follows, we will remove the subindex $I$ and
@@ -467,53 +468,6 @@ bin spill-over. Special care should be taken for hard spectra,
 {\it e.g.} $\phi(E_\nu) = E^{-1}$, where this maybe more relevant and the user is encouraged
 to check the effect of discretization by modifying the energy nodes spacing and cross sections' granularity.
 
-\subsection{Fast Oscillations Approximation}
-
-In the regime where the oscillation frequencies are too large to be
-resolved by the energy resolution of a detector, the oscillation length is much
-shorter that the production region of the propagated neutrinos, or the
-traveled distance is large enough to produce the physical separation
-of the different mass eigenstates, the oscillations due to the quantum
-interference vanish.
-
-In order to implement the evaluation of the vacuum oscillations in
-this regime, generalized functions for the analytic evolution are included in
-SQuIDS~\cite{SQUIDS} versions 1.2 and later. 
-A low-level generalized version of the function {\ttf PrepareEvolve} is included:
-
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
-  void PrepareEvolve(double* buffer, double t, double scale, std::vector<bool>& avr) const
-\end{lstlisting}
-where {\ttf buffer}  will contain all of the pre-evaluated
-trigonometric functions needed to evaluate the evolution give by the {\ttf 
-SU\_vector} to be used by any {\ttf Evolve()} function. 
-For frequencies, given by difference of the eigenvalues, 
-larger than the value given by {\ttf scale} the trigonometric evaluations are set to zero. 
-The time over which the evolution is to be evaluated is {\ttf double t} and the {\ttf avr} 
-vector is treated as an output parameter; its elements are set to
-{\ttf true} when the corresponding frequency is set to zero due to the fast
-oscillation approximation.
-
-A set of higher-level functions to evaluate the expectation values of
-the system in this approximations are also added:
-
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
-double GetExpectationValue(SU_vector op, unsigned int nrh, unsigned int i, double scale, std::vector<bool>& avr) const;
-double GetExpectationValueD(const SU_vector& op, unsigned int nrh, double x, double scale, std::vector<bool>& avr) const;
-\end{lstlisting}
-
-where the two extra arguments, {\ttf scale} and {\ttf avr}, are included with the same meanings as in the generalized {\ttf PrepareEvolve}.
-In \ref{sec:code} the functions to evaluate the the expectation values for the neutrinos, {\ttf EvalFlavor} in
-{\ttf nuSQuIDS}, are described in detail. 
-
-Besides using this approximation in the evaluation, essentially to set the states
-from the interaction picture to the real picture, these approximate functions can be also used to compute the right-hand-side
-terms of the differential equation when the oscillations are much
-faster than the time scales of a given numerical system. This can be
-understood as the leading order of the Magnus expansion~\cite{Magnus:1954zz}, and can
-speed up numerical calculations dramatically in some concrete physics setups,
-such as oscillations in the early universe~\cite{Hernandez:2016kel}. 
-
 \section{Features}
 \label{sec:features}
 
@@ -592,9 +546,13 @@ It is numerically expensive to solve the neutrino evolution on a very dense grid
 {\ttf nuSQuIDS} introduces a novel solution to this problem by permitting the evaluation of fast oscillations in a way that the oscillations due to vacuum are tracked analytically.
 The evaluation of oscillations on a grid of nodes that has been already computed has been significantly optimized making it possible to evaluate the oscillation probability for large Monte Carlo data sets much faster than computing the individual oscillation probabilities at each of the Monte Carlo event energies.
 
-As noted in the previous poin,t the issue of fast oscillations and the localization of the neutrino emission is related. 
+As noted in the previous point, the issue of fast oscillations and the localization of the neutrino emission is related. 
 Neutrinos emitted by an extended source smear out the neutrino oscillation probability statistically.
 {\ttf nuSQuIDS} provides an option to analytically perform the smearing of the oscillation probability, in which the user provides the size of the oscillation length that they which to smear.
+This can be
+understood as the leading order of the Magnus expansion~\cite{Magnus:1954zz}, and can
+speed up numerical calculations dramatically in some concrete physics setups,
+such as oscillations in the early universe~\cite{Hernandez:2016kel}. 
 This calculation has no significant overhead and is much more efficient than performing integrals over the production region.
 This feature is most useful in computing the oscillation expected from a nuclear reactor on a nearby detector, where one typically needs to smear over the reactor core size, or in computing the yield of atmospheric neutrino oscillations where one needs to smear over the production region in the atmosphere, which is several kilometers in size.
 
@@ -3352,7 +3310,7 @@ content of a given flavor for a specific neutrino energy  {\ttf enu}
 by interpolating in the interaction basis. In each function, when
 considering  {\ttf  NT = both}, the parameter {\ttf rho} toggles
 between {\ttf neutrino (0)} and {\ttf antineutrino (1)}.
-The last function gets two additional arguments: a {\ttf scale}, such
+The last overload takes two additional arguments: a {\ttf scale}, such
 that all $H_0$ induced oscillation frequencies larger than this scale
 will be averaged, and a vector of booleans, which entries will be set to
 true if the corresponding oscillations frequencies have been averaged
