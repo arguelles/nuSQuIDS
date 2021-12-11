@@ -476,7 +476,7 @@ to check the effect of discretization by modifying the energy nodes spacing and 
 {\ttf nuSQuIDS} is able to compute the neutrino oscillation probabilities in the presence of matter.
 Neutrino oscillations can be computed for up to six neutrino flavors out of the box, though this can be extended to an arbitrary number of
 neutrino flavors by producing additional tables using the provided {\ttf Mathematica} files.
-The calculation allows setting both the mixing angles and the CP-violating phases.
+The calculation allows setting both the mixing angles and the $CP$-violating phases.
 Using the {\ttf Body} and {\ttf Track} objects, {\ttf nuSQuIDS} can compute the oscillation probability in any media provided by the user.
 Default media, such as the Earth, the Sun, a constant density slab, and others are provided for immediate use.
 In general, no constraints exist in the trajectory of the neutrino oscillation, though in the provided implementations, all neutrinos are assumed
@@ -584,6 +584,115 @@ All {\ttf nuSQuIDS} functions can be accessed in {\ttf C++}; however, recently, 
 To facilitate the usage of {\ttf nuSQuIDS} with {\ttf Python}-based physics software, an interface to {\ttf Python} is implemented by means of the Boost library.
 Most of the functionality of {\ttf nuSQuIDS} is available through the {\ttf Python} interface, with the notable exception of new body objects and new physics operators. 
 These limitations arise because these types of extensions require user-provided functions which must be evaluated very frequently during the propagation calculation, which, if written in {\ttf Python}, would produce a significant amount of overhead.
+
+\section{Usage Examples}
+\label{sec:short_examples}
+Provided along with the code are a set of working examples demonstrating its use for various purposes. 
+Here, we discuss two illustrative use cases: computing neutrino oscillations for a range of energies simultaneously, and extending the base implementation in the library with new physics. 
+
+\subsection{Multiple Energy Propagation}
+In this section, we discuss an abbreviated version of the multiple energy propagation example found in the {\ttf examples/Multiple\_energy} subdirectory. 
+
+Unit conversion factors and physical constants are provided by the supporting {\ttf SQuIDS} library's {\ttf Const} class. 
+It is typical to allocate an instance of this class to make these conveniently available:
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+squids::Const units;
+\end{lstlisting}
+
+Next, we construct the {\ttf nuSQUIDS} object itself. 
+For the multiple-energy mode, it requires an array of energies for which calculations will be carried out, which we choose here to be 200 values, spaced logarithmically from 1 GeV to 1,000 GeV. 
+We choose the number of neutrino flavors to consider to be four: three active flavors and one sterile. 
+These inputs are passed to the class constructor, along with the {\ttf neutrino} constant for the third argument to indicate that we will consider only neutrinos and not anti-neutrinos, and {\ttf false} for the fourth argument to disable the calculation of non-coherent interactions. 
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+auto energies = logspace(1.*units.GeV, 1.e4*units.GeV, 200);
+unsigned int numneu = 4;
+nuSQUIDS nus(energies, numneu, neutrino, false /*no interactions*/);
+\end{lstlisting}
+
+Next, we choose the environment (matter profile) through which we will propagate the neutrino flux. 
+We choose here the Earth, with path passing through its full diameter, and apply these choices to the {\ttf nuSQUIDS} object:
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+double phi = units.pi; // zenith angle for trajectory
+auto earth_atm = std::make_shared<EarthAtm>();
+auto track_atm = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
+nus.Set_Body(earth_atm);
+nus.Set_Track(track_atm);
+\end{lstlisting}
+
+A variety of other {\ttf Body} classes are provided with the library for media such as vacuum, constant density material, material with user-specified variable density, and the Sun. 
+Additionally, users can create their own {\ttf Body} implementations for needs not covered by these. 
+Each {\ttf Body} type has an associated {\ttf Track} class, parameterizing paths through it in whatever manner is most appropriate. 
+
+The parameters of the neutrino mixing matrix can be fully customized. 
+Here, we take a set of nominal values:
+
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+nus.Set_MixingAngle(0,1,0.563942);
+nus.Set_MixingAngle(0,2,0.154085);
+nus.Set_MixingAngle(1,2,0.785398);
+nus.Set_SquareMassDifference(1,7.65e-05);
+nus.Set_SquareMassDifference(2,0.00247);
+nus.Set_SquareMassDifference(3,0.1);
+nus.Set_MixingAngle(1,3,0.1);
+\end{lstlisting}
+
+Mixing angles are expressed in radians, and are labeled by the lower an upper states they connect, with zero-based indexing.
+Squared mass differences are specified in eV$^2$ and are always with respect to the lowest-mass eigenstate, so only the upper state index must be specified. 
+$CP$-violating phases can also be specified, again in radians and with two state indices. 
+If unspecified, they default to zero. 
+
+Next, the initial neutrino flux before propagation must be configured. 
+Here, we will use a simple power-law spectrum, purely of the $\nu_\mu$ flavor (determined by the {\ttf k == 1} condition). 
+The flux is specified as a two-dimensional array, indexed by neutrino flavor and energy:
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+marray<double,2> inistate{energies.size(), numneu};
+double N0 = 1.0e18;
+for(int i = 0 ; i < inistate.extent(0); i++){
+  for(int k = 0; k < inistate.extent(1); k ++){
+    inistate[i][k] = (k == 1) ? N0*pow(energies[i],-2) : 0.0;
+  }
+}
+nus.Set_initial_state(inistate,flavor);
+\end{lstlisting}
+If we choose to work with both neutrinos and anti-neutrinos at the same time, this array would be rank three, with an additional, middle index taking on values zero for neutrinos and one for anti-neutrinos. 
+
+A number of settings are exposed which govern how the ODE solving process operates. 
+The most critical are the error tolerances, whose values should be chosen based on the precision needed and the difficulty of the propagation problem; see Sec~\ref{ssec:precision_parameters} for more detailed discussion. 
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+nus.Set_rel_error(1.0e-5);
+nus.Set_abs_error(1.0e-5);
+\end{lstlisting}
+
+After all settings are configured, the propagation itself can be performed:
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,firstnumber=last]
+nus.EvolveState();
+\end{lstlisting}
+
+At this point, the propagated flux can be examined. 
+For simplicity, we evaluate it for all three flavors over a grid of energies, and write these results to a file, from which they can be plotted, etc.:
+\begin{lstlisting}[frame=leftline, numbers=left, breaklines=true, firstnumber=last]
+std::ofstream file("fluxes_flavor.txt");
+file << "# E flux-nu_e flux-nu_mu flux-nu_tau\n";
+for(double E : logspace(1.*units.GeV, 1.e4*units.GeV, 1000)){
+  file << E << " ";
+  for(int fl=0; fl<numneu; fl++)
+    file << " " <<  nus.EvalFlavor(fl, E);
+  file << "\n";
+}
+\end{lstlisting}
+It is worth noting that we can evaluate the final flux on a grid of energies much more dense that was used for the propagation. 
+This takes advantage of the interpolation between propagated energies, which automatically includes vacuum oscillations, providing a more precise approximation than a physics-unaware interpolation. 
+Fig.~\ref{fig:short_multimode} shows the oscillation probabilities calculated in this example.
+
+\begin{figure}[h]
+  \label{fig:short_multimode}
+  \centering
+  \includegraphics[width=0.7\textwidth]{fig/Multiplot.eps} 
+  \caption{Output for the multiple-energy mode with oscillations including a sterile neutrino (3+1)} 
+\end{figure}
+
+\subsection{Extended Physics}
 
 \section{Comparison to Other Software}
 \label{sec:comparison}
@@ -1050,7 +1159,7 @@ including the effects of charged and neutral current interactions.
 In the following we describe the code for the example.
 
 As before, we construct the {\ttf Const} object to have a set of useful physical parameters.
-\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1,firstnumber=last]
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true, label = ex:sin1]
   squids::Const units;
 \end{lstlisting}
 
@@ -1066,7 +1175,7 @@ the propagation for three active neutrinos or three active and one sterile.
   }
 \end{lstlisting}
 
-In the next line, we construct the nuSQUIDS object. For the
+In the next line, we construct the {\ttf nuSQUIDS} object. For the
 multiple energy constructor, we need to provide the following arguments:
 a list of neutrino energy nodes
 (\lstinline[columns=fixed,breaklines=true]{logspace(1.*units.GeV,1.e4*units.GeV,200)}),
@@ -1074,7 +1183,7 @@ number of neutrino flavors ({\ttf numneu}= 3 or 4), neutrino or
 anti-neutrino type ({\ttf neutrino}), and whether to compute non-coherent scattering
 interactions ({\ttf false}). 
 \begin{lstlisting}[frame=leftline, numbers = left,breaklines=true,
-  label = ex:sin1,firstnumber=last]
+  label = ex:sin1,firstnumber=8]
   nuSQUIDS nus(logspace(1.*units.GeV,1.e4*units.GeV,200),numneu,neutrino,false);
 \end{lstlisting}
 
