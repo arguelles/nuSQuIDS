@@ -141,7 +141,7 @@ void nuSQUIDS::init(double xini){
 
 void nuSQUIDS::Set_E(double Enu){
   if( ne != 1 )
-    throw std::runtime_error("nuSQUIDS::Error:Cannot use Set_E in single energy mode.");
+    throw std::runtime_error("nuSQUIDS::Error:Can only use Set_E in single energy mode.");
   E_range = marray<double,1>{1};
   E_range[0] = Enu;
   Set_xrange(std::vector<double>{Enu});
