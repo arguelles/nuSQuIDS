@@ -694,6 +694,99 @@ Fig.~\ref{fig:short_multimode} shows the oscillation probabilities calculated in
 
 \subsection{Extended Physics}
 
+Besides using the physics phenomena already implemented in {\ttf nuSQuIDS}, users can extend it with various forms of new physics. 
+This is accomplished by writing a class derived from the provided {\ttf nuSQUIDS} class, and customizing one or more of the physics member functions used during evolution. 
+These functions are {\ttf H0}--the time-independent portion of the Hamiltonian from Eq.~\ref{eq:hamiltonian}, {\ttf HI}--the time-dependent portion of the Hamiltonian from Eq.~\ref{eq:hamiltonian}, {\ttf GammaRho}--the function describing non-coherent attenuation of the neutrino state (combining $\Gamma$ and $\bar\Gamma$ from Eq.~\ref{eq:kinetic_equations}), {\ttf InteractionsRho}--the function describing additions to the neutrino state (combining $F$ and $\bar F$ from Eq.~\ref{eq:kinetic_equations}), {\ttf GammaScalar}--analogous to {\ttf GammaRho} for any scalar fields added to the system, {\ttf InteractionsScalar}--analogous to {\ttf InteractionsRho} for any scalar fields, and the helper {\ttf AddToPreDerive} which can be used for any time/position dependent bookkeeping in the implementation, although only a subset are likely to need customization for any particular physics scenario. 
+
+As an example of this, we demonstrate implementing a non-standard interaction (NSI). 
+This requires defining the interaction as an operator using the {\ttf squids::SU\_vector} type, and adding a contribution from it to the time-dependent Hamiltonian. 
+First, we define the new class:
+\begin{lstlisting}[frame=leftline, numbers = left,breaklines=true]
+class nuSQUIDSNSI: public nuSQUIDS {
+  private:
+    double epsilon_mutau;
+    squids::SU_vector NSI;
+    std::vector<squids::SU_vector> NSI_evol;
+    
+    void AddToPreDerive(double x);
+    squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const;
+
+  public:
+    nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange, 
+        int numneu, NeutrinoType NT,
+	bool iinteraction, double th01=0.563942, 
+	double th02=0.154085, double th12=0.785398);
+};
+\end{lstlisting}
+We add three member variables: {\ttf epsilon\_mutau}--the sole NSI parameter we will support, {\ttf NSI}--the operator we construct from it, and {\ttf NSI\_evol} to hold time-evolved copies of {\ttf NSI} as an optimization. 
+We will add a new implementation of {\ttf HI} to update the Hamiltonian, as well as using {\ttf AddToPreDerive} to pre-calculate updates to {\ttf NSI\_evol}. 
+A new constructor will take the value of the NSI parameter, as well as the standard oscillation angles, which influence the value of the NSI operator. 
+
+\begin{lstlisting}[frame=leftline, numbers=left, breaklines=true, firstnumber=last]
+nuSQUIDSNSI(double epsilon_mutau, marray<double,1> Erange, 
+  int numneu, NeutrinoType NT, bool iinteraction,
+  double th01, double th02, double th12)
+  : nuSQUIDS(Erange,numneu,NT,iinteraction),
+    epsilon_mutau(epsilon_mutau)
+{
+  assert(numneu == 3);
+  // define the flavor structure as a complex matrix
+  gsl_matrix_complex* M = gsl_matrix_complex_calloc(3,3);
+  gsl_complex c {{ epsilon_mutau , 0.0 }};
+  gsl_matrix_complex_set(M,2,1,c);
+  gsl_matrix_complex_set(M,1,2,gsl_complex_conjugate(c));
+  NSI = squids::SU_vector(M);
+  gsl_matrix_complex_free(M);
+  
+  Set_MixingAngle(0,1,th01);
+  Set_MixingAngle(0,2,th02);
+  Set_MixingAngle(1,2,th12);
+  // rotate to mass representation
+  NSI.RotateToB1(params);
+
+  NSI_evol.resize(ne);
+  for(int ei = 0; ei < ne; ei++)
+    NSI_evol[ei] = squids::SU_vector(nsun);
+}
+\end{lstlisting}
+The constructor creates the NSI operator in the flavor basis from a matrix representation, then transforms it to the mass basis for later use. 
+Note that setting the mixing angles defines the effect of the {\ttf RotateToB1} basis-transformation function. 
+The {\ttf NSI\_evol} vector is filled with a set of correctly-sized operator vectors, but their values are not yet computed. 
+Due to the simplicity of the example, only three-neutrino scenarios are supported, with other settings being rejected. 
+
+The implementation of {\ttf AddToPreDerive} is responsible for computing the time-evolved operator values, which depend on both the time/position of the system--{\ttf x} and on the time-independent Hamiltonian for each energy, accessed from the base class' {\ttf H0\_array}:
+\begin{lstlisting}[frame=leftline, numbers=left, breaklines=true, firstnumber=last]
+void AddToPreDerive(double x){
+  for(int ei = 0; ei < ne; ei++)
+    NSI_evol[ei] = NSI.Evolve(H0_array[ei],(x-Get_t_initial()));
+}
+\end{lstlisting}
+The implementation of {\ttf HI} can then make use of {\ttf NSI\_evol}, knowing that {\ttf AddToPreDerive} will be called to update it for each {\ttf x} before any calls to {\ttf HI} are made. 
+
+The implementation of {\ttf HI} itself is concerned with adding the additional term to the Hamiltonian:
+\begin{lstlisting}[frame=leftline, numbers=left, breaklines=true, firstnumber=last]
+squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
+  static const double HI_prefactor=params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
+  double CC = HI_prefactor*current_density*current_ye;
+  squids::SU_vector potential = (3.0*CC)*NSI_evol[ei];
+
+  if ((index_rho == 0 and NT==both) or NT==neutrino){
+      // neutrino potential
+      return nuSQUIDS::HI(ei,index_rho) + potential;
+  } else if ((index_rho == 1 and NT==both) or NT==antineutrino){
+      // antineutrino potential
+      return nuSQUIDS::HI(ei,index_rho) + -1*std::move(potential);
+  }
+  throw std::runtime_error("nuSQUIDS::HI : unknown particle or antiparticle");
+}
+\end{lstlisting}
+A few details to note are that {\ttf current\_density} and {\ttf current\_ye} are member variables of the {\ttf nuSQUIDS} class which are used to obtain the matter properties (density and electron fraction) at the current position, the base {\ttf nuSQUIDS::HI} is invoked to obtain the original, standard model terms of the Hamiltonian, and that when the potential term must have the opposite sign for the anti-neutrino case, we apply the {\ttf std::move} function to it before performing the multiplication by $-1$ to indicate that the object's contents may be overwritten, eliminating the need for a temporary storage buffer. 
+
+The full implementation of the class contains several other useful and convenient features, such as updating the serialization mechanism to save and restore the additional physics parameter; for the details we refer the reader to the file {\ttf examples/NSI/NSI.h} in the code. 
+With the {\ttf nuSQUIDSNSI} class fully defined, its usage is analogous to the original {\ttf nuSQUIDS}, with the only major difference being the extra parameters for the constructor; setting the initial state, running the evolution, and reading out the final state are the same. 
+
+While this example makes only a very simple addition to the physics of {\ttf nuSQuIDS}, there are a wide variety possibilities of equal of greater complexity, such as new non-coherent interactions and additional, coupled scalar fields. 
+
 \section{Comparison to Other Software}
 \label{sec:comparison}
 
@@ -1723,7 +1816,7 @@ In this example we illustrate how to construct a derived class of
 other new physics setups~\ref{sec:LV}.
 
 The implementation of {\ttf nuSQUIDSNSI} class is in {\ttf NSI.h}.
-We will go trough the implementation to see what needs to be
+We will go through the implementation to see what needs to be
 added to the base class.
 
 First, we declare the NSI matter potential as a {\ttf SU\_vector}
@@ -1796,7 +1889,7 @@ matter potential plus the new NSI contribution.
 \begin{lstlisting}[frame=leftline, numbers =
   left,breaklines=true,label = ex:sin1,firstnumber=last]
     squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
-      double CC = HI_prefactor*body->density(*track)*body->ye(*track);
+      double CC=HI_prefactor*body->density(*track)*body->ye(*track);
 
       squids::SU_vector potential(nsun,hiBuffer.get());
 
