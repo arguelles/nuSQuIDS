@@ -35,8 +35,6 @@ class nuSQUIDSNSI: public nuSQUIDS {
 
     squids::SU_vector HI(unsigned int ei,unsigned int index_rho) const{
       double CC = HI_prefactor*current_density*current_ye;
-
-      // // construct potential in flavor basis
       squids::SU_vector potential(nsun,hiBuffer.get());
 
       potential = (3.0*CC)*NSI_evol[ei];
