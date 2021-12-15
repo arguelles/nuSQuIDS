@@ -100,11 +100,29 @@
 \setcounter{secnumdepth}{4}
 \setcounter{tocdepth}{4}
 
+%% This list environment is used for the references in the
+%% Program Summary
+%%
+\newcounter{bla}
+\newenvironment{refnummer}{%
+\list{[\arabic{bla}]}%
+{\usecounter{bla}%
+ \setlength{\itemindent}{0pt}%
+ \setlength{\topsep}{0pt}%
+ \setlength{\itemsep}{0pt}%
+ \setlength{\labelsep}{2pt}%
+ \setlength{\listparindent}{0pt}%
+ \settowidth{\labelwidth}{[9]}%
+ \setlength{\leftmargin}{\labelwidth}%
+ \addtolength{\leftmargin}{\labelsep}%
+ \setlength{\rightmargin}{0pt}}}
+ {\endlist}
+
 \begin{document}
 
 \begin{frontmatter}
 
-\title{\texttt{nuSQuIDS}: A toolbox for neutrino propagation\tnoteref{t1}}
+\title{\texttt{nuSQuIDS}: A toolbox for neutrino propagation\ifdefined\forjournal\else\tnoteref{t1}\fi}
 
 \author[HU]{Carlos A. Arg\"uelles}
 \ead{carguelles@fas.harvard.edu}
@@ -118,9 +136,15 @@
 Universitat de Barcelona, Diagonal 647, E-08028 Barcelona, Spain}
 \address[MSU]{Dept. of Physics and Astronomy, Michigan State University, East Lansing, MI 48824, USA}
 
-\tnotetext[t1]{The code can be found at \url{https://github.com/arguelles/nuSQuIDS}}
+\ifdefined\manualonly
+% omit most front matter
+\else % not manualonly
+\tnotetext[t1]{Code can be found at \url{https://github.com/arguelles/nuSQuIDS}}
+\ifdefined\forjournal
+\journal{Computer Physics Communications}
+\else
 \journal{arXiv}
-%\journal{Computer Physics Communications}
+\fi % forjournal
 
 \begin{abstract}
 The Neutrino Simple Quantum Integro-Differential Solver (\texttt{nuSQuIDS})
@@ -137,13 +161,48 @@ allows the user to incorporate new physics in novel scenarios.
 \begin{keyword}
 Neutrino oscillation, phenomenology, collective neutrino behavior, numerical techniques
 \end{keyword}
+\fi % manualonly
 
 \end{frontmatter}
+
+\ifdefined\forjournal
+{\bf PROGRAM SUMMARY}
+
+\begin{small}
+\noindent
+{\em Program Title:} Neutrino Simple Quantum Integro-Differential Solver \\
+{\em CPC Library link to program files:} (to be added by Technical Editor) \\
+{\em Developer's repository link:} \url{https://github.com/arguelles/nuSQuIDS} \\
+{\em Code Ocean capsule:} (to be added by Technical Editor)\\
+{\em Licensing provisions:} LGPL  \\
+{\em Programming language:} C++ with optional Python interface \\
+{\em Supplementary material:}                                 \\
+{\em Nature of problem(approx. 50-250 words):}\\
+  %Describe the nature of the problem here. \\
+{\em Solution method(approx. 50-250 words):}\\
+  %Describe the method solution here.
+{\em Additional comments including restrictions and unusual features (approx. 50-250 words):}\\
+  %Provide any additional comments here.
+   \\
+
+\begin{thebibliography}{0}
+\bibitem{1}Reference 1         % This list should only contain those items referenced in the                 
+\bibitem{2}Reference 2         % Program Summary section.   
+\bibitem{3}Reference 3         % Type references in text as [1], [2], etc.
+                               % This list is different from the bibliography at the end of 
+                               % the Long Write-Up.
+\end{thebibliography}
+\end{small}
+\fi % forjournal
 
 \hypersetup{linkcolor=black}
 \tableofcontents
 \hypersetup{linkcolor=blue}
 \newpage
+
+\ifdefined\manualonly
+% omit paper body
+\else % not manualonly
 \section{Introduction}
 \label{sec:intro} 
 
@@ -1123,10 +1182,21 @@ JS is supported by  European ITN project H2020-MSCA-ITN-2019/860881-HIDDeN, the 
 PID2019-108122GB-C32, PID2019-105614GB-C21.
 
 \bibliographystyle{elsarticle-num}
+\ifdefined\forjournal
+\bibliography{nusquids_journal}
+\else
 \bibliography{nusquids}
+\fi % forjournal
+\fi % manualonly
 
+\ifdefined\forjournal
+% no appendices
+\else
+\ifdefined\manualonly
+% let appendices be main sections
+\else
 \appendix
-
+\fi % manualonly
 
 \section{Examples}
 \label{sec:examples}
@@ -4778,6 +4848,13 @@ description of what they test.
 %\section{Additional resources}
 %\label{sec:resources}
 
+\journal{arXiv}
+\fi % forjournal
+
+\ifdefined\manualonly
+\bibliographystyle{elsarticle-num}
+\bibliography{manual}
+\fi
 
 \end{document}
 
