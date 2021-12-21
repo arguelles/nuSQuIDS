@@ -180,13 +180,14 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 {\em Nature of problem:}\\
 The evolution of neutrino fluxes includes both coherent flavor changes (oscillations) and non-coherent scattering interactions with matter. Calculating both types of phenomena is necessary for some studies in neutrino physics, and even in cases where it is not required it is convenient to have a full physics description available in a single package. \\
 {\em Solution method:}\\
-The Simple Quantum Integro-Differential Solver (SQuIDS)~\cite{summary_squids} is used to decompose neutrino fields with SU(N) algebras and solve for their evolution with standard ODE solvers (via the GNU Scientific Library~\cite{summary_gsl}). The evolution of the flavor/mass eigenstate relationships are kept updated in parallel with the ODE solution, as are interaction effects with matter. Users may add new material profiles and physics effects. \\
+The Simple Quantum Integro-Differential Solver (SQuIDS)~\cite{summary_squids, summary_squids_update} is used to decompose neutrino fields with SU(N) algebras and solve for their evolution with standard ODE solvers (via the GNU Scientific Library~\cite{summary_gsl}). The evolution of the flavor/mass eigenstate relationships are kept updated in parallel with the ODE solution, as are interaction effects with matter. Users may add new material profiles and physics effects. \\
 {\em Additional comments including restrictions and unusual features:}\\
 Vacuum oscillations are computed analytically, simplifying the ODE problem to be solved. This package supports additions to the neutrino flux over the full course of its evolution, allowing direct treatment of extended sources, and averaging of fast oscillations which cannot be experimentally resolved. The package does not currently implement the complex neutrino interactions relevant at low (O(10 GeV)) neutrino energies. 
    \\
 
 \begin{thebibliography}{0}
 \bibitem{summary_squids}C. A. Arg\"uelles Delgado, J. Salvado, C. N. Weaver, A Simple Quantum Integro-Differential Solver (SQuIDS), A Simple Quantum Integro-Differential Solver (SQuIDS), Comput. Phys. Commun. 196 (2015) 569–591. arXiv:1412.3832, doi:10.1016/j.cpc. 2015.06.022.
+\bibitem{summary_squids_update}C. A. Arg\"uelles Delgado, J. Salvado, C. N. Weaver, A Simple Quantum Integro-Differential Solver (SQuIDS), Computer Physics Communications 255 (2020) 107405. doi:https://doi.org/10.1016/j.cpc.2020.107405
 \bibitem{summary_gsl}B. Gough, GNU scientific library reference manual, Network Theory Ltd., 2009.
 \end{thebibliography}
 \end{small}
@@ -315,7 +316,7 @@ U(\theta_{ij}\delta_{ij})=R_{N-1\, N} R_{N-2\, N} ... R_{45} R_{35} R_{25} R_{15
 R_{34} R_{24} R_{14} R_{23} R_{13} R_{12}, 
 \end{equation}
 determined by angles, $\{\theta_{ij}\}$, and phases, $\{ \delta_{ij}
-\}$~\cite{SQUIDS}; see~\cite{Denton:2020igp} for a recent discussion about parameterizations of the PMNS matrix.
+\}$~\cite{SQUIDS, SQUIDSupdate}; see~\cite{Denton:2020igp} for a recent discussion about parameterizations of the PMNS matrix.
 When considering the standard three-flavor paradigm,
 the following parametrization is often used:
 \begin{equation}
