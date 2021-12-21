@@ -177,20 +177,17 @@ Neutrino oscillation, phenomenology, collective neutrino behavior, numerical tec
 {\em Licensing provisions:} LGPL  \\
 {\em Programming language:} C++ with optional Python interface \\
 {\em Supplementary material:}                                 \\
-{\em Nature of problem(approx. 50-250 words):}\\
-  %Describe the nature of the problem here. \\
-{\em Solution method(approx. 50-250 words):}\\
-  %Describe the method solution here.
-{\em Additional comments including restrictions and unusual features (approx. 50-250 words):}\\
-  %Provide any additional comments here.
+{\em Nature of problem:}\\
+The evolution of neutrino fluxes includes both coherent flavor changes (oscillations) and non-coherent scattering interactions with matter. Calculating both types of phenomena is necessary for some studies in neutrino physics, and even in cases where it is not required it is convenient to have a full physics description available in a single package. \\
+{\em Solution method:}\\
+The Simple Quantum Integro-Differential Solver (SQuIDS)~\cite{summary_squids} is used to decompose neutrino fields with SU(N) algebras and solve for their evolution with standard ODE solvers (via the GNU Scientific Library~\cite{summary_gsl}). The evolution of the flavor/mass eigenstate relationships are kept updated in parallel with the ODE solution, as are interaction effects with matter. Users may add new material profiles and physics effects. \\
+{\em Additional comments including restrictions and unusual features:}\\
+Vacuum oscillations are computed analytically, simplifying the ODE problem to be solved. This package supports additions to the neutrino flux over the full course of its evolution, allowing direct treatment of extended sources, and averaging of fast oscillations which cannot be experimentally resolved. The package does not currently implement the complex neutrino interactions relevant at low (O(10 GeV)) neutrino energies. 
    \\
 
 \begin{thebibliography}{0}
-\bibitem{1}Reference 1         % This list should only contain those items referenced in the                 
-\bibitem{2}Reference 2         % Program Summary section.   
-\bibitem{3}Reference 3         % Type references in text as [1], [2], etc.
-                               % This list is different from the bibliography at the end of 
-                               % the Long Write-Up.
+\bibitem{summary_squids}C. A. Arg\"uelles Delgado, J. Salvado, C. N. Weaver, A Simple Quantum Integro-Differential Solver (SQuIDS), A Simple Quantum Integro-Differential Solver (SQuIDS), Comput. Phys. Commun. 196 (2015) 569–591. arXiv:1412.3832, doi:10.1016/j.cpc. 2015.06.022.
+\bibitem{summary_gsl}B. Gough, GNU scientific library reference manual, Network Theory Ltd., 2009.
 \end{thebibliography}
 \end{small}
 \fi % forjournal
