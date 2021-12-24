@@ -271,25 +271,27 @@ propagation medium is also limited in some of these packages. {\ttf nuSQuIDS} se
 address all of these limitations by providing a highly-customizable
 package while at the same time remaining numerically efficient.
 
-% TODO: revisit this paragraph after editing complete
 In section~\ref{sec:theory}
 we review neutrino oscillation and interaction theory, 
-in section~\ref{sec:features} we summarize the main features of the code,
+in section~\ref{sec:features} we summarize the main features of the code, 
+in section~\ref{sec:short_examples} we show the use of the code in a few representative scenarios, 
 in section~\ref{sec:comparison} we discuss how this code compares to other software,
-in section~\ref{sec:examples} we show the use of the code in typical
-scenarios, in section~\ref{sec:performance} we show the performance of
+in section~\ref{sec:performance} we show the performance of
 the library, and finally section~\ref{sec:conclu} presents concluding remarks.
 
+\ifdefined\forjournal
+\else
 Additionally, an extended appendix that provides
 further useful information about the code.
 In \ref{sec:tests} we describe the unit tests that
 are provided with the library, in \ref{sec:code} we describe
 the main classes and structure of the code; and finally, in \ref{sec:python}
 we describe the library {\ttf Python} interface. 
+\fi %forjournal
 
 \section{Mathematical Framework}
-\subsection{Neutrino Oscillations}
-\label{sec:theory} 
+\label{sec:theory}
+\subsection{Neutrino Oscillations} 
 In this section we briefly review neutrino oscillations
 using the density matrix formalism.
 We can represent the state of a neutrino ensemble at an energy $E$
