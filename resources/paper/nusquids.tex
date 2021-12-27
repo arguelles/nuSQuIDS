@@ -432,7 +432,7 @@ The other interaction terms are as follows:
     F\left[\rho,\bar\rho;E,x\right] &=& \sum_\alpha \Pi_\alpha(E,x)  \int_E^\infty  
     {\rm Tr}\left[\Pi_\alpha(E_{\nu_\alpha},x) \rho(E_{\nu_\alpha},x) \right]
     \frac{1}{\lambda^\alpha_{\rm NC}(E_{\nu_\alpha},x)} \pa{N^\alpha_{\rm
-        NC}(E_{\nu_\alpha},E)}{E} dE_{\nu_\alpha}  \label{eq:intro} \nonumber\\
+        NC}(E_{\nu_\alpha},E)}{E} dE_{\nu_\alpha}  \label{eq:intronu} \nonumber\\
     &&  + \Pi_\tau (E,x) \int_E^\infty\int_{E_\tau}^\infty  
     {\rm Tr} \left[ \Pi_\tau(E_{\nu_\tau},x)
       \rho(E_{\nu_\tau},x)\right] \nonumber\\
@@ -456,7 +456,7 @@ The other interaction terms are as follows:
     \bar F\left[\rho,\bar\rho;E,x\right] &=& \sum_\alpha \bar\Pi_\alpha(E,x)  \int_E^\infty  
     {\rm Tr}\left[\bar\Pi_\alpha(E_{\bar\nu_\alpha},x) \bar\rho(E_{\bar\nu_\alpha},x) \right]
     \frac{1}{\bar\lambda^\alpha_{\rm NC}(E_{\bar\nu_\alpha},x)} \pa{\bar N^\alpha_{\rm
-        NC}(E_{\bar\nu_\alpha},E)}{E} dE_{\bar\nu_\alpha}  \label{eq:intro} \nonumber\\
+        NC}(E_{\bar\nu_\alpha},E)}{E} dE_{\bar\nu_\alpha}  \label{eq:intronubar} \nonumber\\
     &&  + \bar\Pi_\tau (E,x) \int_E^\infty\int_{E_\tau}^\infty  
     {\rm Tr} \left[ \bar\Pi_\tau(E_{\bar\nu_\tau},x)
       \bar\rho(E_{\bar\nu_\tau},x)\right] \nonumber\\
@@ -558,7 +558,7 @@ when re-weighting large Monte Carlo data sets.
 
 {\ttf nuSQuIDS} implements the standard neutrino oscillation Hamiltonian with matter effects;
 however, this can be extended to include additional terms that may appear in the Hamiltonian.
-This can be achieved as illustrated in examples~\ref{sec:NSI} and \ref{sec:LV}, where the user creates an inherited class of the main {\ttf nuSQuIDS} class and implements
+This can be achieved as illustrated in example~\ref{ssec:extphys}, where the user creates an inherited class of the main {\ttf nuSQuIDS} class and implements
 the desired new physics operators.
 In order to write the operators, the user needs to write in terms of the {\ttf SQuIDS} SU(N) vector type, which represents arbitrary hermitian matrices.
 Additionally, {\ttf SQuIDS} implements operations between matrices and scalars that typically arise in writing these terms,
@@ -752,6 +752,7 @@ Fig.~\ref{fig:short_multimode} shows the oscillation probabilities calculated in
 \end{figure}
 
 \subsection{Extended Physics}
+\label{ssec:extphys}
 
 Besides using the physics phenomena already implemented in {\ttf nuSQuIDS}, users can extend it with various forms of new physics. 
 This is accomplished by writing a class derived from the provided {\ttf nuSQUIDS} class, and customizing one or more of the physics member functions used during evolution. 
@@ -2767,7 +2768,7 @@ constructors and the functions that are not members of the parent class.
 The {\ttf Earth} body specification is designed to propagate neutrinos
 in the Earth from two points on the surface. Since the Earth in the
 PREM model is assumed to be spherically symmetric the length of the
-path is enough to determine the trajectory. {\ttfamily AkimaSpline}~\ref{sec:tools} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
+path is enough to determine the trajectory. {\ttfamily AkimaSpline} is used to interpolate $\rho$ and $y_e$ as a function of radius to the earth center.
 \begin{itemize}
 \item {\ttf Earth}
   \begin{lstlisting}
