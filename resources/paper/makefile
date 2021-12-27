@@ -41,7 +41,8 @@ clean :
 
 arxiv : nusquids.pdf
 	mkdir -p arxiv
-	cp -pr nusquids.tex nusquids.bbl fig arxiv/
+	cp -pr nusquids.bbl fig/* arxiv/
+	sed 's|{fig/|{|' < nusquids.tex > arxiv/nusquids.tex
 	tar cjf arxiv.tar.bz2 arxiv
 	rm -rf arxiv
 
