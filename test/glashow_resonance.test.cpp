@@ -90,6 +90,9 @@ int main (int argc, char const *argv[])
   squid.EvolveState();
   std::cout << "Propagation done" << std::endl;
   std::ostream &output = std::cout;
+  // One part in a thousand is a somewhat loose tolerance, but this is necessary because the key area
+  // around the resonance has such a suppression of the (nuebar) flux that it has much higher relative error.
+  output.precision(3);
   for (auto i=0; i < num_steps-1; i++) {
     double ee = E_range[i];
     double de = (E_range[i+1]-E_range[i])/units.GeV;
