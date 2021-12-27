@@ -34,8 +34,8 @@ void exercise_se_mode(unsigned int numneu,NeutrinoType NT, std::shared_ptr<Body>
   nus.Set_Body(body);
   squids::Const units;
 
-  nus.Set_rel_error(1.0e-5);
-  nus.Set_abs_error(1.0e-5);
+  nus.Set_rel_error(1.0e-10);
+  nus.Set_abs_error(1.0e-10);
   nus.Set_Basis(interaction);
   nus.Set_h(units.km);
   nus.Set_h_max(300.0*units.km);
