@@ -1,2 +1,0 @@
-cross_section_consistency.test.cpp
-glashow_resonance.test.cpp
