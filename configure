@@ -507,6 +507,9 @@ do
 	TMP=`echo "$var" | sed -n 's/^--python-module-dir=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then USER_PYTHON_MODULE_DIR="${TMP}"; continue; fi
 
+	TMP=`echo "$var" | sed -n 's/^--with-julia-bindings/true/p'`
+	if [ "$TMP" ]; then JULIA_BINDINGS=true; continue; fi
+
 	echo "config.sh: Unknown or malformed option '$var'" 1>&2
 	exit 1
 done
@@ -740,6 +743,14 @@ if [ "$PYTHON_BINDINGS" ]; then
 	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
 fi
 
+if [ "$JULIA_BINDINGS" ]; then
+	echo "JULIA_CFLAGS=$JULIA_CFLAGS" >> ./Makefile
+	echo "JULIA_LDFLAGS=$JULIA_LDFLAGS" >> ./Makefile
+	echo "CXX_JULIA_LDFLAGS=$CXX_JULIA_LDFLAGS" >> ./Makefile
+	echo "CXX_JULIA_CFLAGS=$CXX_JULIA_CFLAGS" >> ./Makefile
+	echo "JULIA_MODULEDIR=$JULIA_MODULEDIR" >> ./Makefile
+fi
+
 echo '
 
 INCnuSQUIDS=$(PATH_nuSQUIDS)/include
@@ -904,6 +915,32 @@ python-uninstall : $(PYTHON_LIB)
 
 ' >> ./Makefile
 fi
+
+if [ "$JULIA_BINDINGS" ]; then
+	echo '
+
+julia : $(JULIA_LIB)
+
+$(JULIA_LIB) : build/nuSQUIDSjl.o $(STAT_PRODUCT)
+	@echo Linking julia bindings
+	@$(CXX) $(DYN_OPT_JL) build/nuSQUIDSjl.o -Llib -l$(NAME) $(LDFLAGS) $(CXX_JULIA_LDFLAGS) $(JULIA_LDFLAGS) -o $(JULIA_LIB)
+
+build/nuSQUIDSjl.o : resources/julia/src/nuSQUIDSjl.cpp
+	@echo Compiling juliabindings
+	@$(CXX) $(CXXFLAGS) -c -Iresources/julia/inc $(JULIA_CFLAGS) $(CXX_JULIA_CFLAGS) $(CFLAGS) $< -o $@
+
+julia-install : $(JULIA_LIB)
+	@echo Installing julia module in $(JULIA_MODULEDIR)
+	@mkdir -p $(JULIA_MODULEDIR)
+	@cp $(JULIA_LIB) $(JULIA_MODULEDIR)
+
+julia-uninstall : $(JULIAN_LIB)
+	@echo Removing julia module from $(JULIA_MODULEDIR)
+	@rm $(JULIA_MODULEDIR)/$(NAME).so
+
+' >> ./Makefile
+fi
+
 
 echo "
 export CXX=\"${CXX}\"

@@ -41,9 +41,18 @@ clean :
 
 arxiv : nusquids.pdf
 	mkdir -p arxiv
-	cp -pr nusquids.bbl fig/* arxiv/
-	sed 's|{fig/|{|' < nusquids.tex > arxiv/nusquids.tex
+	cp -pr nusquids.bbl fig/*.pdf arxiv/
+	sed 's|{fig/|{|' < nusquids.tex > nusquids_tmp.tex
+	sed 's|.eps}|}|' < nusquids_tmp.tex > arxiv/nusquids.tex
 	tar cjf arxiv.tar.bz2 arxiv
 	rm -rf arxiv
+	rm -rf nusquids_tmp.tex
+
+journal : nusquids_journal.pdf
+	mkdir -p journal
+	sed 's|{fig/|{|' < nusquids.tex > journal/nusquids.tex
+	cp -pr nusquids_journal.tex nusquids.bib fig/*.eps journal/
+	tar cjf journal.tar.bz2 journal
+	rm -rf journal
 
 .PHONY : all fast clean arxiv
