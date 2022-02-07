@@ -110,6 +110,7 @@ class Body{
           /// Should be implemented by derived classes to append their
           /// additional parameters to TrackParams
           virtual void FillDerivedParams(std::vector<double>& TrackParams) const{}
+          virtual ~Track() = default;
     };
     /// \brief Return the density at a given trajectory object.
     virtual double density(const Track&) const {return 0.0;}
