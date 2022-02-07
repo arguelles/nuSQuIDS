@@ -297,20 +297,18 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def(py::init<std::string, std::string>(),py::arg("filename"),py::arg("root group name"));
       class_object->def(py::init<std::string, std::string, std::shared_ptr<nusquids::nuSQUIDS::InteractionStructure>>(),py::arg("filename"),py::arg("root group name"),py::arg("interaction structure"));
       class_object->def(py::init<unsigned int,NeutrinoType>(),py::arg("numneu"),py::arg("NT"));
-      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,1>&, Basis))&BaseType::Set_initial_state,SetInitialStateH5Overload<BaseType>());
-      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,2>&, Basis))&BaseType::Set_initial_state,SetInitialStateH5Overload<BaseType>());
-      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,3>&, Basis))&BaseType::Set_initial_state,SetInitialStateH5Overload<BaseType>());
+      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,1>&, Basis))&BaseType::Set_initial_state, py::arg("ini_state"), py::arg("basis") = Basis::flavor);
+      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,2>&, Basis))&BaseType::Set_initial_state, py::arg("ini_state"), py::arg("basis") = Basis::flavor);
+      class_object->def("Set_initial_state",(void(BaseType::*)(const marray<double,3>&, Basis))&BaseType::Set_initial_state, py::arg("ini_state"), py::arg("basis") = Basis::flavor);
       class_object->def("Set_Body",&BaseType::Set_Body, py::arg("Body"));
       class_object->def("Set_Track",&BaseType::Set_Track, py::arg("Track"));
       class_object->def("Set_E",&BaseType::Set_E, py::arg("NeutrinoEnergy"));
       class_object->def("EvolveState",&BaseType::EvolveState);
       class_object->def("GetERange",&BaseType::GetERange);
-      class_object->def("WriteStateHDF5",&BaseType::WriteStateHDF5,
-          WriteStateHDF5Overload<BaseType>(py::arg("hdf5_filename"),py::arg("group"),py::arg(" save_cross_sections"),py::arg("cross_section_grp_loc"),py::arg("overwrite"),
-            "Writes the current object into an HDF5 file."));
-      class_object->def("ReadStateHDF5",&BaseType::ReadStateHDF5,
-          ReadStateHDF5Overload<BaseType>(py::arg("hdf5_filename"),py::arg("group"),py::arg("cross_section_grp_loc"),
-            "Reads an HDF5 file and loads the contents into the current object."));
+      class_object->def("WriteStateHDF5",&BaseType::WriteStateHDF5, py::arg("hdf5_filename"),py::arg("group") = "/",py::arg("save_cross_sections") = true,py::arg("cross_section_grp_loc") = "",py::arg("overwrite") = true,
+            "Writes the current object into an HDF5 file.");
+      class_object->def("ReadStateHDF5",&BaseType::ReadStateHDF5,py::arg("hdf5_filename"),py::arg("group") = "/",py::arg("cross_section_grp_loc") = "",
+            "Reads an HDF5 file and loads the contents into the current object.");
       class_object->def("GetNumNeu",&BaseType::GetNumNeu);
       class_object->def("EvalMass",(double(BaseType::*)(unsigned int) const)&BaseType::EvalMass);
       class_object->def("EvalMass",(double(BaseType::*)(unsigned int,double,unsigned int,double, std::vector<bool>&) const)&BaseType::EvalMass);
@@ -392,9 +390,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def(py::init<std::string>(),py::arg("filename"));
       class_object->def("EvolveState",&nuSQUIDSAtm<BaseType>::EvolveState);
       class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
-      class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor,
-          nuSQUIDSAtm_EvalFlavor_overload<nuSQUIDSAtm<BaseType>>(py::arg("Flavor"),py::arg("cos(theta)"),py::arg("Neutrino Energy"),py::arg("NeuType"),py::arg("BoolToRandomzeProdutionHeight"),
-            "nuSQuIDSAtm evaluate flux.."));
+      class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor, py::arg("Flavor"),py::arg("cos(theta)"),py::arg("Neutrino Energy"),py::arg("NeuType") = 0,py::arg("BoolToRandomzeProdutionHeight") = false,
+            "nuSQuIDSAtm evaluate flux.");
       class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
       class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
@@ -427,10 +424,9 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetNumRho",&nuSQUIDSAtm<BaseType>::GetNumRho);
       class_object->def("GetnuSQuIDS",(std::vector<BaseType>&(nuSQUIDSAtm<BaseType>::*)())&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,py::return_value_policy::reference_internal);
       class_object->def("GetnuSQuIDS",(BaseType&(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,py::return_value_policy::reference_internal);
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
-      class_object->def("GetStates", (marray<double,2>(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetStates,
-        nuSQUIDSAtm_GetStates_overload<nuSQUIDSAtm<BaseType>>(py::arg("rho"), "Get evolved states of all nodes"));
+      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis"));
+      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis"));
+      class_object->def("GetStates", (marray<double,2>(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetStates,py::arg("rho") = 0, "Get evolved states of all nodes");
       class_object->def("GetERange",&nuSQUIDSAtm<BaseType>::GetERange);
       class_object->def("GetCosthRange",&nuSQUIDSAtm<BaseType>::GetCosthRange);
       class_object->def("Set_IncludeOscillations",&nuSQUIDSAtm<BaseType>::Set_IncludeOscillations);
