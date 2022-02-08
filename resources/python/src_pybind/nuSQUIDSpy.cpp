@@ -74,8 +74,8 @@ PYBIND11_MODULE(nuSQuIDS, m)
   ;
 
 
-  py::class_<squids::SU_vector, std::shared_ptr<squids::SU_vector> >(m,"SU_vector")
-    .def(py::init< std::vector<double> >())
+  py::class_<squids::SU_vector, std::shared_ptr<squids::SU_vector>>(m,"SU_vector")
+    .def(py::init< std::vector<double>>())
     .def(py::init<unsigned int>())
     .def(py::init<const squids::SU_vector&>())
     .def("Dim",&squids::SU_vector::Dim)
@@ -112,25 +112,25 @@ PYBIND11_MODULE(nuSQuIDS, m)
   ;
 
   py::class_<squids::detail::AdditionProxy, std::shared_ptr<squids::detail::AdditionProxy>>(m,"AdditionProxy");
-  py::implicitly_convertible< squids::detail::AdditionProxy , squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::AdditionProxy , squids::SU_vector>();
 
   py::class_<squids::detail::SubtractionProxy, std::shared_ptr<squids::detail::SubtractionProxy>>(m,"SubtractionProxy");
-  py::implicitly_convertible< squids::detail::SubtractionProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::SubtractionProxy, squids::SU_vector>();
 
   py::class_<squids::detail::NegationProxy, std::shared_ptr<squids::detail::NegationProxy>>(m,"NegationProxy");
-  py::implicitly_convertible< squids::detail::NegationProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::NegationProxy, squids::SU_vector>();
 
   py::class_<squids::detail::EvolutionProxy, std::shared_ptr<squids::detail::EvolutionProxy>>(m,"EvolutionProxy");
-  py::implicitly_convertible< squids::detail::EvolutionProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::EvolutionProxy, squids::SU_vector>();
 
   py::class_<squids::detail::MultiplicationProxy, std::shared_ptr<squids::detail::MultiplicationProxy>>(m,"MultiplicationProxy");
-  py::implicitly_convertible< squids::detail::MultiplicationProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::MultiplicationProxy, squids::SU_vector>();
 
   py::class_<squids::detail::iCommutatorProxy, std::shared_ptr<squids::detail::iCommutatorProxy>>(m,"iCommutatorProxy");
-  py::implicitly_convertible< squids::detail::iCommutatorProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::iCommutatorProxy, squids::SU_vector>();
 
   py::class_<squids::detail::ACommutatorProxy, std::shared_ptr<squids::detail::ACommutatorProxy>>(m,"ACommutatorProxy");
-  py::implicitly_convertible< squids::detail::ACommutatorProxy, squids::SU_vector >();
+  py::implicitly_convertible<squids::detail::ACommutatorProxy, squids::SU_vector>();
 
   py::enum_<NeutrinoType>(m,"NeutrinoType")
     .value("neutrino",neutrino)
@@ -145,20 +145,20 @@ PYBIND11_MODULE(nuSQuIDS, m)
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>(m,"nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>(m,"nuSQUIDSAtm");
 
-  py::class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections> >(m,"NeutrinoCrossSections");
+  py::class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>>(m,"NeutrinoCrossSections");
 
-  py::class_<NullCrossSections, NeutrinoCrossSections, std::shared_ptr<NullCrossSections> >(m,"NullCrossSections")
+  py::class_<NullCrossSections, NeutrinoCrossSections, std::shared_ptr<NullCrossSections>>(m,"NullCrossSections")
     .def("TotalCrossSection",&NullCrossSections::TotalCrossSection)
     .def("SingleDifferentialCrossSection",&NullCrossSections::SingleDifferentialCrossSection)
   ;
 
-  py::class_<GlashowResonanceCrossSection, NeutrinoCrossSections, std::shared_ptr<GlashowResonanceCrossSection> >(m,"GlashowResonanceCrossSection")
+  py::class_<GlashowResonanceCrossSection, NeutrinoCrossSections, std::shared_ptr<GlashowResonanceCrossSection>>(m,"GlashowResonanceCrossSection")
     .def("TotalCrossSection",&GlashowResonanceCrossSection::TotalCrossSection)
     .def("SingleDifferentialCrossSection",&GlashowResonanceCrossSection::SingleDifferentialCrossSection)
     .def("WDecayBranchingFraction",&GlashowResonanceCrossSection::WDecayBranchingFraction)
   ;
 
-  py::class_<NeutrinoDISCrossSectionsFromTables, NeutrinoCrossSections, std::shared_ptr<NeutrinoDISCrossSectionsFromTables> >(m,"NeutrinoDISCrossSectionsFromTables")
+  py::class_<NeutrinoDISCrossSectionsFromTables, NeutrinoCrossSections, std::shared_ptr<NeutrinoDISCrossSectionsFromTables>>(m,"NeutrinoDISCrossSectionsFromTables")
     .def(py::init<std::string>())
     .def("TotalCrossSection",&NeutrinoDISCrossSectionsFromTables::TotalCrossSection)
     .def("SingleDifferentialCrossSection",&NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection)
@@ -187,7 +187,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   // what is this?
   //bp::def("loadDefaultCrossSections",loadDefaultCrossSections);
 
-  py::class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra> >(m,"TauDecaySpectra")
+  py::class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>>(m,"TauDecaySpectra")
     .def(py::init<marray<double,1>>())
     .def("dNdEnu_All",&TauDecaySpectra::dNdEnu_All)
     .def("dNdEnu_Lep",&TauDecaySpectra::dNdEnu_Lep)
@@ -248,34 +248,33 @@ PYBIND11_MODULE(nuSQuIDS, m)
 
   {
     auto outer
-    = py::class_<Vacuum, Body, std::shared_ptr<Vacuum> >(m,"Vacuum")
-    .def("density",&Vacuum::density)
-    .def("ye",&Vacuum::ye)
+    = py::class_<Vacuum, Body, std::shared_ptr<Vacuum>>(m,"Vacuum")
+    .def(py::init<>())
+    .def("density",&Vacuum::density,py::arg("track"))
+    .def("ye",&Vacuum::ye,py::arg("track"))
     ;
 
-    py::class_<Vacuum::Track, std::shared_ptr<Vacuum::Track> >(outer,"Track")
-    .def(py::init<double>())
-    .def(py::init<double,double>())
+    py::class_<Vacuum::Track, Body::Track, std::shared_ptr<Vacuum::Track>>(outer,"Track")
+    .def(py::init<double>(),py::arg("xend"))
+    .def(py::init<double,double>(),py::arg("xini"),py::arg("xend"))
+    .def(py::init<double,double,double>(),py::arg("x"),py::arg("xini"),py::arg("xend"))
     .def("GetInitialX",&Vacuum::Track::GetInitialX)
     .def("GetFinalX",&Vacuum::Track::GetFinalX)
     .def("GetX",&Vacuum::Track::GetX)
     .def("SetX",&Vacuum::Track::SetX)
     .def("ReverseTrack",&Vacuum::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<Vacuum>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<Vacuum::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<ConstantDensity, Body, std::shared_ptr<ConstantDensity> >(m,"ConstantDensity")
+    = py::class_<ConstantDensity, Body, std::shared_ptr<ConstantDensity>>(m,"ConstantDensity")
     .def(py::init<double,double>())
     .def("density",&ConstantDensity::density)
     .def("ye",&ConstantDensity::ye)
     ;
 
-    py::class_<ConstantDensity::Track, std::shared_ptr<ConstantDensity::Track> >(outer,"Track")
+    py::class_<ConstantDensity::Track, Body::Track, std::shared_ptr<ConstantDensity::Track>>(outer,"Track")
     .def(py::init<double>())
     .def(py::init<double,double>())
     .def("GetInitialX",&ConstantDensity::Track::GetInitialX)
@@ -284,18 +283,15 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&ConstantDensity::Track::SetX)
     .def("ReverseTrack",&ConstantDensity::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<ConstantDensity>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<ConstantDensity::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<VariableDensity, Body, std::shared_ptr<VariableDensity> >(m,"VariableDensity")
-    .def(py::init< std::vector<double>,std::vector<double>,std::vector<double> >())
+    = py::class_<VariableDensity, Body, std::shared_ptr<VariableDensity>>(m,"VariableDensity")
+    .def(py::init< std::vector<double>,std::vector<double>,std::vector<double>>())
     ;
 
-    py::class_<VariableDensity::Track, std::shared_ptr<VariableDensity::Track> >(outer,"Track")
+    py::class_<VariableDensity::Track, Body::Track, std::shared_ptr<VariableDensity::Track>>(outer,"Track")
     .def(py::init<double>())
     .def(py::init<double,double>())
     .def("GetInitialX",&VariableDensity::Track::GetInitialX)
@@ -304,18 +300,15 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&VariableDensity::Track::SetX)
     .def("ReverseTrack",&VariableDensity::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<VariableDensity>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<VariableDensity::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<Earth, Body, std::shared_ptr<Earth> >(m,"Earth")
+    = py::class_<Earth, Body, std::shared_ptr<Earth>>(m,"Earth")
     .def(py::init<std::string>())
     ;
 
-    py::class_<Earth::Track, std::shared_ptr<Earth::Track> >(outer,"Track")
+    py::class_<Earth::Track, Body::Track, std::shared_ptr<Earth::Track>>(outer,"Track")
     .def(py::init<double>())
     .def(py::init<double,double,double>())
     .def("GetInitialX",&Earth::Track::GetInitialX)
@@ -324,18 +317,15 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&Earth::Track::SetX)
     .def("ReverseTrack",&Earth::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<Earth>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<Earth::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<Sun, Body, std::shared_ptr<Sun> >(m,"Sun")
+    = py::class_<Sun, Body, std::shared_ptr<Sun>>(m,"Sun")
     .def(py::init<std::string>())
     ;
 
-    py::class_<Sun::Track, std::shared_ptr<Sun::Track> >(outer,"Track")
+    py::class_<Sun::Track, Body::Track, std::shared_ptr<Sun::Track>>(outer,"Track")
     .def(py::init<double>())
     .def(py::init<double,double>())
     .def("GetInitialX",&Sun::Track::GetInitialX)
@@ -344,18 +334,15 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&Sun::Track::SetX)
     .def("ReverseTrack",&Sun::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<Sun>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<Sun::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<SunASnu, Body, std::shared_ptr<SunASnu> >(m,"SunASnu")
+    = py::class_<SunASnu, Body, std::shared_ptr<SunASnu>>(m,"SunASnu")
     .def(py::init<std::string>())
     ;
 
-    py::class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >(outer,"Track")
+    py::class_<SunASnu::Track, Body::Track, std::shared_ptr<SunASnu::Track>>(outer,"Track")
     .def(py::init<double>())
     .def(py::init<double,double>())
     .def("GetInitialX",&SunASnu::Track::GetInitialX)
@@ -364,14 +351,11 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&SunASnu::Track::SetX)
     .def("ReverseTrack",&SunASnu::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<SunASnu>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<SunASnu::Track>, std::shared_ptr<Body::Track> >();
   }
 
   {
     auto outer
-    = py::class_<EarthAtm, Body, std::shared_ptr<EarthAtm> >(m,"EarthAtm")
+    = py::class_<EarthAtm, Body, std::shared_ptr<EarthAtm>>(m,"EarthAtm")
     .def(py::init<std::string>())
     .def("GetRadius",&EarthAtm::GetRadius)
     .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
@@ -380,7 +364,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;
 
-    py::class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >(outer,"Track")
+    py::class_<EarthAtm::Track, Body::Track, std::shared_ptr<EarthAtm::Track>>(outer,"Track")
     .def(py::init<EarthAtm::Track>())
     .def(py::init<double,double,double>())
     .def(py::init<double,double,double,double>())
@@ -390,19 +374,16 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("SetX",&EarthAtm::Track::SetX)
     .def("ReverseTrack",&EarthAtm::Track::ReverseTrack)
     ;
-
-    py::implicitly_convertible< std::shared_ptr<EarthAtm>, std::shared_ptr<Body> >();
-    py::implicitly_convertible< std::shared_ptr<EarthAtm::Track>, std::shared_ptr<Body::Track> >();
   }
 
   /*
-  from_python_sequence< std::vector<double>, variable_capacity_policy >();
-  to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
+  from_python_sequence<std::vector<double>, variable_capacity_policy>();
+  to_python_converter<std::vector<double, class std::allocator<double>>, VecToList<double>> ();
   // register marray converters
-  py::to_python_converter< marray<double,1> , marray_to_numpyarray<1> >();
-  py::to_python_converter< marray<double,2> , marray_to_numpyarray<2> >();
-  py::to_python_converter< marray<double,3> , marray_to_numpyarray<3> >();
-  py::to_python_converter< marray<double,4> , marray_to_numpyarray<4> >();
+  py::to_python_converter<marray<double,1> , marray_to_numpyarray<1>>();
+  py::to_python_converter<marray<double,2> , marray_to_numpyarray<2>>();
+  py::to_python_converter<marray<double,3> , marray_to_numpyarray<3>>();
+  py::to_python_converter<marray<double,4> , marray_to_numpyarray<4>>();
 
   marray_from_python<1>();
   marray_from_python<2>();
