@@ -735,6 +735,7 @@ echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 if [ "$PYTHON_BINDINGS" ]; then
 	echo "PYTHON_CFLAGS=$PYTHON_CFLAGS" >> ./Makefile
 	echo "PYTHON_LDFLAGS=$PYTHON_LDFLAGS" >> ./Makefile
+	echo "BOOST_CFLAGS=$BOOST_CFLAGS" >> ./Makefile
 	echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
 	echo "PYTHON_MODULEDIR=$PYTHON_MODULEDIR" >> ./Makefile
 	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
@@ -891,7 +892,7 @@ $(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
 
 build/nuSQUIDSpy.o : resources/python/src/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
-	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(BOOST_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
 
 python-install : $(PYTHON_LIB)
 	@echo Installing python module in $(PYTHON_MODULEDIR)
