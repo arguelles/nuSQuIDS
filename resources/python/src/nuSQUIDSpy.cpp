@@ -340,6 +340,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
 
     class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track", init<double>())
     .def(init<double,double>())
+    .def(init<double,double,double>())
     .def("GetInitialX",&SunASnu::Track::GetInitialX)
     .def("GetFinalX",&SunASnu::Track::GetFinalX)
     .def("GetX",&SunASnu::Track::GetX)
