@@ -23,7 +23,7 @@
 
 #include "nuSQUIDSpy.h"
 
-PYBIND11_MODULE(nuSQuIDS, m)
+PYBIND11_MODULE(nuSQUIDS, m)
 {
   m.doc() = "nuSQuIDS Python Bindings"; // module docstring
   // import numpy array definitions
@@ -376,6 +376,9 @@ PYBIND11_MODULE(nuSQuIDS, m)
     ;
   }
 
+  py::class_<marray<double,1>>(m,"marray1")
+    .def(py::init<>())
+  ;
   /*
   from_python_sequence<std::vector<double>, variable_capacity_policy>();
   to_python_converter<std::vector<double, class std::allocator<double>>, VecToList<double>> ();
