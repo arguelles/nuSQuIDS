@@ -92,7 +92,7 @@ void nuSQUIDS::init(double xini){
   nsun = numneu;
 
   //initialize SQUIDS
-  ini(ne,numneu,1,0,xini);
+  ini(ne,numneu,1,numlep,xini);
   Set_CoherentRhoTerms(true);
   Set_h(1.*params.km);
   Set_h_max(std::numeric_limits<double>::max() );
@@ -178,7 +178,7 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
 
   try {
     // initialize SQUIDS
-    ini(ne,numneu,nrhos,0,xini);
+    ini(ne,numneu,nrhos,numlep,xini);
   } catch (std::exception& ex) {
     std::cerr << ex.what() << std::endl;
     throw std::runtime_error("nuSQUIDS::init : Failed while trying to initialize SQuIDS.");
@@ -431,11 +431,22 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
 }
 
 double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
-  return 0.0;
+  //TODO
+  // write member function that initializes table 
+  // marray<double,2> xs_tau
+  // here only evaluate table
+  return xs_tau[iscalar][ei] - gamma_tau;
 }
 
 double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
-  return 0.;
+  //TODO
+  double total_gain = 0.0;
+  for(unsigned int ep=ei; ep<ne; ep++){ // loop over initial tau neutrino energies
+    total_gain += estate[ep].scalar[iscalar]*dxs_tau[iscalar][ei][ep]*delE[ep-1];
+    total_gain += (estate[ep].rho[iscalar]*evol_b1_proj[iscalar][2][e1])*dxs_nu_tau[iscalar][ei][ep]*delE[ep-1];
+  }
+  total_gain += beta_e[ei]*estate[ei].scalar[iscalar]
+  return total_gain;
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() const{

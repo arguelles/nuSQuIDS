@@ -87,6 +87,8 @@ protected:
     Basis basis = interaction;
     /// \brief number of neutrino flavors.
     unsigned int numneu;
+    /// \brief number of charged leptons tracked.
+    unsigned int numlep;
     /// \brief number of energy nodes.
     unsigned int ne = nx;
 

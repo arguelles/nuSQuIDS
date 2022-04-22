@@ -577,6 +577,8 @@ At high energies, the neutrino interaction length is comparable to the size of t
 Additionally, it takes into account neutrino-electron scattering, which is only relevant for resonant electron-antineutrino scattering at neutrino energies close to 6.4~PeV~\cite{Glashow:1960zz}.
 A subdominant contribution from neutrino-photon scattering is not implemented~\cite{Seckel:1997kk,Alikhanov:2014uja,Alikhanov:2015kla,Zhou:2019frk,Zhou:2019vxt}, but can be easily extended in our framework; see~\cite{Garcia:2020jwr} for a publicly-available implementation of this cross section.
 Finally, the production of neutrinos from lepton decay is neglected for all flavors, except for tau neutrinos.
+Neglecting neutrinos from the other flavors has marginally impact on our calculation, since
+high-energy electrons and muons lose almost all of their energy to the medium before decaying, so that neutrinos produced from their decays are usually of energies far too low to be observed in neutrino telescopes.
 In this case, we account for the contribution of neutrinos from tau decay in the approximation that the tau decays promptly, so it does not undergo significant energy losses.
 This approximation is good below approximately 10~PeV and breaks down at higher energies; see~\cite{Safa:2021ghs,Garcia:2020jwr,NuSpaceSim:2021hgs} for recent work on implementing tau neutrino propagation at very high energies.
 
