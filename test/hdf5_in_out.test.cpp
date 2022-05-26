@@ -28,7 +28,7 @@ int main(){
 
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
+  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
 
   nus.Set_Body(earth_atm);
   nus.Set_Track(track_atm);

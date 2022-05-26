@@ -25,9 +25,6 @@
 #include <fstream>
 #include <iostream>
 
-#include <H5Gpublic.h>
-#include <H5Lpublic.h>
-
 #include "nuSQuIDS/AdaptiveQuad.h"
 #include "nuSQuIDS/resources.h"
 
@@ -55,7 +52,7 @@ namespace{
 			double a1=std::abs(est1);
 			double a2=std::abs(est2);
 			if(a1<a2) std::swap(a1,a2);
-			return((a2 && tol>(a1/a2)-1) || (a1==a2));
+			return((a2 && tol>(a1/a2)-1) || (!a2 && a1<tol));
 		};
 		auto x=[&](unsigned int i){ return midpoint+abcissas[i]*halfWidth; };
 		double y[5]; //array of integrand evaluations
@@ -177,14 +174,6 @@ bool NeutrinoDISCrossSectionsFromTables::isHDF(const std::string& path){
 	return(magic[0]==0x89 && magic[1]=='H' && magic[2]=='D' && magic[3]=='F'
 	  && magic[4]=='\r' && magic[5]=='\n' && magic[6]==0x1A && magic[7]=='\n');
 }
-	
-const NeutrinoDISCrossSectionsFromTables::perFlavorData&
-NeutrinoDISCrossSectionsFromTables::getFlavor(NeutrinoFlavor flavor) const{
-	auto it=xsData.find(flavor);
-	if(it==xsData.end() || !it->second)
-		throw std::runtime_error("No cross sections for flavor "+std::to_string(flavor));
-	return *it->second;
-}
 
 NeutrinoDISCrossSectionsFromTables::NeutrinoDISCrossSectionsFromTables():
 NeutrinoDISCrossSectionsFromTables(getResourcePath()+"/xsections/csms_square.h5"){}
@@ -212,10 +201,9 @@ double NeutrinoDISCrossSectionsFromTables::TotalCrossSection(double Enu, Neutrin
 		return TotalCrossSection(Emin, flavor, neutype, current)*(Enu/Emin);
 	}
 	
-	const auto& flavorData=getFlavor(flavor);
 	const AkimaSpline& sigma=
-	(neutype==neutrino ? (current==CC ? flavorData.s_CC_nu : flavorData.s_NC_nu)
-					   : (current==CC ? flavorData.s_CC_nubar : flavorData.s_NC_nubar));
+	(neutype==neutrino ? (current==CC ? s_CC_nu : s_NC_nu)
+					   : (current==CC ? s_CC_nubar : s_NC_nubar));
 	return pow(10.,sigma(log10(Enu)));
 }
 
@@ -230,10 +218,9 @@ double NeutrinoDISCrossSectionsFromTables::SingleDifferentialCrossSection(double
 	if (E1 <= Emin)
 		return std::numeric_limits<double>::min();
 
-	const auto& flavorData=getFlavor(flavor);
 	const BiCubicInterpolator& dsdy=
-	(neutype==neutrino ? (current==CC ? flavorData.dsdy_CC_nu : flavorData.dsdy_NC_nu)
-					   : (current==CC ? flavorData.dsdy_CC_nubar : flavorData.dsdy_NC_nubar));
+	(neutype==neutrino ? (current==CC ? dsdy_CC_nu : dsdy_NC_nu)
+					   : (current==CC ? dsdy_CC_nubar : dsdy_NC_nubar));
 	double z=(E2-Emin)/(E1-Emin);
 	double val=dsdy(log10(E1),z);
 	if(E2<=Emin){ //if extrapolating, make sure no blow-up happens
@@ -265,73 +252,34 @@ double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection
 	};
 	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
 }
-	
-std::shared_ptr<NeutrinoDISCrossSectionsFromTables::perFlavorData>
-NeutrinoDISCrossSectionsFromTables::readFlavorText(const std::string& prefix, 
-                                                   std::string& erangeSrc){
-	auto data=std::make_shared<perFlavorData>();
-	
-	double eMinTmp, eMaxTmp;
-	std::tie(data->s_CC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_CC.dat");
-	//if the global energy minimum and maximum have not yet been set, set them
-	if(!(Emin>0 && Emax>0)){
-		Emin=eMinTmp;
-		Emax=eMaxTmp;
-		erangeSrc=prefix+"nu_sigma_CC.dat";
-	}
-	std::tie(data->s_NC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_NC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nu_sigma_NC.dat has different energy domain than "+erangeSrc);
-	std::tie(data->s_CC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_CC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nubar_sigma_CC.dat has different energy domain than "+erangeSrc);
-	std::tie(data->s_NC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_NC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nubar_sigma_NC.dat has different energy domain than "+erangeSrc);
-	
-	std::tie(data->dsdy_CC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_CC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nu_dsde_CC.dat has different energy domain than "+erangeSrc);
-	std::tie(data->dsdy_NC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_NC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nu_dsde_NC.dat has different energy domain than "+erangeSrc);
-	std::tie(data->dsdy_CC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_CC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nubar_dsde_CC.dat has different energy domain than "+erangeSrc);
-	std::tie(data->dsdy_NC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_NC.dat");
-	if(eMinTmp!=Emin || eMaxTmp!=Emax)
-		throw std::runtime_error(prefix+"nubar_dsde_NC.dat has different energy domain than "+erangeSrc);
-	
-	return data;
-}
 
 void NeutrinoDISCrossSectionsFromTables::ReadText(const std::string& prefix){
-	auto expectedFilesExist=[](const std::string& prefix)->bool{
-		return fexists(prefix+"nu_sigma_CC.dat") && fexists(prefix+"nu_sigma_NC.dat") &&
-		       fexists(prefix+"nubar_sigma_CC.dat") && fexists(prefix+"nubar_sigma_NC.dat") &&
-		       fexists(prefix+"nu_dsde_CC.dat") && fexists(prefix+"nu_dsde_NC.dat") &&
-		       fexists(prefix+"nubar_dsde_CC.dat") && fexists(prefix+"nubar_dsde_NC.dat");
-	};
-	std::string erangeSrc="";
-	//check for old-style files with common data for all flavors
-	if(expectedFilesExist(prefix)){
-		Emin=Emax=std::numeric_limits<double>::quiet_NaN();
-		std::shared_ptr<perFlavorData> data=readFlavorText(prefix,erangeSrc);
-		xsData[electron]=data;
-		xsData[muon]=data;
-		xsData[tau]=data;
-	}
-	//new style files with distinct per-flavor data
-	else if(expectedFilesExist(prefix+"electron_") &&
-	        expectedFilesExist(prefix+"muon_") &&
-	        expectedFilesExist(prefix+"tau_")){
-		Emin=Emax=std::numeric_limits<double>::quiet_NaN();
-		xsData[electron]=readFlavorText(prefix+"electron_",erangeSrc);
-		xsData[muon]=readFlavorText(prefix+"muon_",erangeSrc);
-		xsData[tau]=readFlavorText(prefix+"tau_",erangeSrc);
-	}
-	else
-		throw std::runtime_error("Unrecognized text file layout in "+prefix);
+	double eMinTmp, eMaxTmp;
+	std::tie(s_CC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_CC.dat");
+	Emin=eMinTmp;
+	Emax=eMaxTmp;
+	std::tie(s_NC_nu,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nu_sigma_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_sigma_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(s_CC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_sigma_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(s_NC_nubar,eMinTmp,eMaxTmp)=read1DInterpolationFromText(prefix+"nubar_sigma_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_sigma_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	
+	std::tie(dsdy_CC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_dsde_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_NC_nu,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nu_dsde_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nu_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_CC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_CC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_dsde_CC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
+	std::tie(dsdy_NC_nubar,eMinTmp,eMaxTmp)=read2DInterpolationFromText(prefix+"nubar_dsde_NC.dat");
+	if(eMinTmp!=Emin || eMaxTmp!=Emax)
+		throw std::runtime_error(prefix+"nubar_dsde_NC.dat has different energy domain than "+prefix+"nu_sigma_CC.dat");
 }
 
 void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) const{
@@ -358,231 +306,70 @@ void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) co
 				outfile << en << ' ' << y[j] << ' ' << pow(10.,z[i][j]) << '\n';
 		}
 	};
-	NeutrinoFlavor flavor;
-	std::string name;
-	for(auto item : std::unordered_map<NeutrinoFlavor,std::string,FlavorHash>{{electron,"electron"},
-	                 {muon,"muon"},
-	                 {tau,"tau"}}){
-		std::tie(flavor, name) = item;
-		std::string flavor_prefix=prefix+name+"_";
-		const auto& data=getFlavor(flavor);
-		write1D(data.s_CC_nu,flavor_prefix+"nu_sigma_CC.dat");
-		write1D(data.s_NC_nu,flavor_prefix+"nu_sigma_NC.dat");
-		write1D(data.s_CC_nubar,flavor_prefix+"nubar_sigma_CC.dat");
-		write1D(data.s_NC_nubar,flavor_prefix+"nubar_sigma_NC.dat");
-		write2D(data.dsdy_CC_nu,flavor_prefix+"nu_dsde_CC.dat");
-		write2D(data.dsdy_NC_nu,flavor_prefix+"nu_dsde_NC.dat");
-		write2D(data.dsdy_CC_nubar,flavor_prefix+"nubar_dsde_CC.dat");
-		write2D(data.dsdy_NC_nubar,flavor_prefix+"nubar_dsde_NC.dat");
-	}
+	write1D(s_CC_nu,prefix+"nu_sigma_CC.dat");
+	write1D(s_NC_nu,prefix+"nu_sigma_NC.dat");
+	write1D(s_CC_nubar,prefix+"nubar_sigma_CC.dat");
+	write1D(s_NC_nubar,prefix+"nubar_sigma_NC.dat");
+	write2D(dsdy_CC_nu,prefix+"nu_dsde_CC.dat");
+	write2D(dsdy_NC_nu,prefix+"nu_dsde_NC.dat");
+	write2D(dsdy_CC_nubar,prefix+"nubar_dsde_CC.dat");
+	write2D(dsdy_NC_nubar,prefix+"nubar_dsde_NC.dat");
 }
-  
-std::shared_ptr<NeutrinoDISCrossSectionsFromTables::perFlavorData>
-NeutrinoDISCrossSectionsFromTables::readFlavorHDF5(hid_t sourceLoc, 
-                                                   const marray<double,1>& energies, 
-                                                   const marray<double,1>& zs){
-	auto data=std::make_shared<perFlavorData>();
+
+void NeutrinoDISCrossSectionsFromTables::ReadHDF(const std::string& path){
+	try{
+	H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
+	
+	marray<double,1> energies,zs;
+	readArrayH5(h5file, "energies", energies);
+	readArrayH5(h5file, "zs", zs);
+	Emin=pow(10.,energies.front());
+	Emax=pow(10.,energies.back());
 	
 	marray<double,1> buffer1;
 	auto readTotal=[&](AkimaSpline& dest, const std::string& tableName){
-		readArrayH5(sourceLoc, tableName, buffer1);
+		readArrayH5(h5file, tableName, buffer1);
 		if(buffer1.extent(0)!=energies.extent(0))
 			throw std::runtime_error(tableName+" does not have the same dimensions as energies");
 		dest=AkimaSpline(energies.get_data(),buffer1.get_data(),energies.size());
 	};
-	readTotal(data->s_CC_nu,"s_CC_nu");
-	readTotal(data->s_NC_nu,"s_NC_nu");
-	readTotal(data->s_CC_nubar,"s_CC_nubar");
-	readTotal(data->s_NC_nubar,"s_NC_nubar");
+	readTotal(s_CC_nu,"s_CC_nu");
+	readTotal(s_NC_nu,"s_NC_nu");
+	readTotal(s_CC_nubar,"s_CC_nubar");
+	readTotal(s_NC_nubar,"s_NC_nubar");
 	
 	marray<double,2> buffer2;
 	auto readDifferential=[&](BiCubicInterpolator& dest, const std::string& tableName){
-		readArrayH5(sourceLoc, tableName, buffer2); //reallocates the target array 
+		readArrayH5(h5file, tableName, buffer2); //reallocates the target array 
 		if(buffer2.extent(0)!=energies.extent(0))
 			throw std::runtime_error(tableName+" does not have the same first dimension as energies");
 		if(buffer2.extent(1)!=zs.extent(0))
 			throw std::runtime_error(tableName+"'s second dimension does not have the same size as zs");
 		dest=BiCubicInterpolator(std::move(buffer2),energies,zs);
 	};
-	readDifferential(data->dsdy_CC_nu,"dsdy_CC_nu");
-	readDifferential(data->dsdy_NC_nu,"dsdy_NC_nu");
-	readDifferential(data->dsdy_CC_nubar,"dsdy_CC_nubar");
-	readDifferential(data->dsdy_NC_nubar,"dsdy_NC_nubar");
-	
-	return data;
-}
-	
-namespace{
-#if H5_VERS_MAJOR == 1 && H5_VERS_MINOR < 12
-	#define H5Lget_info_compat 1
-#else
-	#define H5Lget_info_compat 2		
-#endif
-	///A helper class for determining whether different HDF5 names refer to the
-	///same underlying object
-	struct h5HardLinkID{
-		hid_t loc;
-#if H5Lget_info_compat == 1
-		haddr_t addr;
-#elif H5Lget_info_compat == 2
-		H5O_token_t addr;
-#endif
-		h5HardLinkID(hid_t loc, const std::string& name):loc(loc){
-			herr_t err=0;
-			
-#if H5Lget_info_compat == 1
-			H5L_info_t linfo;
-			err=H5Lget_info(loc, name.c_str(), &linfo, H5P_DEFAULT);
-			if(err<0)
-				throw std::runtime_error("Failed to get link info for object named "+name);
-			if(linfo.type!=H5L_TYPE_HARD)
-				throw std::runtime_error("Object named "+name+" is not a hard link");
-			addr=linfo.u.address;
-#elif H5Lget_info_compat == 2
-			H5L_info2_t linfo;
-			err=H5Lget_info2(loc, name.c_str(), &linfo, H5P_DEFAULT);
-			if(err<0)
-				throw std::runtime_error("Failed to get link info for object named "+name);
-			if(linfo.type!=H5L_TYPE_HARD)
-				throw std::runtime_error("Object named "+name+" is not a hard link");
-			addr=linfo.u.token;
-#endif
-		}
-		
-		bool operator==(const h5HardLinkID& other){
-#if H5Lget_info_compat == 1
-			return addr==other.addr;
-#elif H5Lget_info_compat == 2
-			int val;
-			herr_t err=H5Otoken_cmp(loc, &addr, &other.addr, &val);
-			if(err<0)
-				throw std::runtime_error("Unable to compare HDF5 tokens");
-			return val==0;
-#endif
-		}
-		
-		bool operator!=(const h5HardLinkID& other){
-			return !(*this==other);
-		}
-	};
-#undef H5Lget_info_compat
-}
-
-void NeutrinoDISCrossSectionsFromTables::ReadHDF(const std::string& path){
-	try{
-		H5File h5file(H5Fopen(path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
-		
-		marray<double,1> energies,zs;
-		readArrayH5(h5file, "energies", energies);
-		readArrayH5(h5file, "zs", zs);
-		Emin=pow(10.,energies.front());
-		Emax=pow(10.,energies.back());
-		
-		//check for old-style files with common data for all flavors
-		if(h5ObjectExists(h5file,"s_CC_nu") && h5ObjectExists(h5file,"s_CC_nubar") && 
-		   h5ObjectExists(h5file,"s_NC_nu") && h5ObjectExists(h5file,"s_NC_nubar") && 
-		   h5ObjectExists(h5file,"dsdy_CC_nu") && h5ObjectExists(h5file,"dsdy_CC_nubar") && 
-		   h5ObjectExists(h5file,"dsdy_NC_nu") && h5ObjectExists(h5file,"dsdy_NC_nubar")){
-			std::shared_ptr<perFlavorData> data=readFlavorHDF5(h5file,energies,zs);
-			xsData[electron]=data;
-			xsData[muon]=data;
-			xsData[tau]=data;
-		}
-		//new style files with distinct per-flavor data
-		else if(h5ObjectExists(h5file,"electron") &&
-				h5ObjectExists(h5file,"muon") &&
-				h5ObjectExists(h5file,"tau")){
-			h5HardLinkID eID(h5file,"electron");
-			h5HardLinkID mID(h5file,"muon");
-			h5HardLinkID tID(h5file,"tau");
-			
-			H5Handle nueGrp(H5Gopen(h5file,"electron",H5P_DEFAULT), H5Gclose,"open HDF5 group for nu_e cross sections");
-			std::shared_ptr<perFlavorData> nueData=readFlavorHDF5(nueGrp,energies,zs);
-			xsData[electron]=nueData;
-			
-			if(mID==eID) //if the data is an alias, don't read it again
-				xsData[muon]=xsData[electron];
-			else{
-				H5Handle numuGrp(H5Gopen(h5file,"muon",H5P_DEFAULT), H5Gclose,"open HDF5 group for nu_mu cross sections");
-				std::shared_ptr<perFlavorData> numuData=readFlavorHDF5(numuGrp,energies,zs);
-				xsData[muon]=numuData;
-			}
-			
-			if(tID==eID)
-				xsData[tau]=xsData[electron];
-			else if(tID==mID)
-				xsData[tau]=xsData[muon];
-			else{
-				H5Handle nutauGrp(H5Gopen(h5file,"tau",H5P_DEFAULT), H5Gclose,"open HDF5 group for nu_tau cross sections");
-				std::shared_ptr<perFlavorData> nutauData=readFlavorHDF5(nutauGrp,energies,zs);
-				xsData[tau]=nutauData;
-			}
-		}
-		else
-			throw std::runtime_error("Unrecognized HDF5 data object layout in "+path);
+	readDifferential(dsdy_CC_nu,"dsdy_CC_nu");
+	readDifferential(dsdy_NC_nu,"dsdy_NC_nu");
+	readDifferential(dsdy_CC_nubar,"dsdy_CC_nubar");
+	readDifferential(dsdy_NC_nubar,"dsdy_NC_nubar");
 	}
 	catch(std::runtime_error& err){
 		throw std::runtime_error("Failed to read cross sections from "+path+": "+err.what());
 	}
 }
-	
-void NeutrinoDISCrossSectionsFromTables::writeFlavorHDF5(hid_t destLoc, const perFlavorData& data, unsigned int compressionLevel) const{
-	using StoreType=float;
-	writeArrayH5<StoreType>(destLoc, "s_CC_nu", data.s_CC_nu.getOrdinates(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "s_NC_nu", data.s_NC_nu.getOrdinates(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "s_CC_nubar", data.s_CC_nubar.getOrdinates(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "s_NC_nubar", data.s_NC_nubar.getOrdinates(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "dsdy_CC_nu", data.dsdy_CC_nu.getData(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "dsdy_NC_nu", data.dsdy_NC_nu.getData(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "dsdy_CC_nubar", data.dsdy_CC_nubar.getData(), compressionLevel);
-	writeArrayH5<StoreType>(destLoc, "dsdy_NC_nubar", data.dsdy_NC_nubar.getData(), compressionLevel);
-}
 
 void NeutrinoDISCrossSectionsFromTables::WriteHDF(const std::string& path, unsigned int compressionLevel) const{
+	using StoreType=float;
 	H5File h5file(H5Fcreate(path.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT));
-	
-	{
-		using StoreType=float;
-		assert(xsData.size()>0);
-		const perFlavorData& data=*xsData.begin()->second;
-		writeArrayH5<StoreType>(h5file, "energies", data.dsdy_CC_nu.getXCoords(), compressionLevel);
-		writeArrayH5<StoreType>(h5file, "zs", data.dsdy_CC_nu.getYCoords(), compressionLevel);
-	}
-	
-	auto flavorsSame=[this](NeutrinoFlavor f1, NeutrinoFlavor f2)->bool{
-		auto it1=xsData.find(f1);
-		auto it2=xsData.find(f2);
-		return it1->second == it2->second;
-	};
-	
-	auto makeAlias=[&h5file](const std::string& srcName, const std::string& destName){
-		H5Handle create_plist(H5Pcreate(H5P_LINK_CREATE),&H5Pclose,"create a link creation property list");
-		H5Handle access_plist(H5Pcreate(H5P_LINK_ACCESS),&H5Pclose,"create a link access property list");
-		herr_t err=H5Lcreate_hard(h5file, srcName.c_str(), h5file, destName.c_str(), create_plist, access_plist);
-		if(err<0)
-			throw std::runtime_error("Failed to create HDF5 hardlink from "+srcName+" to "+destName);
-	};
-	
-	{
-		H5Handle nueGrp(H5Gcreate(h5file, "electron", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 group for nu_e cross sections");
-		writeFlavorHDF5(nueGrp, getFlavor(electron), compressionLevel);
-	}
-	
-	if(true || flavorsSame(electron,muon))
-		makeAlias("electron","muon");
-	else{
-		H5Handle numuGrp(H5Gcreate(h5file, "muon", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 group for nu_mu cross sections");
-		writeFlavorHDF5(numuGrp, getFlavor(muon), compressionLevel);
-	}
-	
-	if(flavorsSame(electron,tau))
-		makeAlias("electron","tau");
-	else if(flavorsSame(muon,tau))
-		makeAlias("muon","tau");
-	else{
-		H5Handle nutauGrp(H5Gcreate(h5file, "tau", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 group for nu_tau cross sections");
-		writeFlavorHDF5(nutauGrp, getFlavor(tau), compressionLevel);
-	}
+	writeArrayH5<StoreType>(h5file, "energies", dsdy_CC_nu.getXCoords(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "zs", dsdy_CC_nu.getYCoords(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_CC_nu", s_CC_nu.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_NC_nu", s_NC_nu.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_CC_nubar", s_CC_nubar.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "s_NC_nubar", s_NC_nubar.getOrdinates(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_CC_nu", dsdy_CC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_NC_nu", dsdy_NC_nu.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_CC_nubar", dsdy_CC_nubar.getData(), compressionLevel);
+	writeArrayH5<StoreType>(h5file, "dsdy_NC_nubar", dsdy_NC_nubar.getData(), compressionLevel);
 }
 
 double NeutrinoDISCrossSectionsFromTables_V1::LinInter(double x,double xM, double xP,double yM,double yP) const{

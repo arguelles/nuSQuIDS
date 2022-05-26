@@ -131,13 +131,13 @@ class TauDecaySpectra{
 
   public :
     /// \brief Detault empty constructor.
-    TauDecaySpectra(bool polarization=true):
+    TauDecaySpectra():
       dNdEnu_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEnu_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEle_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEle_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))})
       {
-        SetParameters(polarization);
+        SetParameters(true);
       }
     /// \brief Constructor for a given energy range.
     /// @param E_range Energy nodes where the cross section will be calculated. [eV]

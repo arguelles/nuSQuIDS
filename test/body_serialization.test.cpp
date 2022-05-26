@@ -69,7 +69,7 @@ int main(){
   auto ctr = ConstantDensity::Track::Deserialize(track_group_id);
 
   if ( fabs(cr->density(*ctr) - c.density(ct)) >1.0e-5 )
-    std::cout << "densities are different after serializing for constant_density: Before = " << c.density(ct) << " After = " << cr->density(*ctr) << std::endl;
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(cr->ye(*ctr) - c.ye(ct)) >1.0e-5 )
     std::cout << "ye are different after serializing for constant_density" << std::endl;
 
@@ -97,10 +97,10 @@ int main(){
   auto varr = VariableDensity::Deserialize(body_group_id);
   auto vartr = VariableDensity::Track::Deserialize(track_group_id);
 
-  if ( fabs(varr->density(*vartr) - var.density(vart)) >1.0e-5 )
-    std::cout << "densities are different after serializing for variable_density: Before = " << var.density(vart) << " After = " << cr->density(*ctr) << std::endl;
+  if ( fabs(varr->density(*ctr) - var.density(vart)) >1.0e-5 )
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(varr->ye(*vartr) - var.ye(vart)) >1.0e-5 )
-    std::cout << "ye are different after serializing for variable_density" << std::endl;
+    std::cout << "ye are different after serializing for constant_density" << std::endl;
 
   // close hdf5 groups
   H5Gclose(body_group_id);
@@ -124,9 +124,9 @@ int main(){
   auto earthtr = Earth::Track::Deserialize(track_group_id);
 
   if ( fabs(earthr->density(*earthtr) - earth.density(eartht)) >1.0e-5 )
-    std::cout << "densities are different after serializing for Earth: Before = " << earth.density(eartht) << " After = " << earthr->density(*earthtr) << std::endl;
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(earthr->ye(*earthtr) - earth.ye(eartht)) >1.0e-5 )
-    std::cout << "ye are different after serializing for Earth" << std::endl;
+    std::cout << "ye are different after serializing for constant_density" << std::endl;
 
   // close hdf5 groups
   H5Gclose(body_group_id);
@@ -150,9 +150,9 @@ int main(){
   auto suntr = Sun::Track::Deserialize(track_group_id);
 
   if ( fabs(sunr->density(*suntr) - sun.density(sunt)) >1.0e-5 )
-    std::cout << "densities are different after serializing for Sun: Before = " << sun.density(sunt) << " After = " << sunr->density(*suntr) << std::endl;
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(sunr->ye(*suntr) - sun.ye(sunt)) >1.0e-5 )
-    std::cout << "ye are different after serializing for Sun" << std::endl;
+    std::cout << "ye are different after serializing for constant_density" << std::endl;
 
   // close hdf5 groups
   H5Gclose(body_group_id);
@@ -176,9 +176,9 @@ int main(){
   auto sunasnutr = SunASnu::Track::Deserialize(track_group_id);
 
   if ( fabs(sunasnur->density(*sunasnutr) - sunasnu.density(sunasnut)) >1.0e-5 )
-    std::cout << "densities are different after serializing for SunASnu: Before = " << sunasnu.density(sunasnut) << " After = " << sunasnur->density(*sunasnutr) << std::endl;
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(sunasnur->ye(*sunasnutr) - sunasnu.ye(sunasnut)) >1.0e-5 )
-    std::cout << "ye are different after serializing for SunASnu" << std::endl;
+    std::cout << "ye are different after serializing for constant_density" << std::endl;
 
   // close hdf5 groups
   H5Gclose(body_group_id);
@@ -189,8 +189,7 @@ int main(){
   // testing earthatm
   // ************************************
   EarthAtm earthatm;
-  earthatm.SetAtmosphereHeight(50/*km*/);
-  EarthAtm::Track earthatmt(10.*units.km,acos(-1.0),earthatm.GetRadius()*units.km,earthatm.GetAtmosphereHeight()*units.km);
+  EarthAtm::Track earthatmt(10.*units.km,acos(-1.0));
 
   // open groups
   hid_t earthatm_group_id = H5Gcreate(file_id, "earthatm", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -202,16 +201,10 @@ int main(){
   auto earthatmr = EarthAtm::Deserialize(body_group_id);
   auto earthatmtr = EarthAtm::Track::Deserialize(track_group_id);
 
-  if (earthatmtr->GetX() != earthatmt.GetX())
-    std::cout << "track positions are different after serializing for EarthAtm: Before = " << earthatmt.GetX() << " After = " << earthatmtr->GetX() << std::endl;
-  if (earthatmtr->GetInitialX() != earthatmt.GetInitialX())
-    std::cout << "track initial positions are different after serializing for EarthAtm: Before = " << earthatmt.GetInitialX() << " After = " << earthatmtr->GetInitialX() << std::endl;
-  if (earthatmtr->GetFinalX() != earthatmt.GetFinalX())
-    std::cout << "track final positions are different after serializing for EarthAtm: Before = " << earthatmt.GetFinalX() << " After = " << earthatmtr->GetFinalX() << std::endl;
   if ( fabs(earthatmr->density(*earthatmtr) - earthatm.density(earthatmt)) >1.0e-5 )
-    std::cout << "densities are different after serializing for EarthAtm: Before = " << earthatm.density(earthatmt) << " After = " << earthatmr->density(*earthatmtr) << std::endl;
+    std::cout << "densities are different after serializing for constant_density" << std::endl;
   if ( fabs(earthatmr->ye(*earthatmtr) - earthatm.ye(earthatmt)) >1.0e-5 )
-    std::cout << "ye are different after serializing for EarthAtm" << std::endl;
+    std::cout << "ye are different after serializing for constant_density" << std::endl;
 
   // close hdf5 groups
   H5Gclose(body_group_id);

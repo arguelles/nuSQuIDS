@@ -221,46 +221,6 @@ struct H5File{
     ~H5File(){ H5Fclose(id); }
     operator hid_t() const{ return(id); }
 };
-
-///\brief A general RAII wrapper around an hid_t
-struct H5Handle{
-    H5Handle():id(-1),deleter(nullptr){}
-    ///\brief Take ownership of an hid_t
-    ///\param id The owned HDF5 object reference
-    ///\param deleter The HDF5 API function used to dispose of the reference
-    ///\param desc A descriptive string used to form an error message if id is not valid
-    H5Handle(hid_t id, herr_t(*deleter)(hid_t), const char* desc):
-    id(id),deleter(deleter){
-        if(id<0){
-            if(desc)
-                throw std::runtime_error(std::string("Failed to ")+desc);
-            else
-                throw std::runtime_error("Failed to get HDF5 object");
-        }
-    }
-    H5Handle(const H5Handle&)=delete;
-    H5Handle(H5Handle&& other):
-    id(other.id),deleter(other.deleter){
-        other.id=-1;
-    }
-    ~H5Handle(){
-        if(id>=0)
-        (*deleter)(id);
-    }
-    H5Handle& operator=(H5Handle&)=delete;
-    H5Handle& operator=(H5Handle&& other){
-        if(&other!=this){
-            std::swap(id,other.id);
-            std::swap(deleter,other.deleter);
-        }
-        return *this;
-    }
-    hid_t get() const{ return id; }
-    operator hid_t() const{ return id; }
-private:
-    hid_t id;
-    herr_t(*deleter)(hid_t);
-};
 	
 template<typename T>
 struct h5Datatype{};
@@ -269,8 +229,6 @@ template<> struct h5Datatype<int>{ static hid_t type(){ return H5T_NATIVE_INT; }
 template<> struct h5Datatype<unsigned int>{ static hid_t type(){ return H5T_NATIVE_UINT; }};
 template<> struct h5Datatype<float>{ static hid_t type(){ return H5T_NATIVE_FLOAT; }};
 template<> struct h5Datatype<double>{ static hid_t type(){ return H5T_NATIVE_DOUBLE; }};
-	
-bool h5ObjectExists(hid_t loc_id, const char* name);
 
 template<typename DestType, typename SourceType, unsigned int Rank, typename Alloc>
 void writeArrayH5(hid_t loc_id, std::string name, const marray<SourceType,Rank,Alloc>& data, unsigned int compressLevel=0){

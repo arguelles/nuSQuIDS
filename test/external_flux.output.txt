@@ -1,6 +1,0 @@
-Interactions true, oscillations true, vacuum
-Interactions true, oscillations false, vacuum
-Interactions false, oscillations false, vacuum
-Interactions false, oscillations true, vacuum
-Interactions true, oscillations false, matter
-Interactions true, oscillations true, matter

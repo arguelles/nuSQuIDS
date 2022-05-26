@@ -28,6 +28,7 @@
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <cstring>
 #include <map>
+#include <nuSQuIDS/nuSQuIDSLV.h>
 #include <sstream>
 #include <H5Dpublic.h>
 #include <H5Epublic.h>
@@ -71,6 +72,10 @@ std::string getStringAttribute(hid_t loc_id, const char* obj_name, const char* a
     throw std::runtime_error("Failed to read attribute "+std::string(attr_name)+" of object "+std::string(obj_name));
   return(std::string(buffer.get(),type_size));
 }
+  
+bool objectExists(hid_t loc_id, const char* name){
+  return H5Lexists(loc_id,name,H5P_DEFAULT)>0 && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
+};
 
 } // close unnamed namespace
 
@@ -141,7 +146,7 @@ void nuSQUIDS::init(double xini){
 
 void nuSQUIDS::Set_E(double Enu){
   if( ne != 1 )
-    throw std::runtime_error("nuSQUIDS::Error:Can only use Set_E in single energy mode.");
+    throw std::runtime_error("nuSQUIDS::Error:Cannot use Set_E in single energy mode.");
   E_range = marray<double,1>{1};
   E_range[0] = Enu;
   Set_xrange(std::vector<double>{Enu});
@@ -279,10 +284,6 @@ void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
   current_ye = body->ye(*track);
   current_density = body->density(*track);
-  if(enable_neutrino_sources){
-    body->injected_neutrino_flux(current_external_flux,*track,*this);
-    assert(current_external_flux.extent(0) == ne && current_external_flux.extent(1) == nrhos && current_external_flux.extent(2) == numneu);
-  }
   if( basis != mass and ioscillations){
     EvolveProjectors(x);
   }
@@ -300,13 +301,13 @@ void nuSQUIDS::EvolveProjectors(double x){
   std::unique_ptr<double[]> evol_buf(new double[H0_array[0].GetEvolveBufferSize()]);
   for(unsigned int ei = 0; ei < ne; ei++){
     H0_array[ei].PrepareEvolve(evol_buf.get(),x-Get_t_initial());
-    if (evol_lowpass_cutoff > 0){
+    if (evol_lowpass_cutoff.extent(0) > ei and evol_lowpass_scale.extent(0) > ei and evol_lowpass_cutoff[ei] > 0){
       // std::cout << "evol_buf: ";
       // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
       //   std::cout << evol_buf.get()[i] << "  ";
       // }
       // std::cout << std::endl;
-      H0_array[ei].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff, evol_lowpass_scale);
+      H0_array[ei].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff[ei], evol_lowpass_scale[ei]);
       // std::cout << "evol_buf after filter: ";
       // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
       //   std::cout << evol_buf.get()[i] << "  ";
@@ -321,7 +322,9 @@ void nuSQUIDS::EvolveProjectors(double x){
           (b1_proj[rho][flv].Evolve(evol_buf.get()));
       }
     }
+    AddToEvolveProjectors(x,ei,evol_buf.get());
   }
+  AddToEvolveProjectors(x);
   return;
 }
 
@@ -375,16 +378,8 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   if(iinteraction && !ioscillations) //can use precomputed result from UpdateInteractions
     return(interaction_cache[index_rho][e1]);
 
-  if (not iinteraction and not enable_neutrino_sources)
+  if (not iinteraction)
     return squids::SU_vector(nsun);
-  else if (not iinteraction) {
-    squids::SU_vector external_flux_contribution(current_external_flux[e1][index_rho][0]*evol_b1_proj[index_rho][0][e1]);
-    for(unsigned int i = 1; i < numneu; i++)
-      external_flux_contribution+=squids::detail::guarantee
-                                  <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                                  (current_external_flux[e1][index_rho][i]*evol_b1_proj[index_rho][i][e1]);
-    return external_flux_contribution;
-  }
 
   // NC interactions
   double factor_e  =nc_factors[index_rho][0][e1];
@@ -402,14 +397,6 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
     factor_mu +=gr_factors[e1];
     factor_tau+=gr_factors[e1];
   }
-
-  // add explicitly
-  if(enable_neutrino_sources){
-    factor_e  +=current_external_flux[e1][index_rho][0];
-    factor_mu +=current_external_flux[e1][index_rho][1];
-    factor_tau+=current_external_flux[e1][index_rho][2];
-  }
-
   // Add the weighted projectors
   squids::SU_vector interaction_term(factor_e*evol_b1_proj[index_rho][0][e1]);
   interaction_term+=squids::detail::guarantee
@@ -418,15 +405,7 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   interaction_term+=squids::detail::guarantee
                     <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
                     (factor_tau*evol_b1_proj[index_rho][2][e1]);
-
-  if(enable_neutrino_sources){
-    for(unsigned int i = 3; i < numneu; i++){
-      interaction_term+=squids::detail::guarantee
-                        <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                        (current_external_flux[e1][index_rho][i]*evol_b1_proj[index_rho][i][e1]);
-    }
-  }
-
+  
   return interaction_term;
 }
 
@@ -839,19 +818,6 @@ void nuSQUIDS::UpdateInteractions(){
                                     <squids::detail::EqualSizes | squids::detail::AlignedStorage>
                                     (factors_nu_tau[e1]*projector_tau);
       }
-
-    if(enable_neutrino_sources){
-      for(unsigned int rho = 0; rho < nrhos; rho++){
-        for(unsigned int e1=0; e1<ne; e1++){
-          for(unsigned int i = 0; i < numneu; i++){
-            interaction_cache[rho][e1]+=squids::detail::guarantee
-                                        <squids::detail::NoAlias | squids::detail::EqualSizes | squids::detail::AlignedStorage>
-                                        (current_external_flux[e1][rho][i]*evol_b1_proj[rho][i][e1]);
-          }
-        }
-      }
-    }
-
     }
 
   } //end of no oscillation handling
@@ -1092,27 +1058,25 @@ void nuSQUIDS::GetCrossSections(){
       for(unsigned int flv = 0; flv < numneu; flv++){
         for(unsigned int e1 = 0; e1 < ne; e1++){
           // differential cross sections
-          dsignudE_NC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
-          validateCrossSection(dsignudE_NC[neutype][flv][e1][0],cm2GeV,"NC",true,E_range[e1],E_range[0],flv);
-          dsignudE_CC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
-          validateCrossSection(dsignudE_CC[neutype][flv][e1][0],cm2GeV,"CC",true,E_range[e1],E_range[0],flv);
-          for(unsigned int e2 = 1; e2 < e1; e2++){
-            dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+          for(unsigned int e2 = 0; e2 < e1; e2++){
+            dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
             validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
-            dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+            dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
             validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
           }
           // total cross sections
-          if(e1>0) {
-            int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-            int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-          }
-          else {
+          if(e1<ne-1){
+            int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+          } else {
             int_struct->sigma_CC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-            int_struct->sigma_NC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+            validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
           }
-          validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
-          validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
+          if(e1<ne-1) {
+            int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+          } else {
+            int_struct->sigma_NC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+            validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
+          }
         }
       }
     }
@@ -1151,13 +1115,14 @@ void nuSQUIDS::GetCrossSections(){
         throw std::runtime_error("Glashow Resonance handling is active, but the supplied cross sections do not include a cross section for electrons");
       marray<double,2> dsignudE_GR{ne,ne};
       for(unsigned int e1 = 0; e1 < ne; e1++){
-        if(e1>0)
-          int_struct->sigma_GR[e1] = gr_cs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
-        else
+        if(e1<ne-1) {
+          int_struct->sigma_GR[e1] = gr_cs->AverageTotalCrossSection(E_range[e1],E_range[e1+1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
+        } else {
           int_struct->sigma_GR[e1] = gr_cs->TotalCrossSection(E_range[e1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2;
-        dsignudE_GR[e1][0] = gr_cs->SingleDifferentialCrossSection(E_range[e1],E_range[0],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
-        for(unsigned int e2 = 1; e2 < e1; e2++)
-          dsignudE_GR[e1][e2] = gr_cs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
+        }
+        for(unsigned int e2 = 0; e2 < e1; e2++){
+          dsignudE_GR[e1][e2] = gr_cs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2],E_range[e2+1],NeutrinoCrossSections::electron,NeutrinoCrossSections::antineutrino,NeutrinoCrossSections::GR)*cm2GeV;
+        }
       }
       for(unsigned int e1 = 0; e1 < ne; e1++){
         for(unsigned int e2 = 0; e2 < e1; e2++){
@@ -1477,6 +1442,32 @@ double nuSQUIDS::EvalFlavor(unsigned int flv,double EE,unsigned int rho) const{
   return GetExpectationValueD(b1_proj[rho][flv], rho, EE);
 }
 
+double nuSQUIDS::EvalFlavorLowPass(unsigned int flv,double EE,unsigned int rho) const{
+  if ( not ienergy )
+    throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
+  if ( rho != 0 and NT != both )
+    throw std::runtime_error("nuSQUIDS::Error::Cannot evaluate rho != 0 in this NT mode.");
+  if ( EE < *E_range.begin() || EE > *E_range.rbegin() )
+    throw std::runtime_error("nuSQUIDS::Error::Energy "+std::to_string(EE)+" outside of propagated energy range, ["
+                             +std::to_string(*E_range.begin())+","+std::to_string(*E_range.rbegin())+"].");
+  if(evol_lowpass_cutoff.extent(0) != ne or evol_lowpass_scale.extent(0) != ne)
+    throw std::runtime_error("nuSQUIDS::Error::Cannot apply LowPassFilter because LowPassCutoff or LowPassScale are not initialized.");  
+  if ( basis == mass )
+    return b1_proj[rho][flv]*GetIntermediateState(rho,EE);
+
+  auto xit=std::lower_bound(E_range.begin(),E_range.end(),EE);
+  if(xit==E_range.end())
+    throw std::runtime_error("SQUIDS::GetExpectationValueD : x value not in the array.");
+  if(xit!=E_range.begin())
+    xit--;
+  size_t xid=std::distance(E_range.begin(),xit);
+  double f2=((EE-E_range[xid])/(E_range[xid+1]-E_range[xid]));
+  double f1=1-f2;
+  double scale = evol_lowpass_scale[xid]*f1 + evol_lowpass_scale[xid+1]*f2;
+  double cutoff = evol_lowpass_cutoff[xid]*f1 + evol_lowpass_cutoff[xid+1]*f2;
+  return GetExpectationValueD(b1_proj[rho][flv], rho, EE, scale, cutoff);
+}
+
 double nuSQUIDS::EvalMass(unsigned int flv,double EE, unsigned int rho, double scale, std::vector<bool>& avr) const{
   if ( not ienergy )
     throw std::runtime_error("nuSQUIDS::Error::Energy not set.");
@@ -1685,6 +1676,41 @@ squids::SU_vector nuSQUIDS::GetHamiltonian(unsigned int ei, unsigned int rho){
   return H0(E_range[ei],rho)+HI(ei,rho,Get_t());
 }
 
+struct H5Handle{
+  H5Handle():id(-1),deleter(nullptr){}
+  H5Handle(hid_t id, herr_t(*deleter)(hid_t), const char* desc):
+  id(id),deleter(deleter){
+    if(id<0){
+      if(desc)
+        throw std::runtime_error(std::string("Failed to ")+desc);
+      else
+        throw std::runtime_error("Failed to get HDF5 object");
+    }
+  }
+  H5Handle(const H5Handle&)=delete;
+  H5Handle(H5Handle&& other):
+  id(other.id),deleter(other.deleter){
+    other.id=-1;
+  }
+  ~H5Handle(){
+    if(id>=0)
+    (*deleter)(id);
+  }
+  H5Handle& operator=(H5Handle&)=delete;
+  H5Handle& operator=(H5Handle&& other){
+    if(&other!=this){
+      std::swap(id,other.id);
+      std::swap(deleter,other.deleter);
+    }
+    return *this;
+  }
+  hid_t get() const{ return id; }
+  operator hid_t() const{ return id; }
+private:
+  hid_t id;
+  herr_t(*deleter)(hid_t);
+};
+
 void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_section, std::string cross_section_grp_loc, bool overwrite) const{
   if ( body == nullptr )
     throw std::runtime_error("nuSQUIDS::Error::BODY is a NULL pointer");
@@ -1752,6 +1778,10 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   H5LTset_attribute_int(group, "basic", "tau_regeneration", &auxint, 1);
   auxint = static_cast<int>(iglashow);
   H5LTset_attribute_int(group, "basic", "glashow_resonance", &auxint, 1);
+  auxint = static_cast<int>(average);
+  H5LTset_attribute_int(group, "basic", "average", &auxint, 1);
+  auxint = static_cast<int>(lowpass);
+  H5LTset_attribute_int(group, "basic", "lowpass", &auxint, 1);
   double auxt = Get_t();
   H5LTset_attribute_double(group, "basic", "squids_time", &auxt,1);
   double auxt_ini = Get_t_initial();
@@ -1825,7 +1855,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
     xs_group = H5Handle(H5Gcreate(group, "crosssections", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose," create HDF5 group");
   } else {
     //this location is shared, so the group may already exist
-    if(h5ObjectExists(rootGroup, cross_section_grp_loc.c_str())){
+    if(objectExists(rootGroup, cross_section_grp_loc.c_str())){
       xs_group = H5Handle(H5Gopen(rootGroup, cross_section_grp_loc.c_str(), H5P_DEFAULT), H5Gclose, "open HDF5 shared crosssection group");
     }
     else{ //but if it does not exist, just create it
@@ -2076,88 +2106,99 @@ void nuSQUIDS::AddToReadHDF5(hid_t hdf5_loc_id){
 }
 
 void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared_ptr<InteractionStructure> iis){
+  hid_t file_id,group_id,root_id;
   // open HDF5 file
   //std::cout << "reading from hdf5 file" << std::endl;
-  H5File file(H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
-  if (file < 0)
+  file_id = H5Fopen(str.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0)
       throw std::runtime_error("nuSQUIDS::Error::file not found : " + str + ".");
-  H5Handle rootGroup(H5Gopen(file, "/", H5P_DEFAULT), H5Gclose, "open HDF5 group");
+  root_id = H5Gopen(file_id, "/", H5P_DEFAULT);
   if (strncmp(grp.c_str(),"/",1)!=0){
     std::cout << "nuSQUIDS::ReadStateHDF5::Warning::group location name did not start with '/'. '/' was prepend to " + grp << std::endl;
     grp = "/"+grp;
   }
-  H5Handle group(H5Gopen(rootGroup, grp.c_str(), H5P_DEFAULT),H5Gclose,"open HDF5 group");
-  if ( group < 0 )
+  group_id = H5Gopen(root_id, grp.c_str(), H5P_DEFAULT);
+  if ( group_id < 0 )
       throw std::runtime_error("nuSQUIDS::Error::Group '" + grp + "' does not exist in HDF5.");
 
   // read number of neutrinos
-  H5LTget_attribute_uint(group, "basic", "numneu", static_cast<unsigned int*>(&numneu));
+  H5LTget_attribute_uint(group_id, "basic", "numneu", static_cast<unsigned int*>(&numneu));
   // neutrino/antineutrino/both
   int auxint;
   char auxchar[20];
   herr_t err;
-  H5LTget_attribute_int(group, "basic", "NT", &auxint);
+  H5LTget_attribute_int(group_id, "basic", "NT", &auxint);
   NT = static_cast<NeutrinoType>(auxint);
   // interactions
-  H5LTget_attribute_string(group,"basic","interactions", auxchar);
+  H5LTget_attribute_string(group_id,"basic","interactions", auxchar);
   std::string aux = auxchar;
   if ( aux == "True")
     iinteraction = true;
   else
     iinteraction = false;
 
-  err=H5LTget_attribute_int(group, "basic", "oscillations", &auxint);
+  err=H5LTget_attribute_int(group_id, "basic", "oscillations", &auxint);
   if(err>=0) ioscillations=auxint;
-  err=H5LTget_attribute_int(group, "basic", "tau_regeneration", &auxint);
+  err=H5LTget_attribute_int(group_id, "basic", "tau_regeneration", &auxint);
   if(err>=0) tauregeneration=auxint;
-  err=H5LTget_attribute_int(group, "basic", "glashow_resonance", &auxint);
+  err=H5LTget_attribute_int(group_id, "basic", "glashow_resonance", &auxint);
   if(err>=0) iglashow=auxint;
+  err=H5LTget_attribute_int(group_id, "basic", "average", &auxint);
+  if(err>=0) average=auxint;
+  err=H5LTget_attribute_int(group_id, "basic", "lowpass", &auxint);
+  if(err>=0) lowpass=auxint;
 
   double squids_time;
-  H5LTget_attribute_double(group, "basic", "squids_time", &squids_time);
+  H5LTget_attribute_double(group_id, "basic", "squids_time", &squids_time);
 
   double squids_time_initial;
-  H5LTget_attribute_double(group, "basic", "squids_time_initial", &squids_time_initial);
+  H5LTget_attribute_double(group_id, "basic", "squids_time_initial", &squids_time_initial);
 
   // check version numbers
   unsigned int squids_version;
-  H5LTget_attribute_uint(group, "basic", "squids_version_number", &squids_version);
+  H5LTget_attribute_uint(group_id, "basic", "squids_version_number", &squids_version);
 
   if ( squids_version > SQUIDS_VERSION )
     throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using SQuIDS version " +
         std::to_string(squids_version) + " current version is " + std::to_string(SQUIDS_VERSION));
 
   unsigned int nusquids_version;
-  H5LTget_attribute_uint(group, "basic", "nusquids_version_number", &nusquids_version);
+  H5LTget_attribute_uint(group_id, "basic", "nusquids_version_number", &nusquids_version);
   if ( nusquids_version > NUSQUIDS_VERSION )
     throw std::runtime_error("nuSQUIDS::ReadStateHDF5::Error: File was written using nuSQuIDS version " +
         std::to_string(nusquids_version) + " current version is " + std::to_string(NUSQUIDS_VERSION));
 
   // reading body and track
   if(nusquids_version>100000){
-    std::string body_name = getStringAttribute(group,"body","name");
-    H5Handle body_group(H5Gopen(group, "body", H5P_DEFAULT), H5Gclose, "open body group");
-    body=GetBodyDeserializer(body_name)(body_group);
+    std::string body_name = getStringAttribute(group_id,"body","name");
+    hid_t body_group_id = H5Gopen(group_id, "body", H5P_DEFAULT);
+    if(body_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening body group");
+    body=GetBodyDeserializer(body_name)(body_group_id);
+    H5Gclose(body_group_id);
 
-    H5Handle track_group(H5Gopen(group, "track", H5P_DEFAULT), H5Gclose, "open track group");
-    std::string track_name = getStringAttribute(group,"track","name");
-    track=GetTrackDeserializer(track_name)(track_group);
+    hid_t track_group_id = H5Gopen(group_id, "track", H5P_DEFAULT);
+    if(track_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening track group");
+    std::string track_name = getStringAttribute(group_id,"track","name");
+    track=GetTrackDeserializer(track_name)(track_group_id);
+    H5Gclose(track_group_id);
   } else {
     unsigned int body_id;
     hsize_t dimbody[1];
-    H5LTget_attribute_uint(group,"body","ID",&body_id);
+    H5LTget_attribute_uint(group_id,"body","ID",&body_id);
 
-    H5LTget_dataset_info(group,"body", dimbody,nullptr,nullptr);
+    H5LTget_dataset_info(group_id,"body", dimbody,nullptr,nullptr);
     double body_params[dimbody[0]];
-    H5LTread_dataset_double(group,"body", body_params);
+    H5LTread_dataset_double(group_id,"body", body_params);
 
     hsize_t dimtrack[1];
-    H5LTget_dataset_info(group,"track", dimtrack ,nullptr,nullptr);
+    H5LTget_dataset_info(group_id,"track", dimtrack ,nullptr,nullptr);
     std::unique_ptr<double[]> track_params(new double[dimtrack[0]]);
-    H5LTread_dataset_double(group,"track", track_params.get());
+    H5LTread_dataset_double(group_id,"track", track_params.get());
 
     double x_current;
-    H5LTget_attribute_double(group,"track","X",&x_current);
+    H5LTget_attribute_double(group_id,"track","X",&x_current);
 
     // setting body and track
     SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
@@ -2167,11 +2208,11 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
 
   // reading energy
   hsize_t dims[2];
-  H5LTget_dataset_info(group, "energies", dims, nullptr, nullptr);
+  H5LTget_dataset_info(group_id, "energies", dims, nullptr, nullptr);
 
   ne = static_cast<unsigned int>(dims[0]);
   std::unique_ptr<double[]> energy_data(new double[ne]);
-  H5LTread_dataset_double(group, "energies", energy_data.get());
+  H5LTread_dataset_double(group_id, "energies", energy_data.get());
   E_range = marray<double,1>{ne};
   for (unsigned int ie = 0; ie < ne; ie++)
     E_range[ie] = energy_data[ie];
@@ -2192,12 +2233,12 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
     for( unsigned int j = i+1; j < numneu; j++ ){
       double th_value;
       std::string th_label = "th"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group,"mixingangles", th_label.c_str(), &th_value);
+      H5LTget_attribute_double(group_id,"mixingangles", th_label.c_str(), &th_value);
       Set_MixingAngle(i,j,th_value);
 
       double delta_value;
       std::string delta_label = "delta"+std::to_string(i+1)+std::to_string(j+1);
-      H5LTget_attribute_double(group,"CPphases", delta_label.c_str(), &delta_value);
+      H5LTget_attribute_double(group_id,"CPphases", delta_label.c_str(), &delta_value);
       Set_CPPhase(i,j,delta_value);
     }
   }
@@ -2205,7 +2246,7 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   for( unsigned int i = 1; i < numneu; i++ ){
     double dm2_value;
     std::string dm2_label = "dm"+std::to_string(i+1)+"1sq";
-    H5LTget_attribute_double(group,"massdifferences", dm2_label.c_str(), &dm2_value);
+    H5LTget_attribute_double(group_id,"massdifferences", dm2_label.c_str(), &dm2_value);
     Set_SquareMassDifference(i, dm2_value);
   }
 
@@ -2228,13 +2269,13 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   EvolveProjectors(squids_time);
 
   // reading state
-  H5LTget_dataset_info(group,"neustate", dims,nullptr,nullptr);
+  H5LTget_dataset_info(group_id,"neustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> neudata(new double[dims[0]*dims[1]]);
-  H5LTread_dataset_double(group,"neustate", neudata.get());
+  H5LTread_dataset_double(group_id,"neustate", neudata.get());
 
-  H5LTget_dataset_info(group,"aneustate", dims,nullptr,nullptr);
+  H5LTget_dataset_info(group_id,"aneustate", dims,nullptr,nullptr);
   std::unique_ptr<double[]> aneudata(new double[dims[0]*dims[1]]);
-  H5LTread_dataset_double(group,"aneustate", aneudata.get());
+  H5LTread_dataset_double(group_id,"aneustate", aneudata.get());
 
   for(unsigned int ie = 0; ie < dims[0]; ie++){
     for (unsigned int j = 0; j < dims[1]; j ++){
@@ -2267,11 +2308,19 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   }
 
   // read from user parameters
-  hid_t user_parameters_id = H5Gopen(group, "user_parameters", H5P_DEFAULT);
+  hid_t user_parameters_id = H5Gopen(group_id, "user_parameters", H5P_DEFAULT);
   //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
   AddToReadHDF5(user_parameters_id);
   //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
   H5Gclose(user_parameters_id);
+
+  // close HDF5 file
+  H5Gclose ( group_id );
+  // close root and file
+  H5Gclose ( root_id );
+  H5Fclose (file_id);
+  // close all HDF5 variables/memory
+  H5close();
 
   // we assume that this was created with the writer and got to this point!
   istate = true;
@@ -2320,6 +2369,10 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   if(err>=0) tauregeneration=auxint;
   err=H5LTget_attribute_int(group, "basic", "glashow_resonance", &auxint);
   if(err>=0) iglashow=auxint;
+  err=H5LTget_attribute_int(group, "basic", "average", &auxint);
+  if(err>=0) average=auxint;
+  err=H5LTget_attribute_int(group, "basic", "lowpass", &auxint);
+  if(err>=0) lowpass=auxint;
 
   double squids_time;
   H5LTget_attribute_double(group, "basic", "squids_time", &squids_time);
@@ -2344,12 +2397,20 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // reading body and track
   if(nusquids_version>100000){
     H5Handle body_group(H5Gopen(group, "body", H5P_DEFAULT), H5Gclose, "open body group");
-    std::string body_name = getStringAttribute(group,"body","name");
-    body=GetBodyDeserializer(body_name)(body_group);
+    std::string body_name = getStringAttribute(group,"body","name"); 
+    //hid_t body_group_id = H5Gopen(group_id, "body", H5P_DEFAULT);
+    //if(body_group_id<0)
+    //  throw std::runtime_error("nuSQuIDS::Error opening body group");
+    //body=GetBodyDeserializer(body_name)(body_group_id);
+    //H5Gclose(body_group_id);
+	  body=GetBodyDeserializer(body_name)(body_group);
 
-    H5Handle track_group(H5Gopen(group, "track", H5P_DEFAULT), H5Gclose, "open track group");
+    hid_t track_group_id = H5Gopen(group, "track", H5P_DEFAULT);
+    if(track_group_id<0)
+      throw std::runtime_error("nuSQuIDS::Error opening track group");
     std::string track_name = getStringAttribute(group,"track","name");
-    track=GetTrackDeserializer(track_name)(track_group);
+    track=GetTrackDeserializer(track_name)(track_group_id);
+    H5Gclose(track_group_id);
   } else {
     unsigned int body_id;
     hsize_t dimbody[1];
@@ -2762,10 +2823,9 @@ void nuSQUIDS::SetBodyTrack(unsigned int body_id, unsigned int body_params_len, 
         }
       case 7:
         {
-          auto earth = std::make_shared<EarthAtm>();
-          body = earth;
+          body = std::make_shared<EarthAtm>();
           // track_param[2] corresponds to the zenith angle
-          track = std::make_shared<EarthAtm::Track>(earth->MakeTrack(track_params[2]));
+          track = std::make_shared<EarthAtm::Track>(track_params[2]);
           break;
         }
       default:
@@ -2819,12 +2879,37 @@ void nuSQUIDS::Set_ProgressBar(bool opt){
 }
 
 void nuSQUIDS::Set_EvolLowPassCutoff(double val){
+  if(evol_lowpass_cutoff.extent(0) != ne) {
+    evol_lowpass_cutoff = marray<double,1>({ne});
+  }
+  for(unsigned int ie=0; ie < ne; ++ie) {
+    evol_lowpass_cutoff[ie] = val;
+  }
+}
+
+void nuSQUIDS::Set_EvolLowPassCutoff(const marray<double,1>& val){
+  if(val.extent(0) != ne) {
+    throw std::runtime_error("nuSQUIDS::Error::LowPassCutoff extents must match the number of energy nodes, thus LowPassCutoff cannot be set to the specified value.");
+  }
   evol_lowpass_cutoff = val;
 }
 
 void nuSQUIDS::Set_EvolLowPassScale(double val){
+  if(evol_lowpass_scale.extent(0) != ne) {
+    evol_lowpass_scale = marray<double,1>({ne});
+  }
+  for(unsigned int ie=0; ie < ne; ++ie) {
+    evol_lowpass_scale[ie] = val;
+  }
+}
+
+void nuSQUIDS::Set_EvolLowPassScale(const marray<double,1>& val){
+  if(val.extent(0) != ne) {
+    throw std::runtime_error("nuSQUIDS::Error::LowPassScale extents must match the number of energy nodes, thus LowPassScale cannot be set to the specified value.");
+  }
   evol_lowpass_scale = val;
 }
+
 void nuSQUIDS::Set_IncludeOscillations(bool opt){
   ioscillations = opt;
 }
