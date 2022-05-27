@@ -1144,8 +1144,6 @@ void nuSQUIDS::GetCrossSections(){
     // constructing dNdE for tau decay
     for(unsigned int e1 = 0; e1 < ne; e1++){
       for(unsigned int e2 = 0; e2 < e1; e2++){
-        // int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
-        // int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
         int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1;
         int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
       }
