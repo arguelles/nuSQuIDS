@@ -88,7 +88,7 @@ class TauDecaySpectra{
     double BrRA1;
 
     /// \brief Sets mass ratios, branching ratios, and polarizations.
-    void SetParameters(bool neutrino_type=true);
+    void SetParameters();
   public:
     /// \brief Calculates the differential spectrum for tau to leptons with respect to z = E_nu/E_tau.
     /// @param E_tau Tau energy.
@@ -117,27 +117,27 @@ class TauDecaySpectra{
   private:
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for all channels.
-    marray<double,3,aligned_allocator<double>> dNdEnu_All_tbl;
+    marray<double,2,aligned_allocator<double>> dNdEnu_All_tbl;
     /// \brief Stores the differential spectrum with respect to the incoming neutrino
     /// energy for leptonic channels.
-    marray<double,3,aligned_allocator<double>> dNdEnu_Lep_tbl;
+    marray<double,2,aligned_allocator<double>> dNdEnu_Lep_tbl;
 
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for all channels.
-    marray<double,3,aligned_allocator<double>> dNdEle_All_tbl;
+    marray<double,2,aligned_allocator<double>> dNdEle_All_tbl;
     /// \brief Stores the differential spectrum with respect to the outgoing lepton
     /// energy for leptonic channels.
-    marray<double,3,aligned_allocator<double>> dNdEle_Lep_tbl;
+    marray<double,2,aligned_allocator<double>> dNdEle_Lep_tbl;
 
   public :
     /// \brief Detault empty constructor.
-    TauDecaySpectra(bool polarization=true):
+    TauDecaySpectra():
       dNdEnu_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEnu_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEle_All_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
       dNdEle_Lep_tbl(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))})
       {
-        SetParameters(polarization);
+        SetParameters();
       }
     /// \brief Constructor for a given energy range.
     /// @param E_range Energy nodes where the cross section will be calculated. [eV]
@@ -152,23 +152,23 @@ class TauDecaySpectra{
     /// all decay channels. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEnu_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
+    double dNdEnu_All(unsigned int i_enu,unsigned int i_ele) const;
     /// \brief Returns the differential spectrum with respect to the incoming neutrino energy for
     /// leptonic decay channel. Returned in units of GeV^-1.
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
+    double dNdEnu_Lep(unsigned int i_enu,unsigned int i_ele) const;
 
     /// \brief Returns the differential spectrum with respect to the outgoing lepton energy for
     /// all decay channels. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEle_All(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
+    double dNdEle_All(unsigned int i_enu,unsigned int i_ele) const;
     /// \brief Returns the differential spectrum with respect to the outgoing neutrino energy for
     /// leptonic decay channel. Returned in units of GeV^-1
     /// @param i_enu Initial energy node index.
     /// @param i_ele Outgoing energy node index.
-    double dNdEle_Lep(unsigned int i_enu,unsigned int i_ele, unsigned int neutrino_type = 0) const;
+    double dNdEle_Lep(unsigned int i_enu,unsigned int i_ele) const;
     /// \brief Returns tau to lepton branching ratio.
     double GetTauToLeptonBranchingRatio() const{
       return BrLepton;
@@ -176,6 +176,11 @@ class TauDecaySpectra{
     double GetTauToHadronBranchingRatio() const{
       return BrHadron;
     }
+
+    double DecayLenght(double Etau) const { return 87e-6*Etau/1.77686; }; //decay lenght of tau is 87 micrometers
+
+
+
 };
 
 }// close namespace

@@ -153,6 +153,9 @@ void nuSQUIDS::Set_E(double Enu){
 }
 
 void nuSQUIDS::init(marray<double,1> E_vector, double xini){
+  
+  std::cout << NT << std::endl;
+
   // here the energies come in natural units
   if (NT == neutrino || NT == antineutrino)
     nrhos = 1;
@@ -168,6 +171,16 @@ void nuSQUIDS::init(marray<double,1> E_vector, double xini){
     throw std::runtime_error("nuSQUIDS::Error::Minimum number of neutrinos is three");
 
   nsun = numneu;
+
+  if (tauregeneration) {
+    if ( NT != both )
+      throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
+    if( not iinteraction )
+      throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs has been initialized without interactions, thus tau regeneration cannot be enabled.");
+    if( numneu < 3 )
+      throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs at least three neutrino flavors must be included to enable tau regeneration.");
+    numlep = 1;
+  }
 
   ne = E_vector.size();
   assert(ne>0);
@@ -270,9 +283,13 @@ void nuSQUIDS::InitializeInteractionVectors(unsigned int nTargets){
   int_struct->sigma_CC.resize(std::vector<size_t>{nTargets,nrhos,numneu,rounded_ne});
   int_struct->sigma_NC.resize(std::vector<size_t>{nTargets,nrhos,numneu,rounded_ne});
   int_struct->sigma_GR.resize(std::vector<size_t>{rounded_ne});
-  // initialize the tau decay and interaction array
-  int_struct->dNdE_tau_all.resize(std::vector<size_t>{nrhos,ne,rounded_ne});
-  int_struct->dNdE_tau_lep.resize(std::vector<size_t>{nrhos,ne,rounded_ne});
+  // initialize the tau energy losses
+  int_struct->sigma_TAU_INT.resize(std::vector<size_t>{rounded_ne});
+  int_struct->dNdE_TAU_INT.resize(std::vector<size_t>{ne,rounded_ne});
+  int_struct->sigma_TAU_DEC.resize(std::vector<size_t>{rounded_ne});
+  int_struct->dNdE_TAU_DEC_ALL.resize(std::vector<size_t>{ne,rounded_ne});
+  int_struct->dNdE_TAU_DEC_LEP.resize(std::vector<size_t>{ne,rounded_ne});
+
 }
 
 void nuSQUIDS::PreDerive(double x){
@@ -283,6 +300,9 @@ void nuSQUIDS::PreDerive(double x){
     body->injected_neutrino_flux(current_external_flux,*track,*this);
     assert(current_external_flux.extent(0) == ne && current_external_flux.extent(1) == nrhos && current_external_flux.extent(2) == numneu);
   }
+
+  std::cout << track->GetInitialX() << " " << track->GetFinalX() << " " << track->GetX() << std::endl;
+
   if( basis != mass and ioscillations){
     EvolveProjectors(x);
   }
@@ -392,9 +412,12 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   double factor_tau=nc_factors[index_rho][2][e1];
   // Tau regeneration
   if(tauregeneration){
-    factor_e  +=   tau_lep_decays[index_rho][e1];
-    factor_mu +=   tau_lep_decays[index_rho][e1];
-    factor_tau+=tau_hadlep_decays[index_rho][e1];
+    // factor_e  += tau_dec_lep_factors[index_rho][e1];
+    // factor_mu += tau_dec_lep_factors[index_rho][e1];
+    factor_tau+= tau_dec_all_factors[index_rho][e1];
+    factor_e  += 0;
+    factor_mu += 0;
+    // factor_tau+= 0;
   }
   // Glashow resonance for electron antineutrinos
   if (iglashow && ((NT == both and index_rho == 1) or NT == antineutrino)) {
@@ -430,23 +453,16 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
   return interaction_term;
 }
 
-double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int iscalar) const{
-  //TODO
-  // write member function that initializes table 
-  // marray<double,2> xs_tau
-  // here only evaluate table
-  return xs_tau[iscalar][ei] - gamma_tau;
+double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int index_scalar) const{
+  // return 0.5*int_state.invlen_TAU_INT[ei] + int_state.invlen_TAU_DEC[ei];
+  return int_state.invlen_TAU_DEC[ei]*estate[ei].scalar[index_scalar];
+  // return 0;
 }
 
-double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const{
-  //TODO
-  double total_gain = 0.0;
-  for(unsigned int ep=ei; ep<ne; ep++){ // loop over initial tau neutrino energies
-    total_gain += estate[ep].scalar[iscalar]*dxs_tau[iscalar][ei][ep]*delE[ep-1];
-    total_gain += (estate[ep].rho[iscalar]*evol_b1_proj[iscalar][2][e1])*dxs_nu_tau[iscalar][ei][ep]*delE[ep-1];
-  }
-  total_gain += beta_e[ei]*estate[ei].scalar[iscalar]
-  return total_gain;
+double nuSQUIDS::InteractionsScalar(unsigned int e1, unsigned int index_scalar) const{
+  // return tau_int_factors[index_scalar][e1] + cc_factors[index_scalar][2][e1];
+  return cc_factors[index_scalar][2][e1];
+  // return 0;
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() const{
@@ -603,6 +619,8 @@ void nuSQUIDS::UpdateInteractions(){
     int_state.invlen_CC.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
     int_state.invlen_GR.resize(std::vector<size_t>{rounded_ne});
     int_state.invlen_INT.resize(std::vector<size_t>{nrhos,numneu,rounded_ne});
+    int_state.invlen_TAU_INT.resize(std::vector<size_t>{rounded_ne});
+    int_state.invlen_TAU_DEC.resize(std::vector<size_t>{rounded_ne});
   }
   
   std::vector<double> targetDensities = GetTargetNumberDensities();
@@ -635,7 +653,21 @@ void nuSQUIDS::UpdateInteractions(){
       }
     }
   }
-    
+
+  if(tauregeneration){
+    double density = (params.gr*pow(params.cm,-3))*current_density;
+    double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+      int_state.invlen_TAU_INT[e1] = int_struct->sigma_TAU_INT[e1]*num_nuc;
+      int_state.invlen_TAU_DEC[e1] = int_struct->sigma_TAU_DEC[e1];
+    }
+  }
+   
+
+  std::cout << int_state.invlen_INT[0][2][0] << " " << int_state.invlen_TAU_DEC[0] << std::endl;
+  std::cout << int_state.invlen_INT[600][2][0] << " " << int_state.invlen_TAU_DEC[600] << std::endl;
+
+
   // Add Glashow resonance if antineutrinos are in the mix
   if (iglashow && (NT == both or NT == antineutrino)) {
     NUSQUIDS_DEBUG_LABEL(setting_invlen_GR);
@@ -707,92 +739,6 @@ void nuSQUIDS::UpdateInteractions(){
         }
       }
     }
-
-    NUSQUIDS_DEBUG_LABEL(TR_contribution_no_osc);
-    if(tauregeneration){
-      assert(numneu >= 3);
-      const unsigned int tau_flavor = 2;
-      
-      //first accumulate the flux of taus produced by interaction
-      ALIGNED_LOCAL_BUFFER(    tau_decay_fluxes,double,ne);
-      ALIGNED_LOCAL_BUFFER(tau_bar_decay_fluxes,double,ne);
-      
-      //without osciallations we can always just use the first projectors
-      squids::SU_vector& projector_tau     = evol_b1_proj[0][tau_flavor][0];
-      squids::SU_vector& projector_tau_bar = evol_b1_proj[1][tau_flavor][0];
-      
-      for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
-        double nu_tau_flux     =     projector_tau*estate[en].rho[0];
-        double nu_tau_bar_flux = projector_tau_bar*estate[en].rho[1];
-        if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
-          continue;
-        double dEn = delE[en-1];
-        double invlen_CC_tau     = int_state.invlen_CC[0][tau_flavor][en];
-        double invlen_CC_tau_bar = int_state.invlen_CC[1][tau_flavor][en];
-        for(unsigned int trg=0; trg < nTargetTypes; trg++){ //loop over target types
-          //note that the flux is scaled by fraction of total targets
-          double nu_tau_flux_invlen_CC     =     nu_tau_flux*    invlen_CC_tau*dEn*targetFractions[trg];
-          double nu_tau_bar_flux_invlen_CC = nu_tau_bar_flux*invlen_CC_tau_bar*dEn*targetFractions[trg];
-          double* dNdE_CC_tau     = &int_struct->dNdE_CC[trg][0][tau_flavor][en][0];
-          double* dNdE_CC_tau_bar = &int_struct->dNdE_CC[trg][1][tau_flavor][en][0];
-          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau    ,preferred_alignment*sizeof(double));
-          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau_bar,preferred_alignment*sizeof(double));
-          for(unsigned int et=1; et<en; et++){ // loop over intermediate tau energies
-            double dEt = delE[et-1];
-            tau_decay_fluxes[et]    +=    nu_tau_flux_invlen_CC*    dNdE_CC_tau[et]*dEt;
-            tau_bar_decay_fluxes[et]+=nu_tau_bar_flux_invlen_CC*dNdE_CC_tau_bar[et]*dEt;
-          }
-        }
-      }
-      
-      //then accumulate the contributions back to the neutrino fluxes from the taus decaying
-      ALIGNED_LOCAL_BUFFER(    tau_lep_decays,double,ne);
-      ALIGNED_LOCAL_BUFFER(tau_bar_lep_decays,double,ne);
-      double* factors_nu_e      =&flavor_factors[0][0][0];
-      double* factors_nu_e_bar  =&flavor_factors[1][0][0];
-      double* factors_nu_mu     =&flavor_factors[0][1][0];
-      double* factors_nu_mu_bar =&flavor_factors[1][1][0];
-      double* factors_nu_tau    =&flavor_factors[0][2][0];
-      double* factors_nu_tau_bar=&flavor_factors[1][2][0];
-      SQUIDS_POINTER_IS_ALIGNED(factors_nu_tau,preferred_alignment*sizeof(double));
-      SQUIDS_POINTER_IS_ALIGNED(factors_nu_tau_bar,preferred_alignment*sizeof(double));
-      for(unsigned int et=1; et<ne; et++){ // loop over intermediate tau energies
-        double* tau_all_ptr=&int_struct->dNdE_tau_all[0][et][0];
-        double* tau_lep_ptr=&int_struct->dNdE_tau_lep[0][et][0];
-        double* taubar_all_ptr=&int_struct->dNdE_tau_all[1][et][0];
-        double* taubar_lep_ptr=&int_struct->dNdE_tau_lep[1][et][0];
-        SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(taubar_all_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(taubar_lep_ptr,preferred_alignment*sizeof(double));
-#ifdef __clang__ //clang needs a little help with this one
-//this pragma is only available in new enough clang versions, unfortunately, 
-//Apple screws up the version numbers in their copies, so this is rather messy
-#if (defined(__apple_build_version__) && __clang_major__>=7) || \
-    (!defined(__apple_build_version__) && (__clang_major__>3 || (__clang_major__==3 && __clang_minor__>=7)))
-        #pragma clang loop vectorize(assume_safety)
-#endif
-#endif
-        for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-          //Defer adding the leptonic decays to both the electron and muon sums
-          //to reduce the amount of data written in this inner loop from ~2*ne^2
-          //to ne^2 + 2*ne. Since the hadlep contributions only go into the tau
-          //components we might as well put them there directly.
-          tau_lep_decays[e1]     += tau_bar_decay_fluxes[et]*taubar_lep_ptr[e1];
-          tau_bar_lep_decays[e1] +=     tau_decay_fluxes[et]*tau_lep_ptr[e1];
-          factors_nu_tau[e1]     +=     tau_decay_fluxes[et]*tau_all_ptr[e1];
-          factors_nu_tau_bar[e1] += tau_bar_decay_fluxes[et]*taubar_all_ptr[e1];
-        }
-      }
-      for(unsigned int e1=0; e1<rounded_ne; e1++){ // loop over final neutrino energies
-        double tau_lep_decays_e1       =       tau_lep_decays[e1];
-        double tau_bar_lep_decays_e1   =   tau_bar_lep_decays[e1];
-        factors_nu_e      [e1]+=       tau_lep_decays_e1;
-        factors_nu_e_bar  [e1]+=   tau_bar_lep_decays_e1;
-        factors_nu_mu     [e1]+=       tau_lep_decays_e1;
-        factors_nu_mu_bar [e1]+=   tau_bar_lep_decays_e1;
-      }
-    } // end of TR handling
     
     NUSQUIDS_DEBUG_LABEL(GR_contribution_no_osc);
     if(iglashow && (NT == both or NT == antineutrino)){
@@ -894,69 +840,87 @@ void nuSQUIDS::UpdateInteractions(){
         }
       }
     }
-    
+
+    std::fill(cc_factors.begin(),cc_factors.end(),0.);
+    for(unsigned int rho = 0; rho < nrhos; rho++){
+      //for each flavor
+      for(unsigned int alpha_active : {0,1,2}){
+        //accumulate the contribution of each energy e2 to each lower energy
+        for(unsigned int e2=1; e2<ne; e2++){
+          //the flux of the current flavor at e2
+          double flux_a_e2=evol_b1_proj[rho][alpha_active][e2]*estate[e2].rho[rho];
+          //premultiply factors which do not depend on the lower energy e1
+          flux_a_e2*=int_state.invlen_CC[rho][alpha_active][e2]*delE[e2-1];
+          //for each type of target within the material
+          for(unsigned int trg=0; trg<nTargetTypes; trg++){
+            //scale by the fraction of the material which is this target type
+            double tFrac=targetFractions[trg];
+            double flux_a_e2_t=tFrac*flux_a_e2;
+            double* dNdE_ptr=&int_struct->dNdE_CC[trg][rho][alpha_active][e2][0];
+            SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
+            double* cc_factor_ptr=&cc_factors[rho][alpha_active][0];
+            SQUIDS_POINTER_IS_ALIGNED(cc_factor_ptr,preferred_alignment*sizeof(double));
+            for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++, cc_factor_ptr++)
+              *cc_factor_ptr+=flux_a_e2_t*(*dNdE_ptr);
+          } 
+        }
+      }
+    }
+
     NUSQUIDS_DEBUG_LABEL(TR_contribution_osc);
     if(tauregeneration){
-      assert(numneu >= 3);
-      const unsigned int tau_flavor = 2;
-      //first accumulate the flux of taus produced by interaction
-      ALIGNED_LOCAL_BUFFER(tau_decay_fluxes,double,ne);
-      ALIGNED_LOCAL_BUFFER(tau_bar_decay_fluxes,double,ne);
-      //we must use the actual projector for each energy, no shortcuts!
-      for(unsigned int en=1; en<ne; en++){ // loop over initial tau neutrino energies
-        double nu_tau_flux     = evol_b1_proj[0][tau_flavor][en]*estate[en].rho[0];
-        double nu_tau_bar_flux = evol_b1_proj[1][tau_flavor][en]*estate[en].rho[1];
-        if(nu_tau_flux<=0 && nu_tau_bar_flux<=0)
-          continue;
-        double dEn = delE[en-1];
-        double invlen_CC_tau     = int_state.invlen_CC[0][tau_flavor][en];
-        double invlen_CC_tau_bar = int_state.invlen_CC[1][tau_flavor][en];
-        for(unsigned int trg=0; trg < nTargetTypes; trg++){
-          //for convenience scale fluxes by target fraction, as usual
-          double nu_tau_flux_invlen_CC     =     nu_tau_flux*    invlen_CC_tau*dEn*targetFractions[trg];
-          double nu_tau_bar_flux_invlen_CC = nu_tau_bar_flux*invlen_CC_tau_bar*dEn*targetFractions[trg];
-          double* dNdE_CC_tau     = &int_struct->dNdE_CC[trg][0][tau_flavor][en][0];
-          double* dNdE_CC_tau_bar = &int_struct->dNdE_CC[trg][1][tau_flavor][en][0];
-          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau    ,preferred_alignment*sizeof(double));
-          SQUIDS_POINTER_IS_ALIGNED(dNdE_CC_tau_bar,preferred_alignment*sizeof(double));
-          for(unsigned int et=1; et<en; et++){ // loop over intermediate tau energies
-            double dEt = delE[et-1];
-            tau_decay_fluxes[et]    +=    nu_tau_flux_invlen_CC*    dNdE_CC_tau[et]*dEt;
-            tau_bar_decay_fluxes[et]+=nu_tau_bar_flux_invlen_CC*dNdE_CC_tau_bar[et]*dEt;
-          }
+
+      std::fill(tau_int_factors.begin(),tau_int_factors.end(),0.);
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        //accumulate the contribution of each energy e2 to each lower energy
+        for(unsigned int e2=1; e2<ne; e2++){
+          //the flux of the current tau at e2
+          double flux_a_e2=estate[e2].scalar[rho];
+          //premultiply factors which do not depend on the lower energy e1
+          flux_a_e2*=int_state.invlen_TAU_INT[e2]*delE[e2-1];
+          double* dNdE_ptr=&int_struct->dNdE_TAU_INT[e2][0];
+          SQUIDS_POINTER_IS_ALIGNED(dNdE_ptr,preferred_alignment*sizeof(double));
+          double* tau_int_factor_ptr=&tau_int_factors[rho][0];
+          SQUIDS_POINTER_IS_ALIGNED(tau_int_factor_ptr,preferred_alignment*sizeof(double));
+          for(unsigned int e1=0; e1<e2; e1++, dNdE_ptr++, tau_int_factor_ptr++)
+            *tau_int_factor_ptr+=flux_a_e2*(*dNdE_ptr);
         }
       }
-      
-      //then accumulate the contributions back to the neutrino fluxes from the taus decaying
-      
-      //zero out the arrays
-      std::fill(tau_hadlep_decays.begin(),tau_hadlep_decays.end(),0.);
-      std::fill(tau_lep_decays.begin(),tau_lep_decays.end(),0.);
-      //fill in new data
-      for(unsigned int et=1; et<ne; et++){ // loop over intermediate tau energies
-        double* tau_all_ptr=&int_struct->dNdE_tau_all[0][et][0];
-        double* tau_lep_ptr=&int_struct->dNdE_tau_lep[0][et][0];
-        double* taubar_all_ptr=&int_struct->dNdE_tau_all[1][et][0];
-        double* taubar_lep_ptr=&int_struct->dNdE_tau_lep[1][et][0];
-        SQUIDS_POINTER_IS_ALIGNED(tau_all_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(tau_lep_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(taubar_all_ptr,preferred_alignment*sizeof(double));
-        SQUIDS_POINTER_IS_ALIGNED(taubar_lep_ptr,preferred_alignment*sizeof(double));
-        double     tau_decay_flux_et=    tau_decay_fluxes[et];
-        double tau_bar_decay_flux_et=tau_bar_decay_fluxes[et];
-        for(unsigned int e1=0; e1<et; e1++){ // loop over final neutrino energies
-          double tau_all_e1=tau_all_ptr[e1];
-          double tau_lep_e1=tau_lep_ptr[e1];
-          double taubar_all_e1=taubar_all_ptr[e1];
-          double taubar_lep_e1=taubar_lep_ptr[e1];
-          tau_hadlep_decays[0][e1] +=     tau_decay_flux_et*tau_all_e1;
-          tau_lep_decays   [0][e1] += tau_bar_decay_flux_et*taubar_lep_e1;
-          tau_hadlep_decays[1][e1] += tau_bar_decay_flux_et*taubar_all_e1;
-          tau_lep_decays   [1][e1] +=     tau_decay_flux_et*tau_lep_e1;
-        }
+
+      std::fill(tau_dec_all_factors.begin(),tau_dec_all_factors.end(),0.);
+      std::fill(tau_dec_lep_factors.begin(),tau_dec_lep_factors.end(),0.);
+      //accumulate the contribution of each energy e2 to each lower energy
+      for(unsigned int e2=1; e2<ne; e2++){
+        //the flux of the current tau at e2
+        double tau_flux_a_e2=estate[e2].scalar[0];
+        double tau_bar_flux_a_e2=estate[e2].scalar[1];
+        //premultiply factors which do not depend on the lower energy e1
+        tau_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
+        tau_bar_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
+        //for each type of target within the material
+        double* dNdE_all_ptr=&int_struct->dNdE_TAU_DEC_ALL[e2][0];
+        double* dNdE_lep_ptr=&int_struct->dNdE_TAU_DEC_LEP[e2][0];
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_all_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(dNdE_lep_ptr,preferred_alignment*sizeof(double));
+        double* tau_dec_all_factor_ptr=&tau_dec_all_factors[0][0];
+        double* tau_dec_lep_factor_ptr=&tau_dec_lep_factors[0][0];
+        double* tau_bar_dec_all_factor_ptr=&tau_dec_all_factors[1][0];
+        double* tau_bar_dec_lep_factor_ptr=&tau_dec_lep_factors[1][0];
+        SQUIDS_POINTER_IS_ALIGNED(tau_dec_all_factor_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(tau_dec_lep_factor_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(tau_bar_dec_all_factor_ptr,preferred_alignment*sizeof(double));
+        SQUIDS_POINTER_IS_ALIGNED(tau_bar_dec_lep_factor_ptr,preferred_alignment*sizeof(double));
+        for(unsigned int e1=0; e1<e2; e1++, dNdE_all_ptr++, tau_dec_all_factor_ptr++)
+          *tau_dec_all_factor_ptr+=tau_flux_a_e2*(*dNdE_all_ptr);
+        for(unsigned int e1=0; e1<e2; e1++, dNdE_lep_ptr++, tau_dec_lep_factor_ptr++)
+          *tau_dec_lep_factor_ptr+=tau_bar_flux_a_e2*(*dNdE_lep_ptr);
+        for(unsigned int e1=0; e1<e2; e1++, dNdE_all_ptr++, tau_bar_dec_all_factor_ptr++)
+          *tau_bar_dec_all_factor_ptr+=tau_bar_flux_a_e2*(*dNdE_all_ptr);
+        for(unsigned int e1=0; e1<e2; e1++, dNdE_lep_ptr++, tau_bar_dec_lep_factor_ptr++)
+          *tau_bar_dec_lep_factor_ptr+=tau_flux_a_e2*(*dNdE_lep_ptr);
       }
-      
-    } //end of TR handling
+
+    }
     
     NUSQUIDS_DEBUG_LABEL(GR_contribution_osc);
     if(iglashow && (NT == both or NT == antineutrino)){
@@ -984,14 +948,6 @@ void nuSQUIDS::InitializeInteractions(){
   //===============================
   // init XS and TDecay objects  //
   //===============================
-
-  try{
-    // initialize tau decay spectra object
-    tdc.Init(E_range);
-  } catch (std::exception& ex) {
-    std::cerr << ex.what() << std::endl;
-    throw std::runtime_error("nuSQUIDS::init : Failed while trying initialize TauDecaySpectra object [TauDecaySpectra::Init]");
-  }
   
   // if we don't already have cached data, create it
   if ( !int_struct ) {
@@ -1000,7 +956,13 @@ void nuSQUIDS::InitializeInteractions(){
     if ( ncs == nullptr) {
       ncs = std::make_shared<CrossSectionLibrary>(loadDefaultCrossSections());
     } // else we assume the user has already inintialized the object if not throw error.
-    
+
+    if(tauregeneration) {
+      // initialize tau decay spectra and cross section objects
+      tdc.Init(E_range);
+      tcs.Init(getResourcePath()+"/tau_eloss/tau_rock.h5");
+    }    
+
     //We have to figure out what cross sections we are using. 
     //We would prefer to use separate ones for protons and neutrons, but it is 
     //possible that only isoscalar nuclear cross sections are available, in which
@@ -1043,9 +1005,11 @@ void nuSQUIDS::InitializeInteractions(){
   if(iinteraction){
     size_t rounded_ne=round_up_to_aligned(ne);
     nc_factors.resize(std::vector<size_t>{nrhos,3,rounded_ne});
+    cc_factors.resize(std::vector<size_t>{nrhos,3,rounded_ne});
     if(tauregeneration){
-      tau_hadlep_decays.resize(std::vector<size_t>{2,rounded_ne});
-      tau_lep_decays.resize(std::vector<size_t>{2,rounded_ne});
+      tau_int_factors.resize(std::vector<size_t>{nrhos,rounded_ne});
+      tau_dec_all_factors.resize(std::vector<size_t>{nrhos,rounded_ne});
+      tau_dec_lep_factors.resize(std::vector<size_t>{nrhos,rounded_ne});
     }
     if(iglashow)
       gr_factors.resize(std::vector<size_t>{rounded_ne});
@@ -1092,68 +1056,68 @@ void nuSQUIDS::GetCrossSections(){
 //     std::cout.flush();
 //     std::chrono::high_resolution_clock::time_point t1, t2;
 //     t1 = std::chrono::high_resolution_clock::now();
-  for(unsigned int target = 0; target < int_struct->targets.size(); target++){
-    auto xs = ncs->crossSectionForTarget(int_struct->targets[target]);
-    // initializing cross section arrays temporary array
-    marray<double,4> dsignudE_CC{nrhos,numneu,ne,ne};
-    marray<double,4> dsignudE_NC{nrhos,numneu,ne,ne};
-    try{
-    
-    for(unsigned int neutype = 0; neutype < nrhos; neutype++){
-      for(unsigned int flv = 0; flv < numneu; flv++){
-        for(unsigned int e1 = 0; e1 < ne; e1++){
-          // differential cross sections
-          dsignudE_NC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
-          validateCrossSection(dsignudE_NC[neutype][flv][e1][0],cm2GeV,"NC",true,E_range[e1],E_range[0],flv);
-          dsignudE_CC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
-          validateCrossSection(dsignudE_CC[neutype][flv][e1][0],cm2GeV,"CC",true,E_range[e1],E_range[0],flv);
-          for(unsigned int e2 = 1; e2 < e1; e2++){
-            dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
-            validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
-            dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
-            validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
-          }
-          // total cross sections
-          if(e1>0) {
-            int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-            int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-          }
-          else {
-            int_struct->sigma_CC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
-            int_struct->sigma_NC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
-          }
-          validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
-          validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
-        }
-      }
-    }
-
-    // constructing dNdE for DIS
-    for(unsigned int rho = 0; rho < nrhos; rho++){
-      for(unsigned int flv = 0; flv < numneu; flv++){
-        for(unsigned int e1 = 0; e1 < ne; e1++){
-          for(unsigned int e2 = 0; e2 < e1; e2++){
-            if(dsignudE_NC[rho][flv][e1][e2] == 0 )
-              int_struct->dNdE_NC[target][rho][flv][e1][e2] = 0;
-            else {
-              int_struct->dNdE_NC[target][rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[target][rho][flv][e1]);
-              validateCrossSection(int_struct->dNdE_NC[target][rho][flv][e1][e2],1.,"dNdE_NC",true,E_range[e1],E_range[e2],flv);
-            }
-            if(dsignudE_CC[rho][flv][e1][e2] == 0 )
-              int_struct->dNdE_CC[target][rho][flv][e1][e2] = 0;
-            else {
-              int_struct->dNdE_CC[target][rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[target][rho][flv][e1]);
-              validateCrossSection(int_struct->dNdE_CC[target][rho][flv][e1][e2],1.,"dNdE_CC",true,E_range[e1],E_range[e2],flv);
-            }
-          }
-        }
-      }
-    }
+    for(unsigned int target = 0; target < int_struct->targets.size(); target++){
+      auto xs = ncs->crossSectionForTarget(int_struct->targets[target]);
+      // initializing cross section arrays temporary array
+      marray<double,4> dsignudE_CC{nrhos,numneu,ne,ne};
+      marray<double,4> dsignudE_NC{nrhos,numneu,ne,ne};
+      try{
       
-    }catch(std::runtime_error& err){
-      throw std::runtime_error(err.what()+std::string(" on target ")+std::to_string(int_struct->targets[target]));
+      for(unsigned int neutype = 0; neutype < nrhos; neutype++){
+        for(unsigned int flv = 0; flv < numneu; flv++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
+            // differential cross sections
+            dsignudE_NC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+            validateCrossSection(dsignudE_NC[neutype][flv][e1][0],cm2GeV,"NC",true,E_range[e1],E_range[0],flv);
+            dsignudE_CC[neutype][flv][e1][0] = xs->SingleDifferentialCrossSection(E_range[e1],E_range[0],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+            validateCrossSection(dsignudE_CC[neutype][flv][e1][0],cm2GeV,"CC",true,E_range[e1],E_range[0],flv);
+            for(unsigned int e2 = 1; e2 < e1; e2++){
+              dsignudE_NC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2GeV;
+              validateCrossSection(dsignudE_NC[neutype][flv][e1][e2],cm2GeV,"NC",true,E_range[e1],E_range[e2],flv);
+              dsignudE_CC[neutype][flv][e1][e2] = xs->AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2GeV;
+              validateCrossSection(dsignudE_CC[neutype][flv][e1][e2],cm2GeV,"CC",true,E_range[e1],E_range[e2],flv);
+            }
+            // total cross sections
+            if(e1>0) {
+              int_struct->sigma_CC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+              int_struct->sigma_NC[target][neutype][flv][e1] = xs->AverageTotalCrossSection(E_range[e1-1],E_range[e1],(NeutrinoCrossSections::NeutrinoFlavor)flv,neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+            }
+            else {
+              int_struct->sigma_CC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::CC)*cm2;
+              int_struct->sigma_NC[target][neutype][flv][e1] = xs->TotalCrossSection(E_range[e1],static_cast<NeutrinoCrossSections::NeutrinoFlavor>(flv),neutype_xs_dict[neutype],NeutrinoCrossSections::NC)*cm2;
+            }
+            validateCrossSection(int_struct->sigma_CC[target][neutype][flv][e1],cm2,"CC",false,E_range[e1],0,flv);
+            validateCrossSection(int_struct->sigma_NC[target][neutype][flv][e1],cm2,"NC",false,E_range[e1],0,flv);
+          }
+        }
+      }
+
+      // constructing dNdE for DIS
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        for(unsigned int flv = 0; flv < numneu; flv++){
+          for(unsigned int e1 = 0; e1 < ne; e1++){
+            for(unsigned int e2 = 0; e2 < e1; e2++){
+              if(dsignudE_NC[rho][flv][e1][e2] == 0 )
+                int_struct->dNdE_NC[target][rho][flv][e1][e2] = 0;
+              else {
+                int_struct->dNdE_NC[target][rho][flv][e1][e2] = (dsignudE_NC[rho][flv][e1][e2])/(int_struct->sigma_NC[target][rho][flv][e1]);
+                validateCrossSection(int_struct->dNdE_NC[target][rho][flv][e1][e2],1.,"dNdE_NC",true,E_range[e1],E_range[e2],flv);
+              }
+              if(dsignudE_CC[rho][flv][e1][e2] == 0 )
+                int_struct->dNdE_CC[target][rho][flv][e1][e2] = 0;
+              else {
+                int_struct->dNdE_CC[target][rho][flv][e1][e2] = (dsignudE_CC[rho][flv][e1][e2])/(int_struct->sigma_CC[target][rho][flv][e1]);
+                validateCrossSection(int_struct->dNdE_CC[target][rho][flv][e1][e2],1.,"dNdE_CC",true,E_range[e1],E_range[e2],flv);
+              }
+            }
+          }
+        }
+      }
+        
+      }catch(std::runtime_error& err){
+        throw std::runtime_error(err.what()+std::string(" on target ")+std::to_string(int_struct->targets[target]));
+      }
     }
-  }
 
     // construct dNdE for Glashow resonance
     if(iglashow && (NT == both or NT == antineutrino)){
@@ -1177,28 +1141,46 @@ void nuSQUIDS::GetCrossSections(){
       }
     }
 
-    // load tau decay spectra
-    //
-    // filling cross section arrays
-    std::map<unsigned int,unsigned int> neutype_decay_dict;
-    if (NT == neutrino){
-      neutype_decay_dict = (std::map<unsigned int,unsigned int>){{0,0}};
-    } else if ( NT == antineutrino ) {
-      neutype_decay_dict = (std::map<unsigned int,unsigned int>){{0,1}};
-    } else {
-      // in this case NT is both
-      neutype_decay_dict = (std::map<unsigned int,unsigned int>){{0,0},{1,1}};
-    }
-    // constructing dNdE_tau_lep/dNdE_tau_all
-    for(unsigned int neutype = 0; neutype < nrhos; neutype++){
-      for(unsigned int e1 = 0; e1 < ne; e1++){
-          for(unsigned int e2 = 0; e2 < e1; e2++){
-              int_struct->dNdE_tau_all[neutype][e1][e2] = tdc.dNdEnu_All(e1,e2,neutype_decay_dict[neutype])*GeVm1;
-              int_struct->dNdE_tau_lep[neutype][e1][e2] = tdc.dNdEnu_Lep(e1,e2,neutype_decay_dict[neutype])*GeVm1;
-          }
+    // load tau decays
+    for(unsigned int e1 = 0; e1 < ne; e1++) int_struct->sigma_TAU_DEC[e1] = 1./(tdc.DecayLenght(E_range[e1]/params.GeV)*params.meter);
+
+    // constructing dNdE for tau decay
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+      for(unsigned int e2 = 0; e2 < e1; e2++){
+        int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
+        int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
       }
     }
+
+    // load tau cross sections
+    marray<double,2> dsignudE{ne,ne};
     
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+      // differential cross sections
+      dsignudE[e1][0] = tcs.SingleDifferentialCrossSection(E_range[e1],E_range[0])*cm2GeV;
+      for(unsigned int e2 = 1; e2 < e1; e2++){
+        dsignudE[e1][e2] = tcs.AverageSingleDifferentialCrossSection(E_range[e1],E_range[e2-1],E_range[e2])*cm2GeV;
+      }
+      // total cross sections
+      if(e1>0) {
+        int_struct->sigma_TAU_INT[e1] = tcs.AverageTotalCrossSection(E_range[e1-1],E_range[e1])*cm2;
+      }
+      else {
+        int_struct->sigma_TAU_INT[e1] = tcs.TotalCrossSection(E_range[e1])*cm2;
+      }
+    }
+
+    // constructing dNdE for tau
+    for(unsigned int e1 = 0; e1 < ne; e1++){
+      for(unsigned int e2 = 0; e2 < e1; e2++){
+        if(dsignudE[e1][e2] == 0 )
+          int_struct->dNdE_TAU_INT[e1][e2] = 0;
+        else {
+          int_struct->dNdE_TAU_INT[e1][e2] = (dsignudE[e1][e2])/(int_struct->sigma_TAU_INT[e1]);
+        }
+      }
+    }
+        
 //     t2 = std::chrono::high_resolution_clock::now();
 //     double time=std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
 //     std::cout << time << " seconds" << std::endl;
@@ -2019,55 +2001,55 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
       addH5Attribute<std::string>(dsetDSigmaGR,"Description","Tabulated differential cross sections for Glashow resonance interactions");
     }
 
-    { // tau decay data
-      hsize_t dNdEtaudim[3] {nrhos, ne, ne};
+    // { // tau decay data
+    //   hsize_t dNdEtaudim[3] {nrhos, ne, ne};
       
-      H5Handle dspaceTau(H5Screate_simple(3,dNdEtaudim,nullptr), H5Sclose, "create HDF5 dataspace");
-      H5Handle dNdEtauall(H5Dcreate2(xs_group,"dNdEtauall",H5T_NATIVE_DOUBLE,dspaceTau,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT), H5Dclose, "create HDF5 dataset");
-      H5Handle dNdEtaulep(H5Dcreate2(xs_group,"dNdEtaulep",H5T_NATIVE_DOUBLE,dspaceTau,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT), H5Dclose, "create HDF5 dataset");
+    //   H5Handle dspaceTau(H5Screate_simple(3,dNdEtaudim,nullptr), H5Sclose, "create HDF5 dataspace");
+    //   H5Handle dNdEtauall(H5Dcreate2(xs_group,"dNdEtauall",H5T_NATIVE_DOUBLE,dspaceTau,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT), H5Dclose, "create HDF5 dataset");
+    //   H5Handle dNdEtaulep(H5Dcreate2(xs_group,"dNdEtaulep",H5T_NATIVE_DOUBLE,dspaceTau,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT), H5Dclose, "create HDF5 dataset");
       
-      //check the last dimension of the cross section arrays for padding
-      if(int_struct->dNdE_tau_all.extent(2)==ne){
-        //no padding, which makes writing easy; dataspaces are the same shape
-        herr_t err=H5Dwrite(dNdEtauall, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
-        if(err<0)
-          throw std::runtime_error("Failed to write data to HDF5 dataset (dNdEtauall)");
+    //   //check the last dimension of the cross section arrays for padding
+    //   if(int_struct->dNdE_tau_all.extent(2)==ne){
+    //     //no padding, which makes writing easy; dataspaces are the same shape
+    //     herr_t err=H5Dwrite(dNdEtauall, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to write data to HDF5 dataset (dNdEtauall)");
         
-        err=H5Dwrite(dNdEtaulep, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
-        if(err<0)
-          throw std::runtime_error("Failed to write data to HDF5 dataset (dNdEtaulep)");
-      }
-      else{ //harder case with padding
-        //The in-memory dataspace is a different size. 
-        hsize_t source_dim[3] {int_struct->dNdE_tau_all.extent(0),
-          int_struct->dNdE_tau_all.extent(1),
-          int_struct->dNdE_tau_all.extent(2)};
-        H5Handle mem_dspace(H5Screate_simple(3,source_dim,nullptr), H5Sclose, "create HDF5 dataspace");
+    //     err=H5Dwrite(dNdEtaulep, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to write data to HDF5 dataset (dNdEtaulep)");
+    //   }
+    //   else{ //harder case with padding
+    //     //The in-memory dataspace is a different size. 
+    //     hsize_t source_dim[3] {int_struct->dNdE_tau_all.extent(0),
+    //       int_struct->dNdE_tau_all.extent(1),
+    //       int_struct->dNdE_tau_all.extent(2)};
+    //     H5Handle mem_dspace(H5Screate_simple(3,source_dim,nullptr), H5Sclose, "create HDF5 dataspace");
         
-        hsize_t stride[3]={1,1,1}; //we want everything, so all strides are minimal
-        hsize_t count[3]={nrhos,ne,1}; //step through all but the last dimension taking blocks
-        hsize_t block[3]={1,1,ne}; //the individual blocks are this size
-        hsize_t start[3]={0,0,0};
-        //designate which section of the memory we will read, and the file contents we will write
-        herr_t err=H5Sselect_hyperslab(dspaceTau, H5S_SELECT_SET, start, stride, count, block);
-        if(err<0)
-          throw std::runtime_error("Failed to set selection in HDF5 on-disk dataspace");
-        err=H5Sselect_hyperslab(mem_dspace, H5S_SELECT_SET, start, stride, count, block);
-        if(err<0)
-          throw std::runtime_error("Failed to set selection in HDF5 in-memory dataspace");
+    //     hsize_t stride[3]={1,1,1}; //we want everything, so all strides are minimal
+    //     hsize_t count[3]={nrhos,ne,1}; //step through all but the last dimension taking blocks
+    //     hsize_t block[3]={1,1,ne}; //the individual blocks are this size
+    //     hsize_t start[3]={0,0,0};
+    //     //designate which section of the memory we will read, and the file contents we will write
+    //     herr_t err=H5Sselect_hyperslab(dspaceTau, H5S_SELECT_SET, start, stride, count, block);
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to set selection in HDF5 on-disk dataspace");
+    //     err=H5Sselect_hyperslab(mem_dspace, H5S_SELECT_SET, start, stride, count, block);
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to set selection in HDF5 in-memory dataspace");
         
-        err=H5Dwrite(dNdEtauall, H5T_NATIVE_DOUBLE, mem_dspace, dspaceTau, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
-        if(err<0)
-          throw std::runtime_error("Failed to write masked data to HDF5 dataset (dNdEtauall)");
+    //     err=H5Dwrite(dNdEtauall, H5T_NATIVE_DOUBLE, mem_dspace, dspaceTau, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to write masked data to HDF5 dataset (dNdEtauall)");
         
-        err=H5Dwrite(dNdEtaulep, H5T_NATIVE_DOUBLE, mem_dspace, dspaceTau, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
-        if(err<0)
-          throw std::runtime_error("Failed to write masked data to HDF5 dataset (dNdEtaulep)");
-      }
+    //     err=H5Dwrite(dNdEtaulep, H5T_NATIVE_DOUBLE, mem_dspace, dspaceTau, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
+    //     if(err<0)
+    //       throw std::runtime_error("Failed to write masked data to HDF5 dataset (dNdEtaulep)");
+    //   }
       
-      addH5Attribute<std::string>(dNdEtauall,"Description","Tabulated tau decay specrum for all channels");
-      addH5Attribute<std::string>(dNdEtaulep,"Description","Tabulated tau decay specrum for leptonic channels");
-    }
+    //   addH5Attribute<std::string>(dNdEtauall,"Description","Tabulated tau decay specrum for all channels");
+    //   addH5Attribute<std::string>(dNdEtaulep,"Description","Tabulated tau decay specrum for leptonic channels");
+    // }
   }
 
   // write user parameters
@@ -2267,10 +2249,11 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
       int_struct = iis;
       size_t rounded_ne=round_up_to_aligned(ne);
       nc_factors.resize(std::vector<size_t>{nrhos,3,rounded_ne});
-      if(tauregeneration){
-        tau_hadlep_decays.resize(std::vector<size_t>{2,rounded_ne});
-        tau_lep_decays.resize(std::vector<size_t>{2,rounded_ne});
-      }
+      cc_factors.resize(std::vector<size_t>{nrhos,3,rounded_ne});
+      // if(tauregeneration){
+      //   tau_hadlep_decays.resize(std::vector<size_t>{2,rounded_ne});
+      //   tau_lep_decays.resize(std::vector<size_t>{2,rounded_ne});
+      // }
       if(iglashow)
         gr_factors.resize(std::vector<size_t>{rounded_ne});
       interactions_initialized = true;
@@ -2632,77 +2615,78 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
       }
     }
     
-    { // tau decay data
-      H5Handle dNdEtauall(H5Dopen2(xs_grp,"dNdEtauall",H5P_DATASET_ACCESS_DEFAULT),H5Dclose,"open dNdEtauall dataset");
-      H5Handle dNdEtaulep(H5Dopen2(xs_grp,"dNdEtaulep",H5P_DATASET_ACCESS_DEFAULT),H5Dclose,"open dNdEtaulep dataset");
+    // { // tau decay data
+    //   H5Handle dNdEtauall(H5Dopen2(xs_grp,"dNdEtauall",H5P_DATASET_ACCESS_DEFAULT),H5Dclose,"open dNdEtauall dataset");
+    //   H5Handle dNdEtaulep(H5Dopen2(xs_grp,"dNdEtaulep",H5P_DATASET_ACCESS_DEFAULT),H5Dclose,"open dNdEtaulep dataset");
       
-      int tau_spectra_rank;
-      H5LTget_dataset_ndims(xs_grp,"dNdEtauall",&tau_spectra_rank);
+    //   int tau_spectra_rank;
+    //   H5LTget_dataset_ndims(xs_grp,"dNdEtauall",&tau_spectra_rank);
       
-      if(tau_spectra_rank == 3){ // spectra with polarization
-        //check for padding
-        if(int_struct->dNdE_tau_all.extent(2)==ne){
-          //no padding
-          herr_t err=H5Dread(dNdEtauall, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
-          if(err<0)
-            throw std::runtime_error("Failed to read data from HDF5 dataset (dNdE tau all)");
+    //   if(tau_spectra_rank == 3){ // spectra with polarization
+    //     //check for padding
+    //     if(int_struct->dNdE_tau_all.extent(2)==ne){
+    //       //no padding
+    //       herr_t err=H5Dread(dNdEtauall, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
+    //       if(err<0)
+    //         throw std::runtime_error("Failed to read data from HDF5 dataset (dNdE tau all)");
           
-          err=H5Dread(dNdEtaulep, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
-          if(err<0)
-            throw std::runtime_error("Failed to read data from HDF5 dataset (dNdE tau leptonic)");
-        }
-        else{ //harder case with padding
-          //in-memory dataspace 
-          hsize_t source_dim[3] {int_struct->dNdE_tau_all.extent(0),
-            int_struct->dNdE_tau_all.extent(1),
-            int_struct->dNdE_tau_all.extent(2)};
-          H5Handle mem_dspace(H5Screate_simple(3,source_dim,nullptr), H5Sclose, "create HDF5 dataspace");
+    //       err=H5Dread(dNdEtaulep, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
+    //       if(err<0)
+    //         throw std::runtime_error("Failed to read data from HDF5 dataset (dNdE tau leptonic)");
+    //     }
+    //     else{ //harder case with padding
+    //       //in-memory dataspace 
+    //       hsize_t source_dim[3] {int_struct->dNdE_tau_all.extent(0),
+    //         int_struct->dNdE_tau_all.extent(1),
+    //         int_struct->dNdE_tau_all.extent(2)};
+    //       H5Handle mem_dspace(H5Screate_simple(3,source_dim,nullptr), H5Sclose, "create HDF5 dataspace");
           
-          hsize_t stride[3]={1,1,1}; //we want everything, so all strides are minimal
-          hsize_t count[3]={nrhos,ne,1}; //step through all but the last dimension taking blocks
-          hsize_t block[3]={1,1,ne}; //the individual blocks are this size
-          hsize_t start[3]={0,0,0};
-          //designate which section of the memory we will read, and the file contents we will write
-          herr_t err=H5Sselect_hyperslab(mem_dspace, H5S_SELECT_SET, start, stride, count, block);
-          if(err<0)
-            throw std::runtime_error("Failed to set selection in HDF5 in-memory dataspace");
+    //       hsize_t stride[3]={1,1,1}; //we want everything, so all strides are minimal
+    //       hsize_t count[3]={nrhos,ne,1}; //step through all but the last dimension taking blocks
+    //       hsize_t block[3]={1,1,ne}; //the individual blocks are this size
+    //       hsize_t start[3]={0,0,0};
+    //       //designate which section of the memory we will read, and the file contents we will write
+    //       herr_t err=H5Sselect_hyperslab(mem_dspace, H5S_SELECT_SET, start, stride, count, block);
+    //       if(err<0)
+    //         throw std::runtime_error("Failed to set selection in HDF5 in-memory dataspace");
           
-          err=H5Dread(dNdEtauall, H5T_NATIVE_DOUBLE, mem_dspace, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
-          if(err<0)
-            throw std::runtime_error("Failed to read masked data from HDF5 dataset (dNdE tau all)");
-          err=H5Dread(dNdEtaulep, H5T_NATIVE_DOUBLE, mem_dspace, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
-          if(err<0)
-            throw std::runtime_error("Failed to read masked data from HDF5 dataset (dNdE tau leptonic)");
-        }
-      }
-      else if (tau_spectra_rank == 2) { // legacy data with polarization averaged
-        hsize_t dNdEtaudim[2];
-        H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
+    //       err=H5Dread(dNdEtauall, H5T_NATIVE_DOUBLE, mem_dspace, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_all.begin());
+    //       if(err<0)
+    //         throw std::runtime_error("Failed to read masked data from HDF5 dataset (dNdE tau all)");
+    //       err=H5Dread(dNdEtaulep, H5T_NATIVE_DOUBLE, mem_dspace, H5S_ALL, H5P_DEFAULT, &*int_struct->dNdE_tau_lep.begin());
+    //       if(err<0)
+    //         throw std::runtime_error("Failed to read masked data from HDF5 dataset (dNdE tau leptonic)");
+    //     }
+    //   }
+    //   else if (tau_spectra_rank == 2) { // legacy data with polarization averaged
+    //     hsize_t dNdEtaudim[2];
+    //     H5LTget_dataset_info(xs_grp,"dNdEtauall", dNdEtaudim,nullptr,nullptr);
         
-        std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
-        H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
-        std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
-        H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
+    //     std::unique_ptr<double[]> dNdEtauall(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+    //     H5LTread_dataset_double(xs_grp,"dNdEtauall", dNdEtauall.get());
+    //     std::unique_ptr<double[]> dNdEtaulep(new double[dNdEtaudim[0]*dNdEtaudim[1]]);
+    //     H5LTread_dataset_double(xs_grp,"dNdEtaulep", dNdEtaulep.get());
         
-        for(unsigned int rho = 0; rho < nrhos; rho++){
-          for( unsigned int e1 = 0; e1 < ne; e1++){
-            for( unsigned int e2 = 0; e2 < e1; e2++){
-              int_struct->dNdE_tau_all[rho][e1][e2] = dNdEtauall[e1*ne + e2];
-              int_struct->dNdE_tau_lep[rho][e1][e2] = dNdEtaulep[e1*ne + e2];
-            }
-          }
-        }
-      }
-      else {
-        throw std::runtime_error("nuSQUIDS::ReadStateHDF5: Error. Malformed HDF5 files when trying to deserialize tau decay distributions.");
-      }
-    }
+    //     for(unsigned int rho = 0; rho < nrhos; rho++){
+    //       for( unsigned int e1 = 0; e1 < ne; e1++){
+    //         for( unsigned int e2 = 0; e2 < e1; e2++){
+    //           int_struct->dNdE_tau_all[rho][e1][e2] = dNdEtauall[e1*ne + e2];
+    //           int_struct->dNdE_tau_lep[rho][e1][e2] = dNdEtaulep[e1*ne + e2];
+    //         }
+    //       }
+    //     }
+    //   }
+    //   else {
+    //     throw std::runtime_error("nuSQUIDS::ReadStateHDF5: Error. Malformed HDF5 files when trying to deserialize tau decay distributions.");
+    //   }
+    // }
 
     nc_factors.resize(std::vector<size_t>{nrhos,3,ne});
-    if(tauregeneration){
-      tau_hadlep_decays.resize(std::vector<size_t>{2,ne});
-      tau_lep_decays.resize(std::vector<size_t>{2,ne});
-    }
+    cc_factors.resize(std::vector<size_t>{nrhos,3,ne});
+    // if(tauregeneration){
+    //   tau_hadlep_decays.resize(std::vector<size_t>{2,ne});
+    //   tau_lep_decays.resize(std::vector<size_t>{2,ne});
+    // }
     if(iglashow)
       gr_factors.resize(std::vector<size_t>{ne});
 
@@ -2809,16 +2793,6 @@ void nuSQUIDS::ProgressBar() const{
   std::cout.flush();
 }
 
-void nuSQUIDS::Set_TauRegeneration(bool opt){
-  if ( NT != both and opt )
-    throw std::runtime_error("nuSQUIDS::Error::Cannot set TauRegeneration to True when NT != 'both'.");
-  if( not iinteraction and opt )
-    throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs has been initialized without interactions, thus tau regeneration cannot be enabled.");
-  if( numneu < 3 and opt )
-    throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs at least three neutrino flavors must be included to enable tau regeneration.");
-  tauregeneration = opt;
-}
-  
 void nuSQUIDS::Set_GlashowResonance(bool opt){
   if( not iinteraction and opt )
     throw std::runtime_error("nuSQUIDS::Error::nuSQuIDs has been initialized without interactions, thus the Glashow resonance cannot be enabled.");
@@ -2920,6 +2894,7 @@ ne(other.ne),
 E_range(std::move(other.E_range)),
 delE(std::move(other.delE)),
 ncs(std::move(other.ncs)),
+tcs(std::move(other.tcs)),
 tdc(std::move(other.tdc)),
 NT(other.NT),
 int_struct(std::move(other.int_struct)),
@@ -2965,6 +2940,7 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   E_range = std::move(other.E_range);
   delE = std::move(other.delE);
   ncs = other.ncs;
+  tcs = other.tcs;
   tdc = other.tdc;
   int_struct = std::move(other.int_struct);
   int_state = std::move(other.int_state);

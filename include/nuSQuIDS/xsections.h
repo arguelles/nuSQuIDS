@@ -295,13 +295,13 @@ class NeutrinoDISCrossSectionsFromTables_V1 : public NeutrinoCrossSections {
 /// of absorption. 
 class NeutrinoDISCrossSectionsFromTables : public NeutrinoCrossSections {
 protected:
-	/// \brief Minimum neutrino energy.
-	double Emin;
-	/// \brief Maximum neutrino energy.
-	double Emax;
-	///\brief Conversion factor from GeV to eV
-	const double GeV = 1.0e9;
-	
+    /// \brief Minimum neutrino energy.
+    double Emin;
+    /// \brief Maximum neutrino energy.
+    double Emax;
+    ///\brief Conversion factor from GeV to eV
+    const double GeV = 1.0e9;
+    
     ///\brief Cross section information for one neutrino flavor
     ///
     ///Assumed to use a common energy range.
@@ -326,28 +326,28 @@ protected:
     };
   
     std::unordered_map<NeutrinoFlavor,std::shared_ptr<perFlavorData>,FlavorHash> xsData;
-	
-	///Read a total cross section table from whitespace-separated text
-	///\param path the filesystem path from which to read input
-	///\return a tuple of a spline interpolating the tabulated data, the minimum
-	///        tabulated energy, and maximum tabulated energies. Energies are in
-	///        natural units. 
-	std::tuple<AkimaSpline,double,double> read1DInterpolationFromText(const std::string& path);
-	
-	///Read a singly-differential cross section table from whitespace-separated text
-	///\param path the filesystem path from which to read input
-	///\return a tuple of a bicubic interpolator for the tabulated data, the 
-	///        minimum tabulated energy, and maximum tabulated energy.
-	///        Energies are in natural units. 
-	std::tuple<BiCubicInterpolator,double,double> read2DInterpolationFromText(const std::string& path);
+    
+    ///Read a total cross section table from whitespace-separated text
+    ///\param path the filesystem path from which to read input
+    ///\return a tuple of a spline interpolating the tabulated data, the minimum
+    ///        tabulated energy, and maximum tabulated energies. Energies are in
+    ///        natural units. 
+    std::tuple<AkimaSpline,double,double> read1DInterpolationFromText(const std::string& path);
+    
+    ///Read a singly-differential cross section table from whitespace-separated text
+    ///\param path the filesystem path from which to read input
+    ///\return a tuple of a bicubic interpolator for the tabulated data, the 
+    ///        minimum tabulated energy, and maximum tabulated energy.
+    ///        Energies are in natural units. 
+    std::tuple<BiCubicInterpolator,double,double> read2DInterpolationFromText(const std::string& path);
   
     ///Read data for a single flavor from a set of text files with a common prefix
     ///\param prefix the common initial part of the text files' path and name
     ///\param erangeSrc a description of the source from which the energy range 
     ///                 has been determined, if any
     std::shared_ptr<perFlavorData> readFlavorText(const std::string& prefix, 
-	                                              std::string& erangeSrc);
-	
+                                                  std::string& erangeSrc);
+    
     ///Read data for a single flavor from an HDF5 group
     ///\param sourceLoc the group (or file) from which to read HDF datasets
     ///\param energies the common set of energy values used for all tables
@@ -355,38 +355,38 @@ protected:
     std::shared_ptr<perFlavorData> readFlavorHDF5(hid_t sourceLoc, 
                                                   const marray<double,1>& energies, 
                                                   const marray<double,1>& zs);
-	
+    
     ///Write data for a single flavor to an HDF5 group
     ///\param destLoc the group (or file) to which to write HDF datasets
     ///\param data the data to write
     ///\param compressionLevel level of zlib compression to apply to datasets
     void writeFlavorHDF5(hid_t destLoc, const perFlavorData& data, unsigned int compressionLevel) const;
-	
-	///\brief Check whether a path refers to an HDF5 file
-	bool isHDF(const std::string& path);
-	
+    
+    ///\brief Check whether a path refers to an HDF5 file
+    bool isHDF(const std::string& path);
+    
     ///\brief Get the data corresponding to a given flavor
     const perFlavorData& getFlavor(NeutrinoFlavor flavor) const;
-	
+    
 public:
-	///Construct a set of cross sections from a default set of tables
-	NeutrinoDISCrossSectionsFromTables();
+    ///Construct a set of cross sections from a default set of tables
+    NeutrinoDISCrossSectionsFromTables();
 
-	///Construct a set of cross sections from either ASCII text tables or an 
-	///HDF5 file. See readText and readHDF for descriptions of input formats. 
-	///\param pathOrPrefix either common prefix for the paths of a family of 
-	///                    text files or the path to a single HDF5 file
-	NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix);
-	
-	double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
-	
-	double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
-	
-	//Implementing this doesn't give any substantial benefit over the default implementation
-	//double AverageTotalCrossSection(double EnuMin, double EnuMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
-	
-	double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
-	
+    ///Construct a set of cross sections from either ASCII text tables or an 
+    ///HDF5 file. See readText and readHDF for descriptions of input formats. 
+    ///\param pathOrPrefix either common prefix for the paths of a family of 
+    ///                    text files or the path to a single HDF5 file
+    NeutrinoDISCrossSectionsFromTables(std::string pathOrPrefix);
+    
+    double TotalCrossSection(double Enu, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+    
+    double SingleDifferentialCrossSection(double E1, double E2, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+    
+    //Implementing this doesn't give any substantial benefit over the default implementation
+    //double AverageTotalCrossSection(double EnuMin, double EnuMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+    
+    double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const override;
+    
     /// Read a set of cross sections from text files with a common path prefix. 
     ///
     /// This will fail messily and leave the object in an inconsistent state if 
@@ -442,7 +442,7 @@ public:
     ///\param prefix the path prefix from which each output file's name should 
     ///              be derived
     void WriteText(const std::string& prefix) const;
-	
+    
     /// Read a set of cross sections from an HDF5 file. 
     ///
     /// This will fail messily and leave the object in an inconsistent state if 
@@ -563,7 +563,7 @@ private:
   ///W^+ -> hadrons branching ratio
   static double B_Hadronic;
 };
-	
+    
 ///\brief A type alias for PDG MC numbering codes.
 ///The largest magnitude codes in the PDG MC numbering scheme at this time are nuclear codes
 ///which are "10-digit numbers ±10LZZZAAAI". Given that sign must be included, this fits within 32 
@@ -575,6 +575,7 @@ enum PDGCode : int32_t{
     electron=11,
     ///A pseduoparticle with the average properties of a proton and neutron
     isoscalar_nucleon=81,
+    rock=82,
     proton=2212,
     neutron=2112,
 };
@@ -603,12 +604,12 @@ public:
     CrossSectionLibrary(){}
     CrossSectionLibrary(const MapType& crosssections):data(crosssections){}
     ///\return the requested cross section, or a null pointer if it is not found
-	std::shared_ptr<const NeutrinoCrossSections> crossSectionForTarget(PDGCode target) const;
-	bool hasTarget(PDGCode target) const;
+    std::shared_ptr<const NeutrinoCrossSections> crossSectionForTarget(PDGCode target) const;
+    bool hasTarget(PDGCode target) const;
     template <typename CrossSection>
     void addTarget(PDGCode target, CrossSection&& xs){
         if(hasTarget(target))
-			throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
+            throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, std::make_shared<CrossSection>(std::move(xs)));
     }
     void addTarget(PDGCode target, std::shared_ptr<NeutrinoCrossSections> xs){
@@ -622,6 +623,84 @@ private:
     
 CrossSectionLibrary loadDefaultCrossSections();
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/// \class TauCrossSections
+/// \brief General tau cross section class.
+class TauCrossSections{
+  public:
+
+    ///Construct a set of cross sections from an HDF5 file.
+    TauCrossSections() {};
+
+
+    void Init(const std::string& path);
+
+    /// \brief Returns the total tau cross section
+    /// \details Used to interpolate the total cross sections.
+    /// \param Etau Incident tau energy
+    /// \return The cross section in cm^2
+    double TotalCrossSection(double Etau) const;
+    /// \brief Returns the differential cross section with respect to the outgoing tau energy.
+    /// \details The cross section will be returned in cm^2 GeV^-1.
+    /// \param E1 Incident tau energy.
+    /// \param E2 Outgoing tau energy.
+    double SingleDifferentialCrossSection(double E1, double E2) const;
+   
+    /// \brief Returns the total tau cross section, averaged over the specified energy range.
+    /// \param EMin Minimum incident tau energy
+    /// \param EMax Maximum incident tau energy
+    /// \return The average cross section from EMin to Emax in cm^2
+    double AverageTotalCrossSection(double EMin, double EMax) const;
+    /// \brief Returns the the differential cross section, with respect to the outgoing tau energy, averaged over the specified energy range.
+    /// \param E1 Incident lepton energy
+    /// \param E2Min Minimum out-going lepton energy
+    /// \param E2Max Maximum out-going lepton energy
+    /// \return The average cross section from EMin to Emax in cm^2 GeV^-1
+    double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max) const;
+
+    /// \brief Returns the minimum energy in [eV]
+    double GetEmin() const {return Emin;}
+    /// \brief Returns the maximum energy in [eV]
+    double GetEmax() const {return Emax;}
+
+  protected:
+    /// \brief Minimum tau energy.
+    double Emin;
+    /// \brief Maximum tau energy.
+    double Emax;
+    ///\brief Conversion factor from GeV to eV
+    double GeV = 1.0e9;
+    
+    ///\brief Cross section information
+    ///
+    ///Assumed to use a common energy range.
+    struct tauData{
+      ///Total cross section for tau interactions
+      AkimaSpline s;
+      
+      ///Singly-differential cross section for tau interactions
+      BiCubicInterpolator dsdy;
+    };
+  
+    std::shared_ptr<tauData> xsData;
+
+
+};
+
+ 
 } // close namespace
+
 
 #endif

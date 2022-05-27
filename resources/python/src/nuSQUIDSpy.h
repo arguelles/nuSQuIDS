@@ -280,7 +280,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def(init<marray<double,1>,unsigned int>(args("E_vector","numneu")));
       class_object->def(init<marray<double,1>,unsigned int,NeutrinoType>(args("E_vector","numneu","NT")));
       class_object->def(init<marray<double,1>,unsigned int,NeutrinoType,bool>(args("E_vector","numneu","NT","iinteraction")));
-      class_object->def(init<marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<CrossSectionLibrary>>(args("E_vector","numneu","NT","iinteraction","ncs")));
+      class_object->def(init<marray<double,1>,unsigned int,NeutrinoType,bool,bool>(args("E_vector","numneu","NT","iinteraction","tauregeneration")));
+      class_object->def(init<marray<double,1>,unsigned int,NeutrinoType,bool,bool,std::shared_ptr<CrossSectionLibrary>>(args("E_vector","numneu","NT","iinteraction","tauregeneration","ncs")));
       class_object->def(init<std::string>(args("filename")));
       class_object->def(init<std::string, std::string>(args("filename","root group name")));
       class_object->def(init<std::string, std::string, std::shared_ptr<nusquids::nuSQUIDS::InteractionStructure>>(args("filename","root group name","interaction structure")));
@@ -320,7 +321,6 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_abs_error",&BaseType::Set_abs_error);
       class_object->def("Set_AdaptiveStep",&BaseType::Set_AdaptiveStep);
       class_object->def("Set_GSL_step",wrap_Set_GSL_STEP<BaseType>);
-      class_object->def("Set_TauRegeneration",&BaseType::Set_TauRegeneration);
       class_object->def("Set_GlashowResonance",&BaseType::Set_GlashowResonance);
       class_object->def("Set_IncludeOscillations",&BaseType::Set_IncludeOscillations);
       class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&BaseType::Set_AllowConstantDensityOscillationOnlyEvolution);
@@ -374,10 +374,10 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
 
       class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType>(args("CosZenith_vector","E_vector","numneu","NT")));
       class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction")));
-      class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<CrossSectionLibrary>>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","ncs")));
+      class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,bool>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","tauregeneration")));
+      class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,bool,std::shared_ptr<CrossSectionLibrary>>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","tauregeneration","ncs")));
       class_object->def(init<std::string>(args("filename")));
       class_object->def("EvolveState",&nuSQUIDSAtm<BaseType>::EvolveState);
-      class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
       class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor,
           nuSQUIDSAtm_EvalFlavor_overload<nuSQUIDSAtm<BaseType>>(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
             "nuSQuIDSAtm evaluate flux.."));
@@ -421,7 +421,6 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetCosthRange",&nuSQUIDSAtm<BaseType>::GetCosthRange);
       class_object->def("Set_IncludeOscillations",&nuSQUIDSAtm<BaseType>::Set_IncludeOscillations);
       class_object->def("Set_GlashowResonance",&nuSQUIDSAtm<BaseType>::Set_GlashowResonance);
-      class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
       class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&nuSQUIDSAtm<BaseType>::Set_AllowConstantDensityOscillationOnlyEvolution);
       class_object->def("Set_PositivyConstrain",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrain);
       class_object->def("Set_PositivyConstrainStep",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrainStep);

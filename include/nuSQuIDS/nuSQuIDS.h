@@ -119,6 +119,9 @@ protected:
     std::shared_ptr<CrossSectionLibrary> ncs;
 
     /// \brief Interface that calculate and interpolates tau decay spectral functions.
+    TauCrossSections tcs;
+
+    /// \brief Interface that calculate and interpolates tau decay spectral functions.
     TauDecaySpectra tdc;
 
     /// \brief NT keeps track if the problem consists of neutrinos, antineutrinos, or both.
@@ -188,15 +191,25 @@ protected:
         /// \brief Glashow resonance cross section (electron antineutrino only)
         /// \details 1 entry per energy node, in natural units
         marray<double,1,aligned_allocator<double>> sigma_GR;
-        /// \brief Array that contains the tau decay spectrum to all particles.
-        /// \details The first dimension corresponds to initial tau energy and the
-        /// second one to the outgoing lepton.
-        marray<double,3,aligned_allocator<double>> dNdE_tau_all;
-        /// \brief Array that contains the tau decay spectrum to leptons.
-        /// \brief Array that contains the tau decay spectrum to all particles.
-        /// \details The first dimension corresponds to initial tau energy and the
-        /// second one to the outgoing lepton.
-        marray<double,3,aligned_allocator<double>> dNdE_tau_lep;
+        /// \brief Array that contains the tau cross section.
+        /// \details The dimensions of this array are:
+        /// - energy
+        marray<double,1,aligned_allocator<double>> sigma_TAU_INT;
+        /// \brief Array that contains the tau energy loss spectrum.
+        /// \details The dimensions of this array are:
+        /// - initial energy
+        /// - final energy
+        marray<double,2,aligned_allocator<double>> dNdE_TAU_INT;
+        /// \brief Array that contains the tau decay lenght
+        /// \details The dimensions of this array are:
+        /// - energy
+        marray<double,1,aligned_allocator<double>> sigma_TAU_DEC;
+        /// \brief Array that contains the tau decay spectrum
+        /// \details The dimensions of this array are:
+        /// - initial energy
+        /// - final energy
+        marray<double,2,aligned_allocator<double>> dNdE_TAU_DEC_ALL;
+        marray<double,2,aligned_allocator<double>> dNdE_TAU_DEC_LEP;
         /// \brief Default constructor
         InteractionStructure():
         dNdE_CC(aligned_allocator<double>{log2(preferred_alignment*sizeof(double))}),
@@ -205,8 +218,11 @@ protected:
         sigma_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
         sigma_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        dNdE_tau_all(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-        dNdE_tau_lep(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
+        sigma_TAU_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_TAU_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        sigma_TAU_DEC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_TAU_DEC_ALL(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+        dNdE_TAU_DEC_LEP(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
         {}
         /// \brief Assignment operator
         InteractionStructure& operator=(const InteractionStructure& other){
@@ -216,8 +232,11 @@ protected:
           sigma_CC=other.sigma_CC;
           sigma_NC=other.sigma_NC;
           sigma_GR=other.sigma_GR;
-          dNdE_tau_all=other.dNdE_tau_all;
-          dNdE_tau_lep=other.dNdE_tau_lep;
+          sigma_TAU_INT=other.sigma_TAU_INT;
+          dNdE_TAU_INT=other.dNdE_TAU_INT;
+          sigma_TAU_DEC=other.sigma_TAU_DEC;
+          dNdE_TAU_DEC_ALL=other.dNdE_TAU_DEC_ALL;
+          dNdE_TAU_DEC_LEP=other.dNdE_TAU_DEC_LEP;
           return(*this);
         }
         /// \brief Move assignment operator
@@ -228,8 +247,11 @@ protected:
           sigma_CC=std::move(other.sigma_CC);
           sigma_NC=std::move(other.sigma_NC);
           sigma_GR=std::move(other.sigma_GR);
-          dNdE_tau_all=std::move(other.dNdE_tau_all);
-          dNdE_tau_lep=std::move(other.dNdE_tau_lep);
+          sigma_TAU_INT=std::move(other.sigma_TAU_INT);
+          dNdE_TAU_INT=std::move(other.dNdE_TAU_INT);
+          sigma_TAU_DEC=std::move(other.sigma_TAU_DEC);
+          dNdE_TAU_DEC_ALL=std::move(other.dNdE_TAU_DEC_ALL);
+          dNdE_TAU_DEC_LEP=std::move(other.dNdE_TAU_DEC_LEP);
           return(*this);
         }
         /// \brief Equality operator
@@ -241,8 +263,11 @@ protected:
                sigma_CC.size() != other.sigma_CC.size() or
                sigma_NC.size() != other.sigma_NC.size() or
                sigma_GR.size() != other.sigma_GR.size() or
-               dNdE_tau_all.size() != other.dNdE_tau_all.size() or
-               dNdE_tau_lep.size() != other.dNdE_tau_lep.size()
+               sigma_TAU_INT.size() != other.sigma_TAU_INT.size() or
+               dNdE_TAU_INT.size() != other.dNdE_TAU_INT.size() or
+               sigma_TAU_DEC.size() != other.sigma_TAU_DEC.size() or
+               dNdE_TAU_DEC_ALL.size() != other.dNdE_TAU_DEC_ALL.size() or
+               dNdE_TAU_DEC_LEP.size() != other.dNdE_TAU_DEC_LEP.size()
              )
           {
             return false;
@@ -266,11 +291,21 @@ protected:
           if ( not std::equal(sigma_GR.begin(),sigma_GR.end(),other.sigma_GR.begin()) )
             return false;
 
-          if ( not std::equal(dNdE_tau_all.begin(),dNdE_tau_all.end(),other.dNdE_tau_all.begin()) )
+          if ( not std::equal(sigma_TAU_INT.begin(),sigma_TAU_INT.end(),other.sigma_TAU_INT.begin()) )
             return false;
 
-          if ( not std::equal(dNdE_tau_lep.begin(),dNdE_tau_lep.end(),other.dNdE_tau_lep.begin()) )
+          if ( not std::equal(dNdE_TAU_INT.begin(),dNdE_TAU_INT.end(),other.dNdE_TAU_INT.begin()) )
             return false;
+
+          if ( not std::equal(sigma_TAU_DEC.begin(),sigma_TAU_DEC.end(),other.sigma_TAU_DEC.begin()) )
+            return false;
+
+          if ( not std::equal(dNdE_TAU_DEC_ALL.begin(),dNdE_TAU_DEC_ALL.end(),other.dNdE_TAU_DEC_ALL.begin()) )
+            return false;
+
+          if ( not std::equal(dNdE_TAU_DEC_LEP.begin(),dNdE_TAU_DEC_LEP.end(),other.dNdE_TAU_DEC_LEP.begin()) )
+            return false;
+
           // all is good - lets roll
           return true;
         }
@@ -282,15 +317,21 @@ protected:
         InteractionStructure(InteractionStructure& other):
           dNdE_CC(other.dNdE_CC),dNdE_NC(other.dNdE_NC),dNdE_GR(other.dNdE_GR),
           sigma_CC(other.sigma_CC),sigma_NC(other.sigma_NC),sigma_GR(other.sigma_GR),
-          dNdE_tau_all(other.dNdE_tau_all),
-          dNdE_tau_lep(other.dNdE_tau_lep)
+          sigma_TAU_INT(other.sigma_TAU_INT),
+          dNdE_TAU_INT(other.dNdE_TAU_INT),
+          sigma_TAU_DEC(other.sigma_TAU_DEC),
+          dNdE_TAU_DEC_ALL(other.dNdE_TAU_DEC_ALL),
+          dNdE_TAU_DEC_LEP(other.dNdE_TAU_DEC_LEP)
         {}
         /// \brief Move constructor operator
         InteractionStructure(InteractionStructure&& other):
           dNdE_CC(std::move(other.dNdE_CC)),dNdE_NC(std::move(other.dNdE_NC)),dNdE_GR(std::move(other.dNdE_GR)),
           sigma_CC(std::move(other.sigma_CC)),sigma_NC(std::move(other.sigma_NC)),sigma_GR(std::move(other.sigma_GR)),
-          dNdE_tau_all(std::move(other.dNdE_tau_all)),
-          dNdE_tau_lep(std::move(other.dNdE_tau_lep))
+          sigma_TAU_INT(std::move(other.sigma_TAU_INT)),
+          dNdE_TAU_INT(std::move(other.dNdE_TAU_INT)),
+          sigma_TAU_DEC(std::move(other.sigma_TAU_DEC)),
+          dNdE_TAU_DEC_ALL(std::move(other.dNdE_TAU_DEC_ALL)),
+          dNdE_TAU_DEC_LEP(std::move(other.dNdE_TAU_DEC_LEP))
         {}
     };
   
@@ -314,23 +355,33 @@ protected:
     /// UpdateInteractions() is called. Numerically it is just nuSQUIDS::invlen_NC and nuSQUIDS::invlen_CC
     /// added together.
     marray<double,3,aligned_allocator<double>> invlen_INT;
+    /// \brief Array that contains the inverse of the tau total mean free path.
+    /// \details The array contents are in natural units (i.e. eV) and is update when
+    /// UpdateInteractions() is called.
+    marray<double,1,aligned_allocator<double>> invlen_TAU_INT;
+    marray<double,1,aligned_allocator<double>> invlen_TAU_DEC;
+
     
     /// \brief Default constructor
     InteractionState():
     invlen_CC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
     invlen_NC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
     invlen_GR(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
-    invlen_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
+    invlen_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+    invlen_TAU_INT(aligned_allocator<double>(log2(preferred_alignment*sizeof(double)))),
+    invlen_TAU_DEC(aligned_allocator<double>(log2(preferred_alignment*sizeof(double))))
     {}
     /// \brief Copy constructor
     InteractionState(InteractionState& other):
     invlen_CC(other.invlen_CC),invlen_NC(other.invlen_NC),
-    invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT)
+    invlen_GR(other.invlen_GR),invlen_INT(other.invlen_INT),
+    invlen_TAU_INT(other.invlen_TAU_INT),invlen_TAU_DEC(other.invlen_TAU_DEC)
     {}
     /// \brief Move constructor
     InteractionState(InteractionState&& other):
     invlen_CC(std::move(other.invlen_CC)),invlen_NC(std::move(other.invlen_NC)),
-    invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT))
+    invlen_GR(std::move(other.invlen_GR)),invlen_INT(std::move(other.invlen_INT)),
+    invlen_TAU_INT(std::move(other.invlen_TAU_INT)),invlen_TAU_DEC(std::move(other.invlen_TAU_DEC))
     {}
     /// \brief Assignment operator
     InteractionState& operator=(const InteractionState& other){
@@ -338,6 +389,8 @@ protected:
       invlen_CC=other.invlen_CC;
       invlen_GR=other.invlen_GR;
       invlen_INT=other.invlen_INT;
+      invlen_TAU_INT=other.invlen_TAU_INT;
+      invlen_TAU_DEC=other.invlen_TAU_DEC;
       return(*this);
     }
     /// \brief Move assignment operator
@@ -346,6 +399,8 @@ protected:
       invlen_CC=std::move(other.invlen_CC);
       invlen_GR=std::move(other.invlen_GR);
       invlen_INT=std::move(other.invlen_INT);
+      invlen_TAU_INT=std::move(other.invlen_TAU_INT);
+      invlen_TAU_DEC=std::move(other.invlen_TAU_DEC);
       return(*this);
     }
     /// \brief Equality operator
@@ -353,7 +408,10 @@ protected:
       if (invlen_CC.size() != other.invlen_CC.size() or
           invlen_NC.size() != other.invlen_NC.size() or
           invlen_GR.size() != other.invlen_GR.size() or
-          invlen_INT.size() != other.invlen_INT.size())
+          invlen_INT.size() != other.invlen_INT.size() or
+          invlen_TAU_INT.size() != other.invlen_TAU_INT.size() or
+          invlen_TAU_DEC.size() != other.invlen_TAU_DEC.size()
+        )
         return false;
       
       if ( not std::equal(invlen_CC.begin(),invlen_CC.end(),other.invlen_CC.begin()) )
@@ -367,7 +425,13 @@ protected:
       
       if ( not std::equal(invlen_INT.begin(),invlen_INT.end(),other.invlen_INT.begin()) )
         return false;
+
+      if ( not std::equal(invlen_TAU_INT.begin(),invlen_TAU_INT.end(),other.invlen_TAU_INT.begin()) )
+        return false;
       
+      if ( not std::equal(invlen_TAU_DEC.begin(),invlen_TAU_DEC.end(),other.invlen_TAU_DEC.begin()) )
+        return false;
+
       // all is good - lets roll
       return true;
     }
@@ -435,9 +499,11 @@ protected:
     ///Total size of interaction_cache_store
     size_t interaction_cache_store_size;
   
+    marray<double,3> cc_factors;
     marray<double,3> nc_factors;
-    marray<double,2> tau_hadlep_decays;
-    marray<double,2> tau_lep_decays;
+    marray<double,2> tau_int_factors;
+    marray<double,2> tau_dec_all_factors;
+    marray<double,2> tau_dec_lep_factors;
     marray<double,1> gr_factors;
   
     ///Initialize the interaction cahce data structures to the corretc sizes for
@@ -536,10 +602,11 @@ protected:
     void InitializeInteractionVectors(unsigned int nTargets);
 
     /// \brief Fills in auxiliary cross section arrays.
-    /// \details It uses nuSQUIDS#ncs and nuSQUIDS#tdc to fill in the values of
+    /// \details It uses nuSQUIDS#ncs,  nuSQUIDS#tdc and nuSQUIDS#tcs to fill in the values of
     /// nuSQUIDS#dNdE_CC , nuSQUIDS#dNdE_NC , nuSQUIDS#sigma_CC , nuSQUIDS#sigma_NC ,
     /// nuSQUIDS#invlen_CC , nuSQUIDS#invlen_NC , nuSQUIDS#invlen_INT ,
-    /// nuSQUIDS#dNdE_tau_all , nuSQUIDS#dNdE_tau_lep
+    /// nuSQUIDS#sigma_TAU_INT , nuSQUIDS#dNdE_TAU_INT
+    /// nuSQUIDS#sigma_TAU_DEC , nuSQUIDS#dNdE_TAU_DEC_ALL , nuSQUIDS#dNdE_TAU_DEC_LEP
     /// in int_struct.
     /// @see InitializeInteractionVectors
     void GetCrossSections();
@@ -593,14 +660,15 @@ protected:
     /// @param numneu Number of neutrino flavors.
     /// @param NT NeutrinoType: neutrino,antineutrino, or both (simultaneous solution).
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param tauregeneration Sets the tau neutrino regeneration on.
     /// @param ncs Cross section object.
     /// \details By default the energy scale is logarithmic and interactions are turn off.
     /// \warning When interactions are present interpolation is performed to precalculate the neutrino
     /// cross section which make take considertable time depending on the energy grid.
     /// @see init
     nuSQUIDS(marray<double,1> E_vector,unsigned int numneu,NeutrinoType NT = both,
-       bool iinteraction = false, std::shared_ptr<CrossSectionLibrary> ncs = nullptr):
-    numneu(numneu),ncs(ncs),NT(NT),iinteraction(iinteraction)
+       bool iinteraction = false, bool tauregeneration = false, std::shared_ptr<CrossSectionLibrary> ncs = nullptr):
+    numneu(numneu),ncs(ncs),NT(NT),iinteraction(iinteraction),tauregeneration(tauregeneration)
     {init(E_vector);}
 
     /// \brief Single energy mode constructor.
@@ -823,10 +891,6 @@ protected:
     /// \brief Sets the linear ramp size for the state evolution low-pass filter.
     /// @param val Range in frequency space over which the linear ramp is applied. 
     void Set_EvolLowPassScale(double val);
-
-    /// \brief Toggles tau regeneration on and off.
-    /// \param opt If \c true tau regeneration will be considered.
-    void Set_TauRegeneration(bool opt);
 
     /// \brief Toggles the effect of the Glashow resonance on and off.
     /// \param opt If \c true resonant W^- production will be considered.
@@ -1825,13 +1889,6 @@ class nuSQUIDSAtm {
       return nusq_array;
     }
 
-    /// \brief Toggles tau regeneration on and off.
-    /// @param opt If \c true tau regeneration will be considered.
-    void Set_TauRegeneration(bool opt){
-      for(BaseSQUIDS& nsq : nusq_array){
-        nsq.Set_TauRegeneration(opt);
-      }
-    }
 	
     void Set_GlashowResonance(bool opt){
       for(BaseSQUIDS& nsq : nusq_array){

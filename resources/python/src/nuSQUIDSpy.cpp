@@ -160,6 +160,14 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .def("WriteText",&NeutrinoDISCrossSectionsFromTables::WriteText)
   ;
   
+  class_<TauCrossSections, std::shared_ptr<TauCrossSections>, boost::noncopyable >("TauCrossSections")
+    .def("Init",&TauCrossSections::Init)
+    .def("TotalCrossSection",&TauCrossSections::TotalCrossSection)
+    .def("SingleDifferentialCrossSection",&TauCrossSections::SingleDifferentialCrossSection)
+    .def("GetEmin",&TauCrossSections::GetEmin)
+    .def("GetEmax",&TauCrossSections::GetEmax)
+  ;
+
   enum_<PDGCode>("PDGCode")
     .value("electron",electron)
     .value("isoscalar_nucleon",isoscalar_nucleon)
