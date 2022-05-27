@@ -455,7 +455,7 @@ squids::SU_vector nuSQUIDS::InteractionsRho(unsigned int e1,unsigned int index_r
 
 double nuSQUIDS::GammaScalar(unsigned int ei, unsigned int index_scalar) const{
   // return 0.5*int_state.invlen_TAU_INT[ei] + int_state.invlen_TAU_DEC[ei];
-  return int_state.invlen_TAU_DEC[ei]*estate[ei].scalar[index_scalar];
+  return int_state.invlen_TAU_DEC[ei];
   // return 0;
 }
 
@@ -662,11 +662,6 @@ void nuSQUIDS::UpdateInteractions(){
       int_state.invlen_TAU_DEC[e1] = int_struct->sigma_TAU_DEC[e1];
     }
   }
-   
-
-  std::cout << int_state.invlen_INT[0][2][0] << " " << int_state.invlen_TAU_DEC[0] << std::endl;
-  std::cout << int_state.invlen_INT[600][2][0] << " " << int_state.invlen_TAU_DEC[600] << std::endl;
-
 
   // Add Glashow resonance if antineutrinos are in the mix
   if (iglashow && (NT == both or NT == antineutrino)) {
@@ -895,8 +890,10 @@ void nuSQUIDS::UpdateInteractions(){
         double tau_flux_a_e2=estate[e2].scalar[0];
         double tau_bar_flux_a_e2=estate[e2].scalar[1];
         //premultiply factors which do not depend on the lower energy e1
-        tau_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
-        tau_bar_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
+        // tau_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
+        // tau_bar_flux_a_e2*=int_state.invlen_TAU_DEC[e2]*delE[e2-1];
+        tau_flux_a_e2*=delE[e2-1];
+        tau_bar_flux_a_e2*=delE[e2-1];
         //for each type of target within the material
         double* dNdE_all_ptr=&int_struct->dNdE_TAU_DEC_ALL[e2][0];
         double* dNdE_lep_ptr=&int_struct->dNdE_TAU_DEC_LEP[e2][0];
@@ -1147,8 +1144,10 @@ void nuSQUIDS::GetCrossSections(){
     // constructing dNdE for tau decay
     for(unsigned int e1 = 0; e1 < ne; e1++){
       for(unsigned int e2 = 0; e2 < e1; e2++){
-        int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
-        int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
+        // int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
+        // int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1/int_struct->sigma_TAU_DEC[e1];
+        int_struct->dNdE_TAU_DEC_ALL[e1][e2] = tdc.dNdEnu_All(e1,e2)*GeVm1;
+        int_struct->dNdE_TAU_DEC_LEP[e1][e2] = tdc.dNdEnu_Lep(e1,e2)*GeVm1;
       }
     }
 
