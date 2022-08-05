@@ -311,8 +311,10 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetHamiltonian",&BaseType::GetHamiltonian);
       class_object->def("GetState",(const squids::SU_vector&(BaseType::*)(unsigned int))&BaseType::GetState, return_value_policy<copy_const_reference>());
       class_object->def("GetState",(const squids::SU_vector&(BaseType::*)(unsigned int, unsigned int))&BaseType::GetState, return_value_policy<copy_const_reference>());
-      class_object->def("Set_EvolLowPassCutoff", &BaseType::Set_EvolLowPassCutoff);
-      class_object->def("Set_EvolLowPassScale", &BaseType::Set_EvolLowPassScale);
+      class_object->def("Set_EvolLowPassCutoff", (void(BaseType::*)(const marray<double,1>&))&BaseType::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassCutoff", (void(BaseType::*)(double))&BaseType::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassScale", (void(BaseType::*)(const marray<double,1>&))&BaseType::Set_EvolLowPassScale);
+      class_object->def("Set_EvolLowPassScale", (void(BaseType::*)(double))&BaseType::Set_EvolLowPassScale);
       class_object->def("Set_h_min",&BaseType::Set_h_min);
       class_object->def("Set_h_max",&BaseType::Set_h_max);
       class_object->def("Set_h",&BaseType::Set_h);
@@ -351,8 +353,6 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_Debug",&BaseType::Set_Debug);
       class_object->def("Set_IncludeOscillations",&BaseType::Set_IncludeOscillations);
       class_object->def("Set_GlashowResonance",&BaseType::Set_GlashowResonance);
-      class_object->def("Set_NeutrinoSources",&BaseType::Set_NeutrinoSources);
-      class_object->def("Get_NeutrinoSources",&BaseType::Get_NeutrinoSources);
     }
     std::shared_ptr<class_<BaseType, boost::noncopyable, std::shared_ptr<BaseType>>> GetClassObject() {
       return class_object;
@@ -363,76 +363,84 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_Set_initial_state,Set_initial_state,1,2)
 MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_GetStates_overload, GetStates, 0, 1)
+MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_EvalFlavorAutoLowPass_overload, GetStates, 2, 3)
 
 // registration for atmospheric template
-template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
-  struct RegisterBasicAtmNuSQuIDSPythonBindings {
+template<typename AtmType, typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type>
+  struct RegisterBasicAtmNuSQuIDSPythonBindingsHelper {
     const std::string class_label;
-    std::shared_ptr<class_<nuSQUIDSAtm<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<BaseType>>>> class_object;
-    RegisterBasicAtmNuSQuIDSPythonBindings(std::string class_label){
-      class_object = std::make_shared<class_<nuSQUIDSAtm<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<BaseType>>>>(class_label.c_str(), no_init);
+    std::shared_ptr<class_<AtmType, boost::noncopyable, std::shared_ptr<AtmType>>> class_object;
+    RegisterBasicAtmNuSQuIDSPythonBindingsHelper(std::string class_label){
+      class_object = std::make_shared<class_<AtmType, boost::noncopyable, std::shared_ptr<AtmType>>>(class_label.c_str(), no_init);
 
       class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType>(args("CosZenith_vector","E_vector","numneu","NT")));
       class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction")));
       class_object->def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<CrossSectionLibrary>>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","ncs")));
       class_object->def(init<std::string>(args("filename")));
-      class_object->def("EvolveState",&nuSQUIDSAtm<BaseType>::EvolveState);
-      class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
-      class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor,
-          nuSQUIDSAtm_EvalFlavor_overload<nuSQUIDSAtm<BaseType>>(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
+      class_object->def("EvolveState",&AtmType::EvolveState);
+      class_object->def("Set_TauRegeneration",&AtmType::Set_TauRegeneration);
+      class_object->def("EvalFlavor",(double(AtmType::*)(unsigned int,double,double,unsigned int,bool) const)&AtmType::EvalFlavor,
+          nuSQUIDSAtm_EvalFlavor_overload<AtmType>(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
             "nuSQuIDSAtm evaluate flux.."));
-      class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
-      class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
-      class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
-      class_object->def("WriteStateHDF5",&nuSQUIDSAtm<BaseType>::WriteStateHDF5);
-      class_object->def("ReadStateHDF5",&nuSQUIDSAtm<BaseType>::ReadStateHDF5);
-      class_object->def("Set_MixingAngle",&nuSQUIDSAtm<BaseType>::Set_MixingAngle);
-      class_object->def("Get_MixingAngle",&nuSQUIDSAtm<BaseType>::Get_MixingAngle);
-      class_object->def("Set_CPPhase",&nuSQUIDSAtm<BaseType>::Set_CPPhase);
-      class_object->def("Get_CPPhase",&nuSQUIDSAtm<BaseType>::Get_CPPhase);
-      class_object->def("Set_SquareMassDifference",&nuSQUIDSAtm<BaseType>::Set_SquareMassDifference);
-      class_object->def("Get_SquareMassDifference",&nuSQUIDSAtm<BaseType>::Get_SquareMassDifference);
-      class_object->def("Set_h",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_h);
-      class_object->def("Set_h",(void(nuSQUIDSAtm<BaseType>::*)(double,unsigned int))&nuSQUIDSAtm<BaseType>::Set_h);
-      class_object->def("Set_h_max",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_h_max);
-      class_object->def("Set_h_max",(void(nuSQUIDSAtm<BaseType>::*)(double,unsigned int))&nuSQUIDSAtm<BaseType>::Set_h_max);
-      class_object->def("Set_h_min",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_h_min);
-      class_object->def("Set_h_min",(void(nuSQUIDSAtm<BaseType>::*)(double,unsigned int))&nuSQUIDSAtm<BaseType>::Set_h_min);
-      class_object->def("Set_ProgressBar",&nuSQUIDSAtm<BaseType>::Set_ProgressBar);
-      class_object->def("Set_MixingParametersToDefault",&nuSQUIDSAtm<BaseType>::Set_MixingParametersToDefault);
+      class_object->def("Set_EvalThreads",&AtmType::Set_EvalThreads);
+      class_object->def("Get_EvalThreads",&AtmType::Get_EvalThreads);
+      class_object->def("Set_EarthModel",&AtmType::Set_EarthModel);
+      class_object->def("WriteStateHDF5",&AtmType::WriteStateHDF5);
+      class_object->def("ReadStateHDF5",&AtmType::ReadStateHDF5);
+      class_object->def("Set_MixingAngle",&AtmType::Set_MixingAngle);
+      class_object->def("Get_MixingAngle",&AtmType::Get_MixingAngle);
+      class_object->def("Set_CPPhase",&AtmType::Set_CPPhase);
+      class_object->def("Get_CPPhase",&AtmType::Get_CPPhase);
+      class_object->def("Set_SquareMassDifference",&AtmType::Set_SquareMassDifference);
+      class_object->def("Get_SquareMassDifference",&AtmType::Get_SquareMassDifference);
+      class_object->def("Set_h",(void(AtmType::*)(double))&AtmType::Set_h);
+      class_object->def("Set_h",(void(AtmType::*)(double,unsigned int))&AtmType::Set_h);
+      class_object->def("Set_h_max",(void(AtmType::*)(double))&AtmType::Set_h_max);
+      class_object->def("Set_h_max",(void(AtmType::*)(double,unsigned int))&AtmType::Set_h_max);
+      class_object->def("Set_h_min",(void(AtmType::*)(double))&AtmType::Set_h_min);
+      class_object->def("Set_h_min",(void(AtmType::*)(double,unsigned int))&AtmType::Set_h_min);
+      class_object->def("Set_ProgressBar",&AtmType::Set_ProgressBar);
+      class_object->def("Set_MixingParametersToDefault",&AtmType::Set_MixingParametersToDefault);
       class_object->def("Set_GSL_step",wrap_nusqatm_Set_GSL_STEP<BaseType>);
-      class_object->def("Set_rel_error",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_rel_error);
-      class_object->def("Set_rel_error",(void(nuSQUIDSAtm<BaseType>::*)(double, unsigned int))&nuSQUIDSAtm<BaseType>::Set_rel_error);
-      class_object->def("Set_abs_error",(void(nuSQUIDSAtm<BaseType>::*)(double))&nuSQUIDSAtm<BaseType>::Set_abs_error);
-      class_object->def("Set_abs_error",(void(nuSQUIDSAtm<BaseType>::*)(double, unsigned int))&nuSQUIDSAtm<BaseType>::Set_abs_error);
-      class_object->def("Set_EvolLowPassCutoff",&nuSQUIDSAtm<BaseType>::Set_EvolLowPassCutoff);
-      class_object->def("Set_EvolLowPassScale",&nuSQUIDSAtm<BaseType>::Set_EvolLowPassScale);
-      class_object->def("GetNumE",&nuSQUIDSAtm<BaseType>::GetNumE);
-      class_object->def("GetNumCos",&nuSQUIDSAtm<BaseType>::GetNumCos);
-      class_object->def("GetNumNeu",&nuSQUIDSAtm<BaseType>::GetNumNeu);
-      class_object->def("GetNumRho",&nuSQUIDSAtm<BaseType>::GetNumRho);
-      class_object->def("GetnuSQuIDS",(std::vector<BaseType>&(nuSQUIDSAtm<BaseType>::*)())&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,boost::python::return_internal_reference<>());
-      class_object->def("GetnuSQuIDS",(BaseType&(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,boost::python::return_internal_reference<>());
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSAtm<BaseType>>());
-      class_object->def("GetStates", (marray<double,2>(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetStates,
-        nuSQUIDSAtm_GetStates_overload<nuSQUIDSAtm<BaseType>>(args("rho"), "Get evolved states of all nodes"));
-      class_object->def("GetERange",&nuSQUIDSAtm<BaseType>::GetERange);
-      class_object->def("GetCosthRange",&nuSQUIDSAtm<BaseType>::GetCosthRange);
-      class_object->def("Set_IncludeOscillations",&nuSQUIDSAtm<BaseType>::Set_IncludeOscillations);
-      class_object->def("Set_GlashowResonance",&nuSQUIDSAtm<BaseType>::Set_GlashowResonance);
-      class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
-      class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&nuSQUIDSAtm<BaseType>::Set_AllowConstantDensityOscillationOnlyEvolution);
-      class_object->def("Set_PositivyConstrain",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrain);
-      class_object->def("Set_PositivyConstrainStep",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrainStep);
-      class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
-      class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
-      class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
-      class_object->def("SetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::SetNeutrinoCrossSections);
-      class_object->def("GetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::GetNeutrinoCrossSections);
+      class_object->def("Set_rel_error",(void(AtmType::*)(double))&AtmType::Set_rel_error);
+      class_object->def("Set_rel_error",(void(AtmType::*)(double, unsigned int))&AtmType::Set_rel_error);
+      class_object->def("Set_abs_error",(void(AtmType::*)(double))&AtmType::Set_abs_error);
+      class_object->def("Set_abs_error",(void(AtmType::*)(double, unsigned int))&AtmType::Set_abs_error);
+      class_object->def("Set_EvolLowPassCutoff",&AtmType::Set_EvolLowPassCutoff);
+      class_object->def("Set_EvolLowPassScale",&AtmType::Set_EvolLowPassScale);
+      class_object->def("Set_AutoEvolLowPass", &AtmType::Set_AutoEvolLowPass);
+      class_object->def("GetNumE",&AtmType::GetNumE);
+      class_object->def("GetNumCos",&AtmType::GetNumCos);
+      class_object->def("GetNumNeu",&AtmType::GetNumNeu);
+      class_object->def("GetNumRho",&AtmType::GetNumRho);
+      class_object->def("GetnuSQuIDS",(std::vector<BaseType>&(AtmType::*)())&AtmType::GetnuSQuIDS,boost::python::return_internal_reference<>());
+      class_object->def("GetnuSQuIDS",(BaseType&(AtmType::*)(unsigned int))&AtmType::GetnuSQuIDS,boost::python::return_internal_reference<>());
+      class_object->def("Set_initial_state",(void(AtmType::*)(const marray<double,3>&, Basis))&AtmType::Set_initial_state,nuSQUIDSAtm_Set_initial_state<AtmType>());
+      class_object->def("Set_initial_state",(void(AtmType::*)(const marray<double,4>&, Basis))&AtmType::Set_initial_state,nuSQUIDSAtm_Set_initial_state<AtmType>());
+      class_object->def("GetStates", (marray<double,2>(AtmType::*)(unsigned int))&AtmType::GetStates,
+        nuSQUIDSAtm_GetStates_overload<AtmType>(args("rho"), "Get evolved states of all nodes"));
+      class_object->def("GetERange",&AtmType::GetERange);
+      class_object->def("GetCosthRange",&AtmType::GetCosthRange);
+      class_object->def("Set_IncludeOscillations",&AtmType::Set_IncludeOscillations);
+      class_object->def("Set_GlashowResonance",&AtmType::Set_GlashowResonance);
+      class_object->def("Set_TauRegeneration",&AtmType::Set_TauRegeneration);
+      class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&AtmType::Set_AllowConstantDensityOscillationOnlyEvolution);
+      class_object->def("Set_PositivyConstrain",&AtmType::Set_PositivityConstrain);
+      class_object->def("Set_PositivyConstrainStep",&AtmType::Set_PositivityConstrainStep);
+      class_object->def("Get_EvalThreads",&AtmType::Get_EvalThreads);
+      class_object->def("Set_EvalThreads",&AtmType::Set_EvalThreads);
+      class_object->def("Set_EarthModel",&AtmType::Set_EarthModel);
+      class_object->def("SetNeutrinoCrossSections",&AtmType::SetNeutrinoCrossSections);
+      class_object->def("GetNeutrinoCrossSections",&AtmType::GetNeutrinoCrossSections);
     }
-    std::shared_ptr<class_<nuSQUIDSAtm<BaseType>, boost::noncopyable, std::shared_ptr<nuSQUIDSAtm<BaseType>>>> GetClassObject() {
+    std::shared_ptr<class_<AtmType, boost::noncopyable, std::shared_ptr<AtmType>>> GetClassObject() {
       return class_object;
+    }
+};
+
+template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type>
+  struct RegisterBasicAtmNuSQuIDSPythonBindings : RegisterBasicAtmNuSQuIDSPythonBindingsHelper<nuSQUIDSAtm<BaseType>, BaseType> {
+    RegisterBasicAtmNuSQuIDSPythonBindings(std::string class_label) : RegisterBasicAtmNuSQuIDSPythonBindingsHelper<nuSQUIDSAtm<BaseType>, BaseType>(class_label) {
     }
 };
 

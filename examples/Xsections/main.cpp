@@ -71,7 +71,7 @@ int main()
   //Declaration of the body, EarthAtm is one of the predefined bodies
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
   //Definition of the track, in encodes the trajectory inside the body, here is declared with the zenith angle.
-  auto track_atm = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
+  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
   //We set this in the nusSQuID object.
   nus_cc.Set_Body(earth_atm);
   nus_cc.Set_Track(track_atm);

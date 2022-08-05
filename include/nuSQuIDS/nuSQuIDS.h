@@ -403,8 +403,6 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
-    /// \brief The external flux from the body at the current point on the track
-    marray<double,3> current_external_flux;
 
     /// \brief Mass basis projectors.
     /// \details The i-entry corresponds to the projector in the ith mass eigenstate.
@@ -449,6 +447,16 @@ protected:
     /// \warning Since the RHS of the differential equation only involves flavor projectors
     /// we do not current evolve mass projectors.
     void EvolveProjectors(double t);
+    /// \brief User supplied function that is called when evolving the projectors.
+    /// @param x Position of the system.
+    /// @param ei The energy index.
+    /// @param evol_buf The per-evolution buffer of the energy index.
+    /// @see EvolveProjectors
+    virtual void AddToEvolveProjectors(double x,unsigned int ei,double evol_buf[]){}
+    /// \brief User supplied function that is called when evolving the projectors.
+    /// @param x Position of the system.
+    /// @see EvolveProjectors
+    virtual void AddToEvolveProjectors(double x){}
 
     // bool requirements
   private:
@@ -494,11 +502,13 @@ protected:
     /// \brief Set GSL differential cross section precision.
     double gsl_int_precision = 1.e-3;
     /// \brief Cutoff for low-pass filter applied during state density evolution
-    double evol_lowpass_cutoff = 0;
+    marray<double,1> evol_lowpass_cutoff;
     /// \brief Scale for low-pass filter applied during state density evolution
-    double evol_lowpass_scale = 0;
-    /// \brief If true the bodies can act as neutrino sources.
-    bool enable_neutrino_sources = false;
+    marray<double,1> evol_lowpass_scale;
+    /// \brief Boolean that enables averaging during evaluation.
+    bool average = false;
+    /// \brief Boolean that enables lowpass filter during propagation and evaluation.
+    bool lowpass = false;
   protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
@@ -785,6 +795,8 @@ protected:
     /// is considering neutrinos (0) or antineutrinos (1).
     double EvalFlavor(unsigned int flv,double enu,unsigned int rho = 0) const;
 
+    double EvalFlavorLowPass(unsigned int flv,double EE,unsigned int rho = 0) const;
+
     /// \brief Returns the flavor composition at a given energy in the multiple energy mode.
     /// averaging out the high frequencies.
     /// @param flv Neutrino flavor.
@@ -818,9 +830,17 @@ protected:
     /// @param val cutoff value 
     void Set_EvolLowPassCutoff(double val);
 
+    /// \brief Sets the cutoff for the state evolution low-pass filter.
+    /// @param val cutoff value 
+    void Set_EvolLowPassCutoff(const marray<double,1>& val);
+
     /// \brief Sets the linear ramp size for the state evolution low-pass filter.
     /// @param val Range in frequency space over which the linear ramp is applied. 
-    void Set_EvolLowPassScale(double val);
+    //void Set_EvolLowPassScale(double val);
+
+    /// \brief Sets the linear ramp size for the state evolution low-pass filter.
+    /// @param val Range in frequency space over which the linear ramp is applied. 
+    //void Set_EvolLowPassScale(const marray<double,1>& val);
 
     /// \brief Toggles tau regeneration on and off.
     /// \param opt If \c true tau regeneration will be considered.
@@ -1042,22 +1062,6 @@ protected:
        ncs=xs;
        interactions_initialized=false;
     }
-
-    /// \brief Enables neutrino flux emission from bodies
-    void Set_NeutrinoSources(bool enable_neutrino_sources_){
-      if(enable_neutrino_sources_){
-        current_external_flux.resize(std::vector<size_t>{ne,nrhos,numneu});
-        std::fill(current_external_flux.begin(),current_external_flux.end(),0.0);
-      }
-      if(not iinteraction and enable_neutrino_sources_)
-        Set_OtherRhoTerms(true);
-      enable_neutrino_sources = enable_neutrino_sources_;
-    }
-
-    /// \brief Returns true if neutrino flux emission from bodies is considered
-    bool Get_NeutrinoSources(){
-      return enable_neutrino_sources;
-    }
 };
 
 /**
@@ -1070,7 +1074,7 @@ template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::i
 class nuSQUIDSAtm {
   public:
     using BaseSQUIDS = BaseType;
-  private:
+  protected:
     /// \brief Random number generator
     gsl_rng * r_gsl;
     // /// \brief Mixing matrix
@@ -1133,7 +1137,7 @@ class nuSQUIDSAtm {
 
       earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
-        track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
+        track_array.push_back(std::make_shared<EarthAtm::Track>(acos(costh)));
 
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
@@ -1369,7 +1373,8 @@ class nuSQUIDSAtm {
         eit--;
       size_t loge_M=std::distance(enu_array.begin(),eit);
       
-      EarthAtm::Track track=earth_atm->MakeTrackWithCosine(costh);
+      //EarthAtm::Track track(acos(costh));
+      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
       double delta_t_final = track.GetFinalX()-track.GetInitialX();
       if (randomize_production_height){
         double production_height = gsl_ran_flat(r_gsl,-15*units.km,15*units.km);
@@ -1393,13 +1398,34 @@ class nuSQUIDSAtm {
       static SQUIDS_THREAD_LOCAL
   #endif
       storage_type storage(H0_at_enu.Dim());
-      
-      storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
-      
+
       //coefficients for energy interpolation
       double f2=(enu-enu_array[loge_M])/(enu_array[loge_M+1]-enu_array[loge_M]);
       double f1=1-f2;
 
+      bool lowpass = nusq_array[0].lowpass;
+      bool average = nusq_array[0].average;
+
+      if(lowpass or average) {
+        // preevolution buffer
+        std::unique_ptr<double[]> evol_buffer(new double[H0_at_enu.GetEvolveBufferSize()]);
+        H0_at_enu.PrepareEvolve(evol_buffer.get(),t_inter);
+        
+        double scale_M = nusq_array[cth_M].evol_lowpass_scale[loge_M]*f1 + nusq_array[cth_M].evol_lowpass_scale[loge_M+1]*f2;
+        double cutoff_M = nusq_array[cth_M].evol_lowpass_cutoff[loge_M]*f1 + nusq_array[cth_M].evol_lowpass_cutoff[loge_M+1]*f2;
+        double scale_P = nusq_array[cth_M+1].evol_lowpass_scale[loge_M]*f1 + nusq_array[cth_M+1].evol_lowpass_scale[loge_M+1]*f2;
+        double cutoff_P = nusq_array[cth_M+1].evol_lowpass_cutoff[loge_M]*f1 + nusq_array[cth_M+1].evol_lowpass_cutoff[loge_M+1]*f2;
+
+        double scale = LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],scale_M,scale_P);
+        double cutoff = LinInter(costh,costh_array[cth_M],costh_array[cth_M+1],cutoff_M,cutoff_P);
+
+        //H0_at_enu.LowPassFilter(evol_buffer.get(), cutoff, scale);
+        storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(evol_buffer.get());
+      }
+      else {
+        storage.evol_proj = nusq_array[0].GetFlavorProj(flv,rho).Evolve(H0_at_enu,t_inter);
+      }
+      
       storage.temp1 =f1*nusq_array[cth_M  ].GetState(loge_M  ,rho);
       storage.temp1+=f2*nusq_array[cth_M  ].GetState(loge_M+1,rho);
       double phiM=squids::SUTrace<squids::detail::AlignedStorage>(storage.temp1,storage.evol_proj);
@@ -1462,7 +1488,8 @@ class nuSQUIDSAtm {
         eit--;
       size_t loge_M=std::distance(enu_array.begin(),eit);
       
-      EarthAtm::Track track=earth_atm->MakeTrackWithCosine(costh);
+      //EarthAtm::Track track(acos(costh));
+      EarthAtm::Track track=EarthAtm::Track::makeWithCosine(costh);
       double delta_t_final = track.GetFinalX()-track.GetInitialX();
       
       // assuming offsets are zero
@@ -1549,11 +1576,11 @@ class nuSQUIDSAtm {
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename){
       hid_t file_id,group_id,root_id;
-      // open HDF5 file
-      H5File file(H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
-      if (file < 0)
+      // create HDF5 file
+      file_id = H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+      if (file_id < 0)
         throw std::runtime_error("nuSQUIDSAtm::ReadStateHDF5: Unable to open file: " + hdf5_filename + ". No such file or directory");
-      root_id = H5Gopen(file, "/",H5P_DEFAULT);
+      root_id = H5Gopen(file_id, "/",H5P_DEFAULT);
       group_id = root_id;
 
       // read the zenith range dimension
@@ -1578,6 +1605,8 @@ class nuSQUIDSAtm {
       }
 
       H5Gclose(root_id);
+      H5Fclose(file_id);
+      H5close();
 
       // resize apropiately the nuSQUIDSAtm container vector
       nusq_array.clear();
@@ -1591,13 +1620,11 @@ class nuSQUIDSAtm {
           if(nsq.iinteraction)
             int_struct = nsq.GetInteractionStructure();
         } else {
-          // re-use the shared cross sections
+          // read the cross sections stored in /crosssections
           nsq.ReadStateHDF5Internal(hdf5_filename,"/costh_"+std::to_string(costh_array[i]),int_struct);
         }
         i++;
       }
-      earth_atm = std::dynamic_pointer_cast<EarthAtm>(nusq_array.front().GetBody());
-      assert(earth_atm);
 
       iinistate = true;
       inusquidsatm = true;
@@ -1916,16 +1943,175 @@ class nuSQUIDSAtm {
       }
     }
 
-    void Set_EvolLowPassScale(double val){
-      for(BaseSQUIDS& nsq : nusq_array){
-        nsq.Set_EvolLowPassScale(val);
-      }
-    }
-    
-    void Set_NeutrinoSources(bool opt){
-      for(BaseSQUIDS& nsq : nusq_array)
-        nsq.Set_NeutrinoSources(opt);
-    }
+    //void Set_EvolLowPassScale(double val){
+    //  for(BaseSQUIDS& nsq : nusq_array){
+    //    nsq.Set_EvolLowPassScale(val);
+    //  }
+    //}
+
+    //void Set_AutoEvolLowPass(double delta_phi_max, double delta_phi_scale, bool fast=false){
+    //  for(BaseSQUIDS& nsq : nusq_array){
+    //    nsq.lowpass = true;
+    //  }
+    //  marray<double,1> times({nusq_array.size()});
+
+    //  for(unsigned int iz=0; iz < nusq_array.size(); ++iz) {
+    //    BaseSQUIDS & nsq = nusq_array[iz];
+    //    times[iz] = nsq.track->GetFinalX()-nsq.track->GetInitialX();
+    //  }
+
+    //  marray<double,2> bounds({nusq_array.size(), enu_array.size()});
+    //  for(unsigned int iz=0; iz < nusq_array.size(); ++iz) {
+    //    BaseSQUIDS & nsq = nusq_array[iz];
+    //    for(unsigned int ie = 0; ie < enu_array.size(); ++ie) {
+          // std::vector<std::pair<unsigned int, unsigned int>> neighbors;
+          // for(int dz=1; dz > -2; dz -= 2) {
+          //   int jz = iz+dz;
+          //   if(jz<0 or jz >= nusq_array.size())
+          //     continue;
+          //   neighbors.push_back({jz,ie});
+          // }
+          // for(int de=1; de > -2; de -= 2) {
+          //   int je = ie+de;
+          //   if(je<0 or je >= enu_array.size())
+          //     continue;
+          //   neighbors.push_back({iz,je});
+          // }
+          // //double min_bound = 1.00/(30.0*units.km);
+          // double min_bound = std::numeric_limits<double>::max();
+          // for(std::pair<unsigned int, unsigned int>& neighbor : neighbors) {
+          //   unsigned int jz = neighbor.first;
+          //   unsigned int je = neighbor.second;
+          //   double bound = std::numeric_limits<double>::max();
+          //   if(jz != iz) {
+          //     bound = 1.0 / std::abs(times[iz] - times[jz]);
+          //   }
+          //   else if(je != ie) {
+          //     bound = enu_array[ie] / std::abs(enu_array[ie] - enu_array[je]) / times[iz];
+          //   }
+          //   if(bound < min_bound) {
+          //     min_bound = bound;
+          //   }
+          // }
+          //bounds[{iz, ie}] = min_bound;
+        //}
+      //}
+
+    //   if(!fast) {
+    //       double x = 1;
+    //       double orig_t;
+    //       marray<double,1> final_times({nusq_array.size()});
+    //       marray<double,5> delta_lambda; // iz, ie, irho, ilam, jlam
+    //       double lambda_size;
+
+    //       bool is_initialized = false;
+
+    //       for(unsigned int iz=0; iz < nusq_array.size(); ++iz) {
+    //         BaseSQUIDS & nsq = nusq_array[iz];
+    //         if( nsq.iinteraction && !nsq.interactions_initialized )
+    //           nsq.InitializeInteractions();
+    //         if( !nsq.ioscillations && nsq.iinteraction)
+    //           nsq.SetUpInteractionCache();
+    //         orig_t = nsq.Get_t();
+    //         final_times[iz] = nsq.track->GetFinalX()-nsq.track->GetInitialX() + nsq.time_offset;
+    //         nsq.Set_t(x*final_times[iz]);
+    //         for(unsigned int ie = 0; ie < enu_array.size(); ++ie) {
+    //           for(unsigned int irho = 0; irho < GetNumRho(); ++irho) {
+    //             squids::SU_vector h0 = nsq.GetHamiltonian(ie, irho);
+    //             std::pair<std::unique_ptr<gsl_vector, void (*)(gsl_vector*)>, std::unique_ptr<gsl_matrix_complex, void (*)(gsl_matrix_complex*)> > eigen_sys = h0.GetEigenSystem(false); // false ==> do not sort
+    //             lambda_size = eigen_sys.first->size;
+    //             marray<double,1> lambda({lambda_size});
+    //             for(unsigned int ilam = 0; ilam < lambda_size; ++ilam) {
+    //                 lambda[ilam] = gsl_vector_get(eigen_sys.first.get(), ilam);
+    //             }
+    //             if(not is_initialized) {
+    //               delta_lambda = marray<double,5>({nusq_array.size(),enu_array.size(),GetNumRho(),lambda_size,lambda_size});
+    //               is_initialized = true;
+    //             }
+    //             for(unsigned int ilam = 0; ilam < lambda_size; ++ilam) {
+    //               for(unsigned int jlam = ilam+1; jlam < lambda_size; ++jlam) {
+    //                 double diff = std::abs(lambda[ilam] - lambda[jlam]);
+    //                 delta_lambda[{iz, ie, irho, ilam, jlam}] = diff;
+    //                 std::cout << diff << std::endl;
+    //                 delta_lambda[{iz, ie, irho, jlam, ilam}] = diff;
+    //               }
+    //             }
+    //           }
+    //         }
+    //         nsq.Set_t(orig_t);
+    //         nsq.PreDerive(orig_t);
+    //       }
+    //       std::cout << "(Zi,Ei,Rhoi) --> omega_max" << std::endl;
+    //       for(unsigned int iz=0; iz < nusq_array.size(); ++iz) {
+    //         for(unsigned int ie = 0; ie < enu_array.size(); ++ie) {
+    //           double min_bound = std::numeric_limits<double>::max();
+    //           for(unsigned int irho = 0; irho < GetNumRho(); ++irho) {
+    //             std::vector<std::pair<unsigned int, unsigned int>> neighbors;
+    //             for(int dz=1; dz > -2; dz -= 2) {
+    //               int jz = iz+dz;
+    //               if(jz<0 or jz >= nusq_array.size())
+    //                 continue;
+    //               neighbors.push_back({jz,ie});
+    //             }
+    //             for(int de=1; de > -2; de -= 2) {
+    //               int je = ie+de;
+    //               if(je<0 or je >= enu_array.size())
+    //                 continue;
+    //               neighbors.push_back({iz,je});
+    //             }
+    //             for(std::pair<unsigned int, unsigned int>& neighbor : neighbors) {
+    //               unsigned int jz = neighbor.first;
+    //               unsigned int je = neighbor.second;
+    //               for(unsigned int ilam = 0; ilam < lambda_size; ++ilam) {
+    //                 for(unsigned int jlam = ilam+1; jlam < lambda_size; ++jlam) {
+    //                   double omega_0 = delta_lambda[{iz,ie,irho,ilam,jlam}];
+    //                   double omega_1 = delta_lambda[{jz,je,irho,ilam,jlam}];
+    //                   if(omega_0 == 0.0)
+    //                       continue;
+    //                   double phi_0 = omega_0 * final_times[iz];
+    //                   double phi_1 = omega_0 * final_times[jz];
+    //                   double delta_phi = std::abs(phi_0 - phi_1);
+    //                   if(delta_phi == 0.0)
+    //                       continue;
+    //                   double bound = omega_0 / delta_phi;
+    //                   if(bound < min_bound) {
+    //                     min_bound = bound;
+    //                   }
+    //                 }
+    //               }
+    //             }
+    //             std::cout << "(" << iz << "," << ie << "," << irho << ") --> " << min_bound << std::endl;
+    //             // Ideally we would set a different low pass filter for each zenith/energy/rho...
+    //             // That would happen right here
+    //             // Instead the best we can do is set a low pass filter for each nusquids object
+    //             //if(min_bound < nsq_min_bound) {
+    //             //  nsq_min_bound = min_bound;
+    //             //}
+    //           }
+    //           if(min_bound < bounds[{iz,ie}]) {
+    //             bounds[{iz,ie}] = min_bound;
+    //           }
+    //         }
+    //         //std::cout << "nsq " << iz << " bound --> " << nsq_min_bound << std::endl;
+    //         std::cout << std::endl;
+    //       }
+    //       std::cout << std::endl;
+    //   }
+    //   for(unsigned int iz=0; iz < nusq_array.size(); ++iz) {
+    //     BaseSQUIDS & nsq = nusq_array[iz];
+    //     marray<double,1> nsq_bounds({enu_array.size()});
+    //     double min_bound = std::numeric_limits<double>::max();
+    //     for(unsigned int ie = 0; ie < enu_array.size(); ++ie) {
+    //       nsq_bounds[ie] = bounds[{iz,ie}];
+    //       if(nsq_bounds[ie] < min_bound) {
+    //         min_bound = nsq_bounds[ie];
+    //       }
+    //     }
+    //     nsq.Set_EvolLowPassCutoff(delta_phi_max * nsq_bounds);
+    //     nsq.Set_EvolLowPassScale(delta_phi_scale * nsq_bounds);
+    //     //nsq.Set_h(1.0/min_bound);
+    //   }
+    // }
 };
 
 

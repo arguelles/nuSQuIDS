@@ -22,6 +22,7 @@
  ******************************************************************************/
 
 #include "nuSQUIDSpy.h"
+#include <nuSQuIDS/nuSQuIDSLV.h>
 
 BOOST_PYTHON_MODULE(nuSQuIDS)
 {
@@ -137,6 +138,15 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>("nuSQUIDSAtm");
 
+  auto nusquids_lv = RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLV");
+  auto nusquids_lv_atm = RegisterBasicAtmNuSQuIDSPythonBindingsHelper<nuSQUIDSLVAtm, nuSQUIDSLV>("nuSQUIDSLVAtm");
+  void (nuSQUIDSLVAtm::*Set_LV_OpMatrix)(double lv_emu_re, double lv_emu_im, double lv_mutau_re, double lv_mutau_im, double lv_etau_re, double lv_etau_im, double lv_ee, double lv_mumu) = &nuSQUIDSLVAtm::Set_LV_OpMatrix;
+  void (nuSQUIDSLVAtm::*Set_LV_Operator)(squids::SU_vector op) = &nuSQUIDSLVAtm::Set_LV_Operator;
+  void (nuSQUIDSLVAtm::*Set_LV_EnergyPower)(int n) = &nuSQUIDSLVAtm::Set_LV_EnergyPower;
+  nusquids_lv_atm.GetClassObject()->def("Set_LV_OpMatrix", Set_LV_OpMatrix);
+  //nusquids_lv_atm.GetClassObject()->def("Set_LV_Operator", Set_LV_Operator);
+  nusquids_lv_atm.GetClassObject()->def("Set_LV_EnergyPower", Set_LV_EnergyPower);
+
   class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>, boost::noncopyable >("NeutrinoCrossSections", no_init);
 
   class_<NullCrossSections, bases<NeutrinoCrossSections>, std::shared_ptr<NullCrossSections>, boost::noncopyable >("NullCrossSections")
@@ -194,8 +204,6 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   ;
 
   class_<squids::Const, boost::noncopyable>("Const")
-    .def_readonly("GF",&squids::Const::GF)
-    .def_readonly("Na",&squids::Const::Na)
     .def_readonly("GF",&squids::Const::GF)
     .def_readonly("PeV",&squids::Const::PeV)
     .def_readonly("TeV",&squids::Const::TeV)
@@ -340,7 +348,6 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
 
     class_<SunASnu::Track, std::shared_ptr<SunASnu::Track> >("Track", init<double>())
     .def(init<double,double>())
-    .def(init<double,double,double>())
     .def("GetInitialX",&SunASnu::Track::GetInitialX)
     .def("GetFinalX",&SunASnu::Track::GetFinalX)
     .def("GetX",&SunASnu::Track::GetX)
@@ -356,16 +363,10 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     scope outer
     = class_<EarthAtm, bases<Body>, boost::noncopyable, std::shared_ptr<EarthAtm> >("EarthAtm")
     .def(init<std::string>())
-    .def("GetRadius",&EarthAtm::GetRadius)
-    .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
-    .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
-    .def("MakeTrack",&EarthAtm::MakeTrack)
-    .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;
 
-    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<EarthAtm::Track>())
-    .def(init<double,double,double>())
-    .def(init<double,double,double,double>())
+    class_<EarthAtm::Track, std::shared_ptr<EarthAtm::Track> >("Track", init<double>())
+    .def(init<double,double>())
     .def("GetInitialX",&EarthAtm::Track::GetInitialX)
     .def("GetFinalX",&EarthAtm::Track::GetFinalX)
     .def("GetX",&EarthAtm::Track::GetX)

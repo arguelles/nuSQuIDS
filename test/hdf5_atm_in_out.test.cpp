@@ -12,6 +12,7 @@ int main(){
 
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
+  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
 
   // set mixing angles and masses
   nus.Set_MixingParametersToDefault();
@@ -169,8 +170,7 @@ int main(){
     for ( int i = 0 ; i < nsq.GetTrack()->GetTrackParams().size(); i++){
       double track_params_diff = nsq.GetTrack()->GetTrackParams()[i] - nsq_read.GetTrack()->GetTrackParams()[i];
       if (std::abs(track_params_diff) > 1.0e-15)
-        std::cout << "TP " << i << ' ' << nsq.GetTrack()->GetTrackParams()[i] << ' ' 
-          << nsq_read.GetTrack()->GetTrackParams()[i] << std::endl;
+        std::cout << "TP " << track_params_diff << std::endl;
     }
     counter++;
   }

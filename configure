@@ -1,69 +1,14 @@
 #!/bin/bash
 
-check_os_arch(){
-	if [ -x /usr/bin/lsb_release ]; then
-		OS_DISTRIB=$(lsb_release -si|tr '[:upper:]' '[:lower:]')
-		OS_VERSION=`lsb_release -sr`
-	elif [ -e /etc/os-release ]; then
-		OS_DISTRIB=$(cat /etc/os-release|grep '^ID='|cut -d '=' -f 2|sed s/\"//g|tr '[:upper:]' '[:lower:]')
-		OS_VERSION=$(cat /etc/os-release|grep '^VERSION='|cut -d '=' -f 2|cut -d ' ' -f 1|sed s/\"//g)
-	elif [ -e /etc/redhat-release ]; then
-		OS_DISTRIB="centos"
-		OS_VERSION=$(cat /etc/redhat-release|sed s/\ /\\\\n/g|grep '\.')
-	else
-		OS_DISTRIB=$(uname -s|tr '[:upper:]' '[:lower:]')
-		OS_VERSION=$(uname -r)
-	fi
-	ARCH=$(uname -m)
-	OS_NAME=$(uname -s)
-
-	case $OS_DISTRIB in
-		"redhatenterpriseclient" | "redhatenterpriseserver" | "rhel" | "scientificsl" | "scientific" | "centos" | "scientificfermi" | "scientificcernslc")
-			OS_DISTRIB="RHEL"
-			OS_VERSION=$(echo "${VERSION}" | cut -d '.' -f 1)
-			;;
-		"ubuntu")
-			OS_DISTRIB="Ubuntu"
-			;;
-		"debian")
-			OS_DISTRIB="Ubuntu"
-			;;
-		"linuxmint")
-			OS_DISTRIB="Ubuntu"
-			;;
-		"freebsd")
-			OS_DISTRIB="FreeBSD"
-			OS_VERSION=$(uname -r | cut -d '.' -f 1)
-			ARCH=$(uname -p)
-			;;
-		"darwin")
-			OS_DISTRIB="OSX"
-			OS_VERSION=$(uname -r | cut -d '.' -f 1)
-			;;
-		"linux")
-			if echo $OS_VERSION | grep -q '\.el7\.\?'; then
-				OS_DISTRIB="RHEL"
-				OS_VERSION=7
-			elif echo $OS_VERSION | grep -q '\.el6\.\?'; then
-				OS_DISTRIB="RHEL"
-				OS_VERSION=6
-			elif echo $OS_VERSION | grep -q '\.el5\.\?'; then
-				OS_DISTRIB="RHEL"
-				OS_VERSION=5
-			fi
-	esac
-	OS_ARCH=${OS_DISTRIB}_${OS_VERSION}_${ARCH}
-}
-
 check_pkgconfig(){
 	if [ "$CHECKED_PKGCONFIG" ]; then return; fi
 	echo "Looking for pkg-config..."
-	PKG_CONFIG_BIN=$(which pkg-config 2>&1)
+	PKG_CONFIG_PATH=$(which pkg-config 2>&1)
 	if [ "$?" -ne 0 ]; then
 		echo "Error: pkg-config not found; you will need to specify library locations manually" 1>&2
 		exit 1
 	fi
-	echo " Found $PKG_CONFIG_BIN"
+	echo " Found $PKG_CONFIG_PATH"
 	CHECKED_PKGCONFIG=1
 }
 
@@ -213,7 +158,7 @@ try_find_python(){
 	TMP=`echo "$PYTHON_STDLIBDIR" | sed -n s'|\(.*/lib\)/python'"${PYTHON_VERSION}"'|\1|p'`
 	if [ "$TMP" ]; then POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} ${TMP}"; fi
 	# Ubuntu is special, of course
-	if [ $OS_DISTRIB = "Ubuntu" ]; then
+	if uname -a | grep -i 'ubuntu' > /dev/null; then
 		POSSIBLE_PYTHON_LIBDIRS="${POSSIBLE_PYTHON_LIBDIRS} /usr/lib/$(uname -i)-linux-gnu"
 	fi
 
@@ -272,7 +217,7 @@ try_find_boost(){
 		return
  	fi
 	if [ "$PYTHON_FOUND" ]; then
-		for PYV_SUFFIX in $PYV $PYVM $PYV-mt $PVM-mt ''; do
+		for PYV_SUFFIX in $PYV $PYVM ''; do
 			for BOOST_LIBDIR in $POSSIBLE_BOOST_LIBDIRS; do
 				if [ -d $BOOST_LIBDIR -a \( -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.a -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.so -o -e $BOOST_LIBDIR/libboost_python${PYV_SUFFIX}.dylib \) ]; then
 					if [ ! "$PYV_SUFFIX" ]; then
@@ -354,7 +299,7 @@ VERSION=`echo $VERSION_NUM | awk '{
 	print major"."minor"."patch;
 }'`
 
-check_os_arch
+OS_NAME=`uname -s`
 
 GUESS_CC=gcc
 GUESS_CXX=g++
@@ -735,8 +680,7 @@ echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 if [ "$PYTHON_BINDINGS" ]; then
 	echo "PYTHON_CFLAGS=$PYTHON_CFLAGS" >> ./Makefile
 	echo "PYTHON_LDFLAGS=$PYTHON_LDFLAGS" >> ./Makefile
-	echo "BOOST_CFLAGS=$BOOST_CFLAGS" >> ./Makefile
-	echo "BOOST_PYTHON_LDFLAGS=$BOOST_LDFLAGS $BOOST_PYTHON_LDFLAGS" >> ./Makefile
+	echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
 	echo "PYTHON_MODULEDIR=$PYTHON_MODULEDIR" >> ./Makefile
 	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
 fi
@@ -854,8 +798,8 @@ install: $(DYN_PRODUCT) $(STAT_PRODUCT)
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
+	@LANG=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
 	@chmod 755 "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)" "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a" 
 	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
@@ -875,8 +819,8 @@ uninstall:
 	@echo Removing headers from $(PREFIX)/include/nuSQuIDS
 	@rm -rf "$(PREFIX)/include/nuSQuIDS"
 	@echo Removing libraries from $(PREFIX)/$(INSTALL_LIBDIR)
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
 	@echo Removing config information from $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig/nusquids.pc"
 ' >> ./Makefile
@@ -892,7 +836,7 @@ $(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
 
 build/nuSQUIDSpy.o : resources/python/src/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
-	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(BOOST_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
 
 python-install : $(PYTHON_LIB)
 	@echo Installing python module in $(PYTHON_MODULEDIR)
@@ -908,9 +852,9 @@ fi
 
 echo "
 export CXX=\"${CXX}\"
-export CFLAGS=\"${CFLAGS} -I${SOURCE_PATH}/inlude ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS}\"
+export CFLAGS=\"${CFLAGS} ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS}\"
 export CXXFLAGS=\"${CXXFLAGS} -std=c++11\"
-export LDFLAGS=\"${LDFLAGS} -L${SOURCE_PATH}/lib -Wl,-rpath -Wl,${SOURCE_PATH}/lib -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}\"
+export LDFLAGS=\"${LDFLAGS}  -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}\"
 " > test/env_vars.sh
 if uname | grep -q 'Darwin' ; then
 	printf "export DYLD_LIBRARY_PATH=\"" >> test/env_vars.sh

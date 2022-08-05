@@ -20,7 +20,7 @@ int main(){
   // i need to put some things inside in order to write it out
   double phi = acos(-0.5);
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
-  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(earth_atm->MakeTrack(phi));
+  std::shared_ptr<EarthAtm::Track> track_atm = std::make_shared<EarthAtm::Track>(phi);
   nus1.Set_Body(earth_atm);
   nus1.Set_Track(track_atm);
   marray<double,2> inistate{60,3};
