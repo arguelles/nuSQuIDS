@@ -809,16 +809,16 @@ double EarthAtm::density(const GenericTrack& track_input) const
   if ( rel_r < x_radius_min ){
     return x_rho_min;
   }
-  else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+  else if ( rel_r > x_radius_max and r < radius) {
     return x_rho_max;
   }
-  else if ( rel_r > radius/earth_with_atm_radius ) {
-    double h = atm_height*(rel_r - radius/earth_with_atm_radius); // here atm_height is a member of EarthAtm in km
+  else if ( r > radius) {
+    double h = r - radius; // height above surface in km
     double h0 = 7.594; //km obtained by fitting the NRLMSISE atmospheric model up to 60 km to an exponetial profile
     // deviations from NRLMSISE model above this height can be subtantial.
     return 0.0012*exp(-h/h0); // use as constant the atmospheric density at surface in gr/cm^3
   } else {
-    return inter_density(r/radius);
+    return inter_density(rel_r);
   }
 }
 
@@ -835,10 +835,10 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   if ( rel_r < x_radius_min ){
     return x_ye_min;
   }
-  else if ( rel_r > x_radius_max and rel_r < radius/earth_with_atm_radius) {
+  else if ( rel_r > x_radius_max and r < radius) {
     return x_ye_max;
   }
-  else if ( rel_r > radius/earth_with_atm_radius ){
+  else if ( r > radius ){
     return 0.494;
   }else {
     return inter_ye(rel_r);
