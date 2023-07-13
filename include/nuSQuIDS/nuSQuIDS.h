@@ -1066,10 +1066,17 @@ protected:
  * where a collection of trayectories is explored.
  */
 
-template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
+template <typename BaseType = nuSQUIDS,
+          typename BodyType = EarthAtm>
 class nuSQUIDSAtm {
+
   public:
+    static_assert(std::is_base_of_v<nuSQUIDS, BaseType>,
+                "BaseType must be derived from nuSQUIDS.");
+    static_assert(std::is_base_of_v<EarthAtm, BodyType>,
+                "BodyType must be derived from EarthAtm.");
     using BaseSQUIDS = BaseType;
+
   private:
     /// \brief Random number generator
     gsl_rng * r_gsl;
@@ -1098,8 +1105,8 @@ class nuSQUIDSAtm {
     /// \brief Contains the nuSQUIDS objects for each zenith.
     std::vector<BaseSQUIDS> nusq_array;
 
-    /// \brief Contains the Earth in atmospheric configuration.
-    std::shared_ptr<EarthAtm> earth_atm;
+    /// \brief Contains the Earth in atmospheric configuration, either with or without production.
+    std::shared_ptr<BodyType> earth_atm;
     /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
     /// \brief Contains the neutrino cross section object
@@ -1121,20 +1128,27 @@ class nuSQUIDSAtm {
     /// @param numneu Number of neutrino flavors.
     /// @param NT Signals the neutrino type : neutrino, antineutrion or both (simultaneous solution)
     /// @param iinteraction Sets the neutrino noncoherent neutrino interactions on.
+    /// @param(conditional) atm_emission_filename Identifies the data to be used to construct an interpolation in energy and height
+	// of the emission spectrum for each costh track
+	// IMPORTANT: The body of propogation defaults to EarthAtm body without emission if not included
     /// \details By defaults interactions are not considered and the neutrino energy scale is assume logarithmic.
     template<typename... ArgTypes>
-    nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args):
+    nuSQUIDSAtm(marray<double,1> costh_array, ArgTypes&&... args, std::optional<std::string> atm_emission_filename = std::nullopt):
     costh_array(costh_array),
-    evalThreads(1)
+    evalThreads(1),
+    earth_atm(atm_emission_filename.has_value() ? std::make_shared<BodyType>(atm_emission_filename.value()) : std::make_shared<BodyType>())
+
+
+
     {
       gsl_rng_env_setup();
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
 
-      earth_atm = std::make_shared<EarthAtm>();
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
-
+    // the default EarthAtm class is being used to construct the track because it holds the desired geometry
+    // the type of the body arises in the earth_atm object
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_Body(earth_atm);
@@ -1596,7 +1610,7 @@ class nuSQUIDSAtm {
         }
         i++;
       }
-      earth_atm = std::dynamic_pointer_cast<EarthAtm>(nusq_array.front().GetBody());
+      earth_atm = std::dynamic_pointer_cast<BodyType>(nusq_array.front().GetBody());
       assert(earth_atm);
 
       iinistate = true;
