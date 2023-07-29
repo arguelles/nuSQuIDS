@@ -53,7 +53,7 @@ CLEAN_COMMAND_FILE="clean_fail.sed"
 NAME_FILTER_REGEX='\('$COMPILE_FAIL_FLAG'\)*'$TEST_SUFFIX'$'
 
 # output format settings
-PASS_LABEL="PASS"
+PASS_LABEL="Pass"
 FAIL_LABEL="FAIL"
 EXPECTED_FAIL_LABEL="FAIL (Expected)"
 MISSING_REFERENCE_LABEL="NOT RUN (Reference output missing)"
