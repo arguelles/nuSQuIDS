@@ -476,6 +476,331 @@ double BiCubicInterpolator::operator()(double x, double y) const{
 	return result;
 }
 
+TriCubicInterpolator::TriCubicInterpolator(marray<double,3> data_,
+                                           marray<double,1> xcoords_,
+                                           marray<double,1> ycoords_,
+                                           marray<double,1> zcoords_):
+xcoords(std::move(xcoords_)),
+ycoords(std::move(ycoords_)),
+zcoords(std::move(zcoords_)),
+data(std::move(data_)),
+dfdx(data.get_extents(),nusquids::detail::no_init),
+dfdy(data.get_extents(),nusquids::detail::no_init),
+dfdz(data.get_extents(),nusquids::detail::no_init),
+d2fdxdy(data.get_extents(),nusquids::detail::no_init),
+d2fdxdz(data.get_extents(),nusquids::detail::no_init),
+d2fdydz(data.get_extents(),nusquids::detail::no_init),
+d3fdxdydz(data.get_extents(),nusquids::detail::no_init)
+{
+	if(xcoords.extent(0) != data.extent(2))
+		throw std::runtime_error("Number of x-coordinates does not match interpolation grid size");
+	if(ycoords.extent(0) != data.extent(1))
+		throw std::runtime_error("Number of y-coordinates does not match interpolation grid size");
+	if(zcoords.extent(0) != data.extent(0))
+		throw std::runtime_error("Number of z-coordinates does not match interpolation grid size");
+	
+	std::size_t iMax=data.extent(2);
+	std::size_t jMax=data.extent(1);
+	std::size_t kMax=data.extent(0);
+	AkimaSpline spline;
+	marray<double,1> xslice(xcoords.get_extents());
+	marray<double,1> yslice(ycoords.get_extents());
+	marray<double,1> zslice(zcoords.get_extents());
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t j=0; j!=jMax; j++){
+			for(std::size_t i=0; i!=iMax; i++)
+				xslice[i]=data[k][j][i];
+			spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+			spline.getAbscissaDerivatives(xslice);
+			for(std::size_t i=0; i!=iMax; i++)
+				dfdx[k][j][i]=xslice[i];
+		}
+	}
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t i=0; i!=iMax; i++){
+			for(std::size_t j=0; j!=jMax; j++)
+				yslice[j]=data[k][j][i];
+			spline.initialize(ycoords.get_data(),yslice.get_data(),jMax);
+			spline.getAbscissaDerivatives(yslice);
+			for(std::size_t j=0; j!=jMax; j++)
+				dfdy[k][j][i]=yslice[j];
+		}
+	}
+	
+	for(std::size_t j=0; j!=jMax; j++){
+		for(std::size_t i=0; i!=iMax; i++){
+			for(std::size_t k=0; k!=kMax; k++)
+				zslice[k]=data[k][j][i];
+			spline.initialize(zcoords.get_data(),zslice.get_data(),kMax);
+			spline.getAbscissaDerivatives(zslice);
+			for(std::size_t k=0; k!=kMax; k++)
+				dfdz[k][j][i]=zslice[k];
+		}
+	}
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t j=0; j!=jMax; j++){
+			for(std::size_t i=0; i!=iMax; i++)
+				xslice[i]=dfdy[k][j][i];
+			spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+			spline.getAbscissaDerivatives(xslice);
+			for(std::size_t i=0; i!=iMax; i++)
+				d2fdxdy[k][j][i]=xslice[i];
+		}
+	}
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t j=0; j!=jMax; j++){
+			for(std::size_t i=0; i!=iMax; i++)
+				xslice[i]=dfdz[k][j][i];
+			spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+			spline.getAbscissaDerivatives(xslice);
+			for(std::size_t i=0; i!=iMax; i++)
+				d2fdxdz[k][j][i]=xslice[i];
+		}
+	}
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t i=0; i!=iMax; i++){			
+			for(std::size_t j=0; j!=jMax; j++)
+				yslice[j]=dfdz[k][j][i];
+			spline.initialize(ycoords.get_data(),yslice.get_data(),jMax);
+			spline.getAbscissaDerivatives(yslice);
+			for(std::size_t j=0; j!=jMax; j++)
+				d2fdydz[k][j][i]=xslice[j];
+		}
+	}
+	
+	for(std::size_t k=0; k!=kMax; k++){
+		for(std::size_t j=0; j!=jMax; j++){
+			for(std::size_t i=0; i!=iMax; i++)
+				xslice[i]=d2fdydz[k][j][i];
+			spline.initialize(xcoords.get_data(),xslice.get_data(),iMax);
+			spline.getAbscissaDerivatives(xslice);
+			for(std::size_t i=0; i!=iMax; i++)
+				d3fdxdydz[k][j][i]=xslice[i];
+		}
+	}
+}
+
+void TriCubicInterpolator::collect_data(double d[64], std::size_t i, std::size_t j, std::size_t k, double dx, double dy, double dz) const{
+	//libtricubic vertex numbering scheme, which is *not* an extension of NR's 2D scheme
+	//    z ^
+	//      |
+	//     4|          6
+	//      o---------o
+	//     /|        /|
+	//  5 / |     7 / | 
+	//   o---------o  |
+	//   |  |      |  |
+	//   |  o------|--o-->
+	//   | / 0     | / 2  y
+	//   |/        |/
+	//   o---------o
+	//  / 1         3
+	// L x
+	
+	d[ 0]=data[k  ][j  ][i  ];
+	d[ 1]=data[k  ][j  ][i+1];
+	d[ 2]=data[k  ][j+1][i  ];
+	d[ 3]=data[k  ][j+1][i+1];
+	d[ 4]=data[k+1][j  ][i  ];
+	d[ 5]=data[k+1][j  ][i+1];
+	d[ 6]=data[k+1][j+1][i  ];
+	d[ 7]=data[k+1][j+1][i+1];
+	d[ 8]=dfdx[k  ][j  ][i  ]*dx;
+	d[ 9]=dfdx[k  ][j  ][i+1]*dx;
+	d[10]=dfdx[k  ][j+1][i  ]*dx;
+	d[11]=dfdx[k  ][j+1][i+1]*dx;
+	d[12]=dfdx[k+1][j  ][i  ]*dx;
+	d[13]=dfdx[k+1][j  ][i+1]*dx;
+	d[14]=dfdx[k+1][j+1][i  ]*dx;
+	d[15]=dfdx[k+1][j+1][i+1]*dx;
+	d[16]=dfdy[k  ][j  ][i  ]*dy;
+	d[17]=dfdy[k  ][j  ][i+1]*dy;
+	d[18]=dfdy[k  ][j+1][i  ]*dy;
+	d[19]=dfdy[k  ][j+1][i+1]*dy;
+	d[20]=dfdy[k+1][j  ][i  ]*dy;
+	d[21]=dfdy[k+1][j  ][i+1]*dy;
+	d[22]=dfdy[k+1][j+1][i  ]*dy;
+	d[23]=dfdy[k+1][j+1][i+1]*dy;
+	d[24]=dfdz[k  ][j  ][i  ]*dz;
+	d[25]=dfdz[k  ][j  ][i+1]*dz;
+	d[26]=dfdz[k  ][j+1][i  ]*dz;
+	d[27]=dfdz[k  ][j+1][i+1]*dz;
+	d[28]=dfdz[k+1][j  ][i  ]*dz;
+	d[29]=dfdz[k+1][j  ][i+1]*dz;
+	d[30]=dfdz[k+1][j+1][i  ]*dz;
+	d[31]=dfdz[k+1][j+1][i+1]*dz;
+	d[32]=d2fdxdy[k  ][j  ][i  ]*dx*dy;
+	d[33]=d2fdxdy[k  ][j  ][i+1]*dx*dy;
+	d[34]=d2fdxdy[k  ][j+1][i  ]*dx*dy;
+	d[35]=d2fdxdy[k  ][j+1][i+1]*dx*dy;
+	d[36]=d2fdxdy[k+1][j  ][i  ]*dx*dy;
+	d[37]=d2fdxdy[k+1][j  ][i+1]*dx*dy;
+	d[38]=d2fdxdy[k+1][j+1][i  ]*dx*dy;
+	d[39]=d2fdxdy[k+1][j+1][i+1]*dx*dy;
+	d[40]=d2fdxdz[k  ][j  ][i  ]*dx*dz;
+	d[41]=d2fdxdz[k  ][j  ][i+1]*dx*dz;
+	d[42]=d2fdxdz[k  ][j+1][i  ]*dx*dz;
+	d[43]=d2fdxdz[k  ][j+1][i+1]*dx*dz;
+	d[44]=d2fdxdz[k+1][j  ][i  ]*dx*dz;
+	d[45]=d2fdxdz[k+1][j  ][i+1]*dx*dz;
+	d[46]=d2fdxdz[k+1][j+1][i  ]*dx*dz;
+	d[47]=d2fdxdz[k+1][j+1][i+1]*dx*dz;
+	d[48]=d2fdydz[k  ][j  ][i  ]*dy*dz;
+	d[49]=d2fdydz[k  ][j  ][i+1]*dy*dz;
+	d[50]=d2fdydz[k  ][j+1][i  ]*dy*dz;
+	d[51]=d2fdydz[k  ][j+1][i+1]*dy*dz;
+	d[52]=d2fdydz[k+1][j  ][i  ]*dy*dz;
+	d[53]=d2fdydz[k+1][j  ][i+1]*dy*dz;
+	d[54]=d2fdydz[k+1][j+1][i  ]*dy*dz;
+	d[55]=d2fdydz[k+1][j+1][i+1]*dy*dz;
+	d[56]=d3fdxdydz[k  ][j  ][i  ]*dx*dy*dz;
+	d[57]=d3fdxdydz[k  ][j  ][i+1]*dx*dy*dz;
+	d[58]=d3fdxdydz[k  ][j+1][i  ]*dx*dy*dz;
+	d[59]=d3fdxdydz[k  ][j+1][i+1]*dx*dy*dz;
+	d[60]=d3fdxdydz[k+1][j  ][i  ]*dx*dy*dz;
+	d[61]=d3fdxdydz[k+1][j  ][i+1]*dx*dy*dz;
+	d[62]=d3fdxdydz[k+1][j+1][i  ]*dx*dy*dz;
+	d[63]=d3fdxdydz[k+1][j+1][i+1]*dx*dy*dz;
+}
+
+void TriCubicInterpolator::get_coeffs(double c[64], double d[64]){
+	c[ 0] = d[0];
+	c[ 1] = d[8];
+	c[ 2] = 3*(-d[0] + d[1]) - 2*d[8] - d[9];
+	c[ 3] = 2*(d[0] - d[1]) + d[8] + d[9];
+	c[ 4] = d[16];
+	c[ 5] = d[32];
+	c[ 6] = 3*(-d[16] + d[17]) - 2*d[32] - d[33];
+	c[ 7] = 2*(d[16] - d[17]) + d[32] + d[33];
+	c[ 8] = 3*(-d[0] + d[2]) - 2*d[16] - d[18];
+	c[ 9] = 3*(-d[8] + d[10]) - 2*d[32] - d[34];
+	c[10] = 9*(d[0] - d[1] - d[2] + d[3]) + 6*(d[8] - d[10] + d[16] - d[17]) + 4*d[32] + 3*(d[9] - d[11] + d[18] - d[19]) + 2*(d[33] + d[34]) + d[35];
+	c[11] = 6*(-d[0] + d[1] + d[2] - d[3]) + 4*(-d[16] + d[17]) + 3*(-d[8] - d[9] + d[10] + d[11]) + 2*(-d[18] + d[19] - d[32] - d[33]) - d[34] - d[35];
+	c[12] = 2*(d[0] - d[2]) + d[16] + d[18];
+	c[13] = 2*(d[8] - d[10]) + d[32] + d[34];
+	c[14] = 6*(-d[0] + d[1] + d[2] - d[3]) + 4*(-d[8] + d[10]) + 3*(-d[16] + d[17] - d[18] + d[19]) + 2*(-d[9] + d[11] - d[32] - d[34]) - d[33] - d[35];
+	c[15] = 4*(d[0] - d[1] - d[2] + d[3]) + 2*(d[8] + d[9] - d[10] - d[11] + d[16] - d[17] + d[18] - d[19]) + d[32] + d[33] + d[34] + d[35];
+	c[16] = d[24];
+	c[17] = d[40];
+	c[18] = 3*(-d[24] + d[25]) - 2*d[40] - d[41];
+	c[19] = 2*(d[24] - d[25]) + d[40] + d[41];
+	c[20] = d[48];
+	c[21] = d[56];
+	c[22] = 3*(-d[48] + d[49]) - 2*d[56] - d[57];
+	c[23] = 2*(d[48] - d[49]) + d[56] + d[57];
+	c[24] = 3*(-d[24] + d[26]) - 2*d[48] - d[50];
+	c[25] = 3*(-d[40] + d[42]) - 2*d[56] - d[58];
+	c[26] = 9*(d[24] - d[25] - d[26] + d[27]) + 6*(d[40] - d[42] + d[48] - d[49]) + 4*d[56] + 3*(d[41] - d[43] + d[50] - d[51]) + 2*(d[57] + d[58]) + d[59];
+	c[27] = 6*(-d[24] + d[25] + d[26] - d[27]) + 4*(-d[48] + d[49]) + 3*(-d[40] - d[41] + d[42] + d[43]) + 2*(-d[50] + d[51] - d[56] - d[57]) - d[58] - d[59];
+	c[28] = 2*(d[24] - d[26]) + d[48] + d[50];
+	c[29] = 2*(d[40] - d[42]) + d[56] + d[58];
+	c[30] = 6*(-d[24] + d[25] + d[26] - d[27]) + 4*(-d[40] + d[42]) + 3*(-d[48] + d[49] - d[50] + d[51]) + 2*(-d[41] + d[43] - d[56] - d[58]) - d[57] - d[59];
+	c[31] = 4*(d[24] - d[25] - d[26] + d[27]) + 2*(d[40] + d[41] - d[42] - d[43] + d[48] - d[49] + d[50] - d[51]) + d[56] + d[57] + d[58] + d[59];
+	c[32] = 3*(-d[0] + d[4]) - 2*d[24] - d[28];
+	c[33] = 3*(-d[8] + d[12]) - 2*d[40] - d[44];
+	c[34] = 9*(d[0] - d[1] - d[4] + d[5]) + 6*(d[8] - d[12] + d[24] - d[25]) + 4*d[40] + 3*(d[9] - d[13] + d[28] - d[29]) + 2*(d[41] + d[44]) + d[45];
+	c[35] = 6*(-d[0] + d[1] + d[4] - d[5]) + 4*(-d[24] + d[25]) + 3*(-d[8] - d[9] + d[12] + d[13]) + 2*(-d[28] + d[29] - d[40] - d[41]) - d[44] - d[45];
+	c[36] = 3*(-d[16] + d[20]) - 2*d[48] - d[52];
+	c[37] = 3*(-d[32] + d[36]) - 2*d[56] - d[60];
+	c[38] = 9*(d[16] - d[17] - d[20] + d[21]) + 6*(d[32] - d[36] + d[48] - d[49]) + 4*d[56] + 3*(d[33] - d[37] + d[52] - d[53]) + 2*(d[57] + d[60]) + d[61];
+	c[39] = 6*(-d[16] + d[17] + d[20] - d[21]) + 4*(-d[48] + d[49]) + 3*(-d[32] - d[33] + d[36] + d[37]) + 2*(-d[52] + d[53] - d[56] - d[57]) - d[60] - d[61];
+	c[40] = 9*(d[0] - d[2] - d[4] + d[6]) + 6*(d[16] - d[20] + d[24] - d[26]) + 4*d[48] + 3*(d[18] - d[22] + d[28] - d[30]) + 2*(d[50] + d[52]) + d[54];
+	c[41] = 9*(d[8] - d[10] - d[12] + d[14]) + 6*(d[32] - d[36] + d[40] - d[42]) + 4*d[56] + 3*(d[34] - d[38] + d[44] - d[46]) + 2*(d[58] + d[60]) + d[62];
+	c[42] = 27*(-d[0] + d[1] + d[2] - d[3] + d[4] - d[5] - d[6] + d[7]) + 18*(-d[8] + d[10] + d[12] - d[14] - d[16] + d[17] + d[20] - d[21] - d[24] + d[25] + d[26] - d[27]) + 12*(-d[32] + d[36] - d[40] + d[42] - d[48] + d[49]) + 9*(-d[9] + d[11] + d[13] - d[15] - d[18] + d[19] + d[22] - d[23] - d[28] + d[29] + d[30] - d[31]) - 8*d[56] + 6*(-d[33] - d[34] + d[37] + d[38] - d[41] + d[43] - d[44] + d[46] - d[50] + d[51] - d[52] + d[53]) + 4*(-d[57] - d[58] - d[60]) + 3*(-d[35] + d[39] - d[45] + d[47] - d[54] + d[55]) + 2*(-d[59] - d[61] - d[62]) - d[63];
+	c[43] = 18*(d[0] - d[1] - d[2] + d[3] - d[4] + d[5] + d[6] - d[7]) + 12*(d[16] - d[17] - d[20] + d[21] + d[24] - d[25] - d[26] + d[27]) + 9*(d[8] + d[9] - d[10] - d[11] - d[12] - d[13] + d[14] + d[15]) + 8*(d[48] - d[49]) + 6*(d[18] - d[19] - d[22] + d[23] + d[28] - d[29] - d[30] + d[31] + d[32] + d[33] - d[36] - d[37] + d[40] + d[41] - d[42] - d[43]) + 4*(d[50] - d[51] + d[52] - d[53] + d[56] + d[57]) + 3*(d[34] + d[35] - d[38] - d[39] + d[44] + d[45] - d[46] - d[47]) + 2*(d[54] - d[55] + d[58] + d[59] + d[60] + d[61]) + d[62] + d[63];
+	c[44] = 6*(-d[0] + d[2] + d[4] - d[6]) + 4*(-d[24] + d[26]) + 3*(-d[16] - d[18] + d[20] + d[22]) + 2*(-d[28] + d[30] - d[48] - d[50]) - d[52] - d[54];
+	c[45] = 6*(-d[8] + d[10] + d[12] - d[14]) + 4*(-d[40] + d[42]) + 3*(-d[32] - d[34] + d[36] + d[38]) + 2*(-d[44] + d[46] - d[56] - d[58]) - d[60] - d[62];
+	c[46] = 18*(d[0] - d[1] - d[2] + d[3] - d[4] + d[5] + d[6] - d[7]) + 12*(d[8] - d[10] - d[12] + d[14] + d[24] - d[25] - d[26] + d[27]) + 9*(d[16] - d[17] + d[18] - d[19] - d[20] + d[21] - d[22] + d[23]) + 8*(d[40] - d[42]) + 6*(d[9] - d[11] - d[13] + d[15] + d[28] - d[29] - d[30] + d[31] + d[32] + d[34] - d[36] - d[38] + d[48] - d[49] + d[50] - d[51]) + 4*(d[41] - d[43] + d[44] - d[46] + d[56] + d[58]) + 3*(d[33] + d[35] - d[37] - d[39] + d[52] - d[53] + d[54] - d[55]) + 2*(d[45] - d[47] + d[57] + d[59] + d[60] + d[62]) + d[61] + d[63];
+	c[47] = 12*(-d[0] + d[1] + d[2] - d[3] + d[4] - d[5] - d[6] + d[7]) + 8*(-d[24] + d[25] + d[26] - d[27]) + 6*(-d[8] - d[9] + d[10] + d[11] + d[12] + d[13] - d[14] - d[15] - d[16] + d[17] - d[18] + d[19] + d[20] - d[21] + d[22] - d[23]) + 4*(-d[28] + d[29] + d[30] - d[31] - d[40] - d[41] + d[42] + d[43] - d[48] + d[49] - d[50] + d[51]) + 3*(-d[32] - d[33] - d[34] - d[35] + d[36] + d[37] + d[38] + d[39]) + 2*(-d[44] - d[45] + d[46] + d[47] - d[52] + d[53] - d[54] + d[55] - d[56] - d[57] - d[58] - d[59]) - d[60] - d[61] - d[62] - d[63];
+	c[48] = 2*(d[0] - d[4]) + d[24] + d[28];
+	c[49] = 2*(d[8] - d[12]) + d[40] + d[44];
+	c[50] = 6*(-d[0] + d[1] + d[4] - d[5]) + 4*(-d[8] + d[12]) + 3*(-d[24] + d[25] - d[28] + d[29]) + 2*(-d[9] + d[13] - d[40] - d[44]) - d[41] - d[45];
+	c[51] = 4*(d[0] - d[1] - d[4] + d[5]) + 2*(d[8] + d[9] - d[12] - d[13] + d[24] - d[25] + d[28] - d[29]) + d[40] + d[41] + d[44] + d[45];
+	c[52] = 2*(d[16] - d[20]) + d[48] + d[52];
+	c[53] = 2*(d[32] - d[36]) + d[56] + d[60];
+	c[54] = 6*(-d[16] + d[17] + d[20] - d[21]) + 4*(-d[32] + d[36]) + 3*(-d[48] + d[49] - d[52] + d[53]) + 2*(-d[33] + d[37] - d[56] - d[60]) - d[57] - d[61];
+	c[55] = 4*(d[16] - d[17] - d[20] + d[21]) + 2*(d[32] + d[33] - d[36] - d[37] + d[48] - d[49] + d[52] - d[53]) + d[56] + d[57] + d[60] + d[61];
+	c[56] = 6*(-d[0] + d[2] + d[4] - d[6]) + 4*(-d[16] + d[20]) + 3*(-d[24] + d[26] - d[28] + d[30]) + 2*(-d[18] + d[22] - d[48] - d[52]) - d[50] - d[54];
+	c[57] = 6*(-d[8] + d[10] + d[12] - d[14]) + 4*(-d[32] + d[36]) + 3*(-d[40] + d[42] - d[44] + d[46]) + 2*(-d[34] + d[38] - d[56] - d[60]) - d[58] - d[62];
+	c[58] = 18*(d[0] - d[1] - d[2] + d[3] - d[4] + d[5] + d[6] - d[7]) + 12*(d[8] - d[10] - d[12] + d[14] + d[16] - d[17] - d[20] + d[21]) + 9*(d[24] - d[25] - d[26] + d[27] + d[28] - d[29] - d[30] + d[31]) + 8*(d[32] - d[36]) + 6*(d[9] - d[11] - d[13] + d[15] + d[18] - d[19] - d[22] + d[23] + d[40] - d[42] + d[44] - d[46] + d[48] - d[49] + d[52] - d[53]) + 4*(d[33] + d[34] - d[37] - d[38] + d[56] + d[60]) + 3*(d[41] - d[43] + d[45] - d[47] + d[50] - d[51] + d[54] - d[55]) + 2*(d[35] - d[39] + d[57] + d[58] + d[61] + d[62]) + d[59] + d[63];
+	c[59] = 12*(-d[0] + d[1] + d[2] - d[3] + d[4] - d[5] - d[6] + d[7]) + 8*(-d[16] + d[17] + d[20] - d[21]) + 6*(-d[8] - d[9] + d[10] + d[11] + d[12] + d[13] - d[14] - d[15] - d[24] + d[25] + d[26] - d[27] - d[28] + d[29] + d[30] - d[31]) + 4*(-d[18] + d[19] + d[22] - d[23] - d[32] - d[33] + d[36] + d[37] - d[48] + d[49] - d[52] + d[53]) + 3*(-d[40] - d[41] + d[42] + d[43] - d[44] - d[45] + d[46] + d[47]) + 2*(-d[34] - d[35] + d[38] + d[39] - d[50] + d[51] - d[54] + d[55] - d[56] - d[57] - d[60] - d[61]) - d[58] - d[59] - d[62] - d[63];
+	c[60] = 4*(d[0] - d[2] - d[4] + d[6]) + 2*(d[16] + d[18] - d[20] - d[22] + d[24] - d[26] + d[28] - d[30]) + d[48] + d[50] + d[52] + d[54];
+	c[61] = 4*(d[8] - d[10] - d[12] + d[14]) + 2*(d[32] + d[34] - d[36] - d[38] + d[40] - d[42] + d[44] - d[46]) + d[56] + d[58] + d[60] + d[62];
+	c[62] = 12*(-d[0] + d[1] + d[2] - d[3] + d[4] - d[5] - d[6] + d[7]) + 8*(-d[8] + d[10] + d[12] - d[14]) + 6*(-d[16] + d[17] - d[18] + d[19] + d[20] - d[21] + d[22] - d[23] - d[24] + d[25] + d[26] - d[27] - d[28] + d[29] + d[30] - d[31]) + 4*(-d[9] + d[11] + d[13] - d[15] - d[32] - d[34] + d[36] + d[38] - d[40] + d[42] - d[44] + d[46]) + 3*(-d[48] + d[49] - d[50] + d[51] - d[52] + d[53] - d[54] + d[55]) + 2*(-d[33] - d[35] + d[37] + d[39] - d[41] + d[43] - d[45] + d[47] - d[56] - d[58] - d[60] - d[62]) - d[57] - d[59] - d[61] - d[63];
+	c[63] = 8*(d[0] - d[1] - d[2] + d[3] - d[4] + d[5] + d[6] - d[7]) + 4*(d[8] + d[9] - d[10] - d[11] - d[12] - d[13] + d[14] + d[15] + d[16] - d[17] + d[18] - d[19] - d[20] + d[21] - d[22] + d[23] + d[24] - d[25] - d[26] + d[27] + d[28] - d[29] - d[30] + d[31]) + 2*(d[32] + d[33] + d[34] + d[35] - d[36] - d[37] - d[38] - d[39] + d[40] + d[41] - d[42] - d[43] + d[44] + d[45] - d[46] - d[47] + d[48] - d[49] + d[50] - d[51] + d[52] - d[53] + d[54] - d[55]) + d[56] + d[57] + d[58] + d[59] + d[60] + d[61] + d[62] + d[63];
+}
+
+double TriCubicInterpolator::evaluate_polynomial(double c[64], double t, double u, double v){
+	//Empirically, this fully unrolled and factorized form for the evaulation is faster than
+	//the deeply nested loop used by libtricubic, or the more optimized form thereof used by
+	//https://github.com/igmhub/likely . The code size is large, but it contains fewer floating-
+	//point operations (particularly multiplies), has no integer loop book-keeping, and should
+	//give significant opportunities to exploit instruction-level parallelism.
+	
+	//16 polynomials in the x (t) diection
+	double p[16];
+	p[0]=((c[3]*t+c[2])*t+c[1])*t+c[0];
+	p[1]=((c[7]*t+c[6])*t+c[5])*t+c[4];
+	p[2]=((c[11]*t+c[10])*t+c[9])*t+c[8];
+	p[3]=((c[15]*t+c[14])*t+c[13])*t+c[12];
+	p[4]=((c[19]*t+c[18])*t+c[17])*t+c[16];
+	p[5]=((c[23]*t+c[22])*t+c[21])*t+c[20];
+	p[6]=((c[27]*t+c[26])*t+c[25])*t+c[24];
+	p[7]=((c[31]*t+c[30])*t+c[29])*t+c[28];
+	p[8]=((c[35]*t+c[34])*t+c[33])*t+c[32];
+	p[9]=((c[39]*t+c[38])*t+c[37])*t+c[36];
+	p[10]=((c[43]*t+c[42])*t+c[41])*t+c[40];
+	p[11]=((c[47]*t+c[46])*t+c[45])*t+c[44];
+	p[12]=((c[51]*t+c[50])*t+c[49])*t+c[48];
+	p[13]=((c[55]*t+c[54])*t+c[53])*t+c[52];
+	p[14]=((c[59]*t+c[58])*t+c[57])*t+c[56];
+	p[15]=((c[63]*t+c[62])*t+c[61])*t+c[60];
+	//4 polynomials in the y (u) direction
+	double q[4];
+	q[0]=((p[3]*u+p[2])*u+p[1])*u+p[0];
+	q[1]=((p[7]*u+p[6])*u+p[5])*u+p[4];
+	q[2]=((p[11]*u+p[10])*u+p[9])*u+p[8];
+	q[3]=((p[15]*u+p[14])*u+p[13])*u+p[12];
+	//one polynomial in the z (v) direction
+	double r=((q[3]*v+q[2])*v+q[1])*v+q[0];
+	return r;
+}
+
+double TriCubicInterpolator::operator()(double x, double y, double z) const{
+	//figure out which grid cell we are in
+	auto x_it=std::upper_bound(xcoords.begin(),xcoords.end(),x);
+	std::size_t i=x<xcoords[0] ? 0 : std::distance(xcoords.begin(),x_it)-1;
+	if(i==xcoords.extent(0)-1)
+		i--;
+	auto y_it=std::upper_bound(ycoords.begin(),ycoords.end(),y);
+	std::size_t j=y<ycoords[0] ? 0 : std::distance(ycoords.begin(),y_it)-1;
+	if(j==ycoords.extent(0)-1)
+		j--;
+	auto z_it=std::upper_bound(zcoords.begin(),zcoords.end(),z);
+	std::size_t k=z<zcoords[0] ? 0 : std::distance(zcoords.begin(),z_it)-1;
+	if(k==zcoords.extent(0)-1)
+		k--;
+	//cell dimensions
+	double dx=xcoords[i+1]-xcoords[i];
+	double dy=ycoords[j+1]-ycoords[j];
+	double dz=zcoords[k+1]-zcoords[k];
+	//compute local coordinates
+	double t=(x-xcoords[i])/dx;
+	double u=(y-ycoords[j])/dy;
+	double v=(z-zcoords[k])/dz;
+	
+	double d[64];
+	collect_data(d,i,j,k,dx,dy,dz);
+	double c[64];
+	get_coeffs(c,d);
+	return evaluate_polynomial(c,t,u,v);
+}
+
 bool h5ObjectExists(hid_t loc_id, const char* name){
     return H5Lexists(loc_id,name,H5P_DEFAULT)>0 && H5Oexists_by_name(loc_id,name,H5P_DEFAULT)>0;
 };

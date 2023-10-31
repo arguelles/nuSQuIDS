@@ -261,7 +261,7 @@ try_find_boost(){
 	
  	if [ "$#" -eq 1 ]; then
  		GUESS_DIR=$1
- 		POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
+ 		POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/${ARCH}-linux-gnu"
 		POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
 	elif [ "$#" -eq 2 ]; then
 		GUESS_DIR="$1 and $2"

@@ -211,6 +211,49 @@ private:
 	marray<double,2> dzdx, dzdy, dzdxdy;
 };
 
+///\brief A tricubic interpolator for three-dimensional data. 
+///One-dimensional Akima splines are used to obtain all necessary derivatives at 
+///the grid points. 
+class TriCubicInterpolator{
+public:
+	TriCubicInterpolator();
+	///Contruct an interpolator over existing function data for a given grid.
+	///\param data Values of the function to be interpolated, evaluated on the grid defined by the
+	///            tensor product of the corrdinate arrays. Note that this should be in row-major
+	///            order, so that the first index corresponds to the z coordinate, the second to y, 
+	///            and the third to x.
+	///\param xcoords Values for the x coordinates of the grid points used. THese must be in sorted
+	///               order and unique. 
+	///\param ycoords Values for the y coordinates of the grid points used. THese must be in sorted
+	///               order and unique. 
+	///\param zcoords Values for the z coordinates of the grid points used. THese must be in sorted
+	///               order and unique. 
+	TriCubicInterpolator(marray<double,3> data,
+                         marray<double,1> xcoords,
+                         marray<double,1> ycoords,
+                         marray<double,1> zcoords);
+	
+	///Evaluate the interpolation at the given coordinates
+	double operator()(double x, double y, double z) const;
+private:
+	marray<double,1> xcoords;
+	marray<double,1> ycoords;
+	marray<double,1> zcoords;
+	marray<double,3> data;
+	marray<double,3> dfdx;
+	marray<double,3> dfdy;
+	marray<double,3> dfdz;
+	marray<double,3> d2fdxdy;
+	marray<double,3> d2fdxdz;
+	marray<double,3> d2fdydz;
+	marray<double,3> d3fdxdydz;
+	
+	void collect_data(double d[64], std::size_t i, std::size_t j, std::size_t k, double dx, double dy, double dz) const;
+protected:
+	static void get_coeffs(double c[64], double d[64]);
+	static double evaluate_polynomial(double c[64], double t, double u, double v);
+};
+
 struct H5File{
     hid_t id;
     H5File(hid_t id):id(id){}

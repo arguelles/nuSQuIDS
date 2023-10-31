@@ -194,9 +194,11 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   ;
 
   class_<squids::Const, boost::noncopyable>("Const")
+  // fundamental constants
     .def_readonly("GF",&squids::Const::GF)
     .def_readonly("Na",&squids::Const::Na)
     .def_readonly("GF",&squids::Const::GF)
+  // units
     .def_readonly("PeV",&squids::Const::PeV)
     .def_readonly("TeV",&squids::Const::TeV)
     .def_readonly("GeV",&squids::Const::GeV)
@@ -218,6 +220,22 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .def_readonly("hour",&squids::Const::hour)
     .def_readonly("day",&squids::Const::day)
     .def_readonly("year",&squids::Const::year)
+    .def_readonly("picobarn",&squids::Const::picobarn)
+    .def_readonly("femtobarn",&squids::Const::femtobarn)
+    .def_readonly("Pascal",&squids::Const::Pascal)
+    .def_readonly("atm",&squids::Const::atm)
+    .def_readonly("psi",&squids::Const::psi)
+    .def_readonly("Kelvin",&squids::Const::Kelvin)
+    .def_readonly("C",&squids::Const::C)
+    .def_readonly("A",&squids::Const::A)
+    .def_readonly("T",&squids::Const::T)
+  // functions to set angles and rotations
+    .def("SetMixingAngle",&squids::Const::SetMixingAngle)
+    .def("GetMixingAngle",&squids::Const::GetMixingAngle)
+    .def("SetSquareMassDifference",&squids::Const::SetEnergyDifference)
+    .def("GetSquareMassDifference",&squids::Const::GetEnergyDifference)
+    .def("SetPhase",&squids::Const::SetPhase)
+    .def("GetPhase",&squids::Const::GetPhase)
   ;
 
   {
