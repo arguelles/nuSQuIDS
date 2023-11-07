@@ -261,7 +261,7 @@ try_find_boost(){
 	
  	if [ "$#" -eq 1 ]; then
  		GUESS_DIR=$1
- 		POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/${ARCH}-linux-gnu"
+ 		POSSIBLE_BOOST_LIBDIRS="${GUESS_DIR}/lib ${GUESS_DIR}/lib64 ${GUESS_DIR}/lib/x86_64-linux-gnu"
 		POSSIBLE_BOOST_INCDIRS="${GUESS_DIR}/include"
 	elif [ "$#" -eq 2 ]; then
 		GUESS_DIR="$1 and $2"
@@ -717,7 +717,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
             examples/Constant_density_layers/const_dens_layers \
-            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
+            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio \
+            examples/Emitting_Atmosphere/emitting_atmosphere
 
 CXXFLAGS= -std=c++11
 
@@ -735,8 +736,7 @@ echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 if [ "$PYTHON_BINDINGS" ]; then
 	echo "PYTHON_CFLAGS=$PYTHON_CFLAGS" >> ./Makefile
 	echo "PYTHON_LDFLAGS=$PYTHON_LDFLAGS" >> ./Makefile
-	echo "BOOST_CFLAGS=$BOOST_CFLAGS" >> ./Makefile
-	echo "BOOST_PYTHON_LDFLAGS=$BOOST_LDFLAGS $BOOST_PYTHON_LDFLAGS" >> ./Makefile
+	echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
 	echo "PYTHON_MODULEDIR=$PYTHON_MODULEDIR" >> ./Makefile
 	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
 fi
@@ -782,6 +782,10 @@ examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/mai
 examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio : $(DYN_PRODUCT) examples/Astrophysical_neutrino_flavor_ratio/main.cpp
 	@echo Compiling astrophysical neutrino flavor ratio example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Astrophysical_neutrino_flavor_ratio/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Emitting_Atmosphere/emitting_atmosphere : $(DYN_PRODUCT) examples/Emitting_Atmosphere/main.cpp
+	@echo Compiling emitting atmosphere example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Emitting_Atmosphere/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
 	@echo Compiling multiple energy example
@@ -892,7 +896,7 @@ $(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
 
 build/nuSQUIDSpy.o : resources/python/src/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
-	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(BOOST_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
 
 python-install : $(PYTHON_LIB)
 	@echo Installing python module in $(PYTHON_MODULEDIR)
