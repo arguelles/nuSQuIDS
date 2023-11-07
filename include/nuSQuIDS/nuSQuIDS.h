@@ -1063,13 +1063,16 @@ protected:
 /**
  * The following class provides functionalities
  * for atmospheric neutrino experiments
- * where a collection of trayectories is explored.
+ * where a collection of trajectories is explored.
  */
 
-template<typename BaseType = nuSQUIDS, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
+template<typename BaseNusType = nuSQUIDS, typename BaseBodyType = EarthAtm>
 class nuSQUIDSAtm {
+    static_assert(std::is_base_of<nuSQUIDS, BaseNusType>::value, "BaseNusType must be derived from nuSQUIDS");
+    static_assert(std::is_base_of<EarthAtm, BaseBodyType>::value, "BaseBodyType must be derived from EarthAtm");
+    // Class implementation here
   public:
-    using BaseSQUIDS = BaseType;
+    using BaseSQUIDS = BaseNusType;
   private:
     /// \brief Random number generator
     gsl_rng * r_gsl;
@@ -1099,7 +1102,10 @@ class nuSQUIDSAtm {
     std::vector<BaseSQUIDS> nusq_array;
 
     /// \brief Contains the Earth in atmospheric configuration.
-    std::shared_ptr<EarthAtm> earth_atm;
+    std::shared_ptr<BaseBodyType> earth_atm;
+
+    
+    
     /// \brief Contains the trajectories for each nuSQUIDS object, i.e. zenith.
     std::vector<std::shared_ptr<EarthAtm::Track>> track_array;
     /// \brief Contains the neutrino cross section object
@@ -1131,18 +1137,20 @@ class nuSQUIDSAtm {
       const gsl_rng_type * T_gsl = gsl_rng_default;
       r_gsl = gsl_rng_alloc (T_gsl);
 
-      earth_atm = std::make_shared<EarthAtm>();
+      earth_atm = std::make_shared<BaseBodyType>();
+      
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
-
+  
+      
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_Body(earth_atm);
         nusq_array.back().Set_Track(track_array[i]);
       }
-      ncs=nusq_array.front().GetNeutrinoCrossSections();
-
+      
       enu_array = nusq_array.front().GetERange();
+      ncs=nusq_array.front().GetNeutrinoCrossSections();
       log_enu_array.resize(std::vector<size_t>{enu_array.size()});
       //std::transform(enu_array.begin(), enu_array.end(), log_enu_array.begin(),
       //               [](int enu) { return log(enu); });
@@ -1210,7 +1218,7 @@ class nuSQUIDSAtm {
     /************************************************************************************
      * PUBLIC MEMBERS TO EVALUATE/SET/GET STUFF
     *************************************************************************************/
-
+    
     /// \brief Sets the initial state in the multiple energy mode
     /// when only considering neutrinos or antineutrinos
     /// @param ini_state Initial neutrino state.
@@ -1271,6 +1279,22 @@ class nuSQUIDSAtm {
         i++;
       }
       iinistate = true;
+    }
+    
+    /// \brief Passes the log scale energy array into the user constructed body
+    void Set_AtmEmissionEnergies(){
+      earth_atm->Set_EmissionEnergies(enu_array);
+    }
+    
+    
+    /// \brief Sets the index of the produced flavors. defaults to 0,1 for nuE and nuMu
+    void Set_AtmProducedFlavors(int E_nu_index_, int Mu_nu_index_){
+      earth_atm->Set_ProducedFlavors(E_nu_index_, Mu_nu_index_);
+    }
+
+    /// \brief Sets the height of the atmosphere for every body
+    void Set_AtmHeight(double height){
+      earth_atm->SetAtmosphereHeight(height);
     }
 
     /// \brief Evolves the system.
