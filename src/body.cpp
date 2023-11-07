@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <fstream>
 
 #include <H5Apublic.h>
 #include <H5LTpublic.h>
@@ -902,6 +903,145 @@ void EarthAtm::SetAtmosphereHeight(double height){
   earth_with_atm_radius = radius + atm_height;
 }
 
+
+
+/*
+----------------------------------------------------------------------
+         EMITTINGEARTHATM CLASS DEFINITIONS
+----------------------------------------------------------------------
+*/
+
+// constructor without passed energy, used by nuSQUIDSAtm
+EmittingEarthAtm::EmittingEarthAtm():EmittingEarthAtm(getResourcePath()+"/atmos_prod/PROD_MODEL_MCEQ.dat")
+{} 
+
+// constructor with passed energy space
+EmittingEarthAtm::EmittingEarthAtm(marray<double, 1> ESpace):EmittingEarthAtm(getResourcePath()+"/atmos_prod/PROD_MODEL_MCEQ.dat")
+{ Set_EmissionEnergies(ESpace); }  
+
+
+EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
+{
+
+  marray<double,2> atm_prod_model = quickread(getResourcePath()+"atmos_prod/PROD_MODEL_MCEQ.dat");
+  arraysize = atm_prod_model.extent(0);
+
+  diff_enu_prod.resize(arraysize);
+  diff_munu_prod.resize(arraysize);
+  atm_coszen.resize(arraysize);
+  atm_heights.resize(arraysize);
+  atm_energy.resize(arraysize);
+
+  for (unsigned int i=0; i < arraysize;i++){
+    atm_coszen[i] = atm_prod_model[i][0];
+    atm_heights[i] = atm_prod_model[i][1];
+    atm_energy[i] = atm_prod_model[i][2];
+    diff_enu_prod[i] = atm_prod_model[i][3];
+    diff_munu_prod[i] = atm_prod_model[i][4];
+  }
+  
+  
+  unique_sort(atm_coszen, czen_min, czen_max, czen_number);
+  coszens.resize(0, atm_coszen.size());
+  for (unsigned int i=0; i < czen_number;i++){
+    coszens[i] = atm_coszen[i];
+  }
+  
+  unique_sort(atm_heights, height_min, height_max, height_number);
+  heights.resize(0,atm_heights.size());
+  for (unsigned int i=0; i < height_number; i++){
+    heights[i] = atm_heights[i];
+  }
+  
+  unique_sort(atm_energy, energy_min, energy_max, energy_number);
+  energies.resize(0,atm_energy.size());
+  for (unsigned int i=0; i < energy_number; i++){
+    energies[i] = atm_energy[i];
+  }
+  
+  marray<double, 3> nuEmatrix{czen_number, height_number, energy_number};
+  marray<double, 3> nuMumatrix{czen_number, height_number, energy_number};
+  
+
+  std::ifstream InputFile(filepath);
+  double cz_;
+  double h_;
+  double E_;
+  double nuEflux;
+  double nuMuflux;
+
+  while (InputFile >> cz_ >> h_ >> E_ >> nuEflux >> nuMuflux) {
+    auto it1 = std::find(coszens.begin(), coszens.end(), cz_);
+    auto it2 = std::find(heights.begin(), heights.end(), h_);
+    auto it3 = std::find(energies.begin(), energies.end(), E_);
+    if (it1 != coszens.end() && it2 != heights.end() && it3 != energies.end()) {
+      size_t czIndex = std::distance(coszens.begin(), it1);
+      size_t hIndex = std::distance(heights.begin(), it2);
+      size_t EIndex = std::distance(energies.begin(), it3);
+      nuEmatrix[czIndex][hIndex][EIndex] = nuEflux;
+      nuMumatrix[czIndex][hIndex][EIndex] = nuMuflux;
+      }
+    }
+    InputFile.close();
+    
+  Interpolators.push_back( nusquids::TriCubicInterpolator(nuEmatrix, energies, heights, coszens) );
+  Interpolators.push_back( nusquids::TriCubicInterpolator(nuMumatrix, energies, heights, coszens) );
+        
+}
+
+
+// Overrides the neutrino flux injection
+void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) {
+      
+      if(Get_EnergyInit() == false){
+        throw std::runtime_error("Energy Space not Passed to EmittingEarthAtm instance");
+      }
+      // height calculation
+      const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track);
+      double czNode = track_earthatm.cosphi;
+      double xkm = track.GetX() / param.km;
+      double sinsqphi = 1 - SQR(czNode);
+      double dL = sqrt(SQR(earth_with_atm_radius) - SQR(radius) * sinsqphi) + radius * czNode;
+      double L = sqrt(SQR(radius + atm_height) - SQR(radius) * sinsqphi) - radius * czNode;
+      double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (L / param.km + dL) * xkm;
+      double r = (r2 > 0 ? sqrt(r2) : 0);
+      double rel_r = r / earth_with_atm_radius;
+      double Height = earth_with_atm_radius * (rel_r - radius / earth_with_atm_radius); // here atm_height is a member of EarthAtm in km
+      double H = Height*100000;
+
+
+      for (unsigned int ei=0; ei < ESpace.extent(0); ei++) {
+        double E = ESpace[ei]/(param.GeV);          
+        if(czNode >= czen_min && czNode<=czen_max && H>=height_min && H<=height_max && E>=energy_min && E<=energy_max){
+          flux[ei][0][E_nu_index] = Interpolators[0](E, H, czNode); //(height*100000 passed in cm, Energy passed in GeV)
+          flux[ei][0][Mu_nu_index] = Interpolators[1](E, H, czNode); //(height*100000 passed in cm, Energy passed in GeV)
+        } else {
+          flux[ei][0][E_nu_index] = 0; //(height*100000 passed in cm, Energy passed in GeV)
+          flux[ei][0][Mu_nu_index] = 0; //(height*100000 passed in cm, Energy passed in GeV)
+        }
+      }
+    }
+
+EmittingEarthAtm::~EmittingEarthAtm(){}
+
+
+void EmittingEarthAtm::unique_sort(std::vector<double>& vec, double& min_val, double& max_val, long unsigned int& number_val) {
+    std::sort(vec.begin(), vec.end());
+    auto last = std::unique(vec.begin(), vec.end());
+    vec.erase(last, vec.end());
+    min_val = vec.front();
+    max_val = vec.back();
+    number_val = vec.size();
+}
+
+void Get_EnergyEmit(){
+    
+}
+
+
+
+
+
 // body registration stuff
 
 std::map<std::string,std::function<std::shared_ptr<Body>(hid_t)>>* body_registry=NULL;
@@ -943,5 +1083,6 @@ NUSQUIDS_REGISTER_BODY(ConstantDensity);
 NUSQUIDS_REGISTER_BODY(VariableDensity);
 NUSQUIDS_REGISTER_BODY(Earth);
 NUSQUIDS_REGISTER_BODY(EarthAtm);
+NUSQUIDS_REGISTER_BODY(EmittingEarthAtm);
 NUSQUIDS_REGISTER_BODY(Sun);
 NUSQUIDS_REGISTER_BODY(SunASnu);
