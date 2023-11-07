@@ -709,6 +709,7 @@ OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 EXAMPLES := examples/Single_energy/single_energy \
             examples/Multiple_energy/multiple_energy \
             examples/Atm_default/atm_default \
+	    examples/Emitting_Atmosphere/emitting_atmosphere \
             examples/Bodies/bodies \
             examples/Xsections/xsections \
             examples/NSI/nsi \
@@ -798,6 +799,10 @@ examples/HDF5_Write_Read/read : $(DYN_PRODUCT) examples/HDF5_Write_Read/read.cpp
 examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
 	@echo Compiling atmospheric example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Emitting_Atmosphere/emitting_atmosphere : $(DYN_PRODUCT) examples/Emitting_Atmosphere/main.cpp
+	@echo Compiling emitting atmosphere example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Emitting_Atmosphere/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp
 	@$(CXX) $(EXAMPLES_FLAGS) -c examples/Bodies/exBody.cpp -o $@
