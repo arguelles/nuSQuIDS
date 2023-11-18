@@ -709,7 +709,7 @@ OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 EXAMPLES := examples/Single_energy/single_energy \
             examples/Multiple_energy/multiple_energy \
             examples/Atm_default/atm_default \
-	    examples/Emitting_Atmosphere/emitting_atmosphere \
+            examples/Emitting_Atmosphere/emitting_atmosphere \
             examples/Bodies/bodies \
             examples/Xsections/xsections \
             examples/NSI/nsi \
