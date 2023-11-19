@@ -946,7 +946,7 @@ EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
   
   
   unique_sort(atm_coszen, czen_min, czen_max);
-  int czen_number = atm_coszen.size();
+  long unsigned int czen_number = atm_coszen.size();
   marray<double,1> coszens;
   coszens.resize(0, czen_number);
   for (unsigned int i=0; i < czen_number;i++){
@@ -954,7 +954,7 @@ EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
   }
   
   unique_sort(atm_heights, height_min, height_max);
-  int height_number = atm_heights.size();
+  long unsigned int height_number = atm_heights.size();
   marray<double,1> heights;
   heights.resize(0, height_number);
   for (unsigned int i=0; i < height_number; i++){
@@ -962,7 +962,7 @@ EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
   }
   
   unique_sort(atm_energy, energy_min, energy_max);
-  int energy_number = atm_energy.size();
+  long unsigned int energy_number = atm_energy.size();
   marray<double,1> energies;
   energies.resize(0, energy_number);
   for (unsigned int i=0; i < energy_number; i++){
@@ -973,25 +973,15 @@ EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
 
   std::vector<std::vector<marray<double, 3>>> flux_matrices(num_prod_flav, std::vector<marray<double, 3>>(2));
 
-  marray<double, 3> nu_e_flux({static_cast<long unsigned int>(czen_number), 
-                             static_cast<long unsigned int>(height_number), 
-                             static_cast<long unsigned int>(energy_number)});
-  marray<double, 3> nu_e_bar_flux({static_cast<long unsigned int>(czen_number), 
-                             static_cast<long unsigned int>(height_number), 
-                             static_cast<long unsigned int>(energy_number)});
-  marray<double, 3> nu_mu_flux({static_cast<long unsigned int>(czen_number), 
-                             static_cast<long unsigned int>(height_number), 
-                             static_cast<long unsigned int>(energy_number)});
-  marray<double, 3> nu_mu_bar_flux({static_cast<long unsigned int>(czen_number), 
-                             static_cast<long unsigned int>(height_number), 
-                             static_cast<long unsigned int>(energy_number)});
+  marray<double, 3> nu_e_flux({czen_number, height_number, energy_number});
+  marray<double, 3> nu_e_bar_flux({czen_number, height_number, energy_number});
+  marray<double, 3> nu_mu_flux({czen_number, height_number, energy_number});
+  marray<double, 3> nu_mu_bar_flux({czen_number, height_number, energy_number});
 
   // Initialize each marray in flux_matrices
   for (int flav = 0; flav < num_prod_flav; ++flav) {
     for (int rho = 0; rho < 2; ++rho) {
-      flux_matrices[flav][rho] = marray<double, 3>({static_cast<long unsigned int>(czen_number), 
-                             static_cast<long unsigned int>(height_number), 
-                             static_cast<long unsigned int>(energy_number)});
+      flux_matrices[flav][rho] = marray<double, 3>({czen_number, height_number, energy_number});
     }
   }
 
