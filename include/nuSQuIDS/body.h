@@ -669,8 +669,6 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
-    
-    marray<double, 1> ESpace;
       
   public:
     /// \brief Default constructor using supplied PREM.
@@ -772,85 +770,52 @@ class EarthAtm: public Body{
 /// \brief A model of the production of neutrino cosmic ray flux production within the atmosphere.
 class EmittingEarthAtm: public EarthAtm{
   protected:
-    /// \brief Atm differential nu electron flux array
-    std::vector<double> diff_enu_prod;
-    marray<double,1> enu_flux;
-    /// \brief Atm differential nu muon  flux array
-    std::vector<double> diff_munu_prod;
-    marray<double,1> munu_flux;
-    /// \brief Atm coszen array
-    std::vector<double> atm_coszen;
-    marray<double,1> coszens;
-    /// \brief Atm heights array
-    std::vector<double> atm_heights;
-    marray<double,1> heights;
-    /// \brief Atm energies array
-    std::vector<double> atm_energy;
-    marray<double,1> energies;
     
-    /// \brief Minimum coszen.
+    /// \brief Min/Max coszen.
     double czen_min;
-    /// \brief Maximum coszen.
     double czen_max;
-    /// \brief number of coszens
-    long unsigned int czen_number;
-    /// \brief Minimum height.
+    /// \brief Min/Max height.
     double height_min;
-    /// \brief Maximum height.
     double height_max;
-    /// \brief number of heights
-    long unsigned int height_number;
-    /// \brief Minimum energy.
+    /// \brief Min/Max energy.
     double energy_min;
-    /// \brief Maximum energy.
     double energy_max;
-    /// \brief number of energies
-    long unsigned int energy_number;
+
     /// \brief vector containing interpolators for the differential flux
-    std::vector<TriCubicInterpolator> Interpolators;
-    /// \brief indices for the electron and muon flavors
-    /// defaulted to the first and second flavor states
-    int E_nu_index = 0;
-    int Mu_nu_index = 1;
+    std::vector<std::vector<TriCubicInterpolator>> Interpolators;
     
-    bool init_emit_energies = false;
+    /// \brief indices for the electron and muon flavors
+    /// defaulted to the 0 and 1 states (first and second0
+    /// WARNING!!!: careful when changing these as other parts of nuSQuIDS are hard coded to
+    /// default to 0, 1, & 2 for nu_e, nu_mu, and nu_tau respectively
+    /// Do this only if you have defined your own HI matrix by overriding squids::SU_vector HI
+    /// and if you have explicitly initialized all non-used mixing angles to 0
+    int nu_e_index = 0;
+    int nu_mu_index = 1;
     
   public:
   
     /// \brief Default constructor using supplied MCEQ neutrino flux.
     EmittingEarthAtm();
     
-    /// \brief constructor with user passed energy space
-    EmittingEarthAtm(marray<double, 1> ESpace);
-    
     /// \brief Constructor from a user supplied production model.
     /// @param prodmodel Path to the production model data file.    
-    /// \details The input file should have five columns.
-    /// The first one must run in descending order from or between 1 and -1
-    /// representing the range of coszen values corresponding to tracks
-    /// relevant to your propagation
+    /// \details The input file should have 3+2n columns for n=the number of produced flavors.
+    /// The first one is cosine(zenith) in descending order from or between 1 and -1
+    /// representing the range of coszen values corresponding to tracks relevant to your propagation
     /// The second column must contain the height within the atmosphere in cm
     /// in descending order from or between 6000000 (60 km) and 0
-    /// The 3rd column must correspond to the energy in GeV 
+    /// The third column must correspond to the energy in GeV 
     /// in descending order over any relevant range
-    /// The 4th and 5th columns must correspond to the differential E_nu and Mu_nu
-    /// flux corresponding to the coszen, height, and energy in the row
+    /// The remaining columns must correspond to the differential produced neutrino fluxes for each flavor
+    /// The order is assumed nu_e, nu_e_bar, nu_mu, nu_mu_bar with additional flavors added 
+    /// with the corresponding antineutrino differential produced flux in the following column
+    /// the produced flux corresponds to the coszen, height, and energy in the row
     EmittingEarthAtm(std::string prodmodel);
     
     /// \brief Deconstructor
     ~EmittingEarthAtm();
     
-    /// \brief Function that passes the user's list of energies to the class
-    /// \details Used by nuSQUIDSATM implementation to provide the 
-    /// class with the energy list required for retrieval of interpolation
-    void Set_EmissionEnergies(const marray<double,1>& ESpace_){
-      ESpace = ESpace_;
-      init_emit_energies = true;
-    }
-    /// \brief Returns true if neutrino flux emission from bodies is considered
-    bool Get_EnergyInit(){
-      return init_emit_energies;
-    }
     /// \brief Function that sets the height of the atmosphere
     /// \details Used by nuSQUIDSATM to set the height for every
     /// instance of the body
@@ -861,17 +826,17 @@ class EmittingEarthAtm: public EarthAtm{
     /// \brief set index of produced flavors
     /// \details Set the flavor index of the electron and muon neutrinos
     /// or to different flavor indices as user input data requires
-    void Set_ProducedFlavors(int E_nu_index_, int Mu_nu_index_){
-      E_nu_index = E_nu_index_;
-      Mu_nu_index = Mu_nu_index_;
+    /// WARNING!!!: careful when using this as other parts of nuSQuIDS are hard coded to
+    /// default to 0, 1, & 2 for nu_e, nu_mu, and nu_tau respectively
+    /// Do this only if you have defined your own HI matrix by overriding squids::SU_vector HI
+    /// and if you have explicitly initialized all non-used mixing angles to 0
+    void Set_ProducedFlavors(int nu_e_index_, int nu_mu_index_){
+      nu_e_index = nu_e_index_;
+      nu_mu_index = nu_mu_index_;
     }
    
     //Important function that overrides the default flux injection with ATM data
     void injected_neutrino_flux(marray<double, 3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override;
-    
-    //Helpful function for data parsing
-    void unique_sort(std::vector<double>& vec, double& min_val, double& max_val, long unsigned int& number_val);
-
    
     /// \brief Returns the body identifier.
     static unsigned int GetId() {return 8;}
