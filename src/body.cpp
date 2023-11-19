@@ -41,6 +41,7 @@
 #include <SQuIDS/const.h>
 
 #include <nuSQuIDS/resources.h>
+#include <nuSQuIDS/nuSQuIDS.h>
 
 // Macros
 #define SQR(x)      ((x)*(x))                        // x^2
@@ -115,6 +116,14 @@ unsigned int readUIntAttribute(hid_t object, std::string name){
     throw std::runtime_error("Failed to read attribute '"+name+"'");
   H5Aclose(attribute_id);
   return target;
+}
+
+void unique_sort(std::vector<double>& vec, double& min_val, double& max_val) {
+    std::sort(vec.begin(), vec.end());
+    auto last = std::unique(vec.begin(), vec.end());
+    vec.erase(last, vec.end());
+    min_val = vec.front();
+    max_val = vec.back();
 }
 
 } // close unnamed namespace
@@ -911,26 +920,21 @@ void EarthAtm::SetAtmosphereHeight(double height){
 ----------------------------------------------------------------------
 */
 
-// constructor without passed energy, used by nuSQUIDSAtm
 EmittingEarthAtm::EmittingEarthAtm():EmittingEarthAtm(getResourcePath()+"/atmos_prod/PROD_MODEL_MCEQ.dat")
 {} 
-
-// constructor with passed energy space
-EmittingEarthAtm::EmittingEarthAtm(marray<double, 1> ESpace):EmittingEarthAtm(getResourcePath()+"/atmos_prod/PROD_MODEL_MCEQ.dat")
-{ Set_EmissionEnergies(ESpace); }  
-
 
 EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
 {
 
-  marray<double,2> atm_prod_model = quickread(getResourcePath()+"atmos_prod/PROD_MODEL_MCEQ.dat");
+  marray<double,2> atm_prod_model = quickread(filepath);
   arraysize = atm_prod_model.extent(0);
 
-  diff_enu_prod.resize(arraysize);
-  diff_munu_prod.resize(arraysize);
-  atm_coszen.resize(arraysize);
-  atm_heights.resize(arraysize);
-  atm_energy.resize(arraysize);
+  std::vector<double> diff_enu_prod(arraysize);
+  std::vector<double> diff_munu_prod(arraysize);
+
+  std::vector<double> atm_coszen(arraysize);
+  std::vector<double> atm_heights(arraysize);
+  std::vector<double> atm_energy(arraysize);
 
   for (unsigned int i=0; i < arraysize;i++){
     atm_coszen[i] = atm_prod_model[i][0];
@@ -941,106 +945,134 @@ EmittingEarthAtm::EmittingEarthAtm(std::string filepath):EarthAtm()
   }
   
   
-  unique_sort(atm_coszen, czen_min, czen_max, czen_number);
-  coszens.resize(0, atm_coszen.size());
+  unique_sort(atm_coszen, czen_min, czen_max);
+  int czen_number = atm_coszen.size();
+  marray<double,1> coszens;
+  coszens.resize(0, czen_number);
   for (unsigned int i=0; i < czen_number;i++){
     coszens[i] = atm_coszen[i];
   }
   
-  unique_sort(atm_heights, height_min, height_max, height_number);
-  heights.resize(0,atm_heights.size());
+  unique_sort(atm_heights, height_min, height_max);
+  int height_number = atm_heights.size();
+  marray<double,1> heights;
+  heights.resize(0, height_number);
   for (unsigned int i=0; i < height_number; i++){
     heights[i] = atm_heights[i];
   }
   
-  unique_sort(atm_energy, energy_min, energy_max, energy_number);
-  energies.resize(0,atm_energy.size());
+  unique_sort(atm_energy, energy_min, energy_max);
+  int energy_number = atm_energy.size();
+  marray<double,1> energies;
+  energies.resize(0, energy_number);
   for (unsigned int i=0; i < energy_number; i++){
     energies[i] = atm_energy[i];
   }
-  
-  marray<double, 3> nuEmatrix{czen_number, height_number, energy_number};
-  marray<double, 3> nuMumatrix{czen_number, height_number, energy_number};
-  
 
-  std::ifstream InputFile(filepath);
-  double cz_;
-  double h_;
-  double E_;
-  double nuEflux;
-  double nuMuflux;
+  int num_prod_flav = (atm_prod_model.extent(1) - 3) / 2;
 
-  while (InputFile >> cz_ >> h_ >> E_ >> nuEflux >> nuMuflux) {
-    auto it1 = std::find(coszens.begin(), coszens.end(), cz_);
-    auto it2 = std::find(heights.begin(), heights.end(), h_);
-    auto it3 = std::find(energies.begin(), energies.end(), E_);
-    if (it1 != coszens.end() && it2 != heights.end() && it3 != energies.end()) {
-      size_t czIndex = std::distance(coszens.begin(), it1);
-      size_t hIndex = std::distance(heights.begin(), it2);
-      size_t EIndex = std::distance(energies.begin(), it3);
-      nuEmatrix[czIndex][hIndex][EIndex] = nuEflux;
-      nuMumatrix[czIndex][hIndex][EIndex] = nuMuflux;
+  std::vector<std::vector<marray<double, 3>>> flux_matrices(num_prod_flav, std::vector<marray<double, 3>>(2));
+
+  marray<double, 3> nu_e_flux({static_cast<long unsigned int>(czen_number), 
+                             static_cast<long unsigned int>(height_number), 
+                             static_cast<long unsigned int>(energy_number)});
+  marray<double, 3> nu_e_bar_flux({static_cast<long unsigned int>(czen_number), 
+                             static_cast<long unsigned int>(height_number), 
+                             static_cast<long unsigned int>(energy_number)});
+  marray<double, 3> nu_mu_flux({static_cast<long unsigned int>(czen_number), 
+                             static_cast<long unsigned int>(height_number), 
+                             static_cast<long unsigned int>(energy_number)});
+  marray<double, 3> nu_mu_bar_flux({static_cast<long unsigned int>(czen_number), 
+                             static_cast<long unsigned int>(height_number), 
+                             static_cast<long unsigned int>(energy_number)});
+
+  // Initialize each marray in flux_matrices
+  for (int flav = 0; flav < num_prod_flav; ++flav) {
+    for (int rho = 0; rho < 2; ++rho) {
+      flux_matrices[flav][rho] = marray<double, 3>({static_cast<long unsigned int>(czen_number), 
+                             static_cast<long unsigned int>(height_number), 
+                             static_cast<long unsigned int>(energy_number)});
+    }
+  }
+
+
+  for (size_t i = 0; i < atm_prod_model.extent(0); ++i) {
+      double cz_ = atm_prod_model[i][0];
+      double h_ = atm_prod_model[i][1];
+      double E_ = atm_prod_model[i][2];
+      // Find indices in coszens, heights, and energies
+      size_t czIndex = std::find(coszens.begin(), coszens.end(), cz_) - coszens.begin();
+      size_t hIndex = std::find(heights.begin(), heights.end(), h_) - heights.begin();
+      size_t EIndex = std::find(energies.begin(), energies.end(), E_) - energies.begin();
+
+    for (int flav = 0; flav < num_prod_flav; ++flav) {
+      for (int rho = 0; rho < 2; ++rho){
+        flux_matrices[flav][rho][czIndex][hIndex][EIndex] = atm_prod_model[i][3+2*flav+rho];
       }
     }
-    InputFile.close();
+  }
     
-  Interpolators.push_back( nusquids::TriCubicInterpolator(nuEmatrix, energies, heights, coszens) );
-  Interpolators.push_back( nusquids::TriCubicInterpolator(nuMumatrix, energies, heights, coszens) );
+  Interpolators.resize(num_prod_flav);
+  for (int flav = 0; flav < num_prod_flav; ++flav) {
+    for (int rho = 0; rho < 2; ++rho) {
+        // Create a TriCubicInterpolator and add it to the current inner vector
+        Interpolators[flav].push_back(nusquids::TriCubicInterpolator(flux_matrices[flav][rho], energies, heights, coszens));
+    }
+  }
+
         
 }
 
 
 // Overrides the neutrino flux injection
 void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) {
+
       
-      if(Get_EnergyInit() == false){
-        throw std::runtime_error("Energy Space not Passed to EmittingEarthAtm instance");
+  auto ESpace = nusquids.GetERange();
+  // height calculation
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track);
+  double czNode = track_earthatm.cosphi;
+  double xkm = track.GetX() / param.km;
+  double sinsqphi = 1 - SQR(czNode);
+  double dL = sqrt(SQR(earth_with_atm_radius) - SQR(radius) * sinsqphi) + radius * czNode;
+  double L = sqrt(SQR(radius + atm_height) - SQR(radius) * sinsqphi) - radius * czNode;
+  double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (L / param.km + dL) * xkm;
+  double r = (r2 > 0 ? sqrt(r2) : 0);
+  double rel_r = r / earth_with_atm_radius;
+  double Height = earth_with_atm_radius * (rel_r - radius / earth_with_atm_radius)*param.km/param.cm;
+
+  // Check if czNode and Height are within the required ranges
+  bool isZenithAndHeightInRange = (czNode >= czen_min && czNode <= czen_max) &&
+                                (Height >= height_min && Height <= height_max);
+
+  int num_E = ESpace.extent(0);
+  for (unsigned int ei = 0; ei < num_E; ei++) {
+
+    double Energy = ESpace[ei] / (param.GeV);
+    bool isInRange = isZenithAndHeightInRange && (Energy >= energy_min && Energy <= energy_max);
+
+    //initializes all flavors' flux to 0 
+    for (int flav = 0; flav < nusquids.GetNumNeu(); ++flav) {
+      for (int rho = 0; rho < 2; ++rho){
+        flux[ei][rho][flav] = 0;
       }
-      // height calculation
-      const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track);
-      double czNode = track_earthatm.cosphi;
-      double xkm = track.GetX() / param.km;
-      double sinsqphi = 1 - SQR(czNode);
-      double dL = sqrt(SQR(earth_with_atm_radius) - SQR(radius) * sinsqphi) + radius * czNode;
-      double L = sqrt(SQR(radius + atm_height) - SQR(radius) * sinsqphi) - radius * czNode;
-      double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (L / param.km + dL) * xkm;
-      double r = (r2 > 0 ? sqrt(r2) : 0);
-      double rel_r = r / earth_with_atm_radius;
-      double Height = earth_with_atm_radius * (rel_r - radius / earth_with_atm_radius); // here atm_height is a member of EarthAtm in km
-      double H = Height*100000;
+    }
 
-
-      for (unsigned int ei=0; ei < ESpace.extent(0); ei++) {
-        double E = ESpace[ei]/(param.GeV);          
-        if(czNode >= czen_min && czNode<=czen_max && H>=height_min && H<=height_max && E>=energy_min && E<=energy_max){
-          flux[ei][0][E_nu_index] = Interpolators[0](E, H, czNode); //(height*100000 passed in cm, Energy passed in GeV)
-          flux[ei][0][Mu_nu_index] = Interpolators[1](E, H, czNode); //(height*100000 passed in cm, Energy passed in GeV)
-        } else {
-          flux[ei][0][E_nu_index] = 0; //(height*100000 passed in cm, Energy passed in GeV)
-          flux[ei][0][Mu_nu_index] = 0; //(height*100000 passed in cm, Energy passed in GeV)
+    if (isInRange) {
+      for (int rho = 0; rho < 2; ++rho){
+        flux[ei][rho][nu_e_index] = Interpolators[0][rho](Energy, Height, czNode); //energy passed in GeV Height passed in cm
+        if(Interpolators.size() > 1){
+          flux[ei][rho][nu_mu_index] = Interpolators[1][rho](Energy, Height, czNode);
         }
       }
     }
 
+  }
+
+}
+
+
 EmittingEarthAtm::~EmittingEarthAtm(){}
-
-
-void EmittingEarthAtm::unique_sort(std::vector<double>& vec, double& min_val, double& max_val, long unsigned int& number_val) {
-    std::sort(vec.begin(), vec.end());
-    auto last = std::unique(vec.begin(), vec.end());
-    vec.erase(last, vec.end());
-    min_val = vec.front();
-    max_val = vec.back();
-    number_val = vec.size();
-}
-
-void Get_EnergyEmit(){
-    
-}
-
-
-
-
 
 // body registration stuff
 
