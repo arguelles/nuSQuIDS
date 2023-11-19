@@ -1281,15 +1281,9 @@ class nuSQUIDSAtm {
       iinistate = true;
     }
     
-    /// \brief Passes the log scale energy array into the user constructed body
-    void Set_AtmEmissionEnergies(){
-      earth_atm->Set_EmissionEnergies(enu_array);
-    }
-    
-    
     /// \brief Sets the index of the produced flavors. defaults to 0,1 for nuE and nuMu
-    void Set_AtmProducedFlavors(int E_nu_index_, int Mu_nu_index_){
-      earth_atm->Set_ProducedFlavors(E_nu_index_, Mu_nu_index_);
+    void Set_AtmProducedFlavors(int nu_e_index_, int nu_mu_index_){
+      earth_atm->Set_ProducedFlavors(nu_e_index_, nu_mu_index_);
     }
 
     /// \brief Sets the height of the atmosphere for every body
