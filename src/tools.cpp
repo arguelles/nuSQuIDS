@@ -85,7 +85,7 @@ marray<double,2> quickread(std::string filepath){
     return otable;
 }
 
-int quickwrite(std::string filepath, marray<double,2>& tbl){
+int quickwrite(std::string filepath, const marray<double,2>& tbl){
     // create and open file stream
     std::ofstream outfile(filepath.c_str());
 
