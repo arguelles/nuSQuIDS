@@ -503,12 +503,12 @@ protected:
     /// \brief Initializes flavor and mass projectors
     /// \warning Antineutrinos are handle by means of the AntineutrinoCPFix() function
     /// which temporary flips the CP phase.
-    void iniProjectors();
+    virtual void iniProjectors();
     /// \brief Reinitializes the flavor projectors.
     /// \details It is called before evolving the system and every time the system
     /// state is going to be set, since the definition of mass and flavor basis might
     /// have changed.
-    void SetIniFlavorProyectors();
+    virtual void SetIniFlavorProyectors();
     /// \brief Initializes the time independent hamiltonian for each energy node.
     /// \details It constructs nuSQUIDS#DM2 and nuSQUIDS#H0_array
     void iniH0();
