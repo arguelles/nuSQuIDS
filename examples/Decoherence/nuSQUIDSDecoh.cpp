@@ -213,7 +213,7 @@ squids::SU_vector nuSQUIDSDecoh::DRho(unsigned int ei,unsigned int index_rho) co
 
 squids::SU_vector nuSQUIDSDecoh::InteractionsRho(unsigned int ei, unsigned int irho) const {
   if (enable_decoherence)
-    return nuSQUIDS::InteractionsRho(ei,irho) + DRho(ei,irho);
+    return nuSQUIDS::InteractionsRho(ei,irho) - DRho(ei,irho);
   else
     return nuSQUIDS::InteractionsRho(ei,irho);
 }
