@@ -717,7 +717,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
             examples/Constant_density_layers/const_dens_layers \
-            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio
+            examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio \
+            examples/Decoherence/decoherence
 
 CXXFLAGS= -std=c++11
 
@@ -815,6 +816,13 @@ build/exCross.o : examples/Xsections/exCross.h examples/Xsections/exCross.cpp
 examples/Xsections/xsections : $(DYN_PRODUCT) examples/Xsections/main.cpp build/exCross.o
 	@echo Compiling cross section example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Xsections/main.cpp build/exCross.o -lnuSQuIDS $(LDFLAGS) -o $@
+
+build/nuSQUIDSDecoh.o : examples/Decoherence/nuSQUIDSDecoh.h examples/Decoherence/nuSQUIDSDecoh.cpp
+	@$(CXX) $(EXAMPLES_FLAGS) -c examples/Decoherence/nuSQUIDSDecoh.cpp -o $@
+
+examples/Decoherence/decoherence : $(DYN_PRODUCT) examples/Decoherence/main.cpp build/nuSQUIDSDecoh.o
+	@echo Compiling decoherence example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Decoherence/main.cpp build/nuSQUIDSDecoh.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
 	@echo Compiling non-standard interaction example
