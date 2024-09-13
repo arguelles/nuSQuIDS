@@ -153,7 +153,17 @@ void nuSQUIDSDecoh::Set_DecoherenceGammaMatrixDiagonal(const marray<double,1>& d
 
 }
 
-
+void nuSQUIDSDecoh::Set_DecoherenceGammaMatrix(DecoherenceModel decoh_model, double gamma){
+	marray<double,1> dmat{num_basis_vectors};
+	for(int i = 0; i < dmat.extent(0); i++)
+		dmat[i] = gamma;
+	switch(decoh_model){
+		case RandomizePhase: dmat[0] = 0, dmat[3] = 0, dmat[8] = 0;
+		case RandomizeState: dmat[0] = 0;
+		case NeutrinoLoss: ;
+	}
+	Set_DecoherenceGammaMatrixDiagonal(dmat,false);
+}
 
 marray<double,2> nuSQUIDSDecoh::Get_DecoherenceGammaMatrix() const {
     /*

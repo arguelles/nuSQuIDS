@@ -20,15 +20,9 @@ namespace nusquids{
 */
 
 class nuSQUIDSDecoh: public nuSQUIDS {
-
-  // template<typename,typename>
-  // friend class nuSQUIDSAtmDecoh;
-
   public:
-
-
-
-
+    /// \brief Neutrino decoherence models.
+    enum DecoherenceModel {RandomizePhase = 0, RandomizeState = 1, NeutrinoLoss = 2};
     //Default void constructor (never used but required by boost python, specifically RegisterBasicNuSQuIDSPythonBindings, not sure why).
     nuSQUIDSDecoh() {}
 
@@ -59,6 +53,9 @@ class nuSQUIDSDecoh: public nuSQUIDS {
 
     // Set the diagonal elements of the Gamma matrix (many models only consider these)
     void Set_DecoherenceGammaMatrixDiagonal(const marray<double,1>& dmat, bool standard_gell_mann=true);
+
+    // Set decoherence models according to specific pre-build models
+    void Set_DecoherenceGammaMatrix(DecoherenceModel decoh_model, double gamma);
 
     // Get the current value of the decoherence Gamma matrix
     marray<double,2> Get_DecoherenceGammaMatrix() const;

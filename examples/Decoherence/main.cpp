@@ -48,12 +48,12 @@ int main()
   //(5). Neutrino or anti-neutrino case
   //(6). Energy logarithmic scale? 
   //(7). Scattering non coherent interactions. 
-  nuSQUIDSDecoh nus(logspace(1.*units.GeV,1.e4*units.GeV,200),numneu,neutrino,false);
+  nuSQUIDSDecoh nus(logspace(1.e2*units.GeV,1.e6*units.GeV,200),numneu,neutrino,true);
   
   //Here we define the trajectory that the particle follows and the object for more examples
   // of how construct a track and object look body_track example.
   //zenith angle, neutrinos crossing the earth
-  double phi = acos(-1.);
+  double phi = acos(0.);
   //Declaration of the body, EarthAtm is one of the predefined bodies
   std::shared_ptr<EarthAtm> earth_atm = std::make_shared<EarthAtm>();
   //Definition of the track, in encodes the trajectory inside the body, here is declared with the zenith angle.
@@ -96,9 +96,14 @@ int main()
       }
   }
 
-
   //Set the initial state in nuSQuIDS object
   nus.Set_initial_state(inistate,flavor);
+
+  //Set the decoherence model and parameters
+  nus.Set_DecoherenceGammaMatrix(nuSQUIDSDecoh::DecoherenceModel::RandomizeState, 9.48e-18*units.eV);
+  nus.Set_DecoherenceGammaEnergyDependence(2);
+  nus.Set_DecoherenceGammaEnergyScale(1.0*units.TeV);
+
   //Propagate the neutrinos in the earth for the path defined in path
   nus.EvolveState();
   //This functions save the stat of the system, in this case after the evolution
@@ -113,8 +118,8 @@ int main()
   //the nuSQuIDS object, a linear interpolation between the quantum density matrices in the interaction picture is used
   //and vacuum oscillations are solved analytically for the given energy.
   int Nen =1000;
-  double lEmin=0;
-  double lEmax=4;
+  double lEmin=2;
+  double lEmax=6;
   
   file << "# log10(E) E flux_i fluxRatio_i . . . ." << std::endl;
   for(double lE=lEmin; lE<lEmax; lE+=(lEmax-lEmin)/(double)Nen){

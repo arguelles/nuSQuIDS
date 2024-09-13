@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y \
     python3-sphinx \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python \
-    && ln -s /usr/lib/x86_64-linux-gnu/libpython3.8.so /usr/lib/x86_64-linux-gnu/libpython3.so \
+#    && ln -s /usr/lib/x86_64-linux-gnu/libpython3.8.so /usr/lib/x86_64-linux-gnu/libpython3.so \
     && pip install numpy h5py
 
 ENV CXX=g++
