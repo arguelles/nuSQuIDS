@@ -73,7 +73,6 @@ unsigned int nuSQUIDSDecoh::MapBasisVectorConventions(unsigned int i) {
     else if(i == 1) return 1;
     else if(i == 2) return 2;
     else if(i == 3) return 3;
-  
   }
 
   // SU(3)
@@ -92,11 +91,7 @@ unsigned int nuSQUIDSDecoh::MapBasisVectorConventions(unsigned int i) {
   }
 
   // Error handling
-  else {
-      throw std::runtime_error("nuSQUIDSDecoh::Error:Generator mapping not defined for SU(" + std::to_string(numneu) + ")");
-  }
-
-
+  throw std::runtime_error("nuSQUIDSDecoh::Error:Generator mapping not defined for SU(" + std::to_string(numneu) + ")");
 }
 
 
