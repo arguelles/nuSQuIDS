@@ -669,6 +669,7 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
+      
   public:
     /// \brief Default constructor using supplied PREM.
     EarthAtm();
@@ -699,6 +700,7 @@ class EarthAtm: public Body{
     /// \brief EarthAtm trajectory
     class Track: public Body::Track{
       friend class EarthAtm;
+      friend class EmittingEarthAtm;
       private:
         /// \brief Cosine of the zenith angle.
         double cosphi;
@@ -761,6 +763,90 @@ class EarthAtm: public Body{
     ///               the Earth, possibly after passing through the Earth
     Track MakeTrackWithCosine(double cosphi);
 };
+
+
+
+/// \class EmittingEarthAtm
+/// \brief A model of the production of neutrino cosmic ray flux production within the atmosphere.
+class EmittingEarthAtm: public EarthAtm{
+  protected:
+    
+    /// \brief Min/Max coszen.
+    double czen_min;
+    double czen_max;
+    /// \brief Min/Max height.
+    double height_min;
+    double height_max;
+    /// \brief Min/Max energy.
+    double energy_min;
+    double energy_max;
+
+    /// \brief vector containing interpolators for the differential flux
+    std::vector<std::vector<TriCubicInterpolator>> Interpolators;
+    
+    /// \brief indices for the electron and muon flavors
+    /// defaulted to the 0 and 1 states (first and second0
+    /// WARNING!!!: careful when changing these as other parts of nuSQuIDS are hard coded to
+    /// default to 0, 1, & 2 for nu_e, nu_mu, and nu_tau respectively
+    /// Do this only if you have defined your own HI matrix by overriding squids::SU_vector HI
+    /// and if you have explicitly initialized all non-used mixing angles to 0
+    int nu_e_index = 0;
+    int nu_mu_index = 1;
+    
+  public:
+  
+    /// \brief Default constructor using supplied MCEQ neutrino flux.
+    EmittingEarthAtm();
+    
+    /// \brief Constructor from a user supplied production model.
+    /// @param prodmodel Path to the production model data file.    
+    /// \details The input file should have 3+2n columns for n=the number of produced flavors.
+    /// The first one is cosine(zenith) in descending order from or between 1 and -1
+    /// representing the range of coszen values corresponding to tracks relevant to your propagation
+    /// The second column must contain the height within the atmosphere in cm
+    /// in descending order from or between 6000000 (60 km) and 0
+    /// The third column must correspond to the energy in GeV 
+    /// in descending order over any relevant range
+    /// The remaining columns must correspond to the differential produced neutrino fluxes for each flavor
+    /// The order is assumed nu_e, nu_e_bar, nu_mu, nu_mu_bar with additional flavors added 
+    /// with the corresponding antineutrino differential produced flux in the following column
+    /// the produced flux corresponds to the coszen, height, and energy in the row
+    EmittingEarthAtm(std::string prodmodel);
+    
+    /// \brief Deconstructor
+    ~EmittingEarthAtm();
+    
+    /// \brief Function that sets the height of the atmosphere
+    /// \details Used by nuSQUIDSATM to set the height for every
+    /// instance of the body
+    void SetAtmosphereHeight(double height){
+      atm_height = height;
+      earth_with_atm_radius = radius + atm_height;
+    }
+    /// \brief set index of produced flavors
+    /// \details Set the flavor index of the electron and muon neutrinos
+    /// or to different flavor indices as user input data requires
+    /// WARNING!!!: careful when using this as other parts of nuSQuIDS are hard coded to
+    /// default to 0, 1, & 2 for nu_e, nu_mu, and nu_tau respectively
+    /// Do this only if you have defined your own HI matrix by overriding squids::SU_vector HI
+    /// and if you have explicitly initialized all non-used mixing angles to 0
+    void Set_ProducedFlavors(int nu_e_index_, int nu_mu_index_){
+      nu_e_index = nu_e_index_;
+      nu_mu_index = nu_mu_index_;
+    }
+   
+    //Important function that overrides the default flux injection with ATM data
+    void injected_neutrino_flux(marray<double, 3>& flux, const GenericTrack& track, const nuSQUIDS& nusquids) override;
+   
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() {return 8;}
+    /// \brief Returns the name of the body.
+    static std::string GetName() {return "EmittingEarthAtm";}
+};
+
+
+
+
 
   // type defining
   typedef Body::Track Track;
