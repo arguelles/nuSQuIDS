@@ -117,6 +117,7 @@ class Body{
     virtual double density(const Track&) const {return 0.0;}
     /// \brief Return the electron fraction at a given trajectory object.
     virtual double ye(const Track&) const {return 1.0;}
+    /// \brief Return the mapping of isotope names to fractional composition.
     virtual std::map<PDGCode, double> isotopes(const Track&) const { return std::map<PDGCode, double>(); }
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
@@ -331,7 +332,7 @@ class Earth: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
-    /// \brief 
+    /// \brief Earth isotope fractions array
     std::vector<std::vector<double>> earth_isotopes;
     /// \brief Data arrays size
     unsigned int arraysize;
@@ -340,7 +341,8 @@ class Earth: public Body{
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
-    std::vector<AkimaSpline> inter_isotopes;
+    /// \brief Isotope fraction splines
+    std::map<PDGCode, AkimaSpline> inter_isotopes;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -354,8 +356,10 @@ class Earth: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
-    std::vector<double> x_isotopes_min;
-    std::vector<double> x_isotopes_max;
+    /// \brief Isotope fractions at minimum radius.
+    std::map<PDGCode, double> x_isotopes_min;
+    /// \brief Isotope fractions at maximum radius.
+    std::map<PDGCode, double> x_isotopes_max;
   public:
     /// \brief Default constructor using supplied PREM.
     Earth();
@@ -663,10 +667,10 @@ class EarthAtm: public Body{
     unsigned int arraysize;
   
     /// \brief Density spline
-	  AkimaSpline inter_density;
+    AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
-    /// \brief Isotope fraction spline
+    /// \brief Isotope fraction splines
     std::map<PDGCode, AkimaSpline> inter_isotopes;
 
     /// \brief Minimum radius.
@@ -681,9 +685,9 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
-    /// \brief
+    /// \brief Isotope fractions at minimum radius.
     std::map<PDGCode, double> x_isotopes_min;
-    /// \brief 
+    /// \brief Isotope fractions at maximum radius.
     std::map<PDGCode, double> x_isotopes_max;
   public:
     /// \brief Default constructor using supplied PREM.
@@ -757,7 +761,7 @@ class EarthAtm: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
-    /// \brief 
+    /// \brief Return the mapping of isotope names to fractional composition.
     std::map<PDGCode, double> isotopes(const GenericTrack&) const;
     /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}

@@ -441,20 +441,17 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
-
-  if(int_struct->targets.size()==1)
-    return {1}; //with only one target type, it must make up all of the material
-  if(int_struct->targets.size()>2) {
-    // TODO: again need a better method of doing this -PW
-    std::vector<double> target_num_frac = {};
-    for (const PDGCode& target : int_struct->targets) {
-      // fraction of isotopes * total density / isotopic weight
-      target_num_frac.push_back(current_isotopes[target]);
+  std::vector<double> target_num_frac = {};
+  switch int_struct->targets.size():
+    case 1: { target_num_frac = {1}; } // isoscalar nucleons
+    case 2: { target_num_frac = {current_ye, 1-current_ye}; } // protons, neutrons
+    default: { // nuclear targets
+      for (const PDGCode& target : int_struct->targets) {
+        target_num_frac.push_back(current_isotopes[target]);
+      }
     }
-    return target_num_frac;
-  }
-  //note that here we assume the order of targets defined in InitializeInteractions is proton, neutron
-  return {current_ye,1-current_ye};
+    
+  return target_num_frac;
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
@@ -474,16 +471,13 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
   // Really what we want here are the number of nucleons for each target type
   // E.g. for oxygen, we want 16 nucleons
   if(int_struct->targets.size()>2) {
-    // double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
+    double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
     std::vector<double> target_num_densities = {};
     for (const PDGCode& target : int_struct->targets) {
-      // fraction of isotopes * total density / isotopic weight
-      int32_t target_id = static_cast<int32_t>(target) / 10;
-      int32_t Z = (target_id / 1000) % 1000;
-      int32_t A = target_id % 1000;
-      // double effective_mass = Z*params.electron_mass + Z*params.proton_mass+ (A-Z)*params.neutron_mass;
-      double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
-      // target_num_densities.push_back(current_isotopes[target] * density * A / effective_mass);
+      // We can get A, Z from the PDGCode
+      // int32_t target_id = static_cast<int32_t>(target) / 10;
+      // int32_t Z = (target_id / 1000) % 1000;
+      // int32_t A = target_id % 1000;
       target_num_densities.push_back(current_isotopes[target] * density / avg_nucleon_mass);
     }
     return target_num_densities;
