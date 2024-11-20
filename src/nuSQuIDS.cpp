@@ -441,12 +441,17 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
-    
+
   if(int_struct->targets.size()==1)
     return {1}; //with only one target type, it must make up all of the material
   if(int_struct->targets.size()>2) {
     // TODO: again need a better method of doing this -PW
-    
+    std::vector<double> target_num_frac = {};
+    for (const PDGCode& target : int_struct->targets) {
+      // fraction of isotopes * total density / isotopic weight
+      target_num_frac.push_back(current_isotopes[target]);
+    }
+    return target_num_frac;
   }
   //note that here we assume the order of targets defined in InitializeInteractions is proton, neutron
   return {current_ye,1-current_ye};
