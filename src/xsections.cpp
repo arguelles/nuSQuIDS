@@ -94,14 +94,14 @@ namespace{
 namespace nusquids{
 
 double NeutrinoCrossSections::AverageTotalCrossSection(double EMin, double EMax, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	auto integrand=[=](double e_in)->double{
+	auto integrand=[=](double e_in) ->double {
 		return this->TotalCrossSection(e_in,flavor,neutype,current);
 	};
 	return fastInt(integrand,EMin,EMax,1e-3)/(EMax-EMin);
 }
 	
 double NeutrinoCrossSections::AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const{
-	auto integrand=[=](double e_out)->double{
+	auto integrand=[=](double e_out)->double {
 		return this->SingleDifferentialCrossSection(E1,e_out,flavor,neutype,current);
 	};
 	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
@@ -260,7 +260,7 @@ double NeutrinoDISCrossSectionsFromTables::AverageSingleDifferentialCrossSection
 	if(E2Min==E2Max)
 		return SingleDifferentialCrossSection(E1, E2Max, flavor, neutype, current);
 	
-	auto integrand=[=](double e_out)->double{
+	auto integrand=[=](double e_out)->double {
 		return this->SingleDifferentialCrossSection(E1,e_out,flavor,neutype,current);
 	};
 	return fastInt(integrand,E2Min,E2Max,1e-3)/(E2Max-E2Min);
@@ -306,7 +306,7 @@ NeutrinoDISCrossSectionsFromTables::readFlavorText(const std::string& prefix,
 }
 
 void NeutrinoDISCrossSectionsFromTables::ReadText(const std::string& prefix){
-	auto expectedFilesExist=[](const std::string& prefix)->bool{
+	auto expectedFilesExist=[](const std::string& prefix)->bool {
 		return fexists(prefix+"nu_sigma_CC.dat") && fexists(prefix+"nu_sigma_NC.dat") &&
 		       fexists(prefix+"nubar_sigma_CC.dat") && fexists(prefix+"nubar_sigma_NC.dat") &&
 		       fexists(prefix+"nu_dsde_CC.dat") && fexists(prefix+"nu_dsde_NC.dat") &&
@@ -549,13 +549,13 @@ void NeutrinoDISCrossSectionsFromTables::WriteHDF(const std::string& path, unsig
 		writeArrayH5<StoreType>(h5file, "zs", data.dsdy_CC_nu.getYCoords(), compressionLevel);
 	}
 	
-	auto flavorsSame=[this](NeutrinoFlavor f1, NeutrinoFlavor f2)->bool{
+	auto flavorsSame=[this](NeutrinoFlavor f1, NeutrinoFlavor f2)->bool {
 		auto it1=xsData.find(f1);
 		auto it2=xsData.find(f2);
 		return it1->second == it2->second;
 	};
 	
-	auto makeAlias=[&h5file](const std::string& srcName, const std::string& destName){
+	auto makeAlias=[&h5file](const std::string& srcName, const std::string& destName) {
 		H5Handle create_plist(H5Pcreate(H5P_LINK_CREATE),&H5Pclose,"create a link creation property list");
 		H5Handle access_plist(H5Pcreate(H5P_LINK_ACCESS),&H5Pclose,"create a link access property list");
 		herr_t err=H5Lcreate_hard(h5file, srcName.c_str(), h5file, destName.c_str(), create_plist, access_plist);
@@ -921,6 +921,16 @@ CrossSectionLibrary loadDefaultCrossSections(){
     
     lib.addTarget(electron,GlashowResonanceCrossSection());
     return lib;
+}
+
+std::vector<PDGCode> CrossSectionLibrary::targets() {
+	std::vector<PDGCode> tgts;
+	for (const auto& pair : data) { tgts.push_back(pair.first); }
+	return tgts;
+}
+
+int CrossSectionLibrary::numberOfTargets() {
+    return data.size();
 }
     
 } // close namespace

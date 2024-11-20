@@ -314,7 +314,7 @@ Earth::Earth(std::string filepath):Body()
   earth_density.resize(arraysize);
   earth_ye.resize(arraysize);
 
-  for (unsigned int i=0; i < arraysize;i++){
+  for (unsigned int i=0; i < arraysize; i++){
     earth_radius[i] = earth_model[i][0];
     earth_density[i] = earth_model[i][1];
     earth_ye[i] = earth_model[i][2];
@@ -845,8 +845,37 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   }
 }
 
+std::map<PDGCode, double> EarthAtm::isotopes(const GenericTrack& track_input) const {
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+  double xkm = track_earthatm.GetX()/param.km;
+  double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+  double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
+  double r = (r2>0 ? sqrt(r2) : 0);
+
+  double rel_r = r/earth_with_atm_radius;
+  if ( rel_r < x_radius_min ){
+    return x_isotopes_min;
+  }
+  else if ( rel_r > x_radius_max and r < radius ) {
+    return x_isotopes_max;
+  }
+  else if ( r > radius ){
+    return x_isotopes_max; // TODO: Check if this is right -PW
+  } else {
+    std::map<PDGCode, double> isotopes;
+    for (const auto& pair : inter_isotopes) {
+        isotopes[pair.first] = pair.second(rel_r);
+    }
+    return isotopes;
+  }
+}
+
 EarthAtm::EarthAtm(std::string filepath):Body()
 {
+  // Note this radius is the averaged Earth radius. -PW
+  // Equitorial radius = 6378.1370 km
+  // Polar radius = 6356.7523 km
   radius = 6371.0; // km
   atm_height = 22; // km
   earth_with_atm_radius = radius + atm_height;
@@ -854,14 +883,25 @@ EarthAtm::EarthAtm(std::string filepath):Body()
   marray<double,2> earth_model = quickread(filepath);
   arraysize = earth_model.extent(0);
 
+  // Assume the first 3 columns of the file are the regular PREM details:
+  // r/R, rho, ye, [nuclear target fractions]
+  int n_isotopes = earth_model.extent(1) - 3;
+
   earth_radius.resize(arraysize);
   earth_density.resize(arraysize);
   earth_ye.resize(arraysize);
+  earth_isotopes.resize(n_isotopes); // fraction of each isotope
+  for (unsigned int i=0; i < n_isotopes; i++) {
+    earth_isotopes[i].resize(arraysize);
+  }
 
   for (unsigned int i=0; i < arraysize;i++){
     earth_radius[i] = earth_model[i][0];
     earth_density[i] = earth_model[i][1];
     earth_ye[i] = earth_model[i][2];
+    for (unsigned int j = 0; j < n_isotopes; j++) {
+      earth_isotopes[j][i] = earth_model[i][3+j];
+    }
   }
 
   x_radius_min = earth_radius[0];
@@ -870,9 +910,19 @@ EarthAtm::EarthAtm(std::string filepath):Body()
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
+
+  // The PREM data file has no meta data, so we must assume you are using these elements
+  // TODO: consider a simpler model that only consists of a few elements -PW
+  std::vector<PDGCode> isotope_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
 	
   inter_density=AkimaSpline(earth_radius,earth_density);
   inter_ye=AkimaSpline(earth_radius,earth_ye);
+  for (unsigned int i = 0; i < n_isotopes; i++) {
+    PDGCode tgt_id = isotope_codes[i];
+    inter_isotopes[tgt_id] = AkimaSpline(earth_radius, earth_isotopes[i]);
+    x_isotopes_min[tgt_id] = earth_isotopes[i][0];
+    x_isotopes_max[tgt_id] = earth_isotopes[i][arraysize-1];
+  }
 }
 
 EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):

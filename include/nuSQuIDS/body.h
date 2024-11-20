@@ -32,11 +32,13 @@
 #include <cassert>
 #include <functional>
 #include <string>
+#include <map>
 #include <memory>
 #include <vector>
 #include <H5Ipublic.h>
 #include "nuSQuIDS/marray.h"
 #include "nuSQuIDS/tools.h"
+#include "nuSQuIDS/xsections.h"
 
 namespace nusquids{
 
@@ -115,6 +117,7 @@ class Body{
     virtual double density(const Track&) const {return 0.0;}
     /// \brief Return the electron fraction at a given trajectory object.
     virtual double ye(const Track&) const {return 1.0;}
+    virtual std::map<PDGCode, double> isotopes(const Track&) const { return std::map<PDGCode, double>(); }
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
     /// \brief Returns the body identifier.
@@ -328,6 +331,8 @@ class Earth: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
+    /// \brief 
+    std::vector<std::vector<double>> earth_isotopes;
     /// \brief Data arrays size
     unsigned int arraysize;
 
@@ -335,6 +340,7 @@ class Earth: public Body{
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
+    std::vector<AkimaSpline> inter_isotopes;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -348,6 +354,8 @@ class Earth: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
+    std::vector<double> x_isotopes_min;
+    std::vector<double> x_isotopes_max;
   public:
     /// \brief Default constructor using supplied PREM.
     Earth();
@@ -649,13 +657,17 @@ class EarthAtm: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
+    /// \brief Earth isotope fractions array
+    std::vector<std::vector<double>> earth_isotopes;
     /// \brief Data arrays size
     unsigned int arraysize;
   
     /// \brief Density spline
-	AkimaSpline inter_density;
+	  AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
+    /// \brief Isotope fraction spline
+    std::map<PDGCode, AkimaSpline> inter_isotopes;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -669,6 +681,10 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
+    /// \brief
+    std::map<PDGCode, double> x_isotopes_min;
+    /// \brief 
+    std::map<PDGCode, double> x_isotopes_max;
   public:
     /// \brief Default constructor using supplied PREM.
     EarthAtm();
@@ -741,6 +757,8 @@ class EarthAtm: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
+    /// \brief 
+    std::map<PDGCode, double> isotopes(const GenericTrack&) const;
     /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}
     /// \brief Returns the altitude of the top of the simulated atmosphere in km.

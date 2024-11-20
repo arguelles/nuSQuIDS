@@ -279,6 +279,8 @@ void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
   current_ye = body->ye(*track);
   current_density = body->density(*track);
+  current_isotopes = body->isotopes(*track);  // Perdón -PW
+
   if(enable_neutrino_sources){
     body->injected_neutrino_flux(current_external_flux,*track,*this);
     assert(current_external_flux.extent(0) == ne && current_external_flux.extent(1) == nrhos && current_external_flux.extent(2) == numneu);
@@ -438,23 +440,48 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   return 0.;
 }
   
-std::vector<double> nuSQUIDS::GetTargetNumberFractions() const{
+std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
+    
   if(int_struct->targets.size()==1)
     return {1}; //with only one target type, it must make up all of the material
+  if(int_struct->targets.size()>2) {
+    // TODO: again need a better method of doing this -PW
+    
+  }
   //note that here we assume the order of targets defined in InitializeInteractions is proton, neutron
   return {current_ye,1-current_ye};
 }
   
-std::vector<double> nuSQUIDS::GetTargetNumberDensities() const{
+std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
   //start from the mass density, converted to natural units
   double density = (params.gr*pow(params.cm,-3))*current_density;
-  
+
   //check whether we are treating the medium as isoscalar
   if(int_struct->targets.size()==1 && int_struct->targets[0]==isoscalar_nucleon){
+    // 2/(e+p+n) should be 1/(e+0.5*p+0.5*n) no? -PW
     double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
     if(num_nuc < 1.0e-10 )
       num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
     return {num_nuc};
+  }
+
+  // Something better needs to handle figuring out targets
+  // Really what we want here are the number of nucleons for each target type
+  // E.g. for oxygen, we want 16 nucleons
+  if(int_struct->targets.size()>2) {
+    // double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
+    std::vector<double> target_num_densities = {};
+    for (const PDGCode& target : int_struct->targets) {
+      // fraction of isotopes * total density / isotopic weight
+      int32_t target_id = static_cast<int32_t>(target) / 10;
+      int32_t Z = (target_id / 1000) % 1000;
+      int32_t A = target_id % 1000;
+      // double effective_mass = Z*params.electron_mass + Z*params.proton_mass+ (A-Z)*params.neutron_mass;
+      double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
+      // target_num_densities.push_back(current_isotopes[target] * density * A / effective_mass);
+      target_num_densities.push_back(current_isotopes[target] * density / avg_nucleon_mass);
+    }
+    return target_num_densities;
   }
   
   //otherwise, treat protons and neutrons separately
@@ -631,7 +658,11 @@ void nuSQUIDS::UpdateInteractions(){
     assert(numneu > 0);
     unsigned int rho = (NT == both) ? 1 : 0;
     //if we are dealing in generic 'nucleons' due to isoscalar cross sections, scale by electron 
-    //fraction to get electron number density. Otherwise, just take the proton number density. 
+    //fraction to get electron number density. Otherwise, just take the proton number density.
+    // TODO: This will not work with many targets! Let's do a check.
+    if (nTargetTypes > 2) {
+      throw std::runtime_error("Too many target types to do the Glashow calculation. This needs to be fixed! -PW");
+    }
     double num_e = nTargetTypes==1?targetDensities[0]*current_ye:targetDensities[0];
     double* sigma_GR_ptr=&int_struct->sigma_GR[0];
     double* invlen_GR_ptr=&int_state.invlen_GR[0];
@@ -706,7 +737,7 @@ void nuSQUIDS::UpdateInteractions(){
       ALIGNED_LOCAL_BUFFER(    tau_decay_fluxes,double,ne);
       ALIGNED_LOCAL_BUFFER(tau_bar_decay_fluxes,double,ne);
       
-      //without osciallations we can always just use the first projectors
+      //without oscillations we can always just use the first projectors
       squids::SU_vector& projector_tau     = evol_b1_proj[0][tau_flavor][0];
       squids::SU_vector& projector_tau_bar = evol_b1_proj[1][tau_flavor][0];
       
@@ -996,20 +1027,27 @@ void nuSQUIDS::InitializeInteractions(){
     //case we must use those. 
     //Note: This would be the starting point for supporting more advanced targets,
     //      e.g. whole isotopes, etc.
-    bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
-    unsigned int nTargets=0;
-    if(perNucleonXS){
-      int_struct->targets={proton,neutron};
-      nTargets=2;
-    }
-    else{
-      if(ncs->hasTarget(isoscalar_nucleon)){
-        int_struct->targets={isoscalar_nucleon};
-        nTargets=1;
-      }
-      else
-        throw std::runtime_error("Cross section object does not provide any suitable nucleon cross sections");
-    }
+
+    int nTargets = ncs->numberOfTargets();
+    int_struct->targets = ncs->targets();
+    // switch nTargets:
+    //     case 0: {throw std::runtime_error("No targets found in CrossSectionLibrary!");}
+    //     default: {break;}
+    
+
+    // bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
+    // if(perNucleonXS){
+    //   int_struct->targets={proton,neutron};
+    //   nTargets=2;
+    // }
+    // else{
+    //   if(ncs->hasTarget(isoscalar_nucleon)){
+    //     int_struct->targets={isoscalar_nucleon};
+    //     nTargets=1;
+    //   }
+    //   else
+    //     throw std::runtime_error("Cross section object does not provide any suitable nucleon cross sections");
+    // }
     
     // initialize cross section and interaction arrays
     try {
@@ -1729,7 +1767,7 @@ void nuSQUIDS::WriteStateHDF5(std::string str,std::string grp,bool save_cross_se
   if ( grp != "/" )
     group = H5Handle(H5Gcreate(rootGroup, grp.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT),H5Gclose,"create HDF5 group");
   else
-    group = H5Handle(rootGroup.get(),[](hid_t)->herr_t{ return 0; },"get HDF5 group"); //non-owning handle
+    group = H5Handle(rootGroup.get(),[](hid_t)->herr_t { return 0; },"get HDF5 group"); //non-owning handle
 
   // write the energy range
   hsize_t Edims[1]={E_range.extent(0)};

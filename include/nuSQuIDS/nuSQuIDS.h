@@ -93,11 +93,11 @@ protected:
     ///Get the fraction of the of the number density of targets which is of each target type. 
     ///These fractions sum to one. 
     ///\return a vector of fractions, in the same order as the targets in int_struct
-    std::vector<double> GetTargetNumberFractions() const;
+    std::vector<double> GetTargetNumberFractions();
 
     ///Get the number density of all nuclear targets at the current position
     ///\return a vector of number densities, in the same order as the targets in int_struct
-    std::vector<double> GetTargetNumberDensities() const;
+    std::vector<double> GetTargetNumberDensities();
 
     /// \brief Updates the interaction length arrays.
     ///
@@ -140,6 +140,7 @@ protected:
         /// \details These are recorded in the same order that they appear in dNdE_CC, 
         /// dNdE_NC, sigma_CC, and sigma_NC
         std::vector<PDGCode> targets;
+        std::map<PDGCode, double> target_composition;
         /// \brief Neutrino charge current differential cross section with respect to
         /// the outgoing lepton energy.
         ///
@@ -403,6 +404,7 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
+    std::map<PDGCode, double> current_isotopes;
     /// \brief The external flux from the body at the current point on the track
     marray<double,3> current_external_flux;
 

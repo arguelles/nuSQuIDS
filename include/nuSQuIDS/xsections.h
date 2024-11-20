@@ -583,19 +583,18 @@ enum PDGCode : int32_t{
     proton=2212,
     neutron=2112,
     // Most nuclear targets go as 100ZZZAAA0, assuming ground state and no s quarks
-    deuteron=1000010020,  // Z=1, A=2
-    carbon=1000060120,    // Z=6, A=12
-    oxygen=1000080160,    // Z=8, A=16
-    sodium=1000110230,    // Z=11, A=23
-    magnesium=1000120240, // Z=12, A=24
-    aluminum=1000130270,  // Z=13, A=27
-    silicon=1000140280,   // Z=14, A=28
-    sulfur=1000160320,    // Z=16, A=32
-    calcium=100020400,    // Z=20, A=40
-    iron=1000260560,      // Z=26, A=56
-    nickel=1000280580,    // Z=28, A=58
-    tungsten=1000741840,  // Z=74, A=184
-    lead=1000822080,      // Z=82, A=208
+    deuteron=1000010020,
+    carbon=1000060120,
+    oxygen=1000080160,
+    sodium=1000110230,
+    magnesium=1000120240,
+    aluminum=1000130270,
+    silicon=1000140280,
+    sulfur=1000160320,
+    calcium=100020400,
+    iron=1000260560,
+    nickel=1000280580,
+    lead=1000822080,
 };
   
 namespace detail{
@@ -622,12 +621,13 @@ public:
     CrossSectionLibrary(){}
     CrossSectionLibrary(const MapType& crosssections):data(crosssections){}
     ///\return the requested cross section, or a null pointer if it is not found
-	std::shared_ptr<const NeutrinoCrossSections> crossSectionForTarget(PDGCode target) const;
-	bool hasTarget(PDGCode target) const;
+    std::shared_ptr<const NeutrinoCrossSections> crossSectionForTarget(PDGCode target) const;
+    bool hasTarget(PDGCode target) const;
+    
     template <typename CrossSection>
     void addTarget(PDGCode target, CrossSection&& xs){
         if(hasTarget(target))
-			throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
+      throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, std::make_shared<CrossSection>(std::move(xs)));
     }
     void addTarget(PDGCode target, std::shared_ptr<NeutrinoCrossSections> xs){
@@ -638,7 +638,6 @@ public:
 
     int numberOfTargets();
     std::vector<PDGCode> targets();
-
 private:
     MapType data;
 };
