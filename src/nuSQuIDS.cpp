@@ -442,16 +442,26 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
   std::vector<double> target_num_frac = {};
-  switch int_struct->targets.size():
-    case 1: { target_num_frac = {1}; break; } // isoscalar nucleons
-    case 2: { target_num_frac = {current_ye, 1-current_ye}; break; } // protons, neutrons
-    default: { // nuclear targets
-      for (const PDGCode& target : int_struct->targets) {
-        target_num_frac.push_back(current_isotopes[target]);
+  switch (int_struct->targets.size()) {
+    case 1: // isoscalar nucleons
+      {
+        target_num_frac = {1}; 
+        break;
       }
-      break;
-    }
-    
+    case 2: // protons, neutrons
+      {
+        target_num_frac = {current_ye, 1-current_ye}; 
+        break; 
+      }
+    default: // nuclear targets
+      {
+        for (const PDGCode& target : int_struct->targets) {
+          target_num_frac.push_back(current_isotopes[target]);
+        }
+        break;
+      }
+  }
+
   return target_num_frac;
 }
   
@@ -461,61 +471,63 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
   //start from the mass density, converted to natural units
   double density = (params.gr*pow(params.cm,-3))*current_density;
 
-  switch int_struct->targets.size():
+  switch (int_struct->targets.size()) {
     case 1: // isoscalar nucleon
-      // 2/(e+p+n) should be 1/(e+0.5*p+0.5*n) no? -PW
-      double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
-      if(num_nuc < 1.0e-10 )
-        num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
-      target_num_densities = {num_nuc};
+      {
+        // 2/(e+p+n) should be 1/(e+0.5*p+0.5*n) no? -PW
+        double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
+        if(num_nuc < 1.0e-10 )
+          num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
+        target_num_densities = {num_nuc};
 
-      break;
-    }
-    case 2: { // protons, neutrons
-      //the electron fraction is electrons/nucleon:
-      //ye = ne / (np + nn)
-      //The mass density is:
-      //density = Me * ne + Mp * np + Mn * nn
-      //assuming neutral matter ne == np
-      //ye = np / (np + nn)
-      //density = (Me + Mp) * np + Mn * nn
-      //
-      //(np + nn) * ye = np
-      //ye * np + ye * nn = np
-      //ye * nn = (1 - ye) * np
-      //in the case that ye != 0:
-      //nn = (1 - ye) * np / ye
-      //
-      //density = (Me + Mp) * np + Mn * (1 - ye) * np / ye
-      //density = ((Me + Mp) + Mn * (1 - ye) / ye) * np
-      //np = density / ((Me + Mp) + Mn * (1 - ye) / ye)
-      
-      double ye = current_ye;
-      if(ye == 0){
-        //apparently the medium is all neutrons
-        double nn=density/params.neutron_mass;
-        target_num_densities = {0,nn};
         break;
       }
-      double np = density / (params.electron_mass + params.proton_mass + params.neutron_mass*((1-ye)/ye));
-      double nn = (1-ye)*np/ye;
-      //note that here we assume the order of targets defined in InitializeInteractions
-      target_num_densities = {np, nn};
-
-      break;
-    }
-    default: {
-      double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
-      for (const PDGCode& target : int_struct->targets) {
-        // We can get A, Z from the PDGCode
-        // int32_t target_id = static_cast<int32_t>(target) / 10;
-        // int32_t Z = (target_id / 1000) % 1000;
-        // int32_t A = target_id % 1000;
-        target_num_densities.push_back(current_isotopes[target] * density / avg_nucleon_mass);
+    case 2: // protons, neutrons
+      {
+        //the electron fraction is electrons/nucleon:
+        //ye = ne / (np + nn)
+        //The mass density is:
+        //density = Me * ne + Mp * np + Mn * nn
+        //assuming neutral matter ne == np
+        //ye = np / (np + nn)
+        //density = (Me + Mp) * np + Mn * nn
+        //
+        //(np + nn) * ye = np
+        //ye * np + ye * nn = np
+        //ye * nn = (1 - ye) * np
+        //in the case that ye != 0:
+        //nn = (1 - ye) * np / ye
+        //
+        //density = (Me + Mp) * np + Mn * (1 - ye) * np / ye
+        //density = ((Me + Mp) + Mn * (1 - ye) / ye) * np
+        //np = density / ((Me + Mp) + Mn * (1 - ye) / ye)
+        
+        double ye = current_ye;
+        if(ye == 0){
+          //apparently the medium is all neutrons
+          double nn=density/params.neutron_mass;
+          target_num_densities = {0,nn};
+          break;
+        }
+        double np = density / (params.electron_mass + params.proton_mass + params.neutron_mass*((1-ye)/ye));
+        double nn = (1-ye)*np/ye;
+        //note that here we assume the order of targets defined in InitializeInteractions
+        target_num_densities = {np, nn};
+        break;
       }
-
+    default:
+      {
+        double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
+        for (const PDGCode& target : int_struct->targets) {
+          // We can get A, Z from the PDGCode
+          // int32_t target_id = static_cast<int32_t>(target) / 10;
+          // int32_t Z = (target_id / 1000) % 1000;
+          // int32_t A = target_id % 1000;
+          target_num_densities.push_back(current_isotopes[target] * density / avg_nucleon_mass);
+        }
+      }
       break;
-    }
+  }
   
   return target_num_densities;
 }
