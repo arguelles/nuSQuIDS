@@ -440,7 +440,7 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
   return 0.;
 }
   
-std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
+std::vector<double> nuSQUIDS::GetTargetNumberFractions() const {
   std::vector<double> target_num_frac = {};
   switch (int_struct->targets.size()) {
     case 1: // isoscalar nucleons
@@ -456,7 +456,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
     default: // nuclear targets
       {
         for (const PDGCode& target : int_struct->targets) {
-          target_num_frac.push_back(current_isotopes[target]);
+          target_num_frac.push_back(current_isotopes.at(target));
         }
         break;
       }
@@ -465,7 +465,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberFractions() {
   return target_num_frac;
 }
   
-std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
+std::vector<double> nuSQUIDS::GetTargetNumberDensities() const {
   std::vector<double> target_num_densities = {};
 
   //start from the mass density, converted to natural units
@@ -523,7 +523,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() {
           // int32_t target_id = static_cast<int32_t>(target) / 10;
           // int32_t Z = (target_id / 1000) % 1000;
           // int32_t A = target_id % 1000;
-          target_num_densities.push_back(current_isotopes[target] * density / avg_nucleon_mass);
+          target_num_densities.push_back(current_isotopes.at(target) * density / avg_nucleon_mass);
         }
       }
       break;

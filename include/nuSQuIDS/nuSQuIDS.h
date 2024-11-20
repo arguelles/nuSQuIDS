@@ -93,11 +93,11 @@ protected:
     ///Get the fraction of the of the number density of targets which is of each target type. 
     ///These fractions sum to one. 
     ///\return a vector of fractions, in the same order as the targets in int_struct
-    std::vector<double> GetTargetNumberFractions();
+    std::vector<double> GetTargetNumberFractions() const;
 
     ///Get the number density of all nuclear targets at the current position
     ///\return a vector of number densities, in the same order as the targets in int_struct
-    std::vector<double> GetTargetNumberDensities();
+    std::vector<double> GetTargetNumberDensities() const;
 
     /// \brief Updates the interaction length arrays.
     ///
