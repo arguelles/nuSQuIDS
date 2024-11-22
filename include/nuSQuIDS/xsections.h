@@ -573,10 +573,29 @@ private:
 ///codes explictly.
 enum PDGCode : int32_t{
     electron=11,
+    nu_e=12,
+    muon=13,
+    nu_mu=14,
+    tau=15,
+    nu_tau=16,
     ///A pseduoparticle with the average properties of a proton and neutron
     isoscalar_nucleon=81,
     proton=2212,
     neutron=2112,
+    // Most nuclear targets go as 100ZZZAAA0, assuming ground state and no s quarks
+    deuteron=1000010020,  // Z=1, A=2
+    carbon=1000060120,    // Z=6, A=12
+    oxygen=1000080160,    // Z=8, A=16
+    sodium=1000110230,    // Z=11, A=23
+    magnesium=1000120240, // Z=12, A=24
+    aluminum=1000130270,  // Z=13, A=27
+    silicon=1000140280,   // Z=14, A=28
+    sulfur=1000160320,    // Z=16, A=32
+    calcium=100020400,    // Z=20, A=40
+    iron=1000260560,      // Z=26, A=56
+    nickel=1000280580,    // Z=28, A=58
+    tungsten=1000741840,  // Z=74, A=184
+    lead=1000822080,      // Z=82, A=208
 };
   
 namespace detail{
@@ -616,6 +635,10 @@ public:
             throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, xs);
     }
+
+    int numberOfTargets();
+    std::vector<PDGCode> targets();
+
 private:
     MapType data;
 };
