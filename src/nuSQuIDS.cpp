@@ -1045,8 +1045,21 @@ void nuSQUIDS::InitializeInteractions(){
     //Note: This would be the starting point for supporting more advanced targets,
     //      e.g. whole isotopes, etc.
 
+    // int nTargets = ncs->numberOfTargets();
+    // int_struct->targets = ncs->targets();
+
+    // The electron is removed from the int_struct because the GR is handled separately.
     int nTargets = ncs->numberOfTargets();
-    int_struct->targets = ncs->targets();
+    if (ncs->hasTarget(electron)) {
+        nTargets = ncs->numberOfTargets() - 1;
+        std::vector<PDGCode> int_targets;
+        std::vector<PDGCode> ncs_targets = ncs->targets();
+        for (int i = 0; i < ncs_targets.size(); i++) {
+            if (ncs_targets[i] != electron) int_targets.push_back(ncs_targets[i]);
+        }
+        int_struct->targets = int_targets;
+    }
+
     // switch nTargets:
     //     case 0: {throw std::runtime_error("No targets found in CrossSectionLibrary!");}
     //     default: {break;}
