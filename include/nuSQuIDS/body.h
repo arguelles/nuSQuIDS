@@ -665,6 +665,8 @@ class EarthAtm: public Body{
     std::vector<std::vector<double>> earth_isotopes;
     /// \brief Data arrays size
     unsigned int arraysize;
+    /// \brief Number of isotopes
+    unsigned int n_isotopes;
   
     /// \brief Density spline
     AkimaSpline inter_density;
@@ -707,7 +709,7 @@ class EarthAtm: public Body{
     /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
-    EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye, std::vector<std::vector<double>> isotopes);
     ~EarthAtm();
 
     /// \brief Serialization function

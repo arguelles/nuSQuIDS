@@ -470,7 +470,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() const {
 
   //start from the mass density, converted to natural units
   double density = (params.gr*pow(params.cm,-3))*current_density;
-
+//   std::cout << int_struct->targets.size() << std::endl;
   switch (int_struct->targets.size()) {
     case 1: // isoscalar nucleon
       {
@@ -1051,8 +1051,15 @@ void nuSQUIDS::InitializeInteractions(){
     //     case 0: {throw std::runtime_error("No targets found in CrossSectionLibrary!");}
     //     default: {break;}
     
-
+    // TODO: Fix this...
     // bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
+    
+    // std::vector<PDGCode> int_targets(ncs->NumTargets()-1);
+    // if (ncs->hasTarget(electron)) {
+        
+    //     int_struct->targets = 
+    //     nTargets = ncs->NumTargets() - 1;
+    // }
     // if(perNucleonXS){
     //   int_struct->targets={proton,neutron};
     //   nTargets=2;
@@ -2277,6 +2284,7 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);
+  current_isotopes = body->isotopes(*track);  // Perdón -PW
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // evolve projectors to current time
@@ -2485,6 +2493,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);
+  current_isotopes = body->isotopes(*track);  // Perdón -PW
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // evolve projectors to current time
