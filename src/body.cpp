@@ -736,20 +736,20 @@ std::shared_ptr<EarthAtm::Track> EarthAtm::Track::Deserialize(hid_t group){
 void EarthAtm::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
-  addUIntAttribute(group,"n_isotopes",n_isotopes);
+  addUIntAttribute(group,"n_composition",n_composition);
   std::vector<hsize_t> dims {arraysize};
   H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius.data());
   H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density.data());
   H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
 
-  // earth_isotopes is size [n_isotopes][arraysize] so we must flatten it
+  // earth_composition is size [n_composition][arraysize] so we must flatten it
   // we will reconstruct it in Deserialize.
-  std::vector<double> flattened_earth_isotopes;
-  for (const std::vector<double>& row : earth_isotopes) {
-    flattened_earth_isotopes.insert(flattened_earth_isotopes.end(), row.begin(), row.end());
+  std::vector<double> flattened_earth_composition;
+  for (const std::vector<double>& row : earth_composition) {
+    flattened_earth_composition.insert(flattened_earth_composition.end(), row.begin(), row.end());
   }
-  std::vector<hsize_t> isotopes_dims = {n_isotopes, arraysize};
-  H5LTmake_dataset_double(group, "earth_isotopes", 2, isotopes_dims.data(), flattened_earth_isotopes.data());
+  std::vector<hsize_t> composition_dims = {n_composition, arraysize};
+  H5LTmake_dataset_double(group, "earth_composition", 2, composition_dims.data(), flattened_earth_composition.data());
 
   addH5Attribute(group,"radius",radius);
   addH5Attribute(group,"atm_height",atm_height);
@@ -757,21 +757,21 @@ void EarthAtm::Serialize(hid_t group) const {
 
 std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
   unsigned int asize=readUIntAttribute(group,"arraysize");
-  unsigned int nisotopes = 0;
-  if(H5Aexists(group,"n_isotopes"))
-    nisotopes = readUIntAttribute(group,"n_isotopes");
+  unsigned int ncomposition = 0;
+  if(H5Aexists(group,"n_composition"))
+    ncomposition = readUIntAttribute(group,"n_composition");
   std::vector<double> x_vec(asize),rho_vec(asize),ye_vec(asize);
   H5LTread_dataset_double(group,"earth_radius",x_vec.data());
   H5LTread_dataset_double(group,"earth_density",rho_vec.data());
   H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
   // these parameters were originally not serialized, so give them default values equal to what
   // was originally hard-coded
-  std::vector<std::vector<double>> isotopes_vec(nisotopes, std::vector<double>(asize));
-  if(H5LTfind_dataset(group,"earth_isotopes")) {
-      std::vector<double> flat_isotopes_vec(nisotopes*asize);
-      H5LTread_dataset_double(group,"earth_isotopes",flat_isotopes_vec.data());
-      for (size_t i = 0; i < nisotopes; ++i) {
-          std::copy(flat_isotopes_vec.begin() + i*asize, flat_isotopes_vec.begin() + (i+1)*asize, isotopes_vec[i].begin());
+  std::vector<std::vector<double>> composition_vec(ncomposition, std::vector<double>(asize));
+  if(H5LTfind_dataset(group,"earth_composition")) {
+      std::vector<double> flat_composition_vec(ncomposition*asize);
+      H5LTread_dataset_double(group,"earth_composition",flat_composition_vec.data());
+      for (size_t i = 0; i < ncomposition; ++i) {
+          std::copy(flat_composition_vec.begin() + i*asize, flat_composition_vec.begin() + (i+1)*asize, composition_vec[i].begin());
       }
   }
 
@@ -781,7 +781,7 @@ std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
     readH5Attribute(group,"radius", radius);
   if(H5Aexists(group,"atm_height"))
     readH5Attribute(group,"atm_height", atm_height);
-  auto earthAtm = std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec,isotopes_vec);
+  auto earthAtm = std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec,composition_vec);
   earthAtm->radius = radius;
   earthAtm->SetAtmosphereHeight(atm_height);
   return earthAtm;
@@ -868,7 +868,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   }
 }
 
-std::map<PDGCode, double> EarthAtm::isotopes(const GenericTrack& track_input) const {
+std::map<PDGCode, double> EarthAtm::composition(const GenericTrack& track_input) const {
   const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
   double xkm = track_earthatm.GetX()/param.km;
   double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
@@ -878,19 +878,19 @@ std::map<PDGCode, double> EarthAtm::isotopes(const GenericTrack& track_input) co
 
   double rel_r = r/earth_with_atm_radius;
   if ( rel_r < x_radius_min ){
-    return x_isotopes_min;
+    return x_composition_min;
   }
   else if ( rel_r > x_radius_max and r < radius ) {
-    return x_isotopes_max;
+    return x_composition_max;
   }
   else if ( r > radius ){
-    return x_isotopes_max; // TODO: Check if this is right -PW
+    return x_composition_max; // TODO: Check if this is right -PW
   } else {
-    std::map<PDGCode, double> isotopes;
-    for (const auto& pair : inter_isotopes) {
-        isotopes[pair.first] = pair.second(rel_r);
+    std::map<PDGCode, double> composition_map;
+    for (const auto& pair : inter_composition) {
+        composition_map.emplace(pair.first, pair.second(rel_r));
     }
-    return isotopes;
+    return composition_map;
   }
 }
 
@@ -908,22 +908,23 @@ EarthAtm::EarthAtm(std::string filepath):Body()
 
   // Assume the first 3 columns of the file are the regular PREM details:
   // r/R, rho, ye, [nuclear target fractions]
-  n_isotopes = earth_model.extent(1) - 3;
+  // Maybe we should check that a "good" file is being used, i.e. has the required columns -PW
+  n_composition = earth_model.extent(1) - 3;
 
   earth_radius.resize(arraysize);
   earth_density.resize(arraysize);
   earth_ye.resize(arraysize);
-  earth_isotopes.resize(n_isotopes); // fraction of each isotope
-  for (unsigned int i=0; i < n_isotopes; i++) {
-    earth_isotopes[i].resize(arraysize);
+  earth_composition.resize(n_composition); // fraction of each component
+  for (std::vector<double>& composition_vector : earth_composition) {
+    composition_vector.resize(arraysize);
   }
 
-  for (unsigned int i=0; i < arraysize;i++){
+  for (size_t i=0; i < arraysize; i++){
     earth_radius[i] = earth_model[i][0];
     earth_density[i] = earth_model[i][1];
     earth_ye[i] = earth_model[i][2];
-    for (unsigned int j = 0; j < n_isotopes; j++) {
-      earth_isotopes[j][i] = earth_model[i][3+j];
+    for (size_t j = 0; j < n_composition; j++) {
+      earth_composition[j][i] = earth_model[i][3+j];
     }
   }
 
@@ -936,21 +937,21 @@ EarthAtm::EarthAtm(std::string filepath):Body()
 
   // The PREM data file has no meta data, so we must assume you are using these elements
   // TODO: consider a simpler model that only consists of a few elements -PW
-  std::vector<PDGCode> isotope_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+  std::vector<PDGCode> composition_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
 	
   inter_density=AkimaSpline(earth_radius,earth_density);
   inter_ye=AkimaSpline(earth_radius,earth_ye);
-  for (unsigned int i = 0; i < n_isotopes; i++) {
-    PDGCode tgt_id = isotope_codes[i];
-    inter_isotopes[tgt_id] = AkimaSpline(earth_radius, earth_isotopes[i]);
-    x_isotopes_min[tgt_id] = earth_isotopes[i][0];
-    x_isotopes_max[tgt_id] = earth_isotopes[i][arraysize-1];
+  for (unsigned int i = 0; i < n_composition; i++) {
+    PDGCode tgt_id = composition_codes[i];
+    inter_composition[tgt_id] = AkimaSpline(earth_radius, earth_composition[i]);
+    x_composition_min[tgt_id] = earth_composition[i][0];
+    x_composition_max[tgt_id] = earth_composition[i][arraysize-1];
   }
 }
 
-EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye, std::vector<std::vector<double>> isotopes):
+EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye, std::vector<std::vector<double>> composition):
 Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
-earth_isotopes(isotopes),inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
+earth_composition(composition),inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 {
   assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && earth_radius.size() == earth_density.size() && earth_radius.size() == earth_ye.size());
   // The Input file should have the radius specified from 0 to 1.
@@ -959,7 +960,7 @@ earth_isotopes(isotopes),inter_density(earth_radius,earth_density),inter_ye(eart
   atm_height = 22; // km
   earth_with_atm_radius = radius + atm_height;
   arraysize = earth_radius.size();
-  n_isotopes = earth_isotopes.size();
+  n_composition = earth_composition.size();
 
   x_radius_min = earth_radius[0];
   x_radius_max = earth_radius[arraysize-1];
@@ -969,12 +970,12 @@ earth_isotopes(isotopes),inter_density(earth_radius,earth_density),inter_ye(eart
   x_ye_max = earth_ye[arraysize-1];
 
   // TODO: serialize this?
-  std::vector<PDGCode> isotope_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
-  for (unsigned int i = 0; i < n_isotopes; i++) {
-    PDGCode tgt_id = isotope_codes[i];
-    inter_isotopes[tgt_id] = AkimaSpline(earth_radius, earth_isotopes[i]);
-    x_isotopes_min[tgt_id] = earth_isotopes[i][0];
-    x_isotopes_max[tgt_id] = earth_isotopes[i][arraysize-1];
+  std::vector<PDGCode> composition_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+  for (unsigned int i = 0; i < n_composition; i++) {
+    PDGCode tgt_id = composition_codes[i];
+    inter_composition[tgt_id] = AkimaSpline(earth_radius, earth_composition[i]);
+    x_composition_min[tgt_id] = earth_composition[i][0];
+    x_composition_max[tgt_id] = earth_composition[i][arraysize-1];
   }
 }
 

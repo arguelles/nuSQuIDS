@@ -404,7 +404,8 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
-    std::map<PDGCode, double> current_isotopes;
+    /// \brief The current composition of the body at the current point on the track for each component
+    std::map<PDGCode, double> current_composition;
     /// \brief The external flux from the body at the current point on the track
     marray<double,3> current_external_flux;
 

@@ -117,8 +117,8 @@ class Body{
     virtual double density(const Track&) const {return 0.0;}
     /// \brief Return the electron fraction at a given trajectory object.
     virtual double ye(const Track&) const {return 1.0;}
-    /// \brief Return the mapping of isotope names to fractional composition.
-    virtual std::map<PDGCode, double> isotopes(const Track&) const { return std::map<PDGCode, double>(); }
+    /// \brief Return the mapping of component names to fractional composition.
+    virtual std::map<PDGCode, double> composition(const Track&) const { return std::map<PDGCode, double>(); }
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
     /// \brief Returns the body identifier.
@@ -332,8 +332,8 @@ class Earth: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
-    /// \brief Earth isotope fractions array
-    std::vector<std::vector<double>> earth_isotopes;
+    /// \brief Earth composition fractions array
+    std::vector<std::vector<double>> earth_composition;
     /// \brief Data arrays size
     unsigned int arraysize;
 
@@ -341,8 +341,8 @@ class Earth: public Body{
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
-    /// \brief Isotope fraction splines
-    std::map<PDGCode, AkimaSpline> inter_isotopes;
+    /// \brief Composition fraction splines
+    std::map<PDGCode, AkimaSpline> inter_composition;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -356,10 +356,10 @@ class Earth: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
-    /// \brief Isotope fractions at minimum radius.
-    std::map<PDGCode, double> x_isotopes_min;
-    /// \brief Isotope fractions at maximum radius.
-    std::map<PDGCode, double> x_isotopes_max;
+    /// \brief Composition fractions at minimum radius.
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition fractions at maximum radius.
+    std::map<PDGCode, double> x_composition_max;
   public:
     /// \brief Default constructor using supplied PREM.
     Earth();
@@ -661,19 +661,19 @@ class EarthAtm: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
-    /// \brief Earth isotope fractions array
-    std::vector<std::vector<double>> earth_isotopes;
+    /// \brief Earth composition fractions array
+    std::vector<std::vector<double>> earth_composition;
     /// \brief Data arrays size
     unsigned int arraysize;
-    /// \brief Number of isotopes
-    unsigned int n_isotopes;
+    /// \brief Number of components of the earth composition
+    unsigned int n_composition;
   
     /// \brief Density spline
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
-    /// \brief Isotope fraction splines
-    std::map<PDGCode, AkimaSpline> inter_isotopes;
+    /// \brief Composition fraction splines
+    std::map<PDGCode, AkimaSpline> inter_composition;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -687,10 +687,10 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
-    /// \brief Isotope fractions at minimum radius.
-    std::map<PDGCode, double> x_isotopes_min;
-    /// \brief Isotope fractions at maximum radius.
-    std::map<PDGCode, double> x_isotopes_max;
+    /// \brief Composition fractions at minimum radius.
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition fractions at maximum radius.
+    std::map<PDGCode, double> x_composition_max;
   public:
     /// \brief Default constructor using supplied PREM.
     EarthAtm();
@@ -709,7 +709,7 @@ class EarthAtm: public Body{
     /// @param rho Density, in g/cm^3, at each of the nodes.
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
-    EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye, std::vector<std::vector<double>> isotopes);
+    EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye, std::vector<std::vector<double>> composition);
     ~EarthAtm();
 
     /// \brief Serialization function
@@ -763,8 +763,8 @@ class EarthAtm: public Body{
     double density(const GenericTrack&) const;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const;
-    /// \brief Return the mapping of isotope names to fractional composition.
-    std::map<PDGCode, double> isotopes(const GenericTrack&) const;
+    /// \brief Return the mapping of component names to fractional composition.
+    std::map<PDGCode, double> composition(const GenericTrack&) const;
     /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}
     /// \brief Returns the altitude of the top of the simulated atmosphere in km.

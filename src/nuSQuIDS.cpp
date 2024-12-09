@@ -279,7 +279,7 @@ void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
   current_ye = body->ye(*track);
   current_density = body->density(*track);
-  current_isotopes = body->isotopes(*track);  // Perdón -PW
+  current_composition = body->composition(*track);  // Perdón -PW
 
   if(enable_neutrino_sources){
     body->injected_neutrino_flux(current_external_flux,*track,*this);
@@ -456,7 +456,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberFractions() const {
     default: // nuclear targets
       {
         for (const PDGCode& target : int_struct->targets) {
-          target_num_frac.push_back(current_isotopes.at(target));
+          target_num_frac.push_back(current_composition.at(target));
         }
         break;
       }
@@ -523,7 +523,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() const {
           // int32_t target_id = static_cast<int32_t>(target) / 10;
           // int32_t Z = (target_id / 1000) % 1000;
           // int32_t A = target_id % 1000;
-          target_num_densities.push_back(current_isotopes.at(target) * density / avg_nucleon_mass);
+          target_num_densities.push_back(current_composition.at(target) * density / avg_nucleon_mass);
         }
       }
       break;
@@ -2291,7 +2291,7 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);
-  current_isotopes = body->isotopes(*track);  // Perdón -PW
+  current_composition = body->composition(*track);  // Perdón -PW
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // evolve projectors to current time
@@ -2500,7 +2500,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   // fetch material properties
   current_ye = body->ye(*track);
   current_density = body->density(*track);
-  current_isotopes = body->isotopes(*track);  // Perdón -PW
+  current_composition = body->composition(*track);  // Perdón -PW
   HI_constants = params.sqrt2*params.GF*params.Na*pow(params.cm,-3);
 
   // evolve projectors to current time
