@@ -314,7 +314,7 @@ Earth::Earth(std::string filepath):Body()
   earth_density.resize(arraysize);
   earth_ye.resize(arraysize);
 
-  for (unsigned int i=0; i < arraysize; i++){
+  for (size_t i = 0; i < arraysize; i++){
     earth_radius[i] = earth_model[i][0];
     earth_density[i] = earth_model[i][1];
     earth_ye[i] = earth_model[i][2];
@@ -919,7 +919,7 @@ EarthAtm::EarthAtm(std::string filepath):Body()
     composition_vector.resize(arraysize);
   }
 
-  for (size_t i=0; i < arraysize; i++){
+  for (size_t i = 0; i < arraysize; i++){
     earth_radius[i] = earth_model[i][0];
     earth_density[i] = earth_model[i][1];
     earth_ye[i] = earth_model[i][2];
@@ -941,7 +941,7 @@ EarthAtm::EarthAtm(std::string filepath):Body()
 	
   inter_density=AkimaSpline(earth_radius,earth_density);
   inter_ye=AkimaSpline(earth_radius,earth_ye);
-  for (unsigned int i = 0; i < n_composition; i++) {
+  for (size_t i = 0; i < n_composition; i++) {
     PDGCode tgt_id = composition_codes[i];
     inter_composition[tgt_id] = AkimaSpline(earth_radius, earth_composition[i]);
     x_composition_min[tgt_id] = earth_composition[i][0];
@@ -971,7 +971,7 @@ earth_composition(composition),inter_density(earth_radius,earth_density),inter_y
 
   // TODO: serialize this?
   std::vector<PDGCode> composition_codes = { proton, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
-  for (unsigned int i = 0; i < n_composition; i++) {
+  for (size_t i = 0; i < n_composition; i++) {
     PDGCode tgt_id = composition_codes[i];
     inter_composition[tgt_id] = AkimaSpline(earth_radius, earth_composition[i]);
     x_composition_min[tgt_id] = earth_composition[i][0];
