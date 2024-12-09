@@ -1052,27 +1052,21 @@ void nuSQUIDS::InitializeInteractions(){
     int nTargets = ncs->numberOfTargets();
     if (ncs->hasTarget(electron)) {
         nTargets = ncs->numberOfTargets() - 1;
-        std::vector<PDGCode> int_targets;
+
         std::vector<PDGCode> ncs_targets = ncs->targets();
-        for (int i = 0; i < ncs_targets.size(); i++) {
-            if (ncs_targets[i] != electron) int_targets.push_back(ncs_targets[i]);
+        std::vector<PDGCode> int_targets;
+        int_targets.reserve(nTargets);
+
+        for (const PDGCode& target : ncs_targets) {
+          if (target != electron) int_targets.push_back(target);
         }
+
         int_struct->targets = int_targets;
     }
 
-    // switch nTargets:
-    //     case 0: {throw std::runtime_error("No targets found in CrossSectionLibrary!");}
-    //     default: {break;}
-    
-    // TODO: Fix this...
     // bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
     
     // std::vector<PDGCode> int_targets(ncs->NumTargets()-1);
-    // if (ncs->hasTarget(electron)) {
-        
-    //     int_struct->targets = 
-    //     nTargets = ncs->NumTargets() - 1;
-    // }
     // if(perNucleonXS){
     //   int_struct->targets={proton,neutron};
     //   nTargets=2;
@@ -2550,7 +2544,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     std::vector<hsize_t> XSdim, dXSdim; //sizes to be determined
     if(nusquids_version<101100){
       nTargets=1; //old versions only understood isoscalar crosssections
-      int_struct->targets={isoscalar_nucleon};
+      int_struct->targets.clear();
+      int_struct->targets.push_back(isoscalar_nucleon);
       
       XSdim.resize(3); //total xs tables were always rank 3
       dXSdim.resize(4); //differential xs tables were rank 4
