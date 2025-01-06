@@ -506,7 +506,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() const {
         if(ye == 0){
           //apparently the medium is all neutrons
           double nn=density/params.neutron_mass;
-          target_num_densities = {0,nn};
+          target_num_densities = {0, nn};
           break;
         }
         double np = density / (params.electron_mass + params.proton_mass + params.neutron_mass*((1-ye)/ye));
@@ -1045,41 +1045,17 @@ void nuSQUIDS::InitializeInteractions(){
     //Note: This would be the starting point for supporting more advanced targets,
     //      e.g. whole isotopes, etc.
 
-    // int nTargets = ncs->numberOfTargets();
-    // int_struct->targets = ncs->targets();
-
     // The electron is removed from the int_struct because the GR is handled separately.
     int nTargets = ncs->numberOfTargets();
-    if (ncs->hasTarget(electron)) {
-        nTargets = ncs->numberOfTargets() - 1;
+    std::vector<PDGCode> int_targets;
+    int_targets.reserve(nTargets);
 
-        std::vector<PDGCode> ncs_targets = ncs->targets();
-        std::vector<PDGCode> int_targets;
-        int_targets.reserve(nTargets);
-
-        for (const PDGCode& target : ncs_targets) {
-          if (target != electron) int_targets.push_back(target);
-        }
-
-        int_struct->targets = int_targets;
+    for (const PDGCode& target : ncs->targets()) {
+      if (target != electron) int_targets.push_back(target);
     }
 
-    // bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
-    
-    // std::vector<PDGCode> int_targets(ncs->NumTargets()-1);
-    // if(perNucleonXS){
-    //   int_struct->targets={proton,neutron};
-    //   nTargets=2;
-    // }
-    // else{
-    //   if(ncs->hasTarget(isoscalar_nucleon)){
-    //     int_struct->targets={isoscalar_nucleon};
-    //     nTargets=1;
-    //   }
-    //   else
-    //     throw std::runtime_error("Cross section object does not provide any suitable nucleon cross sections");
-    // }
-    
+    int_struct->targets = int_targets;
+
     // initialize cross section and interaction arrays
     try {
       InitializeInteractionVectors(nTargets);
