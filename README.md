@@ -108,10 +108,5 @@ If you have activated the python interface by doing `--with-python-bindings` the
 Even when configured the python interface is not built with the main library. 
 To compile it do the following:
 
-	cd resources/python/src/
-	make
-
-After successful compilation the bindings will be stored in `resources/python/bindings/`. 
-To make them available from within python, modify your PYTHONPATH:
-
-	export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
+	make python
+	make python-install
