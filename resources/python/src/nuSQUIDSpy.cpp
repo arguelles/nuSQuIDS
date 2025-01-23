@@ -22,6 +22,7 @@
  ******************************************************************************/
 
 #include "nuSQUIDSpy.h"
+#include <nuSQuIDS/nuSQuIDSLV.h>
 
 BOOST_PYTHON_MODULE(nuSQuIDS)
 {
@@ -409,4 +410,50 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   marray_from_python<2>();
   marray_from_python<3>();
   marray_from_python<4>();
+
+  auto nusquids_lv_register = RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLV");
+  auto nusquids_lv_class_object = nusquids_lv_register.GetClassObject();
+  nusquids_lv_class_object->def(
+      "Set_LV_OpMatrix_LVParameters",
+      (void (nuSQUIDSLV::*)(LVParameters&)) &nuSQUIDSLV::Set_LV_OpMatrix
+  );
+  nusquids_lv_class_object->def(
+      "Set_LV_OpMatrix_Matrix",
+      (void (nuSQUIDSLV::*)(gsl_matrix_complex*)) &nuSQUIDSLV::Set_LV_OpMatrix
+  );
+  nusquids_lv_class_object->def(
+      "Set_LV_Operator",
+      (void (nuSQUIDSLV::*)(squids::SU_vector)) &nuSQUIDSLV::Set_LV_Operator
+  );
+  nusquids_lv_class_object->def(
+      "Set_LV_EnergyPower",
+      (void (nuSQUIDSLV::*)(int)) &nuSQUIDSLV::Set_LV_EnergyPower
+  );
+  nusquids_lv_class_object->def(
+      "Set_MixingAngle",
+      (void (nuSQUIDSLV::*)(unsigned int, unsigned int, double)) &nuSQUIDSLV::Set_MixingAngle
+  );
+  nusquids_lv_class_object->def(
+      "Set_CPPhase",
+      (void (nuSQUIDSLV::*)(unsigned int, unsigned int, double)) &nuSQUIDSLV::Set_CPPhase
+  );
+  nusquids_lv_class_object->def(
+      "dump_probabilities",
+      (void (nuSQUIDSLV::*)() const) &nuSQUIDSLV::dump_probabilities
+  );
+  nusquids_lv_class_object->def(
+      "Set_initial_state_1D",
+      (void (nuSQUIDSLV::*)(const marray<double, 1>&, Basis)) &nuSQUIDSLV::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
+  nusquids_lv_class_object->def(
+      "Set_initial_state_2D",
+      (void (nuSQUIDSLV::*)(const marray<double, 2>&, Basis)) &nuSQUIDSLV::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
+  nusquids_lv_class_object->def(
+      "Set_initial_state_3D",
+      (void (nuSQUIDSLV::*)(const marray<double, 3>&, Basis)) &nuSQUIDSLV::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
 }
