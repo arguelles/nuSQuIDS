@@ -376,7 +376,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .def(init<std::string>())
     .def("GetRadius",&EarthAtm::GetRadius)
     .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
-    .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
+    .def("SetAtmosphereHeight",&EarthAtm::SetAtmosphereHeight)
     .def("MakeTrack",&EarthAtm::MakeTrack)
     .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;
