@@ -466,17 +466,17 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
       (void (nuSQUIDSLV::*)() const) &nuSQUIDSLV::dump_probabilities
   );
   nusquids_lv_class_object->def(
-      "Set_initial_state_1D",
+      "Set_initial_state",
       (void (nuSQUIDSLV::*)(const marray<double, 1>&, Basis)) &nuSQUIDSLV::Set_initial_state,
       (bp::arg("ini_state"), bp::arg("basis") = flavor)
   );
   nusquids_lv_class_object->def(
-      "Set_initial_state_2D",
+      "Set_initial_state",
       (void (nuSQUIDSLV::*)(const marray<double, 2>&, Basis)) &nuSQUIDSLV::Set_initial_state,
       (bp::arg("ini_state"), bp::arg("basis") = flavor)
   );
   nusquids_lv_class_object->def(
-      "Set_initial_state_3D",
+      "Set_initial_state",
       (void (nuSQUIDSLV::*)(const marray<double, 3>&, Basis)) &nuSQUIDSLV::Set_initial_state,
       (bp::arg("ini_state"), bp::arg("basis") = flavor)
   );
