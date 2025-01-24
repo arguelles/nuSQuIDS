@@ -480,4 +480,48 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
       (void (nuSQUIDSLV::*)(const marray<double, 3>&, Basis)) &nuSQUIDSLV::Set_initial_state,
       (bp::arg("ini_state"), bp::arg("basis") = flavor)
   );
+
+  // Bind nuSQUIDSLVAtm
+  auto nusquids_lv_atm_register = RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLVAtm");
+  auto nusquids_lv_atm_class_object = nusquids_lv_atm_register.GetClassObject();
+  nusquids_lv_atm_class_object->def(
+      "Set_LV_OpMatrix",
+      (void (nuSQUIDSLVAtm::*)(LVParameters&)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_LV_OpMatrix",
+      (void (nuSQUIDSLVAtm::*)(gsl_matrix_complex*)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_LV_Operator",
+      (void (nuSQUIDSLVAtm::*)(squids::SU_vector)) &nuSQUIDSLVAtm::Set_LV_Operator
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_LV_EnergyPower",
+      (void (nuSQUIDSLVAtm::*)(int)) &nuSQUIDSLVAtm::Set_LV_EnergyPower
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_MixingAngle",
+      (void (nuSQUIDSLVAtm::*)(unsigned int, unsigned int, double)) &nuSQUIDSLVAtm::Set_MixingAngle
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_CPPhase",
+      (void (nuSQUIDSLVAtm::*)(unsigned int, unsigned int, double)) &nuSQUIDSLVAtm::Set_CPPhase
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_initial_state",
+      (void (nuSQUIDSLVAtm::*)(const marray<double, 1>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_initial_state",
+      (void (nuSQUIDSLVAtm::*)(const marray<double, 2>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
+  nusquids_lv_atm_class_object->def(
+      "Set_initial_state",
+      (void (nuSQUIDSLVAtm::*)(const marray<double, 3>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
+      (bp::arg("ini_state"), bp::arg("basis") = flavor)
+  );
+
 }
