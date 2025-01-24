@@ -414,11 +414,11 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   auto nusquids_lv_register = RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLV");
   auto nusquids_lv_class_object = nusquids_lv_register.GetClassObject();
   nusquids_lv_class_object->def(
-      "Set_LV_OpMatrix_LVParameters",
+      "Set_LV_OpMatrix",
       (void (nuSQUIDSLV::*)(LVParameters&)) &nuSQUIDSLV::Set_LV_OpMatrix
   );
   nusquids_lv_class_object->def(
-      "Set_LV_OpMatrix_Matrix",
+      "Set_LV_OpMatrix",
       (void (nuSQUIDSLV::*)(gsl_matrix_complex*)) &nuSQUIDSLV::Set_LV_OpMatrix
   );
   nusquids_lv_class_object->def(
