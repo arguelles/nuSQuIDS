@@ -2,7 +2,6 @@
 #define nusquidslv_H
 
 #include <vector>
-#include <iostream>
 #include <nuSQuIDS/nuSQuIDS.h>
 
 namespace nusquids {
