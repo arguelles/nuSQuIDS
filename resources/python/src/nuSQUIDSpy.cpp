@@ -24,6 +24,16 @@
 #include "nuSQUIDSpy.h"
 #include <nuSQuIDS/nuSQuIDSLV.h>
 
+// Helper function to convert `gsl_complex` to Python `complex`
+std::complex<double> GSLComplexToPython(gsl_complex c) {
+    return std::complex<double>(GSL_REAL(c), GSL_IMAG(c));
+}
+
+// Helper function to convert Python `complex` to `gsl_complex`
+gsl_complex PythonToGSLComplex(const std::complex<double>& c) {
+    return gsl_complex_rect(c.real(), c.imag());
+}
+
 BOOST_PYTHON_MODULE(nuSQuIDS)
 {
   // import numpy array definitions
@@ -411,6 +421,20 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   marray_from_python<3>();
   marray_from_python<4>();
 
+  // Bind LVParameters
+    boost::python::class_<nusquids::LVParameters>("LVParameters", "Class representing Lorentz Violation parameters")
+      .add_property(
+          "c_emu",
+          +[](const nusquids::LVParameters& self) { return GSLComplexToPython(self.c_emu); },
+          +[](nusquids::LVParameters& self, const std::complex<double>& value) { self.c_emu = PythonToGSLComplex(value); }
+      )
+      .add_property(
+          "c_mutau",
+          +[](const nusquids::LVParameters& self) { return GSLComplexToPython(self.c_mutau); },
+          +[](nusquids::LVParameters& self, const std::complex<double>& value) { self.c_mutau = PythonToGSLComplex(value); }
+      );
+
+  // Bind nuSQUIDSLV
   auto nusquids_lv_register = RegisterBasicNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLV");
   auto nusquids_lv_class_object = nusquids_lv_register.GetClassObject();
   nusquids_lv_class_object->def(
