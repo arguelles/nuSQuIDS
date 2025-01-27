@@ -439,7 +439,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   auto nusquids_lv_class_object = nusquids_lv_register.GetClassObject();
   nusquids_lv_class_object->def(
       "Set_LV_OpMatrix",
-      (void (nuSQUIDSLV::*)(LVParameters&)) &nuSQUIDSLV::Set_LV_OpMatrix
+      (void (nuSQUIDSLV::*)(nusquids::LVParameters&)) &nuSQUIDSLV::Set_LV_OpMatrix
   );
   nusquids_lv_class_object->def(
       "Set_LV_OpMatrix",
@@ -486,7 +486,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   auto nusquids_lv_atm_class_object = nusquids_lv_atm_register.GetClassObject();
   nusquids_lv_atm_class_object->def(
       "Set_LV_OpMatrix",
-      (void (nuSQUIDSLVAtm::*)(LVParameters&)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
+      (void (nuSQUIDSLVAtm::*)(nusquids::LVParameters&)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
   );
   nusquids_lv_atm_class_object->def(
       "Set_LV_OpMatrix",
