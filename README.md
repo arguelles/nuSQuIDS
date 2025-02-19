@@ -106,7 +106,7 @@ Compiling the Python Interface
 
 If you have activated the python interface by doing `--with-python-bindings` then proceed according to this instructions
 Even when configured the python interface is not built with the main library. 
-To compile it do the following:
+To compile and install it do the following:
 
 	make python
 	make python-install
