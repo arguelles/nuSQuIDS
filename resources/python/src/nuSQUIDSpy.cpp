@@ -482,46 +482,86 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   );
 
   // Bind nuSQUIDSLVAtm
-  auto nusquids_lv_atm_register = RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDSLV>("nuSQUIDSLVAtm");
-  auto nusquids_lv_atm_class_object = nusquids_lv_atm_register.GetClassObject();
-  nusquids_lv_atm_class_object->def(
-      "Set_LV_OpMatrix",
-      (void (nuSQUIDSLVAtm::*)(nusquids::LVParameters&)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_LV_OpMatrix",
-      (void (nuSQUIDSLVAtm::*)(gsl_matrix_complex*)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_LV_Operator",
-      (void (nuSQUIDSLVAtm::*)(squids::SU_vector)) &nuSQUIDSLVAtm::Set_LV_Operator
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_LV_EnergyPower",
-      (void (nuSQUIDSLVAtm::*)(int)) &nuSQUIDSLVAtm::Set_LV_EnergyPower
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_MixingAngle",
-      (void (nuSQUIDSLVAtm::*)(unsigned int, unsigned int, double)) &nuSQUIDSLVAtm::Set_MixingAngle
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_CPPhase",
-      (void (nuSQUIDSLVAtm::*)(unsigned int, unsigned int, double)) &nuSQUIDSLVAtm::Set_CPPhase
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_initial_state",
-      (void (nuSQUIDSLVAtm::*)(const marray<double, 1>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
-      (bp::arg("ini_state"), bp::arg("basis") = flavor)
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_initial_state",
-      (void (nuSQUIDSLVAtm::*)(const marray<double, 2>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
-      (bp::arg("ini_state"), bp::arg("basis") = flavor)
-  );
-  nusquids_lv_atm_class_object->def(
-      "Set_initial_state",
-      (void (nuSQUIDSLVAtm::*)(const marray<double, 3>&, Basis)) &nuSQUIDSLVAtm::Set_initial_state,
-      (bp::arg("ini_state"), bp::arg("basis") = flavor)
-  );
+  // Ideally this would be done with RegisterBasicAtmNuSQuIDSPythonBindings. I tried this and it compiles.
+  // However, if I afterwards define LV-specific methods not defined in RegisterBasicAtmNuSQuIDSPythonBindings 
+  // I get an error at runtime in python. The error complains that the first argument to the method, which is
+  // in python the 'self', is not recognized as a valid C++ nuSQUIDSLVAtm class. Below is a workaround which
+  // is just more verbose than using RegisterBasicAtmNuSQuIDSPythonBindings.
+  
+  class_<nuSQUIDSLVAtm, boost::noncopyable, std::shared_ptr<nuSQUIDSLVAtm> >("nuSQUIDSLVAtm", no_init)
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType>(args("CosZenith_vector","E_vector","numneu","NT")))
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction")))
+    .def(init<marray<double,1>,marray<double,1>,unsigned int,NeutrinoType,bool,std::shared_ptr<CrossSectionLibrary>>(args("CosZenith_vector","E_vector","numneu","NT","iinteraction","ncs")))
+    .def(init<std::string>(args("filename")))
+    .def("EvolveState",&nuSQUIDSLVAtm::EvolveState)
+    .def("Set_TauRegeneration",&nuSQUIDSLVAtm::Set_TauRegeneration)
+    .def("EvalFlavor",(double(nuSQUIDSLVAtm::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSLVAtm::EvalFlavor,
+        nuSQUIDSAtm_EvalFlavor_overload<nuSQUIDSLVAtm>(args("Flavor","cos(theta)","Neutrino Energy","NeuType","BoolToRandomzeProdutionHeight"),
+          "nuSQuIDSAtm evaluate flux.."))
+    .def("Set_EvalThreads",&nuSQUIDSLVAtm::Set_EvalThreads)
+    .def("Get_EvalThreads",&nuSQUIDSLVAtm::Get_EvalThreads)
+    .def("Set_EarthModel",&nuSQUIDSLVAtm::Set_EarthModel)
+    .def("WriteStateHDF5",&nuSQUIDSLVAtm::WriteStateHDF5)
+    .def("ReadStateHDF5",&nuSQUIDSLVAtm::ReadStateHDF5)
+    .def("Set_MixingAngle",&nuSQUIDSLVAtm::Set_MixingAngle)
+    .def("Get_MixingAngle",&nuSQUIDSLVAtm::Get_MixingAngle)
+    .def("Set_CPPhase",&nuSQUIDSLVAtm::Set_CPPhase)
+    .def("Get_CPPhase",&nuSQUIDSLVAtm::Get_CPPhase)
+    .def("Set_SquareMassDifference",&nuSQUIDSLVAtm::Set_SquareMassDifference)
+    .def("Get_SquareMassDifference",&nuSQUIDSLVAtm::Get_SquareMassDifference)
+    .def("Set_h",(void(nuSQUIDSLVAtm::*)(double))&nuSQUIDSLVAtm::Set_h)
+    .def("Set_h",(void(nuSQUIDSLVAtm::*)(double,unsigned int))&nuSQUIDSLVAtm::Set_h)
+    .def("Set_h_max",(void(nuSQUIDSLVAtm::*)(double))&nuSQUIDSLVAtm::Set_h_max)
+    .def("Set_h_max",(void(nuSQUIDSLVAtm::*)(double,unsigned int))&nuSQUIDSLVAtm::Set_h_max)
+    .def("Set_h_min",(void(nuSQUIDSLVAtm::*)(double))&nuSQUIDSLVAtm::Set_h_min)
+    .def("Set_h_min",(void(nuSQUIDSLVAtm::*)(double,unsigned int))&nuSQUIDSLVAtm::Set_h_min)
+    .def("Set_ProgressBar",&nuSQUIDSLVAtm::Set_ProgressBar)
+    .def("Set_MixingParametersToDefault",&nuSQUIDSLVAtm::Set_MixingParametersToDefault)
+    .def("Set_GSL_step",wrap_nusqatm_Set_GSL_STEP<nuSQUIDSLV>)
+    .def("Set_rel_error",(void(nuSQUIDSLVAtm::*)(double))&nuSQUIDSLVAtm::Set_rel_error)
+    .def("Set_rel_error",(void(nuSQUIDSLVAtm::*)(double, unsigned int))&nuSQUIDSLVAtm::Set_rel_error)
+    .def("Set_abs_error",(void(nuSQUIDSLVAtm::*)(double))&nuSQUIDSLVAtm::Set_abs_error)
+    .def("Set_abs_error",(void(nuSQUIDSLVAtm::*)(double, unsigned int))&nuSQUIDSLVAtm::Set_abs_error)
+    .def("Set_EvolLowPassCutoff",&nuSQUIDSLVAtm::Set_EvolLowPassCutoff)
+    .def("Set_EvolLowPassScale",&nuSQUIDSLVAtm::Set_EvolLowPassScale)
+    .def("GetNumE",&nuSQUIDSLVAtm::GetNumE)
+    .def("GetNumCos",&nuSQUIDSLVAtm::GetNumCos)
+    .def("GetNumNeu",&nuSQUIDSLVAtm::GetNumNeu)
+    .def("GetNumRho",&nuSQUIDSLVAtm::GetNumRho)
+    .def("GetnuSQuIDS",(std::vector<nuSQUIDSLV>&(nuSQUIDSLVAtm::*)())&nuSQUIDSLVAtm::GetnuSQuIDS,boost::python::return_internal_reference<>())
+    .def("GetnuSQuIDS",(nuSQUIDSLV&(nuSQUIDSLVAtm::*)(unsigned int))&nuSQUIDSLVAtm::GetnuSQuIDS,boost::python::return_internal_reference<>())
+    .def("Set_initial_state",(void(nuSQUIDSLVAtm::*)(const marray<double,3>&, Basis))&nuSQUIDSLVAtm::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSLVAtm>())
+    .def("Set_initial_state",(void(nuSQUIDSLVAtm::*)(const marray<double,4>&, Basis))&nuSQUIDSLVAtm::Set_initial_state,nuSQUIDSAtm_Set_initial_state<nuSQUIDSLVAtm>())
+    .def("GetStates", (marray<double,2>(nuSQUIDSLVAtm::*)(unsigned int))&nuSQUIDSLVAtm::GetStates,
+      nuSQUIDSAtm_GetStates_overload<nuSQUIDSLVAtm>(args("rho"), "Get evolved states of all nodes"))
+    .def("GetERange",&nuSQUIDSLVAtm::GetERange)
+    .def("GetCosthRange",&nuSQUIDSLVAtm::GetCosthRange)
+    .def("Set_IncludeOscillations",&nuSQUIDSLVAtm::Set_IncludeOscillations)
+    .def("Set_GlashowResonance",&nuSQUIDSLVAtm::Set_GlashowResonance)
+    .def("Set_TauRegeneration",&nuSQUIDSLVAtm::Set_TauRegeneration)
+    .def("Set_AllowConstantDensityOscillationOnlyEvolution",&nuSQUIDSLVAtm::Set_AllowConstantDensityOscillationOnlyEvolution)
+    .def("Set_PositivyConstrain",&nuSQUIDSLVAtm::Set_PositivityConstrain)
+    .def("Set_PositivyConstrainStep",&nuSQUIDSLVAtm::Set_PositivityConstrainStep)
+    .def("Get_EvalThreads",&nuSQUIDSLVAtm::Get_EvalThreads)
+    .def("Set_EvalThreads",&nuSQUIDSLVAtm::Set_EvalThreads)
+    .def("Set_EarthModel",&nuSQUIDSLVAtm::Set_EarthModel)
+    .def("SetNeutrinoCrossSections",&nuSQUIDSLVAtm::SetNeutrinoCrossSections)
+    .def("GetNeutrinoCrossSections",&nuSQUIDSLVAtm::GetNeutrinoCrossSections)
+    .def(
+        "Set_LV_OpMatrix",
+        (void (nuSQUIDSLVAtm::*)(nusquids::LVParameters&)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
+    )
+    .def(
+        "Set_LV_OpMatrix",
+        (void (nuSQUIDSLVAtm::*)(gsl_matrix_complex*)) &nuSQUIDSLVAtm::Set_LV_OpMatrix
+    )
+    .def(
+        "Set_LV_Operator",
+        (void (nuSQUIDSLVAtm::*)(squids::SU_vector)) &nuSQUIDSLVAtm::Set_LV_Operator
+    )
+    .def(
+        "Set_LV_EnergyPower",
+        (void (nuSQUIDSLVAtm::*)(int)) &nuSQUIDSLVAtm::Set_LV_EnergyPower
+    );
 
 }
