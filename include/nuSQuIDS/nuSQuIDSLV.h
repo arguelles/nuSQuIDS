@@ -71,25 +71,6 @@ class nuSQUIDSLVAtm : public nuSQUIDSAtm<nuSQUIDSLV> {
       for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_LV_EnergyPower(n);
     }
 
-    void Set_MixingAngle(unsigned int i, unsigned int j, double angle){
-      for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_MixingAngle(i, j, angle);
-    }
-
-    void Set_CPPhase(unsigned int i, unsigned int j, double angle){
-      for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_CPPhase(i, j, angle);
-    }
-
-    void Set_initial_state(const marray<double, 1> &ini_state, Basis basis = flavor){
-      for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_initial_state(ini_state, basis);
-    }
-
-    void Set_initial_state(const marray<double, 2> &ini_state, Basis basis = flavor){
-      for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_initial_state(ini_state, basis);
-    }
-
-    void Set_initial_state(const marray<double, 3> &ini_state, Basis basis = flavor){
-      for(nuSQUIDSLV& nsq : this->GetnuSQuIDS()) nsq.Set_initial_state(ini_state, basis);
-    }
 }; 
 } // namespace nusquids
 
