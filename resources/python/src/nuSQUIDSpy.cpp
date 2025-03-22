@@ -22,8 +22,75 @@
  ******************************************************************************/
 
 #include "nuSQUIDSpy.h"
+#include <nuSQuIDS/nuSQuIDS.h>
+
+
+// Converter for Python list -> std::vector<bool>
+struct ListToVectorBool {
+    ListToVectorBool() {
+        boost::python::converter::registry::push_back(
+            &convertible,
+            &construct,
+            boost::python::type_id<std::vector<bool>>());
+    }
+
+    static void* convertible(PyObject* obj_ptr) {
+        if (!PySequence_Check(obj_ptr)) return nullptr;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data) {
+        void* storage = ((boost::python::converter::rvalue_from_python_storage<std::vector<bool>>*)data)->storage.bytes;
+        new (storage) std::vector<bool>();
+        std::vector<bool>* vec = (std::vector<bool>*)storage;
+        int len = PySequence_Size(obj_ptr);
+        vec->reserve(len);
+        for (int i = 0; i < len; ++i) {
+            PyObject* item = PySequence_GetItem(obj_ptr, i);
+            vec->push_back(PyObject_IsTrue(item));
+            Py_DECREF(item);
+        }
+        data->convertible = storage;
+    }
+};
+
+// Wrappers for EvalFlavor with vector<bool> passed by value
+double EvalFlavorWrapperEnergy(nuSQUIDS& obj, unsigned int flav, double E, unsigned int current, double x, std::vector<bool> mask) {
+    return obj.EvalFlavor(flav, E, current, x, mask);
+}
+double EvalFlavorWrapper(nuSQUIDS& obj, unsigned int flav, double x, std::vector<bool> mask) {
+    return obj.EvalFlavor(flav, x, mask);
+}
+double EvalFlavorWrapperAtm(nuSQUIDSAtm<nuSQUIDS>& obj, unsigned int flav, double costh, double E, unsigned int current, double x, std::vector<bool> mask){
+    return obj.EvalFlavor(flav, costh, E, current, x, mask);
+}
+
 
 BOOST_PYTHON_MODULE(nuSQuIDS)
+{
+  // import numpy array definitions
+  //np::initialize();
+  import_ufunc();
+#if PY_VERSION_HEX >= 0x03000000
+  import_array1();
+#else
+  import_array();
+#endif
+
+  // register list-to-vector<bool> converter
+  ListToVectorBool();
+
+  enum_<GSL_STEP_FUNCTIONS>("GSL_STEP_FUNCTIONS")
+    .value("GSL_STEP_RK2",GSL_STEP_RK2)
+    .value("GSL_STEP_RK4",GSL_STEP_RK4)
+    .value("GSL_STEP_RKF45",GSL_STEP_RKF45)
+    .value("GSL_STEP_RKCK",GSL_STEP_RKCK)
+    .value("GSL_STEP_RK8PD",GSL_STEP_RK8PD)
+    .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
+  ;
+
+
+/*BOOST_PYTHON_MODULE(nuSQuIDS)
 {
   // import numpy array definitions
   //np::initialize();
@@ -42,7 +109,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .value("GSL_STEP_RK8PD",GSL_STEP_RK8PD)
     .value("GSL_STEP_MSADAMS",GSL_STEP_MSADAMS)
   ;
-
+*/
   enum_<Basis>("Basis")
     .value("mass",mass)
     .value("flavor",flavor)
@@ -409,4 +476,37 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   marray_from_python<2>();
   marray_from_python<3>();
   marray_from_python<4>();
+
+  // wrapers for Python:
+  boost::python::def("EvalFlavor", &EvalFlavorWrapperEnergy, 
+    (boost::python::arg("self"), boost::python::arg("flav"), boost::python::arg("E"), 
+     boost::python::arg("current"), boost::python::arg("x"), boost::python::arg("mask")),
+    "Wrapper around EvalFlavor that accepts Python lists for mask argument"
+  );
+  boost::python::def("EvalFlavor", &EvalFlavorWrapper, 
+    (boost::python::arg("self"), boost::python::arg("flav"),  
+     boost::python::arg("x"), boost::python::arg("mask")),
+    "Wrapper around EvalFlavor that accepts Python lists for mask argument"
+  );
+  boost::python::def("EvalFlavor", &EvalFlavorWrapperAtm, 
+    (boost::python::arg("self"), boost::python::arg("flav"), boost::python::arg("costh"), boost::python::arg("E"), 
+     boost::python::arg("current"), boost::python::arg("x"), boost::python::arg("mask")),
+    "Wrapper around EvalFlavor that accepts Python lists for mask argument"
+  );
+
 }
+/*  using namespace scitbx::boost_python::container_conversions;
+  from_python_sequence< std::vector<double>, variable_capacity_policy >();
+  to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
+  // register marray converters
+  to_python_converter< marray<double,1> , marray_to_numpyarray<1> >();
+  to_python_converter< marray<double,2> , marray_to_numpyarray<2> >();
+  to_python_converter< marray<double,3> , marray_to_numpyarray<3> >();
+  to_python_converter< marray<double,4> , marray_to_numpyarray<4> >();
+
+  marray_from_python<1>();
+  marray_from_python<2>();
+  marray_from_python<3>();
+  marray_from_python<4>();
+}
+*/
