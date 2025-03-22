@@ -22,8 +22,6 @@
  ******************************************************************************/
 
 #include "nuSQUIDSpy.h"
-#include <nuSQuIDS/nuSQuIDS.h>
-
 
 // Converter for Python list -> std::vector<bool>
 struct ListToVectorBool {
@@ -495,18 +493,3 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   );
 
 }
-/*  using namespace scitbx::boost_python::container_conversions;
-  from_python_sequence< std::vector<double>, variable_capacity_policy >();
-  to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
-  // register marray converters
-  to_python_converter< marray<double,1> , marray_to_numpyarray<1> >();
-  to_python_converter< marray<double,2> , marray_to_numpyarray<2> >();
-  to_python_converter< marray<double,3> , marray_to_numpyarray<3> >();
-  to_python_converter< marray<double,4> , marray_to_numpyarray<4> >();
-
-  marray_from_python<1>();
-  marray_from_python<2>();
-  marray_from_python<3>();
-  marray_from_python<4>();
-}
-*/
