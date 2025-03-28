@@ -50,6 +50,7 @@ using namespace boost::python;
 using namespace nusquids;
 namespace bp = boost::python;
 
+
 template<class T>
 struct VecToList
 {
