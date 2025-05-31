@@ -1646,9 +1646,10 @@ void nuSQUIDS::iniProjectors(){
   evol_b1_proj.resize(std::vector<size_t>{nrhos,numneu,ne});
   for(unsigned int rho = 0; rho < nrhos; rho++){
     for(unsigned int flv = 0; flv < numneu; flv++){
+      squids::SU_vector flv_proj = squids::SU_vector::Projector(nsun,flv);
       for(unsigned int e1 = 0; e1 < ne; e1++){
-        evol_b0_proj[rho][flv][e1] = squids::SU_vector::Projector(nsun,flv);
-        evol_b1_proj[rho][flv][e1] = squids::SU_vector::Projector(nsun,flv);
+        evol_b0_proj[rho][flv][e1] = flv_proj;
+        evol_b1_proj[rho][flv][e1] = flv_proj;
 
         AntineutrinoCPFix(rho);
         evol_b1_proj[rho][flv][e1].RotateToB1(params);
