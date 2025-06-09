@@ -23,18 +23,16 @@
 
 #include "nuSQUIDSpy.h"
 
-PYBIND11_MODULE(nuSQUIDS, m)
+PYBIND11_MODULE(nuSQuIDS, m)
 {
   m.doc() = "nuSQuIDS Python Bindings"; // module docstring
   // import numpy array definitions
-  //np::initialize();
   import_ufunc();
 #if PY_VERSION_HEX >= 0x03000000
   import_array1();
 #else
   import_array();
 #endif
-
   py::enum_<GSL_STEP_FUNCTIONS>(m,"GSL_STEP_FUNCTIONS")
     .value("GSL_STEP_RK2",GSL_STEP_RK2)
     .value("GSL_STEP_RK4",GSL_STEP_RK4)
@@ -139,11 +137,11 @@ PYBIND11_MODULE(nuSQUIDS, m)
     .export_values()
   ;
 
-  m.def("linspace",linspace,py::arg("min"),py::arg("max"),py::arg("samples"));
-  m.def("logspace",logspace,py::arg("min"),py::arg("max"),py::arg("samples"));
+  m.def("linspace",linspace,py::arg("min"),py::arg("max"),py::arg("samples"),py::return_value_policy::reference);
+  m.def("logspace",logspace,py::arg("min"),py::arg("max"),py::arg("samples"),py::return_value_policy::reference);
 
-  RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS>(m,"nuSQUIDS");
-  RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS>(m,"nuSQUIDSAtm");
+  RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS> reg1(m,"nuSQUIDS");
+  RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS> reg2(m,"nuSQUIDSAtm");
 
   py::class_<NeutrinoCrossSections, std::shared_ptr<NeutrinoCrossSections>>(m,"NeutrinoCrossSections");
 
@@ -184,8 +182,7 @@ PYBIND11_MODULE(nuSQUIDS, m)
     .def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::hasTarget)
   ;
 
-  // what is this?
-  //bp::def("loadDefaultCrossSections",loadDefaultCrossSections);
+  m.def("loadDefaultCrossSections",loadDefaultCrossSections);
 
   py::class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>>(m,"TauDecaySpectra")
     .def(py::init<marray<double,1>>())
@@ -379,7 +376,7 @@ PYBIND11_MODULE(nuSQUIDS, m)
   py::class_<marray<double,1>>(m,"marray1")
     .def(py::init<>())
   ;
-  /*
+
   from_python_sequence<std::vector<double>, variable_capacity_policy>();
   to_python_converter<std::vector<double, class std::allocator<double>>, VecToList<double>> ();
   // register marray converters
@@ -392,5 +389,4 @@ PYBIND11_MODULE(nuSQUIDS, m)
   marray_from_python<2>();
   marray_from_python<3>();
   marray_from_python<4>();
-  */
 }

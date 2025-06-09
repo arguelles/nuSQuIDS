@@ -32,6 +32,7 @@
 #define H5Gcreate_vers 2
 #define H5Eset_auto_vers 2
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define PYBIND11_DETAILED_ERROR_MESSAGES
 
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
