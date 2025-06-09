@@ -36,6 +36,8 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 namespace py = pybind11;
 
 #include <SQuIDS/SQuIDS.h>
@@ -56,154 +58,60 @@ std::string PrintObject(const T& rObject)
     return ss.str();
 }
 
-/*
-template<class T>
-struct VecToList
-{
-  static PyObject* convert(const std::vector<T>& vec){
-    boost::python::list* l = new boost::python::list();
-    for(size_t i =0; i < vec.size(); i++)
-      (*l).append(vec[i]);
+namespace pybind11 { namespace detail {
+	template <unsigned int Dim>
+	struct type_caster<marray<double, Dim>> {
+	private:
+	    using T = marray<double, Dim>;
+	public:
+            PYBIND11_TYPE_CASTER(T, _("marray<double,Dim>"));
 
-    return l->ptr();
-  }
-};
-*/
+	    // Python -> C++
+	    bool load(handle src, bool) {
+		if (!py::isinstance<py::array>(src))
+		    return false;
 
-// converting marray to numpy array and back
-template<unsigned int DIM>
-struct marray_to_numpyarray {
-  static PyObject* convert( marray<double,DIM> const & iarray){
-    // get the data from the marray
-    double * data = iarray.size() ? const_cast<double*>(iarray.get_data()) : static_cast<double*>(NULL);
-    // construct numpy object
-    npy_intp size[DIM];
-    for(unsigned int i = 0; i < DIM; i++)
-      size[i] = iarray.extent(i);
+		auto array = py::array::ensure(src);
+		if (!array || array.ndim() != Dim || !py::isinstance<py::array_t<double>>(array))
+		    return false;
 
-    PyArrayObject * pyObj = (PyArrayObject*) PyArray_SimpleNew(DIM,size,NPY_DOUBLE);
-    memcpy(PyArray_DATA(pyObj), data, sizeof(double) * iarray.size());
+		std::array<size_t, Dim> shape;
+		for (size_t i = 0; i < Dim; ++i)
+		    shape[i] = static_cast<size_t>(array.shape(i));
 
-    return PyArray_Return(pyObj);
-  }
-};
+		double* ptr = static_cast<double*>(array.mutable_data());
+		if (!ptr)
+		    return false;
 
-/*
-template<unsigned int Dim>
-struct marray_from_python{
-  marray_from_python(){
-    boost::python::converter::registry::push_back(&convertible,
-                                                  &construct,
-                                                  boost::python::type_id<marray<double,Dim>>());
-  }
+		value = T();
+		value.resize(shape);
+		std::memcpy(value.get_data(), array.data(), sizeof(double) * array.size());
+		return true;
+	    }
 
-  static void* convertible(PyObject* obj_ptr){
-    //accept only numpy arrays
-    if(!PyArray_Check(obj_ptr))
-      return(NULL);
-    // Analogously to what is described in
-    // https://docs.python.org/3/c-api/intro.html#reference-counts,
-    // the call below always increases the reference count of the object by one and we 
-    // are left with the responsibility to decrease the reference count when we are done
-    // with it.
-    PyArrayObject* numpy_array=PyArray_GETCONTIGUOUS((PyArrayObject*)obj_ptr);
-    unsigned int array_dim = PyArray_NDIM(numpy_array);
-    //require matching dimensions
-    if(array_dim!=Dim){
-      Py_XDECREF(numpy_array);
-      return(NULL);
-    }
-    NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
-    Py_XDECREF(numpy_array);
-    //require a sane type
-    switch(type){
-      case NPY_BOOL:
-      case NPY_INT8:
-      case NPY_INT16:
-      case NPY_INT32:
-      case NPY_INT64:
-      case NPY_UINT8:
-      case NPY_UINT16:
-      case NPY_UINT32:
-      case NPY_UINT64:
-      case NPY_FLOAT32:
-      case NPY_FLOAT64:
-        break;
-      default:
-        return(NULL);
-    }
-    return(obj_ptr);
-  }
+	    // C++ -> Python
+	    static handle cast(const marray<double, Dim>& arr, return_value_policy, handle parent) {
+		std::vector<ssize_t> shape(Dim);
+		std::vector<ssize_t> strides(Dim);
 
-  static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data){
-    PyArrayObject* numpy_array=PyArray_GETCONTIGUOUS((PyArrayObject*)obj_ptr);
-    // get numpy array shape and create marray object
-#ifdef NPY_1_7_API_VERSION
-    npy_intp* array_shape = PyArray_SHAPE(numpy_array);
-#else
-    npy_intp* array_shape = PyArray_DIMS(numpy_array);
-#endif
-    std::vector<size_t> dimensions;
+		ssize_t stride = sizeof(double);
+		for (ssize_t i = Dim - 1; i >= 0; --i) {
+		    shape[i] = arr.extent(i);
+		    strides[i] = stride;
+		    stride *= shape[i];
+		}
 
-    unsigned int array_dim = PyArray_NDIM(numpy_array);
-    assert(Dim == array_dim && "Non-matching array dimensions.");
-
-    for(unsigned int i = 0; i < Dim; i++)
-      dimensions.push_back(array_shape[i]);
-
-    void* storage=((boost::python::converter::rvalue_from_python_storage<marray<double,Dim>>*)data)->storage.bytes;
-    new (storage)marray<double,Dim>;
-    data->convertible = storage;
-    marray<double,Dim>* oarray=(marray<double,Dim>*)storage;
-
-   oarray->resize(dimensions);
-    auto it = oarray->begin();
-
-    // create numpy iterator
-    NpyIter* iter = NpyIter_New(numpy_array, NPY_ITER_READONLY|
-                                NPY_ITER_EXTERNAL_LOOP|
-                                NPY_ITER_REFS_OK,
-                                NPY_KEEPORDER, NPY_NO_CASTING,
-                                NULL);
-
-    NpyIter_IterNextFunc* iternext = NpyIter_GetIterNext(iter, NULL);
-    char** dataptr = NpyIter_GetDataPtrArray(iter);
-    npy_intp* strideptr = NpyIter_GetInnerStrideArray(iter);
-    npy_intp* sizeptr = NpyIter_GetInnerLoopSizePtr(iter);
-    npy_intp iop, nop = NpyIter_GetNOp(iter);
-
-    NPY_TYPES type = (NPY_TYPES) PyArray_DESCR(numpy_array)->type_num;
-
-    do{
-      char* data = *dataptr;
-      npy_intp count = *sizeptr;
-      npy_intp stride = *strideptr;
-
-      while (count--){
-        for (iop = 0; iop < nop; ++iop, data+=stride){
-          switch(type){
-            case NPY_BOOL: *it++ = *(bool*)data; break;
-            case NPY_INT8: *it++ = *(int8_t*)data; break;
-            case NPY_INT16: *it++ = *(int16_t*)data; break;
-            case NPY_INT32: *it++ = *(int32_t*)data; break;
-            case NPY_INT64: *it++ = *(int64_t*)data; break;
-            case NPY_UINT8: *it++ = *(uint8_t*)data; break;
-            case NPY_UINT16: *it++ = *(uint16_t*)data; break;
-            case NPY_UINT32: *it++ = *(uint32_t*)data; break;
-            case NPY_UINT64: *it++ = *(uint64_t*)data; break;
-            case NPY_FLOAT32: *it++ = *(float*)data; break;
-            case NPY_FLOAT64: *it++ = *(double*)data; break;
-            default:
-              throw std::runtime_error("Unsupported array data type");
-          }
-        }
-      }
-    } while(iternext(iter));
-    NpyIter_Deallocate(iter);
-    Py_XDECREF(numpy_array);
-  }
-};
-*/
+		return py::array(py::buffer_info(
+		    const_cast<double*>(arr.get_data()), // assume mutable data
+		    sizeof(double),
+		    py::format_descriptor<double>::format(),
+		    Dim,
+		    shape,
+		    strides
+		)).release();
+	    }
+	};
+}} // namespace pybind11::detail
 
 enum GSL_STEP_FUNCTIONS {
   GSL_STEP_RK2,
@@ -261,25 +169,6 @@ static void wrap_nusqatm_Set_GSL_STEP(nuSQUIDSAtm<BaseType>* nusq, GSL_STEP_FUNC
       break;
   }
 }
-
-/*
-// overloaded function macro template creator //
-#define MAKE_OVERLOAD_TEMPLATE(name, fname, min_args, max_args) \
-template<typename T> \
-struct name : \
-public boost::python::detail::overloads_common<name<T>>{ \
-	BOOST_PYTHON_GEN_MEM_FUNCTION(fname, non_void_return_type, \
-		max_args, BOOST_PP_SUB_D(1, max_args, min_args), return) \
-	typedef non_void_return_type void_return_type; \
-	BOOST_PYTHON_OVERLOAD_CONSTRUCTORS(name, max_args + 1, \
-		BOOST_PP_SUB_D(1, max_args, min_args)) \
-};
-
-// nuSQUIDS-like overloads factories
-MAKE_OVERLOAD_TEMPLATE(WriteStateHDF5Overload,WriteStateHDF5,1,5)
-MAKE_OVERLOAD_TEMPLATE(ReadStateHDF5Overload,ReadStateHDF5,1,3)
-MAKE_OVERLOAD_TEMPLATE(SetInitialStateH5Overload,Set_initial_state,1,2)
-*/
 
 // nuSQUIDSpy module definitions
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
@@ -370,13 +259,6 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
     }
 };
 
-/*
-// nuSQUIDSAtm-like overloads factories
-MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_EvalFlavor_overload,EvalFlavor,3,5)
-MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_Set_initial_state,Set_initial_state,1,2)
-MAKE_OVERLOAD_TEMPLATE(nuSQUIDSAtm_GetStates_overload, GetStates, 0, 1)
-*/
-
 // registration for atmospheric template
 template<typename BaseType, typename = typename std::enable_if<std::is_base_of<nuSQUIDS,BaseType>::value>::type >
   struct RegisterBasicAtmNuSQuIDSPythonBindings {
@@ -425,8 +307,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("GetNumRho",&nuSQUIDSAtm<BaseType>::GetNumRho);
       class_object->def("GetnuSQuIDS",(std::vector<BaseType>&(nuSQUIDSAtm<BaseType>::*)())&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,py::return_value_policy::reference_internal);
       class_object->def("GetnuSQuIDS",(BaseType&(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetnuSQuIDS,py::return_value_policy::reference_internal);
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis"));
-      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis"));
+      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,3>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis") = Basis::flavor);
+      class_object->def("Set_initial_state",(void(nuSQUIDSAtm<BaseType>::*)(const marray<double,4>&, Basis))&nuSQUIDSAtm<BaseType>::Set_initial_state,py::arg("ini_flux"),py::arg("basis") = Basis::flavor);
       class_object->def("GetStates", (marray<double,2>(nuSQUIDSAtm<BaseType>::*)(unsigned int))&nuSQUIDSAtm<BaseType>::GetStates,py::arg("rho") = 0, "Get evolved states of all nodes");
       class_object->def("GetERange",&nuSQUIDSAtm<BaseType>::GetERange);
       class_object->def("GetCosthRange",&nuSQUIDSAtm<BaseType>::GetCosthRange);

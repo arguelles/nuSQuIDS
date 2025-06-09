@@ -372,21 +372,5 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("ReverseTrack",&EarthAtm::Track::ReverseTrack)
     ;
   }
+} // close pybind module
 
-  py::class_<marray<double,1>>(m,"marray1")
-    .def(py::init<>())
-  ;
-
-  from_python_sequence<std::vector<double>, variable_capacity_policy>();
-  to_python_converter<std::vector<double, class std::allocator<double>>, VecToList<double>> ();
-  // register marray converters
-  py::to_python_converter<marray<double,1> , marray_to_numpyarray<1>>();
-  py::to_python_converter<marray<double,2> , marray_to_numpyarray<2>>();
-  py::to_python_converter<marray<double,3> , marray_to_numpyarray<3>>();
-  py::to_python_converter<marray<double,4> , marray_to_numpyarray<4>>();
-
-  marray_from_python<1>();
-  marray_from_python<2>();
-  marray_from_python<3>();
-  marray_from_python<4>();
-}
