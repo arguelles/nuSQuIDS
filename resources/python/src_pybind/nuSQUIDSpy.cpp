@@ -201,6 +201,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   ;
 
   py::class_<squids::Const>(m,"Const")
+    .def(py::init<>())
     .def_readonly("GF",&squids::Const::GF)
     .def_readonly("Na",&squids::Const::Na)
     .def_readonly("GF",&squids::Const::GF)
@@ -302,7 +303,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<Earth, Body, std::shared_ptr<Earth>>(m,"Earth")
-    .def(py::init<std::string>())
+    .def(py::init<std::string>(), py::arg("earthmodel") = getResourcePath() + "/astro/EARTH_MODEL_PREM.dat")
     ;
 
     py::class_<Earth::Track, Body::Track, std::shared_ptr<Earth::Track>>(outer,"Track")
@@ -319,7 +320,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<Sun, Body, std::shared_ptr<Sun>>(m,"Sun")
-    .def(py::init<std::string>())
+    .def(py::init<std::string>(), py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat")
     ;
 
     py::class_<Sun::Track, Body::Track, std::shared_ptr<Sun::Track>>(outer,"Track")
@@ -336,7 +337,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<SunASnu, Body, std::shared_ptr<SunASnu>>(m,"SunASnu")
-    .def(py::init<std::string>())
+    .def(py::init<std::string>(), py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat")
     ;
 
     py::class_<SunASnu::Track, Body::Track, std::shared_ptr<SunASnu::Track>>(outer,"Track")
@@ -353,7 +354,7 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<EarthAtm, Body, std::shared_ptr<EarthAtm>>(m,"EarthAtm")
-    .def(py::init<std::string>())
+    .def(py::init<std::string>(), py::arg("earthmodel") = getResourcePath() + "/astro/EARTH_MODEL_PREM.dat")
     .def("GetRadius",&EarthAtm::GetRadius)
     .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
     .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)

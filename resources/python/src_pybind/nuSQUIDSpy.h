@@ -42,6 +42,7 @@ namespace py = pybind11;
 
 #include <SQuIDS/SQuIDS.h>
 #include <nuSQuIDS/nuSQuIDS.h>
+#include <nuSQuIDS/resources.h>
 #include <nuSQuIDS/marray.h>
 
 #include <numpy/ndarrayobject.h>
