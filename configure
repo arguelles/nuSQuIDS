@@ -144,7 +144,7 @@ find_hdf5(){
 		fi
 	done
 	if [ ! -d $HDF5_INCDIR -o ! $HDF5_INCDIR/H5version.h ]; then
-		echo " Unable to guess $PKG include directory"
+		echo " ERROR: Unable to guess $PKG include directory"
 		return
 	fi
 
@@ -178,34 +178,56 @@ try_find_python(){
 
 	PYTHON_VERSION=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+"."+str(sys.version_info.minor))'`
 	if [ "$?" -ne 0 ]; then
-		echo "Unable to use python executable ${PYTHON_EXE} (version check failed)"
+		echo " ERROR: Unable to use python executable ${PYTHON_EXE} (version check failed)"
 		return
 	fi
 	PYTHONVERSIONSIMPLE=`${PYTHON_EXE} -c 'import sys; print(str(sys.version_info.major)+str(sys.version_info.minor))'`
 	
-	PYTHON_INCDIR=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_python_inc())'`
+	PYTHON_INCDIR=$(${PYTHON_EXE} -c "try:
+ import sysconfig
+ print(sysconfig.get_path('include'))
+except ImportError:
+ from distutils.sysconfig import get_python_inc
+ print(get_python_inc())")
 	if [ -d "$PYTHON_INCDIR" ]; then
 		echo " Found python include dir $PYTHON_INCDIR"
 	else
-		echo " Unable to locate the python include dir"
+		echo " ERROR: Unable to locate the python include dir"
 		return
 	fi
 
 	# This is the directory to which libraries should be installed for python to find them
-	PYTHON_MODULEDIR=`${PYTHON_EXE} -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True, standard_lib=False))'`
+	PYTHON_MODULEDIR=$(${PYTHON_EXE} -c "try:
+ import sysconfig
+ print(sysconfig.get_path('platlib'))
+except ImportError:
+ from distutils.sysconfig import get_python_lib
+ print(get_python_lib(plat_specific=True, standard_lib=False))")
 	if [ "$PYTHON_MODULEDIR" ]; then
 		echo " Python module install dir is $PYTHON_MODULEDIR"
 	else
-		echo " Unable to locate the python module dir"
+		echo " ERROR: Unable to locate the python module dir"
 		return
 	fi
 	
 	# This is the directory that python claims contains its standard library, 
 	# which may or may not include the actual libpython
-	PYTHON_STDLIBDIR=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=True,standard_lib=True))'`
+	#PYTHON_STDLIBDIR=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=True,standard_lib=True))'`
+	PYTHON_STDLIBDIR=$(${PYTHON_EXE} -c "try:
+ import sysconfig
+ print(sysconfig.get_path('stdlib'))
+except ImportError:
+ from distutils.sysconfig import get_python_lib
+ print(get_python_lib(plat_specific=True, standard_lib=True))")
 	# This may contain a suffix which appears after the version like in 'libpython3.6m'
 	# See https://www.python.org/dev/peps/pep-3149/#proposal
-	PYTHONLIBSUFFIX=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.build_flags)' 2>/dev/null`
+	#PYTHONLIBSUFFIX=`${PYTHON_EXE} -c 'from distutils import sysconfig; print(sysconfig.build_flags)' 2>/dev/null`
+	PYTHONLIBSUFFIX=$(${PYTHON_EXE} -c "try:
+ import sysconfig
+ print(sysconfig.get_config_var('ABIFLAGS') or '')
+except ImportError:
+ from distutils.sysconfig import get_config_var
+ print(get_config_var('ABIFLAGS') or '')")
 
 	# Here we just try to guess every location anyone has ever seen a libpython in the wild
 	POSSIBLE_PYTHON_LIBDIRS="/lib /lib64 /usr/lib /usr/lib64 /usr/local/lib /usr/local/lib64 ${PYTHON_STDLIBDIR} ${PYTHON_STDLIBDIR}/lib"
@@ -237,7 +259,7 @@ try_find_python(){
 	if [ -e "$PYTHON_LIBRARY" ]; then
 		echo " Found python library $PYTHON_LIBRARY"
 	else
-		echo " Unable to locate the python library"
+		echo " ERROR: Unable to locate the python library"
 		return
 	fi
 
@@ -268,7 +290,7 @@ try_find_boost(){
 		POSSIBLE_BOOST_LIBDIRS="$2"
 		POSSIBLE_BOOST_INCDIRS="$1"
 	else
-		echo "Wrong number of arguments to try_find_boost"
+		echo " ERROR: Wrong number of arguments to try_find_boost"
 		return
  	fi
 	if [ "$PYTHON_FOUND" ]; then
@@ -286,7 +308,7 @@ try_find_boost(){
 			if [ "$BOOST_PYTHON_FOUND" ]; then break; fi
 		done
 		if [ ! "$BOOST_PYTHON_FOUND" ]; then
-			echo " Unable to locate the boost_python library in $GUESS_DIR"
+			echo " ERROR: Unable to locate the boost_python library in $GUESS_DIR"
 		fi
 	fi
 	for BOOST_INCDIR in $POSSIBLE_BOOST_INCDIRS; do
@@ -295,7 +317,7 @@ try_find_boost(){
 		fi
 	done
 	if [ ! -d "$BOOST_INCDIR" -o ! -e "$BOOST_INCDIR/boost/version.hpp" ]; then
-		echo " Unable to locate boost/version.hpp in $GUESS_DIR"
+		echo " ERROR: Unable to locate boost/version.hpp in $GUESS_DIR"
 		return
 	fi
 	BOOST_CFLAGS="-I${BOOST_INCDIR}"
@@ -312,7 +334,7 @@ find_numpy(){
 	echo "Looking for numpy..."
 	NUMPY_INCDIR=$(${PYTHON_EXE} -c 'import numpy; print(numpy.get_include())')
 	if [ "$?" -ne 0 ]; then
-		echo "Unable to import numpy using ${PYTHON_EXE}"
+		echo " ERROR: Unable to import numpy using ${PYTHON_EXE}"
 		return
 	fi
 	NUMPY_CFLAGS="-I${NUMPY_INCDIR}"
@@ -420,6 +442,8 @@ locations of dependencies:
   --with-squids-libdir=DIR       use the copy of SQuIDS in DIR
 For the python bindings the following flags are used:
   --with-python-bindings         enable python binding compilation
+  --with-pybind-incdir=DIR       use the copy of pybind11 in DIR
+  --with-boost-python-bindings	 uses the legacy Boost.Python bindings
   --with-boost-incdir=DIR        use the copy of Boost in DIR
   --with-boost-libdir=DIR        use the copy of Boost in DIR
   --with-boost=DIR               use the copy of Boost in DIR
@@ -427,6 +451,8 @@ For the python bindings the following flags are used:
                                  and libraries in DIR/lib
   --python-bin=PYTHON_EXECUTABLE use this python executable
                                  (default is 'python')
+  --python-config=PYTHON_CONFIG  use this python-config to determine compilation and linking settings
+                                 (default is 'python-config')
   --python-module-dir=DIR        install python module to this directory, rather
                                  than the default system location. The special 
                                  value site.USER_SITE will be automatically
@@ -491,6 +517,12 @@ do
 	TMP=`echo "$var" | sed -n 's/^--with-python-bindings/true/p'`
 	if [ "$TMP" ]; then PYTHON_BINDINGS=true; continue; fi
 
+	TMP=`echo "$var" | sed -n 's/^--with-pybind-incdir=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then PYBIND_INCDIR="$TMP"; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--with-boost-python-bindings/true/p'`
+	if [ "$TMP" ]; then BOOST_PYTHON_BINDINGS=true; continue; fi
+
 	TMP=`echo "$var" | sed -n 's/^--with-boost=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then
 		BOOST_INCDIR="${TMP}/include";
@@ -504,6 +536,10 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--python-bin=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then PYTHON_EXE=$TMP; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--python-config=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then PYTHON_CONFIG=$TMP; continue; fi
+
 	TMP=`echo "$var" | sed -n 's/^--python-module-dir=\(.*\)$/\1/p'`
 	if [ "$TMP" ]; then USER_PYTHON_MODULE_DIR="${TMP}"; continue; fi
 
@@ -567,7 +603,7 @@ fi
 
 find_package squids 1.2
 
-if [ $PYTHON_BINDINGS ]; then
+if [ "$PYTHON_BINDINGS" -o "$BOOST_PYTHON_BINDINGS" ]; then
 	try_find_python
 	if [ "$PYTHON_FOUND" != 1 ]; then
 		echo "*** Failed to find python; python bindings will not be built ***"
@@ -582,19 +618,57 @@ if [ $PYTHON_BINDINGS ]; then
 		fi
 	fi
 
-	if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
-		echo "Checking manually specified boost..."
-		try_find_boost "$BOOST_INCDIR" "$BOOST_LIBDIR"
-		if [ ! "$BOOST_FOUND" ]; then
-			echo "Warning: manually specifed boost not found; will attempt auto detection"
+	if [ "$PYTHON_CONFIG" ]; then
+		echo "Using provided python-config to set compilation python-bindings flags"
+		PYTHON_CFLAGS=`$PYTHON_CONFIG --includes`
+		PYTHON_LDFLAGS='-undefined dynamic_lookup'
+		#PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags` && '-undefined dynamic_lookup'
+	fi
+
+	if [ "$PYTHON_BINDINGS" -a "$BOOST_PYTHON_BINDINGS" ]; then
+		echo "Warning: simultanenously specified pybind and boost python bindings options. Ignoring Boost Python binding option. If you want to use the Boost Python bindings do not include the --with-python-bindings flag and only use --with-boost-python-bindings."
+		unset $BOOST_PYTHON_BINDINGS
+	fi
+
+	if [ $BOOST_PYTHON_BINDINGS ]; then 
+		if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
+			echo "Checking manually specified boost..."
+			try_find_boost "$BOOST_INCDIR" "$BOOST_LIBDIR"
+			if [ ! "$BOOST_FOUND" ]; then
+				echo "Warning: manually specifed boost not found; will attempt auto detection"
+			fi
+		fi
+		try_find_boost /usr
+		try_find_boost /usr/local
+		if [ "$BOOST_PYTHON_FOUND" != 1 ]; then
+			echo "*** Failed to find boost python; python bindings will not be built ***"
+			unset PYTHON_BINDINGS
+		fi
+	else
+		if [ "$PYBIND_INCDIR" ]; then 
+			if [ ! -d "$PYBIND_INCDIR" -o ! -e "$PYBIND_INCDIR/pybind11/pybind11.h" ]; then
+				echo " *** Failed to find pybind11/pybind11.h in $PYBIND_INCDIR; python bindings will not be build ***"
+				unset PYTHON_BINDINGS
+			else
+				echo "Using provided pybind11 header directory $PYBIND_INCDIR"
+				PYBIND_CFLAGS=-I$PYBIND_INCDIR
+			fi
+		else
+			echo "Autodetecting pybind11 header directory using ${PYTHON_EXE} executable..."
+			PYBIND_CFLAGS=$(${PYTHON_EXE} -m pybind11 --includes 2>/dev/null)
+			PYBIND_INCLUDE=$(echo "$PYBIND_CFLAGS" | sed -E 's/.*-I([^ ]*pybind11[^ ]*).*/\1/')
+
+			if [ $? -ne 0 ] || [ -z "$PYBIND_CFLAGS" ]; then
+			    echo " ERROR: pybind11 not found for Python executable ${PYTHON_EXE}."
+			    echo " Please install it using: ${PYTHON_EXE} -m pip install pybind11"
+		            echo "*** Failed to find pybind11; python bindings will not be built ***"
+		            unset PYTHON_BINDINGS
+		        else
+			echo " Found pybind11 headers in $PYBIND_INCLUDE"
+			fi
 		fi
 	fi
-	try_find_boost /usr
-	try_find_boost /usr/local
-	if [ "$BOOST_PYTHON_FOUND" != 1 ]; then
-		echo "*** Failed to find boost python; python bindings will not be built ***"
-		unset PYTHON_BINDINGS
-	fi
+
 	find_numpy
 	if [ "$NUMPY_FOUND" != 1 ]; then
 		echo "*** Failed to find numpy; python bindings will not be built ***"
@@ -735,10 +809,14 @@ echo "HDF5_LDFLAGS=$HDF5_LDFLAGS" >> ./Makefile
 echo "SQUIDS_CFLAGS=$SQUIDS_CFLAGS" >> ./Makefile
 echo "SQUIDS_LDFLAGS=$SQUIDS_LDFLAGS" >> ./Makefile
 
-if [ "$PYTHON_BINDINGS" ]; then
+if [ "$PYTHON_BINDINGS" -o "$BOOST_PYTHON_BINDINGS" ]; then
 	echo "PYTHON_CFLAGS=$PYTHON_CFLAGS" >> ./Makefile
 	echo "PYTHON_LDFLAGS=$PYTHON_LDFLAGS" >> ./Makefile
-	echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
+	if [ "$BOOST_PYTHON_BINDINGS" ]; then 
+		echo "BOOST_PYTHON_LDFLAGS=$BOOST_PYTHON_LDFLAGS" >> ./Makefile
+	else
+		echo "PYTHON_CFLAGS+=$PYBIND_CFLAGS" >> ./Makefile
+	fi
 	echo "PYTHON_MODULEDIR=$PYTHON_MODULEDIR" >> ./Makefile
 	echo "NUMPY_CFLAGS=$NUMPY_CFLAGS" >> ./Makefile
 fi
@@ -895,15 +973,30 @@ if [ "$PYTHON_BINDINGS" ]; then
 	echo '
 
 python : $(PYTHON_LIB)
+' >> ./Makefile
 
+if [ "$BOOST_PYTHON_BINDINGS" ]; then 
+	echo '
 $(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
 	@echo Linking python bindings
 	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(BOOST_PYTHON_LDFLAGS) $(PYTHON_LDFLAGS) -o $(PYTHON_LIB)
 
-build/nuSQUIDSpy.o : resources/python/src/nuSQUIDSpy.cpp
+build/nuSQUIDSpy.o : resources/python/src_boostpython/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
 	@$(CXX) $(CXXFLAGS) -c -Iresources/python/inc $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+' >> ./Makefile
+else
+	echo '
+$(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
+	@echo Linking python bindings
+	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(PYTHON_LDFLAGS) -o $(PYTHON_LIB)
 
+build/nuSQUIDSpy.o : resources/python/src_pybind/nuSQUIDSpy.cpp
+	@echo Compiling python bindings
+	@$(CXX) $(CXXFLAGS) -c $(PYTHON_CFLAGS) $(NUMPY_CFLAGS) $(CFLAGS) $< -o $@
+' >> ./Makefile
+fi
+	echo '
 python-install : $(PYTHON_LIB)
 	@echo Installing python module in $(PYTHON_MODULEDIR)
 	@mkdir -p $(PYTHON_MODULEDIR)
