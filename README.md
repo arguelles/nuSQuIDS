@@ -19,14 +19,15 @@ PythonToolBox
 Run online jupyter notebook example
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/arguelles/nuSQuIDS/master?filepath=resources%2Fpython%2Fexample%2FnuSQUIDS-DEMO.ipynb) 
 
-Additionally for compiling and using the python bindings:
+Additionally for compiling and using the python bindings there are two options.
+One option is to use Boost Python and the other is to use Pybind11. 
 
 Required:
-* boost (>= 1.63): http://www.boost.org/
+* boost (>= 1.63): http://www.boost.org/ or Pybind11 (>= 2.13)
 * numpy: http://www.numpy.org/
-* matplotlib: http://matplotlib.org/
 
 Recommended:
+* matplotlib: http://matplotlib.org/
 * ipython: http://ipython.org/
 
 Documentation
@@ -62,9 +63,9 @@ or commonly just
 	./configure --with-squids=SQuIDS_prefix
 
 To compile the python interface it is additionally necessary to pass the 
-`--with-python-bindings` option to `configure`. Also, the boost python library, 
-a working python installation, and numpy must be available. The location of the
-boost library can be specified using:
+`--with-python-bindings` option to `configure`. By default this will use Pybind11 to construct the python bindings. If you prefer to use the Boost Python library that is also supported and you should pass `--with-boost-python-bindings`.
+Also, the boost python library or pybind11 installation, a working python installation, and numpy must be available. 
+When using the Boost Python bindings, the location of the boost library can be specified using:
 
 	./configure --with-boost-incdir=boost_include_path --with-boost-libdir-=boost_library_path
 
@@ -72,9 +73,21 @@ or in simple cases
 
 	./configure --with-boost=boost_prefix
 
+or if using pybind11 one can specify the headers location by using
+
+    ./configure --with-pybind-incdir=location_of_pybind11
+
 The python executable (which will also be used to locate numpy) can be specified with:
 
 	./configure --python-bin=PYTHON_EXECUTABLE
+
+additionally for further control of the relevant python system libraries and header you can use
+
+	./configure --python-config=PYTHON_CONFIG_EXECUTABLE
+
+To change the python bindings installation location can use
+
+    ./configure --python-module-dir=PYTHON_MODULE_INSTALLATION
 
 Once configuration is complete the library can be compiled by running:
 
@@ -108,10 +121,13 @@ If you have activated the python interface by doing `--with-python-bindings` the
 Even when configured the python interface is not built with the main library. 
 To compile it do the following:
 
-	cd resources/python/src/
-	make
+    make python
 
-After successful compilation the bindings will be stored in `resources/python/bindings/`. 
-To make them available from within python, modify your PYTHONPATH:
+After successful compilation the bindings will be stored in `lib/`. 
+To make them available from within python, either modify your PYTHONPATH:
 
 	export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
+
+or install it in the user-specified location
+
+    make python-install
