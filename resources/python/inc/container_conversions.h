@@ -10,6 +10,10 @@
 #include <boost/python/extract.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace boost_python { namespace container_conversions {
 
   template <typename ContainerType>
@@ -24,6 +28,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
       }
       return boost::python::incref(boost::python::tuple(result).ptr());
     }
+
+    static const PyTypeObject* get_pytype() { return &PyTuple_Type; }
   };
 
   struct default_policy
@@ -83,11 +89,6 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
 
   struct variable_capacity_policy : default_policy
   {
-    // TDS: this is my own personsal little tweak.  when you've got
-    // vectors of pods in the mix with vectors of UDTs, looks like
-    // having this false will bork things.
-    static bool check_convertibility_per_element() { return true; }
-
     template <typename ContainerType>
     static void reserve(ContainerType& a, std::size_t sz)
     {
@@ -157,30 +158,29 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
             || PyTuple_Check(obj_ptr)
             || PyIter_Check(obj_ptr)
             || PyRange_Check(obj_ptr)
-#if PY_VERSION_HEX >= 0x02060000
+#ifdef IS_PY3K
             || (   !PyBytes_Check(obj_ptr)
 #else
             || (   !PyString_Check(obj_ptr)
 #endif
                 && !PyUnicode_Check(obj_ptr)
-                && (   obj_ptr->ob_type == 0
-#if PY_MAJOR_VERSION >= 3
-                    || obj_ptr->ob_type->tp_name == 0
+#ifdef IS_PY3K
+                && (   Py_TYPE(obj_ptr) == 0
+                    || Py_TYPE(Py_TYPE(obj_ptr)) == 0
+                    || Py_TYPE(Py_TYPE(obj_ptr))->tp_name == 0
                     || std::strcmp(
-                         obj_ptr->ob_type->tp_name,
+                         Py_TYPE(Py_TYPE(obj_ptr))->tp_name,
                          "Boost.Python.class") != 0)
 #else
+                && (   obj_ptr->ob_type == 0
                     || obj_ptr->ob_type->ob_type == 0
                     || obj_ptr->ob_type->ob_type->tp_name == 0
                     || std::strcmp(
                          obj_ptr->ob_type->ob_type->tp_name,
                          "Boost.Python.class") != 0)
 #endif
-		   && PyObject_HasAttrString(obj_ptr, 
-					     const_cast<char*>("__len__"))
-		   && PyObject_HasAttrString(obj_ptr, 
-					     const_cast<char*>("__getitem__"))))) 
-	return 0;
+                && PyObject_HasAttrString(obj_ptr, "__len__")
+                && PyObject_HasAttrString(obj_ptr, "__getitem__")))) return 0;
       boost::python::handle<> obj_iter(
         boost::python::allow_null(PyObject_GetIter(obj_ptr)));
       if (!obj_iter.get()) { // must be convertible to an iterator
@@ -198,7 +198,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
         bool is_range = PyRange_Check(obj_ptr);
         std::size_t i=0;
         if (!all_elements_convertible(obj_iter, is_range, i)) return 0;
-        if (!is_range) assert(i == static_cast<size_t>(obj_size));
+        if (!is_range) assert(i == obj_size);
       }
       return obj_ptr;
     }
@@ -259,7 +259,11 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     to_tuple_mapping() {
       boost::python::to_python_converter<
         ContainerType,
-        to_tuple<ContainerType> >();
+        to_tuple<ContainerType>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
     }
   };
 

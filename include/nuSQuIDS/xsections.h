@@ -95,6 +95,9 @@ class NeutrinoCrossSections{
     /// \param current Interaction type
     /// \return The average cross section from EMin to Emax in cm^2 GeV^-1
     virtual double AverageSingleDifferentialCrossSection(double E1, double E2Min, double E2Max, NeutrinoFlavor flavor, NeutrinoType neutype, Current current) const;
+
+    /// \brief Assigning default destructor.
+    virtual ~NeutrinoCrossSections() = default;
 };
 
 struct FlavorHash{
