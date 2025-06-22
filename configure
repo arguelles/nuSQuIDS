@@ -388,12 +388,10 @@ PREFIX=/usr/local
 INSTALL_LIBDIR=lib
 
 VERSION_NUM=101100
-VERSION=`echo $VERSION_NUM | awk '{
-	major = int($1/100000);
-	minor = int($1/100)%1000;
-	patch = $1%100;
-	print major"."minor"."patch;
-}'`
+VERSION_MAJOR=$(echo $VERSION_NUM | awk '{print int($1/100000)}')
+VERSION_MINOR=$(echo $VERSION_NUM | awk '{print int($1/100)%1000}')
+VERSION_PATCH=$(echo $VERSION_NUM | awk '{print $1%100}')
+VERSION="${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
 
 check_os_arch
 
@@ -403,6 +401,8 @@ GUESS_AR=ar
 GUESS_LD=ld
 if [ "$OS_NAME" = Linux ]; then
 	DYN_SUFFIX=.so
+	DYN_SUFFIX_FULL_VERSION='${DYN_SUFFIX}.$(VERSION)'
+	DYN_SUFFIX_MAJOR_VERSION='${DYN_SUFFIX}.$(VERSION_MAJOR)'
 	DYN_OPT='-shared -Wl,-soname,$(shell basename $(DYN_PRODUCT))'
 	DYN_OPT_PY='-shared -Wl,-soname,$(shell basename $(PYTHON_LIB))'
 fi
@@ -411,8 +411,10 @@ if [ "$OS_NAME" = Darwin ]; then
 	GUESS_CXX=clang++
 	GUESS_LD=clang++
 	DYN_SUFFIX=.dylib
-	DYN_OPT='-dynamiclib -compatibility_version $(VERSION) -current_version $(VERSION)'
-	DYN_OPT_PY='-dynamiclib -compatibility_version $(VERSION) -current_version $(VERSION)'
+	DYN_SUFFIX_FULL_VERSION='.$(VERSION)${DYN_SUFFIX}'
+	DYN_SUFFIX_MAJOR_VERSION='.$(VERSION_MAJOR)${DYN_SUFFIX}'
+	DYN_OPT='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION)'
+	DYN_OPT_PY='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION)'
 fi
 
 CC=${CC-$GUESS_CC}
@@ -786,13 +788,22 @@ CXX=$CXX
 AR=$AR
 LD=$LD
 
+VERSION:=$VERSION
+VERSION_MAJOR:=$VERSION_MAJOR
+COMPAT_VERSION:=${VERSION_MAJOR}.${VERSION_MINOR}
+LIBDIR:=lib
+INCDIR:=include
+NUSQINCDIR:=include/nuSQuIDS
+SRCDIR:=src
+PREFIX:=$PREFIX
+INSTALL_LIBDIR:=$INSTALL_LIBDIR
+
 DYN_SUFFIX=$DYN_SUFFIX
+DYN_SUFFIX_FULL_VERSION:=$DYN_SUFFIX_FULL_VERSION
+DYN_SUFFIX_MAJOR_VERSION:=$DYN_SUFFIX_MAJOR_VERSION
 DYN_OPT=$DYN_OPT
 DYN_OPT_PY=$DYN_OPT_PY
 
-VERSION=$VERSION
-PREFIX=$PREFIX
-INSTALL_LIBDIR:=$INSTALL_LIBDIR
 " > ./Makefile
 
 echo '
@@ -863,22 +874,28 @@ EXAMPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
 
 # Project files
 NAME=nuSQuIDS
-STAT_PRODUCT=lib/lib$(NAME).a
-DYN_PRODUCT=lib/lib$(NAME)$(DYN_SUFFIX)
-PYTHON_LIB:=lib/$(NAME).so
+STAT_PRODUCT=lib$(NAME).a
+DYN_PRODUCT_FULL_VER:=lib$(NAME)$(DYN_SUFFIX_FULL_VERSION)
+DYN_PRODUCT_MAJ_VER:=lib$(NAME)$(DYN_SUFFIX_MAJOR_VERSION)
+DYN_PRODUCT:=lib$(NAME)$(DYN_SUFFIX)
+PYTHON_LIB:=$(NAME).so
 
 # Compilation rules
-all: $(STAT_PRODUCT) $(DYN_PRODUCT)
+all: $(LIBDIR)/$(STAT_PRODUCT) $(LIBDIR)/$(DYN_PRODUCT)
 
 examples : $(EXAMPLES)
 
-$(DYN_PRODUCT) : $(OBJECTS)
+$(LIBDIR)/$(DYN_PRODUCT) : $(OBJECTS)
 	@echo Linking $(DYN_PRODUCT)
-	@$(CXX) $(DYN_OPT) $(OBJECTS) $(LDFLAGS) -o $(DYN_PRODUCT)
+	@rm -f "$(LIBDIR)/$(DYN_PRODUCT)" "$(LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
+	@$(CXX) $(DYN_OPT) $(LDFLAGS) -o "$(LIBDIR)/$(DYN_PRODUCT_FULL_VER)" $(OBJECTS)
+	@[ $$(uname -s) != Darwin ] || install_name_tool -id "$(DYN_PRODUCT_MAJ_VER)" "$(LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
+	@ln -s "$(DYN_PRODUCT_FULL_VER)" "$(LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
+	@ln -s "$(DYN_PRODUCT_FULL_VER)" "$(LIBDIR)/$(DYN_PRODUCT)"
 
-$(STAT_PRODUCT) : $(OBJECTS)
+$(LIBDIR)/$(STAT_PRODUCT) : $(OBJECTS)
 	@echo Linking $(STAT_PRODUCT)
-	@$(AR) -rcs $(STAT_PRODUCT) $(OBJECTS)
+	@$(AR) -rcs $(LIBDIR)/$(STAT_PRODUCT) $(OBJECTS)
 
 build/%.o : src/%.cpp
 	@echo Compiling $< to $@
@@ -952,7 +969,7 @@ examples/Constant_density_layers/const_dens_layers : $(DYN_PRODUCT) examples/Con
 clean:
 	@echo Erasing generated files
 	@rm -f $(PATH_nuSQUIDS)/build/*.o
-	@rm -f $(PATH_nuSQUIDS)/$(STAT_PRODUCT) $(PATH_nuSQUIDS)/$(DYN_PRODUCT) $(PATH_nuSQUIDS)/$(PYTHON_LIB)
+	@rm -f $(LIBDIR)/*.a $(LIBDIR)/*.so $(LIBDIR)/*.dylib
 
 doxygen:
 	@mkdir -p ./docs
@@ -961,17 +978,21 @@ docs:
 	@mkdir -p ./docs
 	@doxygen src/doxyfile
 
-test: $(DYN_PRODUCT) $(STAT_PRODUCT)
+test: $(LIBDIR)/$(DYN_PRODUCT) $(LIBDIR)/$(STAT_PRODUCT)
 	@cd ./test ; ./run_tests
 
-install: $(DYN_PRODUCT) $(STAT_PRODUCT)
+install: $(LIBDIR)/$(DYN_PRODUCT) $(LIBDIR)/$(STAT_PRODUCT)
 	@echo Installing headers in $(PREFIX)/include/nuSQuIDS
 	@mkdir -p "$(PREFIX)/include/nuSQuIDS"
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(DYN_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(LIBDIR)/$(DYN_PRODUCT_FULL_VER) > "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(LIBDIR)/$(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
+	@[ $$(uname -s) != Darwin ] || install_name_tool -id "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
+	@ln -s "$(DYN_PRODUCT_FULL_VER)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
+	@ln -s "$(DYN_PRODUCT_FULL_VER)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)"
 	@chmod 755 "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)" "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a" 
 	@echo Installing config information in $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig"
@@ -991,8 +1012,10 @@ uninstall:
 	@echo Removing headers from $(PREFIX)/include/nuSQuIDS
 	@rm -rf "$(PREFIX)/include/nuSQuIDS"
 	@echo Removing libraries from $(PREFIX)/$(INSTALL_LIBDIR)
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME)$(DYN_SUFFIX)"
-	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/lib$(NAME).a"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
+	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
 	@echo Removing config information from $(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig
 	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/pkgconfig/nusquids.pc"
 ' >> ./Makefile
@@ -1000,14 +1023,14 @@ uninstall:
 if [ "$PYTHON_BINDINGS" ]; then
 	echo '
 
-python : $(PYTHON_LIB)
+python : $(LIBDIR)/$(PYTHON_LIB)
 ' >> ./Makefile
 
 if [ "$BOOST_PYTHON_BINDINGS" ]; then 
 	echo '
-$(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
+$(LIBDIR)/$(PYTHON_LIB) : build/nuSQUIDSpy.o $(LIBDIR)/$(STAT_PRODUCT)
 	@echo Linking python bindings
-	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(BOOST_PYTHON_LDFLAGS) $(PYTHON_LDFLAGS) -o $(PYTHON_LIB)
+	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(BOOST_PYTHON_LDFLAGS) $(PYTHON_LDFLAGS) -o $(LIBDIR)/$(PYTHON_LIB)
 
 build/nuSQUIDSpy.o : resources/python/src_boostpython/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
@@ -1015,9 +1038,9 @@ build/nuSQUIDSpy.o : resources/python/src_boostpython/nuSQUIDSpy.cpp
 ' >> ./Makefile
 else
 	echo '
-$(PYTHON_LIB) : build/nuSQUIDSpy.o $(STAT_PRODUCT)
+$(LIBDIR)/$(PYTHON_LIB) : build/nuSQUIDSpy.o $(LIBDIR)/$(STAT_PRODUCT)
 	@echo Linking python bindings
-	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(PYTHON_LDFLAGS) -o $(PYTHON_LIB)
+	@$(CXX) $(DYN_OPT_PY) build/nuSQUIDSpy.o -Llib -l$(NAME) $(LDFLAGS) $(PYTHON_LDFLAGS) -o $(LIBDIR)/$(PYTHON_LIB)
 
 build/nuSQUIDSpy.o : resources/python/src_pybind/nuSQUIDSpy.cpp
 	@echo Compiling python bindings
@@ -1025,12 +1048,13 @@ build/nuSQUIDSpy.o : resources/python/src_pybind/nuSQUIDSpy.cpp
 ' >> ./Makefile
 fi
 	echo '
-python-install : $(PYTHON_LIB)
+python-install : $(LIBDIR)/$(PYTHON_LIB)
 	@echo Installing python module in $(PYTHON_MODULEDIR)
 	@mkdir -p $(PYTHON_MODULEDIR)
-	@cp $(PYTHON_LIB) $(PYTHON_MODULEDIR)
+	@cp $(LIBDIR)/$(PYTHON_LIB) $(PYTHON_MODULEDIR)
+	@[ $$(uname -s) != Darwin ] || install_name_tool -change $(DYN_PRODUCT_MAJ_VER) "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)" "$(PYTHON_MODULEDIR)/$(PYTHON_LIB)"
 
-python-uninstall : $(PYTHON_LIB)
+python-uninstall : $(LIBDIR)/$(PYTHON_LIB)
 	@echo Removing python module from $(PYTHON_MODULEDIR)
 	@rm $(PYTHON_MODULEDIR)/$(NAME).so
 
