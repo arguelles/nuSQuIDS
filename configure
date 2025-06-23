@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 check_os_arch(){
 	if [ -x /usr/bin/lsb_release ]; then
@@ -987,8 +987,8 @@ install: $(LIBDIR)/$(DYN_PRODUCT) $(LIBDIR)/$(STAT_PRODUCT)
 	@cp "$(INCnuSQUIDS)"/nuSQuIDS/*.h "$(PREFIX)/include/nuSQuIDS"
 	@echo Installing libraries in $(PREFIX)/$(INSTALL_LIBDIR)
 	@mkdir -p "$(PREFIX)/$(INSTALL_LIBDIR)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(LIBDIR)/$(DYN_PRODUCT_FULL_VER) > "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
-	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(LIBDIR)/$(STAT_PRODUCT) > "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < "$(LIBDIR)/$(DYN_PRODUCT_FULL_VER)" | head -c $$(wc -c "$(LIBDIR)/$(DYN_PRODUCT_FULL_VER)" | awk '"'"'{print $$1}'"'"') /dev/stdin > "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
+	@LC_ALL=C sed "'${REPLACE_INSTALL_FLAG}'" < $(LIBDIR)/$(STAT_PRODUCT) | head -c $$(wc -c "$(LIBDIR)/$(STAT_PRODUCT)" | awk '"'"'{print $$1}'"'"') /dev/stdin > "$(PREFIX)/$(INSTALL_LIBDIR)/$(STAT_PRODUCT)"
 	@[ $$(uname -s) != Darwin ] || install_name_tool -id "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_FULL_VER)"
 	@rm -f "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
 	@ln -s "$(DYN_PRODUCT_FULL_VER)" "$(PREFIX)/$(INSTALL_LIBDIR)/$(DYN_PRODUCT_MAJ_VER)"
