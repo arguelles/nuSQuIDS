@@ -2149,8 +2149,8 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
     H5LTget_attribute_uint(group,"body","ID",&body_id);
 
     H5LTget_dataset_info(group,"body", dimbody,nullptr,nullptr);
-    double body_params[dimbody[0]];
-    H5LTread_dataset_double(group,"body", body_params);
+    std::unique_ptr<double[]> body_params(new double[dimbody[0]]);
+    H5LTread_dataset_double(group,"body", body_params.get());
 
     hsize_t dimtrack[1];
     H5LTget_dataset_info(group,"track", dimtrack ,nullptr,nullptr);
@@ -2161,7 +2161,7 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
     H5LTget_attribute_double(group,"track","X",&x_current);
 
     // setting body and track
-    SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+    SetBodyTrack(body_id,dimbody[0],body_params.get(),dimtrack[0],track_params.get());
     // set trayectory to current time
     track->SetX(x_current);
   }
@@ -2357,8 +2357,8 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     H5LTget_attribute_uint(group,"body","ID",&body_id);
 
     H5LTget_dataset_info(group,"body",dimbody,nullptr,nullptr);
-    double body_params[dimbody[0]];
-    H5LTread_dataset_double(group,"body", body_params);
+    std::unique_ptr<double[]> body_params(new double[dimbody[0]]);
+    H5LTread_dataset_double(group,"body", body_params.get());
 
     hsize_t dimtrack[1];
     H5LTget_dataset_info(group,"track",dimtrack,nullptr,nullptr);
@@ -2369,7 +2369,7 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
     H5LTget_attribute_double(group,"track","X",&x_current);
 
     // setting body and track
-    SetBodyTrack(body_id,dimbody[0],body_params,dimtrack[0],track_params.get());
+    SetBodyTrack(body_id,dimbody[0],body_params.get(),dimtrack[0],track_params.get());
 
     // set trayectory to current time
     track->SetX(x_current);
