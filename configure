@@ -913,27 +913,27 @@ build/%.o : src/%.cpp
 	@echo Compiling $< to $@
 	@$(CXX) $(CXXFLAGS) -c $(CFLAGS) $< -o $@
 
-examples/Single_energy/single_energy : $(DYN_PRODUCT) examples/Single_energy/main.cpp
+examples/Single_energy/single_energy : $(LIBDIR)/$(DYN_PRODUCT) examples/Single_energy/main.cpp
 	@echo Compiling single energy example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Single_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio : $(DYN_PRODUCT) examples/Astrophysical_neutrino_flavor_ratio/main.cpp
+examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio : $(LIBDIR)/$(DYN_PRODUCT) examples/Astrophysical_neutrino_flavor_ratio/main.cpp
 	@echo Compiling astrophysical neutrino flavor ratio example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Astrophysical_neutrino_flavor_ratio/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/Multiple_energy/multiple_energy : $(DYN_PRODUCT) examples/Multiple_energy/main.cpp
+examples/Multiple_energy/multiple_energy : $(LIBDIR)/$(DYN_PRODUCT) examples/Multiple_energy/main.cpp
 	@echo Compiling multiple energy example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Multiple_energy/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/HDF5_Write_Read/write : $(DYN_PRODUCT) examples/HDF5_Write_Read/write.cpp
+examples/HDF5_Write_Read/write : $(LIBDIR)/$(DYN_PRODUCT) examples/HDF5_Write_Read/write.cpp
 	@echo Compiling HDF5 write
 	@$(CXX) $(EXAMPLES_FLAGS) examples/HDF5_Write_Read/write.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/HDF5_Write_Read/read : $(DYN_PRODUCT) examples/HDF5_Write_Read/read.cpp
+examples/HDF5_Write_Read/read : $(LIBDIR)/$(DYN_PRODUCT) examples/HDF5_Write_Read/read.cpp
 	@echo Compiling HDF5 read
 	@$(CXX) $(EXAMPLES_FLAGS) examples/HDF5_Write_Read/read.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/Atm_default/atm_default : $(DYN_PRODUCT) examples/Atm_default/main.cpp
+examples/Atm_default/atm_default : $(LIBDIR)/$(DYN_PRODUCT) examples/Atm_default/main.cpp
 	@echo Compiling atmospheric example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Atm_default/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
@@ -943,37 +943,37 @@ build/exBody.o : examples/Bodies/exBody.h examples/Bodies/exBody.cpp
 build/ex_bodies_main.o : examples/Bodies/exBody.h examples/Bodies/main.cpp
 	@$(CXX) $(EXAMPLES_FLAGS) -c examples/Bodies/main.cpp -o $@
 
-examples/Bodies/bodies : $(DYN_PRODUCT) build/ex_bodies_main.o build/exBody.o
+examples/Bodies/bodies : $(LIBDIR)/$(DYN_PRODUCT) build/ex_bodies_main.o build/exBody.o
 	@echo Compiling bodies example
 	@$(CXX) $(EXAMPLES_FLAGS) build/ex_bodies_main.o build/exBody.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/exCross.o : examples/Xsections/exCross.h examples/Xsections/exCross.cpp
 	@$(CXX) $(EXAMPLES_FLAGS) -c examples/Xsections/exCross.cpp -o $@
 
-examples/Xsections/xsections : $(DYN_PRODUCT) examples/Xsections/main.cpp build/exCross.o
+examples/Xsections/xsections : $(LIBDIR)/$(DYN_PRODUCT) examples/Xsections/main.cpp build/exCross.o
 	@echo Compiling cross section example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Xsections/main.cpp build/exCross.o -lnuSQuIDS $(LDFLAGS) -o $@
 
 build/nuSQUIDSDecoh.o : examples/Decoherence/nuSQUIDSDecoh.h examples/Decoherence/nuSQUIDSDecoh.cpp
 	@$(CXX) $(EXAMPLES_FLAGS) -c examples/Decoherence/nuSQUIDSDecoh.cpp -o $@
 
-examples/Decoherence/decoherence : $(DYN_PRODUCT) examples/Decoherence/main.cpp build/nuSQUIDSDecoh.o
+examples/Decoherence/decoherence : $(LIBDIR)/$(DYN_PRODUCT) examples/Decoherence/main.cpp build/nuSQUIDSDecoh.o
 	@echo Compiling decoherence example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Decoherence/main.cpp build/nuSQUIDSDecoh.o -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/NSI/nsi : $(DYN_PRODUCT) examples/NSI/main.cpp
+examples/NSI/nsi : $(LIBDIR)/$(DYN_PRODUCT) examples/NSI/main.cpp
 	@echo Compiling non-standard interaction example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/NSI/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/LV/lv : $(DYN_PRODUCT) examples/LV/main.cpp
+examples/LV/lv : $(LIBDIR)/$(DYN_PRODUCT) examples/LV/main.cpp
 	@echo Compiling Lorentz Violation example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/LV/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/Atm_BSM/atm_bsm: $(DYN_PRODUCT) examples/Atm_BSM/main.cpp
+examples/Atm_BSM/atm_bsm: $(LIBDIR)/$(DYN_PRODUCT) examples/Atm_BSM/main.cpp
 	@echo Compiling atmospheric with beyond standard model physics example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Atm_BSM/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
-examples/Constant_density_layers/const_dens_layers : $(DYN_PRODUCT) examples/Constant_density_layers/main.cpp
+examples/Constant_density_layers/const_dens_layers : $(LIBDIR)/$(DYN_PRODUCT) examples/Constant_density_layers/main.cpp
 	@echo Compiling constant density layer example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Constant_density_layers/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
