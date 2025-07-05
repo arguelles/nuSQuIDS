@@ -1,7 +1,10 @@
 from __future__ import print_function
 import numpy as np
-import matplotlib.pyplot as plt
-import nuSQuIDS as nsq
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
+from . import nuSQuIDS as nsq
 
 # we will use the boost injector metaclass
 
@@ -209,6 +212,11 @@ def PlotFlavorRatio(atmo_1,atmo_2,flavor,neutype,
             cosmin = None, cosmax = None, enumin = None, enumax = None,
             enu_step = 400.0, costh_step = 100.0, contour_divisions = 100, colorscale = "lin",
             fontsize = 16, fontname = "Arial", colormap = "jet", clim = None, colorbarlabel = ""):
+    if plt is None:
+        raise ImportError(
+            "Plotting utilities requires matplotlib. Install it with:\n"
+            "  pip install nusquids[plot]"
+        )
     if colorscale == "log":
         get_ratio = lambda costh,log_enu : np.log10(atmo_1.EvalFlavor(flavor,costh,10**log_enu,neutype)/atmo_2.EvalFlavor(flavor,costh,10**log_enu,neutype))
     else:
@@ -280,6 +288,11 @@ class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
             cosmin = None, cosmax = None, enumin = None, enumax = None,
             enu_step = 400.0, costh_step = 100.0, contour_divisions = 100, colorscale = "log",
             fontsize = 16, fontname = "Arial", colormap = "jet" ):
+        if plt is None:
+            raise ImportError(
+                "Plotting utilities requires matplotlib. Install it with:\n"
+                "  pip install nusquids[plot]"
+            )
 
         if colorscale == "log":
             get_flux = lambda costh,log_enu : np.log10(self.EvalFlavor(flavor,costh,10**log_enu,neutype))
@@ -339,5 +352,4 @@ class ExtNuSQUIDSAtm(injector,nsq.nuSQUIDSAtm):
             label.set_fontname(fontname)
             label.set_fontsize(fontsize)
         return fig
-        #plt.close()
 
