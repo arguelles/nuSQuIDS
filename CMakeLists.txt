@@ -20,7 +20,40 @@ list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
 find_package(pybind11 CONFIG REQUIRED)                    # gives pybind11::module
 
 # SQuIDS via pkg-config (make sure squids.pc is on PKG_CONFIG_PATH)
-pkg_check_modules(SQuIDS REQUIRED squids)
+pkg_check_modules(SQuIDS QUIET squids)
+
+if(SQuIDS_FOUND)
+    message(STATUS "Using system SQuIDS")
+    # Derive the prefix from the first include dir
+    list(GET SQuIDS_INCLUDE_DIRS 0 SQuIDS_INCLUDE_DIR)
+    get_filename_component(SQuIDS_PREFIX "${SQuIDS_INCLUDE_DIR}" DIRECTORY)
+    set(SQuIDS_INCLUDE ${SQuIDS_INCLUDE_DIRS})
+    set(SQuIDS_LIBS    ${SQuIDS_LIBRARIES})
+else()
+    message(STATUS "Cloning and building SQuIDS")
+    set(SQuIDS_PREFIX "${CMAKE_BINARY_DIR}/_deps/squids/install")
+
+    ExternalProject_Add(squids_external
+      GIT_REPOSITORY https://github.com/jsalvado/SQuIDS.git
+      GIT_TAG        master
+      PREFIX         ${CMAKE_BINARY_DIR}/_deps/squids
+      BUILD_IN_SOURCE 1            # (switch OFF if SQuIDS supports out-of-tree)
+      CONFIGURE_COMMAND
+          ./configure
+              --prefix=${SQuIDS_PREFIX}
+              --with-gsl=${GSL_PREFIX}
+      BUILD_COMMAND   make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+      INSTALL_COMMAND make install
+      UPDATE_DISCONNECTED 1
+      BUILD_ALWAYS     OFF
+    )
+
+    set(SQuIDS_INCLUDE ${SQuIDS_PREFIX}/include)
+    find_library(SQuIDS_LIBS
+        NAMES SQuIDS
+        PATHS ${SQuIDS_PREFIX}/lib
+        NO_DEFAULT_PATH)
+endif()
 
 # Extract single include path from GSL (first element of the list)
 list(GET GSL_INCLUDE_DIRS 0 GSL_INCLUDE_DIR)
@@ -31,8 +64,8 @@ list(GET HDF5_INCLUDE_DIRS 0 HDF5_INCLUDE_DIR)
 get_filename_component(HDF5_PREFIX "${HDF5_INCLUDE_DIR}" DIRECTORY)
 
 # Extract single include path from SQuIDS (via pkg-config)
-list(GET SQuIDS_INCLUDE_DIRS 0 SQuIDS_INCLUDE_DIR)
-get_filename_component(SQuIDS_PREFIX "${SQuIDS_INCLUDE_DIR}" DIRECTORY)
+#list(GET SQuIDS_INCLUDE_DIRS 0 SQuIDS_INCLUDE_DIR)
+#get_filename_component(SQuIDS_PREFIX "${SQuIDS_INCLUDE_DIR}" DIRECTORY)
 
 # Directory where Autotools “make install” will land
 set(NUSQUIDS_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/_deps/nusquids_core-install)
@@ -53,6 +86,10 @@ ExternalProject_Add(nusquids_core
   INSTALL_COMMAND make install PREFIX=${NUSQUIDS_INSTALL_PREFIX} && make python-install PREFIX=${NUSQUIDS_INSTALL_PREFIX}
   BUILD_IN_SOURCE 1
 )
+
+if (NOT SQuIDS_FOUND)
+    add_dependencies(nusquids_core squids_external)
+endif()
 
 # -------------- Installation of C++ Library ---------------------------------
 
