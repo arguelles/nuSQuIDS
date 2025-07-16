@@ -30,7 +30,7 @@ if(SQuIDS_FOUND)
     set(SQuIDS_INCLUDE ${SQuIDS_INCLUDE_DIRS})
     set(SQuIDS_LIBS    ${SQuIDS_LIBRARIES})
 else()
-    message(STATUS "Cloning and building SQuIDS")
+    message(STATUS "SQuIDS installation not found. Will clone and build SQuIDS")
     set(SQuIDS_PREFIX "${CMAKE_BINARY_DIR}/_deps/squids/install")
 
     ExternalProject_Add(squids_external
@@ -115,3 +115,15 @@ install(
 install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION ${PROJECT_NAME}  # usually "nusquids"
         FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib" PATTERN "*.pyd")
+
+if(APPLE)
+  add_custom_command(
+    TARGET nusquids_core POST_BUILD
+    COMMAND install_name_tool
+      -change ${SQ_INSTALL}/lib/libSQuIDS.1.dylib
+              @loader_path/libSQuIDS.1.dylib
+              $<TARGET_FILE:nuSQuIDS>
+    COMMENT "Rewriting install_name of libSQuIDS in nuSQuIDS.so"
+  )
+endif()
+
