@@ -387,7 +387,7 @@ ensure_found(){
 PREFIX=/usr/local
 INSTALL_LIBDIR=lib
 
-VERSION_NUM=101100
+VERSION_NUM=101200
 VERSION_MAJOR=$(echo $VERSION_NUM | awk '{print int($1/100000)}')
 VERSION_MINOR=$(echo $VERSION_NUM | awk '{print int($1/100)%1000}')
 VERSION_PATCH=$(echo $VERSION_NUM | awk '{print $1%100}')
