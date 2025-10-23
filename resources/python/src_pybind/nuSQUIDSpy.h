@@ -274,8 +274,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def(py::init<std::string>(),py::arg("filename"));
       class_object->def("EvolveState",&nuSQUIDSAtm<BaseType>::EvolveState);
       class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
-      class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor, py::arg("Flavor"),py::arg("cos(theta)"),py::arg("Neutrino Energy"),py::arg("NeuType") = 0,py::arg("BoolToRandomzeProdutionHeight") = false,
-            "nuSQuIDSAtm evaluate flux.");
+      class_object->def("EvalFlavor",(double(nuSQUIDSAtm<BaseType>::*)(unsigned int,double,double,unsigned int,bool) const)&nuSQUIDSAtm<BaseType>::EvalFlavor, py::arg("Flavor"),py::arg("cos(theta)"),py::arg("Neutrino Energy"),py::arg("NeuType") = 0,py::arg("BoolToRandomzeProdutionHeight") = false, "nuSQuIDSAtm evaluate flux.");
+      class_object->def("EvalFlavor",(double (nuSQUIDSAtm<BaseType>::*)(unsigned int, double, double, unsigned int, double, std::vector<bool>) const)&nuSQUIDSAtm<BaseType>::EvalFlavor,py::arg("Flavor"),py::arg("cos(theta)"),py::arg("Neutrino Energy"),py::arg("NeuType"),py::arg("scale"),py::arg("avr"),"nuSQuIDSAtm evaluate flux.");
       class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
       class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
