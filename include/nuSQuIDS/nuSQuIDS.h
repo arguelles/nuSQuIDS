@@ -1515,7 +1515,6 @@ class nuSQUIDSAtm {
         throw std::runtime_error("nuSQUIDSAtm::Error::nuSQUIDSAtm not initialized.");
 
       hid_t file_id,root_id;
-      hid_t dset_id;
       // create HDF5 file
       if(overwrite)
         file_id = H5Fcreate (filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1527,9 +1526,9 @@ class nuSQUIDSAtm {
 
       // write the zenith range
       hsize_t costhdims[1]={costh_array.extent(0)};
-      dset_id = H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.get_data());
+      H5LTmake_dataset(root_id,"zenith_angles",1,costhdims,H5T_NATIVE_DOUBLE,costh_array.get_data());
       hsize_t energydims[1]={enu_array.extent(0)};
-      dset_id = H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.get_data());
+      H5LTmake_dataset(root_id,"energy_range",1,energydims,H5T_NATIVE_DOUBLE,enu_array.get_data());
 
       H5Gclose (root_id);
       H5Fclose (file_id);
@@ -1548,7 +1547,7 @@ class nuSQUIDSAtm {
     /// \details All contents are assumed to be saved to the \c root of the HDF5 file.
     /// @see WriteStateHDF5
     void ReadStateHDF5(std::string hdf5_filename){
-      hid_t file_id,group_id,root_id;
+      hid_t group_id,root_id;
       // open HDF5 file
       H5File file(H5Fopen(hdf5_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT));
       if (file < 0)
@@ -1560,22 +1559,17 @@ class nuSQUIDSAtm {
       hsize_t costhdims[1];
       H5LTget_dataset_info(group_id, "zenith_angles", costhdims, nullptr, nullptr);
 
-      double data[costhdims[0]];
-      H5LTread_dataset_double(group_id, "zenith_angles", data);
       costh_array.resize(std::vector<size_t> {static_cast<unsigned long>(costhdims[0])});
-      for (unsigned int i = 0; i < costhdims[0]; i ++)
-        costh_array[i] = data[i];
+      H5LTread_dataset_double(group_id, "zenith_angles", costh_array.get_data());
 
       hsize_t energydims[1];
       H5LTget_dataset_info(group_id, "energy_range", energydims, nullptr, nullptr);
 
-      double enu_data[energydims[0]];
-      H5LTread_dataset_double(group_id, "energy_range", enu_data);
-      enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});log_enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});
-      for (unsigned int i = 0; i < energydims[0]; i ++){
-        enu_array[i] = enu_data[i];
-        log_enu_array[i] = log(enu_data[i]);
-      }
+      enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});
+      log_enu_array.resize(std::vector<size_t>{static_cast<unsigned long>(energydims[0])});
+      H5LTread_dataset_double(group_id, "energy_range", enu_array.get_data());
+      for (unsigned int i = 0; i < energydims[0]; i ++)
+        log_enu_array[i] = log(enu_array[i]);
 
       H5Gclose(root_id);
 

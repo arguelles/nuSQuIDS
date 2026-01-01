@@ -71,6 +71,23 @@ get_filename_component(HDF5_PREFIX "${HDF5_INCLUDE_DIR}" DIRECTORY)
 set(NUSQUIDS_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/_deps/nusquids_core-install)
 
 # -------------- Build core library via configure + make ---------------------
+
+# Get python-config path that matches the Python interpreter
+# This is important to avoid mismatches between python and python-config
+get_filename_component(PYTHON_BIN_DIR ${Python_EXECUTABLE} DIRECTORY)
+find_program(PYTHON_CONFIG
+    NAMES python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}-config python${Python_VERSION_MAJOR}-config python-config
+    HINTS ${PYTHON_BIN_DIR}
+    NO_DEFAULT_PATH
+)
+if(NOT PYTHON_CONFIG)
+    # Fallback to searching in PATH
+    find_program(PYTHON_CONFIG
+        NAMES python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}-config python${Python_VERSION_MAJOR}-config python-config
+    )
+endif()
+message(STATUS "Using python-config: ${PYTHON_CONFIG}")
+
 ExternalProject_Add(nusquids_core
   SOURCE_DIR     ${CMAKE_SOURCE_DIR}
   CONFIGURE_COMMAND
@@ -81,7 +98,8 @@ ExternalProject_Add(nusquids_core
         --with-squids=${SQuIDS_PREFIX}
         --with-python-bindings
         --python-bin=${Python_EXECUTABLE}
-	--python-module-dir=${NUSQUIDS_INSTALL_PREFIX}/lib
+        --python-config=${PYTHON_CONFIG}
+        --python-module-dir=${NUSQUIDS_INSTALL_PREFIX}/lib
   BUILD_COMMAND  make -j${CMAKE_BUILD_PARALLEL_LEVEL} && make python -j${CMAKE_BUILD_PARALLEL_LEVEL}
   INSTALL_COMMAND make install PREFIX=${NUSQUIDS_INSTALL_PREFIX} && make python-install PREFIX=${NUSQUIDS_INSTALL_PREFIX}
   BUILD_IN_SOURCE 1
@@ -116,14 +134,71 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION ${PROJECT_NAME}  # usually "nusquids"
         FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib" PATTERN "*.pyd")
 
+# -------------- macOS Library Path Fixups ------------------------------------
+# For wheel distribution, we need to fix library paths to use @loader_path
+# so the Python extension can find libnuSQuIDS in the same directory
+
 if(APPLE)
-  add_custom_command(
-    TARGET nusquids_core POST_BUILD
-    COMMAND install_name_tool
-      -change ${SQ_INSTALL}/lib/libSQuIDS.1.dylib
-              @loader_path/libSQuIDS.1.dylib
-              $<TARGET_FILE:nuSQuIDS>
-    COMMENT "Rewriting install_name of libSQuIDS in nuSQuIDS.so"
-  )
+    # Create a script that will be run after installation to fix paths
+    install(CODE "
+        # Fix the Python extension's references to libnuSQuIDS
+        set(NUSQUIDS_SO \"\${CMAKE_INSTALL_PREFIX}/nusquids/nuSQuIDS.so\")
+        if(EXISTS \${NUSQUIDS_SO})
+            message(STATUS \"Fixing library paths in nuSQuIDS.so\")
+            # Get current install names
+            execute_process(
+                COMMAND otool -L \${NUSQUIDS_SO}
+                OUTPUT_VARIABLE OTOOL_OUTPUT
+            )
+            # Fix the libnuSQuIDS reference to use @loader_path
+            execute_process(
+                COMMAND install_name_tool -change
+                    libnuSQuIDS.1.dylib
+                    @loader_path/libnuSQuIDS.1.dylib
+                    \${NUSQUIDS_SO}
+                ERROR_QUIET
+            )
+            # Also fix any absolute paths to the build directory
+            string(REGEX MATCHALL \"[^\\n]*libnuSQuIDS[^\\n]*\" NUSQUIDS_REFS \"\${OTOOL_OUTPUT}\")
+            foreach(REF \${NUSQUIDS_REFS})
+                if(REF MATCHES \"(/[^ ]+libnuSQuIDS\\\\.1\\\\.dylib)\")
+                    set(OLD_PATH \${CMAKE_MATCH_1})
+                    execute_process(
+                        COMMAND install_name_tool -change
+                            \${OLD_PATH}
+                            @loader_path/libnuSQuIDS.1.dylib
+                            \${NUSQUIDS_SO}
+                        ERROR_QUIET
+                    )
+                endif()
+            endforeach()
+            # Fix the lib/nuSQuIDS.so reference (the incorrect id path)
+            execute_process(
+                COMMAND install_name_tool -change
+                    lib/nuSQuIDS.so
+                    @loader_path/nuSQuIDS.so
+                    \${NUSQUIDS_SO}
+                ERROR_QUIET
+            )
+            # Set the install name id properly
+            execute_process(
+                COMMAND install_name_tool -id
+                    @loader_path/nuSQuIDS.so
+                    \${NUSQUIDS_SO}
+                ERROR_QUIET
+            )
+        endif()
+
+        # Also fix the libnuSQuIDS.dylib to have a proper id
+        set(NUSQUIDS_DYLIB \"\${CMAKE_INSTALL_PREFIX}/nusquids/libnuSQuIDS.1.dylib\")
+        if(EXISTS \${NUSQUIDS_DYLIB})
+            execute_process(
+                COMMAND install_name_tool -id
+                    @loader_path/libnuSQuIDS.1.dylib
+                    \${NUSQUIDS_DYLIB}
+                ERROR_QUIET
+            )
+        endif()
+    ")
 endif()
 
