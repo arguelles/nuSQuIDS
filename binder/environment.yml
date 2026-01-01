@@ -2,14 +2,16 @@ name: nuSQuIDS
 channels:
     - conda-forge
 dependencies:
-    - boost
-    - python 
+    - python>=3.9
     - jupyter
+    - jupyterlab
     - matplotlib
     - numpy
     - ipython
-    - pytables
-    - jupyterlab
-    - libgcc
-    - gnuplot
     - gsl
+    - hdf5
+    - pybind11
+    - pkg-config
+    - cmake
+    - ninja
+    - cxx-compiler

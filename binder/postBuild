@@ -1,7 +1,13 @@
 #!/bin/bash
-mkdir $HOME/software
-export  PREFIX=$CONDA_DEFAULT_ENV
-git clone https://github.com/jsalvado/SQuIDS.git $HOME/SQuIDS;
-cd $HOME/SQuIDS; ./configure --prefix=$HOME/software --with-gsl-incdir=$PREFIX/include --with-gsl-libdir=$PREFIX/lib; export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH; make; make test; make install; cd -;
-export LD_LIBRARY_PATH="$HOME/software/lib"
- ./configure --prefix=$HOME/software --with-python-bindings --with-boost=$PREFIX/ --with-gsl=$PREFIX --with-squids=$HOME/software --python-bin=python; make python; make test;  make install;
+set -e
+
+# Install SQuIDS
+git clone https://github.com/jsalvado/SQuIDS.git $HOME/SQuIDS
+cd $HOME/SQuIDS
+./configure --prefix=$CONDA_PREFIX
+make -j$(nproc)
+make install
+cd -
+
+# Install nuSQuIDS using pip (uses pybind11, not Boost.Python)
+pip install .
