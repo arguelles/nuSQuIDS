@@ -425,8 +425,10 @@ if [ "$OS_NAME" = Darwin ]; then
 	DYN_SUFFIX=.dylib
 	DYN_SUFFIX_FULL_VERSION='.$(VERSION)${DYN_SUFFIX}'
 	DYN_SUFFIX_MAJOR_VERSION='.$(VERSION_MAJOR)${DYN_SUFFIX}'
-	DYN_OPT='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION)'
-	DYN_OPT_PY='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION)'
+	# -headerpad_max_install_names ensures there's room for install_name_tool to rewrite paths
+	# (needed for pip installs which use long temp directory paths)
+	DYN_OPT='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION) -Wl,-headerpad_max_install_names'
+	DYN_OPT_PY='-dynamiclib -compatibility_version $(COMPAT_VERSION) -current_version $(VERSION) -Wl,-headerpad_max_install_names'
 fi
 
 CC=${CC-$GUESS_CC}
