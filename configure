@@ -656,11 +656,11 @@ if [ "$PYTHON_BINDINGS" -o "$BOOST_PYTHON_BINDINGS" ]; then
 	if [ "$PYTHON_CONFIG" ]; then
 		echo "Using provided python-config to set compilation python-bindings flags"
 		PYTHON_CFLAGS=`$PYTHON_CONFIG --includes`
-		# -undefined dynamic_lookup is macOS-specific; on Linux we don't need special flags
+		# -undefined dynamic_lookup is macOS-specific; on Linux use --ldflags from python-config
 		if [ "$OS_NAME" = Darwin ]; then
 			PYTHON_LDFLAGS='-undefined dynamic_lookup'
 		else
-			PYTHON_LDFLAGS=''
+			PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags 2>/dev/null || echo ""`
 		fi
 	fi
 
