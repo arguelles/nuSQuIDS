@@ -1,10 +1,15 @@
 #!/bin/bash
 set -e
 
+# Get the conda prefix (use CONDA_DIR if CONDA_PREFIX is not set)
+PREFIX="${CONDA_PREFIX:-${CONDA_DIR}/envs/notebook}"
+
+echo "Using PREFIX: $PREFIX"
+
 # Install SQuIDS
 git clone https://github.com/jsalvado/SQuIDS.git $HOME/SQuIDS
 cd $HOME/SQuIDS
-./configure --prefix=$CONDA_PREFIX
+./configure --prefix="$PREFIX"
 make -j$(nproc)
 make install
 cd -
