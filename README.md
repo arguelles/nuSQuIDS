@@ -8,7 +8,7 @@ Try it Online
 
 No installation required! Run an interactive Jupyter notebook example:
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/arguelles/nuSQuIDS/master?filepath=resources%2Fpython%2Fexample%2FnuSQUIDS-DEMO.ipynb)
+<a href="https://mybinder.org/v2/gh/arguelles/nuSQuIDS/master?filepath=resources%2Fpython%2Fexample%2FnuSQUIDS-DEMO.ipynb" target="_blank"><img src="https://mybinder.org/badge_logo.svg" alt="Binder"></a>
 
 Installation (Python)
 ---------------------

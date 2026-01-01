@@ -1,10 +1,13 @@
 from __future__ import print_function
+import importlib as _importlib
 import numpy as np
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
-from . import nuSQuIDS as nsq
+
+# Import the extension module without adding to parent namespace
+nsq = _importlib.import_module('.nuSQuIDS', __name__.rsplit('.', 1)[0])
 
 # we will use the boost injector metaclass
 
