@@ -101,6 +101,42 @@ Compile example programs:
 
 The resulting example executables can be found in the various subdirectories of `examples/`.
 
+Examples
+--------
+
+The `examples/` directory contains both C++ and Python versions of example programs:
+
+| Directory | Description |
+|-----------|-------------|
+| `Single_energy/` | Single energy mode oscillations |
+| `Multiple_energy/` | Multiple energy mode with power-law spectrum |
+| `Bodies/` | Various body types (Earth, EarthAtm, Vacuum, etc.) |
+| `Constant_density_layers/` | Multi-layer propagation |
+| `Atm_default/` | Atmospheric neutrino propagation (nuSQUIDSAtm) |
+| `HDF5_Write_Read/` | State serialization to HDF5 |
+| `Astrophysical_neutrino_flavor_ratio/` | Astrophysical flavor ratio calculation |
+| `NSI/` | Non-standard interactions (C++ only) |
+| `LV/` | Lorentz violation (C++ only) |
+| `Xsections/` | Custom cross-sections (C++ only) |
+
+Run C++ examples after building:
+
+	./examples/Single_energy/single_energy
+
+Run Python examples:
+
+	python examples/Single_energy/main.py
+
+Benchmarks
+----------
+
+nuSQuIDS includes a benchmark suite to measure performance:
+
+	make benchmark       # Full benchmark (more iterations)
+	make benchmark-quick # Quick benchmark
+
+The benchmark tests single energy, multiple energy, and atmospheric modes with various physics configurations (with/without interactions, Glashow resonance, tau regeneration).
+
 Installing
 ----------
 
@@ -111,6 +147,32 @@ Install the library (default location: `/usr/local`):
 To change the installation prefix:
 
 	./configure --prefix=$HOME
+
+This installs:
+- Headers to `$PREFIX/include/nuSQuIDS/`
+- Libraries to `$PREFIX/lib/`
+- The `nusquids-config` script to `$PREFIX/bin/`
+- Physics data to `$PREFIX/share/nuSQuIDS/`
+
+Using nusquids-config
+---------------------
+
+After installation, use `nusquids-config` to get compiler and linker flags for your own programs:
+
+	# Get compiler flags
+	nusquids-config --cflags
+
+	# Get linker flags
+	nusquids-config --libs
+
+	# Compile your own program
+	g++ $(nusquids-config --cflags) -c myprogram.cpp
+	g++ myprogram.o $(nusquids-config --libs) -o myprogram
+
+	# Or in one step
+	g++ $(nusquids-config --cflags) myprogram.cpp $(nusquids-config --libs) -o myprogram
+
+Available options: `--prefix`, `--incdir`, `--libdir`, `--cflags`, `--libs`, `--version`
 
 Python Bindings (Manual Build)
 ------------------------------

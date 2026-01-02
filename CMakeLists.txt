@@ -119,6 +119,10 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/include/
 install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION lib)
 
+# Install nusquids-config script
+install(PROGRAMS ${NUSQUIDS_INSTALL_PREFIX}/bin/nusquids-config
+        DESTINATION bin)
+
 # -------------- Installation of Python Library ---------------------------------
 
 # 1. Pure-Python helpers + __init__.py  →  nuSQuIDS/
