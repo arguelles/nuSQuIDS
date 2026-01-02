@@ -34,7 +34,7 @@ The following system libraries are required:
 
 * GSL (>= 1.15): http://www.gnu.org/software/gsl/
 * HDF5 with C bindings: http://www.hdfgroup.org/HDF5/
-* SQuIDS (>= 1.2): https://github.com/jsalvado/SQuIDS/
+* SQuIDS (> 1.2): https://github.com/jsalvado/SQuIDS/
 
 For Python bindings, you also need:
 * numpy: http://www.numpy.org/
