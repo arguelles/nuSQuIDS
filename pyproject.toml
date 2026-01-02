@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nuSQuIDS"
-version = "1.12.1"          # keep in sync with your Makefile
+version = "1.12.2"          # keep in sync with your Makefile
 description = "Neutrino propagation library with pybind11 bindings for reference see"
 authors = [{name = "Carlos A. Argüelles Delgado", email = "carguelles@fas.harvard.edu"}]
 readme = "README.md"
