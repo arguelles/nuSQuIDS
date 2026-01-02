@@ -210,3 +210,52 @@ Build and install the Python bindings:
 Alternatively, add the bindings to your PYTHONPATH:
 
 	export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
+
+---
+
+Citation
+--------
+
+If you use nuSQuIDS in your research, please cite our paper:
+
+```bibtex
+@article{Arguelles:2021twb,
+    author = {Arg{\"u}elles, Carlos A. and Salvado, Jordi and Weaver, Christopher N.},
+    title = "{nuSQuIDS: A toolbox for neutrino propagation}",
+    eprint = "2112.13804",
+    archivePrefix = "arXiv",
+    primaryClass = "hep-ph",
+    doi = "10.1016/j.cpc.2022.108346",
+    journal = "Comput. Phys. Commun.",
+    volume = "277",
+    pages = "108346",
+    year = "2022"
+}
+```
+
+nuSQuIDS is built on top of the SQuIDS library. If appropriate, please also consider citing the SQuIDS papers:
+
+```bibtex
+@article{Arguelles:2020hss,
+    author = {Arg{\"u}elles, Carlos A. and Salvado, Jordi and Weaver, Christopher N.},
+    title = "{A Simple Quantum Integro-Differential Solver (SQuIDS)}",
+    doi = "10.1016/j.cpc.2020.107405",
+    journal = "Comput. Phys. Commun.",
+    volume = "255",
+    pages = "107405",
+    year = "2020"
+}
+
+@article{Delgado:2014lyt,
+    author = "Arguelles, Carlos and Salvado, Jordi and Weaver, Christopher N.",
+    title = "{A Simple Quantum Integro-Differential Solver (SQuIDS)}",
+    eprint = "1412.3832",
+    archivePrefix = "arXiv",
+    primaryClass = "hep-ph",
+    doi = "10.1016/j.cpc.2015.06.022",
+    journal = "Comput. Phys. Commun.",
+    volume = "196",
+    pages = "569--591",
+    year = "2015"
+}
+```
