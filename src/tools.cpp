@@ -136,6 +136,8 @@ marray<double,1> logspace(double Emin,double Emax,unsigned int div){
 
 // additional GSL-like tools
 
+// GSL 2.8+ provides gsl_matrix_complex_conjugate, so only define our own for older versions
+#if !defined(GSL_MAJOR_VERSION) || (GSL_MAJOR_VERSION < 2) || (GSL_MAJOR_VERSION == 2 && GSL_MINOR_VERSION < 8)
 void gsl_matrix_complex_conjugate(gsl_matrix_complex *cm)
 {
   gsl_complex z;
@@ -147,6 +149,7 @@ void gsl_matrix_complex_conjugate(gsl_matrix_complex *cm)
     }
   }
 }
+#endif
 
 void gsl_matrix_complex_print(gsl_matrix_complex* matrix){
     for(unsigned int i = 0; i < matrix->size1; i++){

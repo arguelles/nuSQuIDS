@@ -1,7 +1,7 @@
 # coding: utf-8
 # # $\nu$-SQuIDS Demo: Welcome!
 
-import nuSQuIDS as nsq
+import nusquids as nsq
 
 try:
     import matplotlib as mpl

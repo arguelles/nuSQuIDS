@@ -34,6 +34,7 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_matrix_complex_double.h>
+#include <gsl/gsl_version.h>
 #include <H5Apublic.h>
 #include <H5Dpublic.h>
 #include <H5Fpublic.h>
@@ -71,9 +72,12 @@ marray<double,1> linspace(double min,double max,unsigned int samples);
 /// @param samples Number of samples to generate.
 marray<double,1> logspace(double min,double max,unsigned int samples);
 
+// GSL 2.8+ provides gsl_matrix_complex_conjugate, so only define our own for older versions
+#if !defined(GSL_MAJOR_VERSION) || (GSL_MAJOR_VERSION < 2) || (GSL_MAJOR_VERSION == 2 && GSL_MINOR_VERSION < 8)
 /// \brief Calculate the complex conjugate of a matrix.
 /// @param matrix Matrix to conjugate.
 void gsl_matrix_complex_conjugate(gsl_matrix_complex* matrix);
+#endif
 
 /// \brief Print to std::cout a gsl complex matrix.
 /// @param matrix Matrix to print.
