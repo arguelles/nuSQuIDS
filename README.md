@@ -23,7 +23,7 @@ pip install .
 
 After installation:
 ```python
-import nusquids
+import nuSQuIDS as nsq
 print("nuSQuIDS imported successfully!")
 ```
 

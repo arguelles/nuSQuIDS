@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(nusquids LANGUAGES CXX)
+project(nuSQuIDS LANGUAGES CXX)
 
 # -------------- Dependency discovery ----------------------------------------
 include(ExternalProject)
@@ -121,17 +121,17 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
 
 # -------------- Installation of Python Library ---------------------------------
 
-# 1. Pure-Python helpers + __init__.py  →  nusquids/
+# 1. Pure-Python helpers + __init__.py  →  nuSQuIDS/
 install(
     DIRECTORY   ${CMAKE_SOURCE_DIR}/resources/python/bindings/
-    DESTINATION nusquids
+    DESTINATION nuSQuIDS
     FILES_MATCHING
         PATTERN "*.py"       # nuSQUIDSTools.py, __init__.py, etc.
 )
 
-# 2. Compiled extension built by `make python(-install)`  →  nusquids/
+# 2. Compiled extension built by `make python(-install)`  →  nuSQuIDS/
 install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
-        DESTINATION ${PROJECT_NAME}  # usually "nusquids"
+        DESTINATION ${PROJECT_NAME}  # "nuSQuIDS"
         FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib" PATTERN "*.pyd")
 
 # -------------- macOS Library Path Fixups ------------------------------------
@@ -142,7 +142,7 @@ if(APPLE)
     # Create a script that will be run after installation to fix paths
     install(CODE "
         # Fix the Python extension's references to libnuSQuIDS
-        set(NUSQUIDS_SO \"\${CMAKE_INSTALL_PREFIX}/nusquids/nuSQuIDS.so\")
+        set(NUSQUIDS_SO \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS/nuSQuIDS.so\")
         if(EXISTS \${NUSQUIDS_SO})
             message(STATUS \"Fixing library paths in nuSQuIDS.so\")
             # Get current install names
@@ -190,7 +190,7 @@ if(APPLE)
         endif()
 
         # Also fix the libnuSQuIDS.dylib to have a proper id
-        set(NUSQUIDS_DYLIB \"\${CMAKE_INSTALL_PREFIX}/nusquids/libnuSQuIDS.1.dylib\")
+        set(NUSQUIDS_DYLIB \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS/libnuSQuIDS.1.dylib\")
         if(EXISTS \${NUSQUIDS_DYLIB})
             execute_process(
                 COMMAND install_name_tool -id
