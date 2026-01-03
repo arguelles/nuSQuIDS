@@ -756,9 +756,41 @@ void nuSQUIDS::UpdateInteractions(){
     NUSQUIDS_DEBUG_LABEL(setting_invlen_GR);
     assert(numneu > 0);
     unsigned int rho = (NT == both) ? 1 : 0;
-    //if we are dealing in generic 'nucleons' due to isoscalar cross sections, scale by electron 
-    //fraction to get electron number density. Otherwise, just take the proton number density. 
-    double num_e = nTargetTypes==1?targetDensities[0]*current_ye:targetDensities[0];
+    // Compute electron number density for Glashow resonance.
+    // In neutral matter, electron density = proton density = nucleon_density * ye
+    double num_e;
+
+    // Check if cross sections use nuclear targets
+    bool hasNuclearXS = false;
+    for(const PDGCode& tgt : int_struct->targets){
+      if(isNuclearPDGCode(tgt)){
+        hasNuclearXS = true;
+        break;
+      }
+    }
+
+    if(body_has_composition || hasNuclearXS){
+      // When we have composition data OR nuclear cross sections,
+      // compute electron density from mass density and ye
+      // Using the same formula as the p/n case in GetTargetNumberDensities
+      double density = (params.gr*pow(params.cm,-3))*current_density;
+      double ye = current_ye;
+      if(ye == 0){
+        num_e = 0;
+      } else {
+        // np = density / (me + mp + mn*(1-ye)/ye)
+        // In neutral matter, num_e = np
+        num_e = density / (params.electron_mass + params.proton_mass + params.neutron_mass*((1-ye)/ye));
+      }
+    }
+    else if(nTargetTypes==1){
+      // Isoscalar: scale nucleon density by ye to get electron density
+      num_e = targetDensities[0] * current_ye;
+    }
+    else{
+      // Proton/neutron: proton density equals electron density in neutral matter
+      num_e = targetDensities[0];  // First target is proton
+    }
     double* sigma_GR_ptr=&int_struct->sigma_GR[0];
     double* invlen_GR_ptr=&int_state.invlen_GR[0];
     double* invlen_INT_ptr=&int_state.invlen_INT[rho][0][0];
