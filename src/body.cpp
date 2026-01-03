@@ -31,6 +31,7 @@
 #include <utility>
 
 #include <H5Apublic.h>
+#include <H5Gpublic.h>
 #include <H5LTpublic.h>
 #include <H5Ppublic.h>
 #include <H5Spublic.h>
@@ -172,16 +173,63 @@ constant_ye(constant_ye)
   BodyParams = {constant_density, constant_ye};
 }
 
+ConstantDensity::ConstantDensity(double constant_density, double constant_ye,
+                                 std::map<PDGCode, double> composition):
+Body(),
+constant_density(constant_density),
+constant_ye(constant_ye),
+constant_composition(std::move(composition))
+{
+  BodyParams = {constant_density, constant_ye};
+}
+
 void ConstantDensity::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addDoubleAttribute(group,"constant_density",constant_density);
   addDoubleAttribute(group,"constant_ye",constant_ye);
+
+  // Serialize composition if present
+  unsigned int n_comp = constant_composition.size();
+  addUIntAttribute(group, "n_composition", n_comp);
+  if(n_comp > 0) {
+    // Store PDG codes and fractions as parallel arrays
+    std::vector<int32_t> codes(n_comp);
+    std::vector<double> fractions(n_comp);
+    size_t i = 0;
+    for(const auto& pair : constant_composition) {
+      codes[i] = static_cast<int32_t>(pair.first);
+      fractions[i] = pair.second;
+      i++;
+    }
+    std::vector<hsize_t> dims {n_comp};
+    H5LTmake_dataset(group, "composition_codes", 1, dims.data(), H5T_NATIVE_INT32, codes.data());
+    H5LTmake_dataset_double(group, "composition_fractions", 1, dims.data(), fractions.data());
+  }
 }
 
 std::shared_ptr<ConstantDensity> ConstantDensity::Deserialize(hid_t group){
   double const_dens=readDoubleAttribute(group,"constant_density");
   double const_ye=readDoubleAttribute(group,"constant_ye");
-  return std::make_shared<ConstantDensity>(const_dens,const_ye);
+
+  // Check for composition data (backwards compatible)
+  std::map<PDGCode, double> composition;
+  if(H5Aexists(group, "n_composition")) {
+    unsigned int n_comp = readUIntAttribute(group, "n_composition");
+    if(n_comp > 0) {
+      std::vector<int32_t> codes(n_comp);
+      std::vector<double> fractions(n_comp);
+      H5LTread_dataset(group, "composition_codes", H5T_NATIVE_INT32, codes.data());
+      H5LTread_dataset_double(group, "composition_fractions", fractions.data());
+      for(size_t i = 0; i < n_comp; i++) {
+        composition[static_cast<PDGCode>(codes[i])] = fractions[i];
+      }
+    }
+  }
+
+  if(composition.empty())
+    return std::make_shared<ConstantDensity>(const_dens, const_ye);
+  else
+    return std::make_shared<ConstantDensity>(const_dens, const_ye, composition);
 }
 
 // track constructor
@@ -208,6 +256,11 @@ double ConstantDensity::density(const GenericTrack& track_input) const
 double ConstantDensity::ye(const GenericTrack& track_input) const
 {
   return constant_ye;
+}
+
+std::map<PDGCode, double> ConstantDensity::composition(const GenericTrack& track_input) const
+{
+  return constant_composition;
 }
 
 bool ConstantDensity::IsConstantDensity() const { return true;}
@@ -237,6 +290,35 @@ inter_density(x_arr,density_arr),inter_ye(x_arr,ye_arr)
     BodyParams.push_back(ye);
 }
 
+VariableDensity::VariableDensity(std::vector<double> x_input, std::vector<double> density_input,
+                                 std::vector<double> ye_input,
+                                 std::map<PDGCode, std::vector<double>> composition):
+Body(),x_arr(std::move(x_input)),density_arr(std::move(density_input)),ye_arr(std::move(ye_input)),
+inter_density(x_arr,density_arr),inter_ye(x_arr,ye_arr)
+{
+  assert("nuSQUIDS::Error::VariableDensityConstructor: Invalid array sizes." && x_arr.size() == density_arr.size() && x_arr.size() == ye_arr.size());
+  arraysize = x_arr.size();
+
+  x_min = x_arr.front();
+  x_max = x_arr.back();
+
+  for(double xx : x_arr)
+    BodyParams.push_back(xx);
+  for(double rho : density_arr)
+    BodyParams.push_back(rho);
+  for(double ye : ye_arr)
+    BodyParams.push_back(ye);
+
+  // Build composition splines and store arrays for serialization
+  for(const auto& pair : composition) {
+    assert("nuSQUIDS::Error::VariableDensityConstructor: Composition array size mismatch." && pair.second.size() == arraysize);
+    inter_composition[pair.first] = AkimaSpline(x_arr, pair.second);
+    composition_arr[pair.first] = pair.second;  // Store for serialization
+    x_composition_min[pair.first] = pair.second.front();
+    x_composition_max[pair.first] = pair.second.back();
+  }
+}
+
 void VariableDensity::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
@@ -244,6 +326,31 @@ void VariableDensity::Serialize(hid_t group) const {
   H5LTmake_dataset_double(group, "x_arr", 1, dims.data(), x_arr.data());
   H5LTmake_dataset_double(group, "density_arr", 1, dims.data(), density_arr.data());
   H5LTmake_dataset_double(group, "ye_arr", 1, dims.data(), ye_arr.data());
+
+  // Serialize composition if present
+  unsigned int n_comp = composition_arr.size();
+  addUIntAttribute(group, "n_composition", n_comp);
+  if(n_comp > 0) {
+    // Create a group for composition data
+    hid_t comp_group = H5Gcreate(group, "composition", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    // Store PDG codes
+    std::vector<int32_t> codes(n_comp);
+    size_t i = 0;
+    for(const auto& pair : composition_arr) {
+      codes[i++] = static_cast<int32_t>(pair.first);
+    }
+    std::vector<hsize_t> code_dims {n_comp};
+    H5LTmake_dataset(comp_group, "codes", 1, code_dims.data(), H5T_NATIVE_INT32, codes.data());
+
+    // Store each composition array as a dataset
+    for(const auto& pair : composition_arr) {
+      std::string dataset_name = std::to_string(static_cast<int32_t>(pair.first));
+      H5LTmake_dataset_double(comp_group, dataset_name.c_str(), 1, dims.data(), pair.second.data());
+    }
+
+    H5Gclose(comp_group);
+  }
 }
 
 std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
@@ -252,7 +359,35 @@ std::shared_ptr<VariableDensity> VariableDensity::Deserialize(hid_t group){
   H5LTread_dataset_double(group,"x_arr",x_vec.data());
   H5LTread_dataset_double(group,"density_arr",rho_vec.data());
   H5LTread_dataset_double(group,"ye_arr",ye_vec.data());
-  return std::make_shared<VariableDensity>(x_vec,rho_vec,ye_vec);
+
+  // Check for composition data (backwards compatible)
+  std::map<PDGCode, std::vector<double>> composition;
+  if(H5Aexists(group, "n_composition")) {
+    unsigned int n_comp = readUIntAttribute(group, "n_composition");
+    if(n_comp > 0 && H5Lexists(group, "composition", H5P_DEFAULT)) {
+      hid_t comp_group = H5Gopen(group, "composition", H5P_DEFAULT);
+
+      // Read PDG codes
+      std::vector<int32_t> codes(n_comp);
+      H5LTread_dataset(comp_group, "codes", H5T_NATIVE_INT32, codes.data());
+
+      // Read each composition array
+      for(size_t i = 0; i < n_comp; i++) {
+        PDGCode code = static_cast<PDGCode>(codes[i]);
+        std::string dataset_name = std::to_string(codes[i]);
+        std::vector<double> comp_data(asize);
+        H5LTread_dataset_double(comp_group, dataset_name.c_str(), comp_data.data());
+        composition[code] = std::move(comp_data);
+      }
+
+      H5Gclose(comp_group);
+    }
+  }
+
+  if(composition.empty())
+    return std::make_shared<VariableDensity>(x_vec, rho_vec, ye_vec);
+  else
+    return std::make_shared<VariableDensity>(x_vec, rho_vec, ye_vec, composition);
 }
 
 // track constructor
@@ -273,6 +408,26 @@ double VariableDensity::ye(const GenericTrack& track_input) const
     return 0;
   } else {
     return inter_ye(x);
+  }
+}
+
+std::map<PDGCode, double> VariableDensity::composition(const GenericTrack& track_input) const
+{
+  if(inter_composition.empty())
+    return {};
+
+  double x = track_input.GetX()/param.cm;
+  std::map<PDGCode, double> result;
+
+  if (x < x_min) {
+    return x_composition_min;
+  } else if (x > x_max) {
+    return x_composition_max;
+  } else {
+    for(const auto& pair : inter_composition) {
+      result[pair.first] = pair.second(x);
+    }
+    return result;
   }
 }
 
@@ -309,6 +464,7 @@ Earth::Earth(std::string filepath):Body()
 
   marray<double,2> earth_model = quickread(filepath);
   arraysize = earth_model.extent(0);
+  unsigned int ncols = earth_model.extent(1);
 
   earth_radius.resize(arraysize);
   earth_density.resize(arraysize);
@@ -329,6 +485,28 @@ Earth::Earth(std::string filepath):Body()
 
   inter_density=AkimaSpline(earth_radius,earth_density);
   inter_ye=AkimaSpline(earth_radius,earth_ye);
+
+  // Check if file contains composition data (13 columns instead of 3)
+  // Columns 3-12 are: H, O, Na, Mg, Al, Si, S, Ca, Fe, Ni
+  if(ncols >= 13){
+    n_composition = 10;
+    earth_composition.resize(n_composition);
+    for(unsigned int c = 0; c < n_composition; c++){
+      earth_composition[c].resize(arraysize);
+      for(unsigned int i = 0; i < arraysize; i++){
+        earth_composition[c][i] = earth_model[i][3 + c];
+      }
+    }
+
+    // Build composition splines
+    std::vector<PDGCode> composition_codes = { hydrogen, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+    for(unsigned int c = 0; c < n_composition; c++){
+      PDGCode code = composition_codes[c];
+      inter_composition[code] = AkimaSpline(earth_radius, earth_composition[c]);
+      x_composition_min[code] = earth_composition[c][0];
+      x_composition_max[code] = earth_composition[c][arraysize-1];
+    }
+  }
 }
 
 Earth::Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):
@@ -349,6 +527,37 @@ inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
   x_ye_max = earth_ye[arraysize-1];
 }
 
+Earth::Earth(std::vector<double> x, std::vector<double> rho, std::vector<double> ye,
+             std::vector<std::vector<double>> composition):
+Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
+earth_composition(std::move(composition)),
+inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
+{
+  assert("nuSQUIDS::Error::EarthConstructor: Invalid array sizes." && earth_radius.size() == earth_density.size() && earth_radius.size() == earth_ye.size());
+  // The Input file should have the radius specified from 0 to 1.
+  // where 0 is the center of the Earth and 1 is the surface.
+  radius = 6371.0; // [km]
+  arraysize = earth_radius.size();
+  n_composition = earth_composition.size();
+
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
+
+  // The PREM data file has no meta data, so we assume these elements
+  // Order: H, O, Na, Mg, Al, Si, S, Ca, Fe, Ni
+  std::vector<PDGCode> composition_codes = { hydrogen, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+  for(size_t i = 0; i < n_composition && i < composition_codes.size(); i++) {
+    PDGCode tgt_id = composition_codes[i];
+    inter_composition[tgt_id] = AkimaSpline(earth_radius, earth_composition[i]);
+    x_composition_min[tgt_id] = earth_composition[i][0];
+    x_composition_max[tgt_id] = earth_composition[i][arraysize-1];
+  }
+}
+
 void Earth::Serialize(hid_t group) const {
   addStringAttribute(group,"name", GetName().c_str());
   addUIntAttribute(group,"arraysize",arraysize);
@@ -356,6 +565,21 @@ void Earth::Serialize(hid_t group) const {
   H5LTmake_dataset_double(group, "earth_radius", 1, dims.data(), earth_radius.data());
   H5LTmake_dataset_double(group, "earth_density", 1, dims.data(), earth_density.data());
   H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
+
+  // Serialize composition if present
+  addUIntAttribute(group, "n_composition", n_composition);
+  if(n_composition > 0) {
+    // Create a group for composition data
+    hid_t comp_group = H5Gcreate(group, "composition", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    // Store each composition array as a numbered dataset
+    for(unsigned int i = 0; i < n_composition; i++) {
+      std::string dataset_name = std::to_string(i);
+      H5LTmake_dataset_double(comp_group, dataset_name.c_str(), 1, dims.data(), earth_composition[i].data());
+    }
+
+    H5Gclose(comp_group);
+  }
 }
 
 std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
@@ -364,7 +588,29 @@ std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
   H5LTread_dataset_double(group,"earth_radius",x_vec.data());
   H5LTread_dataset_double(group,"earth_density",rho_vec.data());
   H5LTread_dataset_double(group,"earth_ye",ye_vec.data());
-  return std::make_shared<Earth>(x_vec,rho_vec,ye_vec);
+
+  // Check for composition data (backwards compatible)
+  std::vector<std::vector<double>> composition;
+  if(H5Aexists(group, "n_composition")) {
+    unsigned int n_comp = readUIntAttribute(group, "n_composition");
+    if(n_comp > 0 && H5Lexists(group, "composition", H5P_DEFAULT)) {
+      hid_t comp_group = H5Gopen(group, "composition", H5P_DEFAULT);
+
+      composition.resize(n_comp);
+      for(unsigned int i = 0; i < n_comp; i++) {
+        std::string dataset_name = std::to_string(i);
+        composition[i].resize(asize);
+        H5LTread_dataset_double(comp_group, dataset_name.c_str(), composition[i].data());
+      }
+
+      H5Gclose(comp_group);
+    }
+  }
+
+  if(composition.empty())
+    return std::make_shared<Earth>(x_vec, rho_vec, ye_vec);
+  else
+    return std::make_shared<Earth>(x_vec, rho_vec, ye_vec, composition);
 }
 
 double Earth::density(const GenericTrack& track_input) const
@@ -412,6 +658,38 @@ double Earth::ye(const GenericTrack& track_input) const
   }
   else {
     return inter_ye(r/radius);
+  }
+}
+
+std::map<PDGCode, double> Earth::composition(const GenericTrack& track_input) const
+{
+  if(inter_composition.empty())
+    return {};
+
+  const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+  double xkm = track_earth.GetX()/param.km;
+  double r2 = SQR(radius)+SQR(xkm)-(track_earth.GetBaseline()/param.km)*xkm;
+  double r;
+  if (r2 > 0.0)
+    r = sqrt(r2);
+  else if(fabs(r2) < 1.e-6)
+    r = 0;
+  else
+    throw std::runtime_error("nuSQUIDS::Earth::composition got impossible geometry.");
+
+  double rel_r = r/radius;
+  if (rel_r < x_radius_min) {
+    return x_composition_min;
+  }
+  else if (rel_r > x_radius_max) {
+    return x_composition_max;
+  }
+  else {
+    std::map<PDGCode, double> result;
+    for(const auto& pair : inter_composition) {
+      result[pair.first] = pair.second(rel_r);
+    }
+    return result;
   }
 }
 
@@ -742,6 +1020,21 @@ void EarthAtm::Serialize(hid_t group) const {
   H5LTmake_dataset_double(group, "earth_ye", 1, dims.data(), earth_ye.data());
   addH5Attribute(group,"radius",radius);
   addH5Attribute(group,"atm_height",atm_height);
+
+  // Serialize composition if present
+  addUIntAttribute(group, "n_composition", n_composition);
+  if(n_composition > 0) {
+    // Create a group for composition data
+    hid_t comp_group = H5Gcreate(group, "composition", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    // Store each composition array as a numbered dataset
+    for(unsigned int i = 0; i < n_composition; i++) {
+      std::string dataset_name = std::to_string(i);
+      H5LTmake_dataset_double(comp_group, dataset_name.c_str(), 1, dims.data(), earth_composition[i].data());
+    }
+
+    H5Gclose(comp_group);
+  }
 }
 
 std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
@@ -758,7 +1051,31 @@ std::shared_ptr<EarthAtm> EarthAtm::Deserialize(hid_t group){
     readH5Attribute(group,"radius", radius);
   if(H5Aexists(group,"atm_height"))
     readH5Attribute(group,"atm_height", atm_height);
-  auto earthAtm = std::make_shared<EarthAtm>(x_vec,rho_vec,ye_vec);
+
+  // Check for composition data (backwards compatible)
+  std::vector<std::vector<double>> composition;
+  if(H5Aexists(group, "n_composition")) {
+    unsigned int n_comp = readUIntAttribute(group, "n_composition");
+    if(n_comp > 0 && H5Lexists(group, "composition", H5P_DEFAULT)) {
+      hid_t comp_group = H5Gopen(group, "composition", H5P_DEFAULT);
+
+      composition.resize(n_comp);
+      for(unsigned int i = 0; i < n_comp; i++) {
+        std::string dataset_name = std::to_string(i);
+        composition[i].resize(asize);
+        H5LTread_dataset_double(comp_group, dataset_name.c_str(), composition[i].data());
+      }
+
+      H5Gclose(comp_group);
+    }
+  }
+
+  std::shared_ptr<EarthAtm> earthAtm;
+  if(composition.empty())
+    earthAtm = std::make_shared<EarthAtm>(x_vec, rho_vec, ye_vec);
+  else
+    earthAtm = std::make_shared<EarthAtm>(x_vec, rho_vec, ye_vec, composition);
+
   earthAtm->radius = radius;
   earthAtm->SetAtmosphereHeight(atm_height);
   return earthAtm;
@@ -772,6 +1089,8 @@ EarthAtm::Track::MakeWithCosine(double cosphi, double earth_radius_, double atmh
   Track track;
 
   track.cosphi = cosphi;
+  track.earth_radius = earth_radius_;
+  track.atmheight = atmheight_;
   double sinsqphi = 1-track.cosphi*track.cosphi;
 
   track.L = sqrt(SQR(earth_radius_+atmheight_)-earth_radius_*earth_radius_*sinsqphi)-earth_radius_*cosphi;
@@ -845,6 +1164,40 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   }
 }
 
+std::map<PDGCode, double> EarthAtm::composition(const GenericTrack& track_input) const
+{
+  if(inter_composition.empty())
+    return {};
+
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+  double xkm = track_earthatm.GetX()/param.km;
+  double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+  double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
+  double r = (r2>0 ? sqrt(r2) : 0);
+
+  double rel_r = r/earth_with_atm_radius;
+
+  std::map<PDGCode, double> result;
+  for(const auto& pair : inter_composition){
+    PDGCode code = pair.first;
+    if(rel_r < x_radius_min){
+      result[code] = x_composition_min.at(code);
+    }
+    else if(rel_r > x_radius_max && r < radius){
+      result[code] = x_composition_max.at(code);
+    }
+    else if(r > radius){
+      // In atmosphere, use surface composition
+      result[code] = x_composition_max.at(code);
+    }
+    else{
+      result[code] = pair.second(rel_r);
+    }
+  }
+  return result;
+}
+
 EarthAtm::EarthAtm(std::string filepath):Body()
 {
   radius = 6371.0; // km
@@ -853,6 +1206,7 @@ EarthAtm::EarthAtm(std::string filepath):Body()
 
   marray<double,2> earth_model = quickread(filepath);
   arraysize = earth_model.extent(0);
+  unsigned int ncols = earth_model.extent(1);
 
   earth_radius.resize(arraysize);
   earth_density.resize(arraysize);
@@ -870,9 +1224,31 @@ EarthAtm::EarthAtm(std::string filepath):Body()
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
-	
+
   inter_density=AkimaSpline(earth_radius,earth_density);
   inter_ye=AkimaSpline(earth_radius,earth_ye);
+
+  // Check if file contains composition data (13 columns instead of 3)
+  // Columns 3-12 are: H, O, Na, Mg, Al, Si, S, Ca, Fe, Ni
+  if(ncols >= 13){
+    n_composition = 10;
+    earth_composition.resize(n_composition);
+    for(unsigned int c = 0; c < n_composition; c++){
+      earth_composition[c].resize(arraysize);
+      for(unsigned int i = 0; i < arraysize; i++){
+        earth_composition[c][i] = earth_model[i][3 + c];
+      }
+    }
+
+    // Build composition splines
+    std::vector<PDGCode> composition_codes = { hydrogen, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+    for(unsigned int c = 0; c < n_composition; c++){
+      PDGCode code = composition_codes[c];
+      inter_composition[code] = AkimaSpline(earth_radius, earth_composition[c]);
+      x_composition_min[code] = earth_composition[c][0];
+      x_composition_max[code] = earth_composition[c][arraysize-1];
+    }
+  }
 }
 
 EarthAtm::EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye):
@@ -893,6 +1269,43 @@ inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
   x_rho_max = earth_density[arraysize-1];
   x_ye_min = earth_ye[0];
   x_ye_max = earth_ye[arraysize-1];
+}
+
+EarthAtm::EarthAtm(std::vector<double> x, std::vector<double> rho, std::vector<double> ye,
+                   std::vector<std::vector<double>> composition):
+Body(),earth_radius(std::move(x)),earth_density(std::move(rho)),earth_ye(std::move(ye)),
+earth_composition(std::move(composition)),
+inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
+{
+  assert("nuSQUIDS::Error::EarthAtmConstructor: Invalid array sizes." && earth_radius.size() == earth_density.size() && earth_radius.size() == earth_ye.size());
+
+  radius = 6371.0; // km
+  atm_height = 22; // km
+  earth_with_atm_radius = radius + atm_height;
+  arraysize = earth_radius.size();
+
+  x_radius_min = earth_radius[0];
+  x_radius_max = earth_radius[arraysize-1];
+  x_rho_min = earth_density[0];
+  x_rho_max = earth_density[arraysize-1];
+  x_ye_min = earth_ye[0];
+  x_ye_max = earth_ye[arraysize-1];
+
+  // Initialize composition splines
+  // Expected element order: H, O, Na, Mg, Al, Si, S, Ca, Fe, Ni
+  n_composition = earth_composition.size();
+  if(n_composition > 0){
+    std::vector<PDGCode> composition_codes = { hydrogen, oxygen, sodium, magnesium, aluminum, silicon, sulfur, calcium, iron, nickel };
+    assert("nuSQUIDS::Error::EarthAtmConstructor: Too many composition components." && n_composition <= composition_codes.size());
+
+    for(unsigned int i = 0; i < n_composition; i++){
+      assert("nuSQUIDS::Error::EarthAtmConstructor: Composition array size mismatch." && earth_composition[i].size() == arraysize);
+      PDGCode code = composition_codes[i];
+      inter_composition[code] = AkimaSpline(earth_radius, earth_composition[i]);
+      x_composition_min[code] = earth_composition[i][0];
+      x_composition_max[code] = earth_composition[i][arraysize-1];
+    }
+  }
 }
 
 EarthAtm::~EarthAtm(){}

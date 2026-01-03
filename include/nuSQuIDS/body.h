@@ -31,12 +31,14 @@
 
 #include <cassert>
 #include <functional>
+#include <map>
 #include <string>
 #include <memory>
 #include <vector>
 #include <H5Ipublic.h>
 #include "nuSQuIDS/marray.h"
 #include "nuSQuIDS/tools.h"
+#include "nuSQuIDS/xsections.h"
 
 namespace nusquids{
 
@@ -116,6 +118,11 @@ class Body{
     virtual double density(const Track&) const {return 0.0;}
     /// \brief Return the electron fraction at a given trajectory object.
     virtual double ye(const Track&) const {return 1.0;}
+    /// \brief Return the composition at a given trajectory object.
+    /// \details Returns a map from PDGCode to fractional composition.
+    /// The default implementation returns an empty map, indicating that
+    /// composition information is not available (use ye-based calculation).
+    virtual std::map<PDGCode, double> composition(const Track&) const { return {}; }
     /// \brief Returns parameters that define the body.
     const std::vector<double>& GetBodyParams() const { return BodyParams;}
     /// \brief Returns the body identifier.
@@ -195,14 +202,21 @@ class ConstantDensity: public Body{
     const double constant_density;
     /// \brief Constant electron fraction
     const double constant_ye;
+    /// \brief Constant composition (optional)
+    std::map<PDGCode, double> constant_composition;
   public:
     /// \brief Constructor
     /// @param density Density in g/cm^3.
     /// @param ye electron fraction.
     ConstantDensity(double density,double ye);
+    /// \brief Constructor with composition
+    /// @param density Density in g/cm^3.
+    /// @param ye electron fraction.
+    /// @param composition Map from PDGCode to fractional composition.
+    ConstantDensity(double density, double ye, std::map<PDGCode, double> composition);
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<ConstantDensity> Deserialize(hid_t group);
 
@@ -224,7 +238,7 @@ class ConstantDensity: public Body{
         /// \details In this case initial position is assumed 0.
         Track(double xend):Track(0.0,xend){}
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<ConstantDensity::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -236,11 +250,13 @@ class ConstantDensity: public Body{
     /// \brief Returns the name of the body.
     static std::string GetName() {return "ConstantDensity";}
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
     /// \brief Returns true as this body has constant density by definition
-    bool IsConstantDensity() const;
+    bool IsConstantDensity() const override;
 };
 
 /// \class VariableDensity
@@ -267,6 +283,14 @@ class VariableDensity: public Body{
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
+    /// \brief Composition splines (optional)
+    std::map<PDGCode, AkimaSpline> inter_composition;
+    /// \brief Composition arrays (optional, stored for serialization)
+    std::map<PDGCode, std::vector<double>> composition_arr;
+    /// \brief Composition at minimum x (for boundary handling)
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition at maximum x (for boundary handling)
+    std::map<PDGCode, double> x_composition_max;
   public:
     /// \brief Constructor.
     /// @param x Vector containing position nodes in cm.
@@ -274,11 +298,19 @@ class VariableDensity: public Body{
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     VariableDensity(std::vector<double> x,std::vector<double> density,std::vector<double> ye);
+    /// \brief Constructor with composition.
+    /// @param x Vector containing position nodes in cm.
+    /// @param density Density, in g/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// @param composition Map from PDGCode to vector of fractional composition at each node.
+    /// \pre All input vectors must be of equal size.
+    VariableDensity(std::vector<double> x, std::vector<double> density, std::vector<double> ye,
+                    std::map<PDGCode, std::vector<double>> composition);
     /// \brief Destructor.
     ~VariableDensity();
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<VariableDensity> Deserialize(hid_t group);
 
@@ -300,7 +332,7 @@ class VariableDensity: public Body{
         /// \details In this case initial position is assumed 0.
         Track(double xend):Track(0.0,xend){}
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<VariableDensity::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -312,9 +344,11 @@ class VariableDensity: public Body{
     /// \brief Returns the name of the body.
     static std::string GetName() {return "VariableDensity";}
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
 };
 
 /// \class Earth
@@ -329,6 +363,10 @@ class Earth: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
+    /// \brief Earth composition arrays (optional)
+    std::vector<std::vector<double>> earth_composition;
+    /// \brief Number of composition components
+    unsigned int n_composition = 0;
     /// \brief Data arrays size
     unsigned int arraysize;
 
@@ -336,6 +374,8 @@ class Earth: public Body{
     AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
+    /// \brief Composition splines (optional)
+    std::map<PDGCode, AkimaSpline> inter_composition;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -349,6 +389,10 @@ class Earth: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
+    /// \brief Composition at minimum radius (optional)
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition at maximum radius (optional)
+    std::map<PDGCode, double> x_composition_max;
   public:
     /// \brief Default constructor using supplied PREM.
     Earth();
@@ -368,11 +412,19 @@ class Earth: public Body{
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     Earth(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    /// \brief Constructor with composition.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// @param composition Composition arrays, one per element type.
+    /// \pre All input vectors must be of equal size.
+    Earth(std::vector<double> x, std::vector<double> rho, std::vector<double> ye,
+          std::vector<std::vector<double>> composition);
     /// \brief Destructor.
     ~Earth();
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<Earth> Deserialize(hid_t group);
 
@@ -399,9 +451,9 @@ class Earth: public Body{
         Track(double baseline):Track(0.,baseline,baseline){}
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return baseline;}
-        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+        void FillDerivedParams(std::vector<double>& TrackParams) const override;
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<Earth::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -414,9 +466,11 @@ class Earth: public Body{
     static std::string GetName() {return "Earth";}
 
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
 
     /// \brief Returns the radius of the Earth in natural units.
     double GetRadius() const {return radius;}
@@ -480,7 +534,7 @@ class Sun: public Body{
     ~Sun();
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<Sun> Deserialize(hid_t group);
 
@@ -503,7 +557,7 @@ class Sun: public Body{
         /// \details The trajectory is measured from the sun center which is set to zero.
         Track(double xend):Track(0.,xend){}
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<Sun::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -517,9 +571,9 @@ class Sun: public Body{
     static std::string GetName() {return "Sun";}
 
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
 
     /// \brief Returns the radius of the Sun in natural units.
     double GetRadius() const {return radius;}
@@ -579,7 +633,7 @@ class SunASnu: public Body{
     ~SunASnu();
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<SunASnu> Deserialize(hid_t group);
 
@@ -609,9 +663,9 @@ class SunASnu: public Body{
         /// \details The trajectory baseline is determined by the impact parameter and starts
         /// at \c xini = 0, and ends when the neutrino exits the sun.
         Track(double b_impact_):Track(0.0,b_impact_){}
-        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+        void FillDerivedParams(std::vector<double>& TrackParams) const override;
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<SunASnu::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -625,9 +679,9 @@ class SunASnu: public Body{
     static std::string GetName() {return "SunASnu";}
 
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
 
     /// \brief Returns the radius of the Sun in natural units.
     double GetRadius() const {return radius;}
@@ -650,13 +704,19 @@ class EarthAtm: public Body{
     std::vector<double> earth_density;
     /// \brief Earth electron fraction array
     std::vector<double> earth_ye;
+    /// \brief Earth composition arrays (optional)
+    std::vector<std::vector<double>> earth_composition;
+    /// \brief Number of composition components
+    unsigned int n_composition = 0;
     /// \brief Data arrays size
     unsigned int arraysize;
-  
+
     /// \brief Density spline
-	AkimaSpline inter_density;
+    AkimaSpline inter_density;
     /// \brief Electron fraction spline
     AkimaSpline inter_ye;
+    /// \brief Composition splines (optional)
+    std::map<PDGCode, AkimaSpline> inter_composition;
 
     /// \brief Minimum radius.
     double x_radius_min;
@@ -670,6 +730,10 @@ class EarthAtm: public Body{
     double x_ye_min;
     /// \brief Electron fraction at maximum radius.
     double x_ye_max;
+    /// \brief Composition at minimum radius (optional)
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition at maximum radius (optional)
+    std::map<PDGCode, double> x_composition_max;
   public:
     /// \brief Default constructor using supplied PREM.
     EarthAtm();
@@ -689,10 +753,18 @@ class EarthAtm: public Body{
     /// @param ye Electron fraction at each of the nodes.
     /// \pre All input vectors must be of equal size.
     EarthAtm(std::vector<double> x,std::vector<double> rho,std::vector<double> ye);
+    /// \brief Constructor with composition.
+    /// @param x Vector containing position nodes in cm.
+    /// @param rho Density, in g/cm^3, at each of the nodes.
+    /// @param ye Electron fraction at each of the nodes.
+    /// @param composition Composition arrays, one per element type.
+    /// \pre All input vectors must be of equal size.
+    EarthAtm(std::vector<double> x, std::vector<double> rho, std::vector<double> ye,
+             std::vector<std::vector<double>> composition);
     ~EarthAtm();
 
     /// \brief Serialization function
-    void Serialize(hid_t group) const;
+    void Serialize(hid_t group) const override;
     /// \brief Deserialization function
     static std::shared_ptr<EarthAtm> Deserialize(hid_t group);
 
@@ -724,11 +796,11 @@ class EarthAtm: public Body{
         Track(double phi,double earth_radius_,double atmheight_);
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
-        virtual void FillDerivedParams(std::vector<double>& TrackParams) const;
+        void FillDerivedParams(std::vector<double>& TrackParams) const override;
         ///Construct a track with the cosine of the zenith angle
         static Track MakeWithCosine(double cosphi,double earth_radius_,double atmheight_);
         /// \brief Serialization function
-        void Serialize(hid_t group) const;
+        void Serialize(hid_t group) const override;
         /// \brief Deserialization function
         static std::shared_ptr<EarthAtm::Track> Deserialize(hid_t group);
         /// \brief Get track object name
@@ -739,9 +811,11 @@ class EarthAtm: public Body{
     /// \brief Returns the name of the body.
     static std::string GetName() {return "EarthAtm";}
     /// \brief Returns the density in g/cm^3
-    double density(const GenericTrack&) const;
+    double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
-    double ye(const GenericTrack&) const;
+    double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
     /// \brief Returns the radius of the Earth in km.
     double GetRadius() const {return radius;}
     /// \brief Returns the altitude of the top of the simulated atmosphere in km.
