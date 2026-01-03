@@ -96,13 +96,18 @@ neutrino studies through the Earth.
 
 **Citation:**
 ```bibtex
-@article{Weaver:2024xel,
-    author = "Weaver, Christopher and Carpio, Jose and Gonzalez-Garcia, M. C.",
-    title = "{Towards Precise Predictions for Atmospheric Neutrino Fluxes with nuSQuIDS}",
+@article{Weigel:2024gzh,
+    author = "Weigel, Philip L. R. and Conrad, Janet M. and Garcia-Soto, Alfonso",
+    title = "{Cross sections and inelasticity distributions of high-energy neutrino deep inelastic scattering}",
     eprint = "2408.05866",
     archivePrefix = "arXiv",
     primaryClass = "hep-ph",
-    year = "2024"
+    doi = "10.1103/PhysRevD.111.043044",
+    journal = "Phys. Rev. D",
+    volume = "111",
+    number = "4",
+    pages = "043044",
+    year = "2025"
 }
 ```
 
