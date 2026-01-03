@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <map>
 #include <vector>
 #include <unistd.h>
 
@@ -12,6 +13,7 @@
 
 #include <SQuIDS/const.h>
 #include <nuSQuIDS/body.h>
+#include <nuSQuIDS/resources.h>
 
 #define H5Gopen_vers 2
 #define H5Gcreate_vers 2
@@ -217,6 +219,125 @@ int main(){
   H5Gclose(body_group_id);
   H5Gclose(track_group_id);
   H5Gclose(earthatm_group_id);
+
+  // ************************************
+  // testing constant density with composition
+  // ************************************
+  std::map<PDGCode, double> water_comp;
+  water_comp[hydrogen] = 2.0/3.0;
+  water_comp[oxygen] = 1.0/3.0;
+  ConstantDensity c_comp(1.0, 0.555, water_comp);
+  ConstantDensity::Track ct_comp(10.*units.km, 50*units.km, 100.0*units.km);
+
+  hid_t const_comp_group_id = H5Gcreate(file_id, "constant_density_comp", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body_group_id = H5Gcreate(const_comp_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track_group_id = H5Gcreate(const_comp_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  c_comp.Serialize(body_group_id);
+  ct_comp.Serialize(track_group_id);
+  auto cr_comp = ConstantDensity::Deserialize(body_group_id);
+  auto ctr_comp = ConstantDensity::Track::Deserialize(track_group_id);
+
+  if (fabs(cr_comp->density(*ctr_comp) - c_comp.density(ct_comp)) > 1.0e-5)
+    std::cout << "densities are different after serializing for constant_density with composition" << std::endl;
+  if (fabs(cr_comp->ye(*ctr_comp) - c_comp.ye(ct_comp)) > 1.0e-5)
+    std::cout << "ye are different after serializing for constant_density with composition" << std::endl;
+
+  // Check composition
+  auto orig_comp = c_comp.composition(ct_comp);
+  auto read_comp = cr_comp->composition(*ctr_comp);
+  if (orig_comp.size() != read_comp.size())
+    std::cout << "composition size different after serializing for constant_density: Before = " << orig_comp.size() << " After = " << read_comp.size() << std::endl;
+  for (const auto& p : orig_comp) {
+    if (read_comp.find(p.first) == read_comp.end())
+      std::cout << "composition missing element " << static_cast<int32_t>(p.first) << " after serializing" << std::endl;
+    else if (fabs(read_comp.at(p.first) - p.second) > 1.0e-5)
+      std::cout << "composition element " << static_cast<int32_t>(p.first) << " different: Before = " << p.second << " After = " << read_comp.at(p.first) << std::endl;
+  }
+
+  H5Gclose(body_group_id);
+  H5Gclose(track_group_id);
+  H5Gclose(const_comp_group_id);
+
+  // ************************************
+  // testing variable density with composition
+  // ************************************
+  std::vector<double> xx_comp {1., 2., 3., 4., 5.};
+  std::vector<double> rho_comp {1., 1., 1., 1., 1.};
+  std::vector<double> ye_comp {0.5, 0.5, 0.5, 0.5, 0.5};
+  std::map<PDGCode, std::vector<double>> var_composition;
+  var_composition[iron] = {0.9, 0.8, 0.7, 0.6, 0.5};
+  var_composition[oxygen] = {0.1, 0.2, 0.3, 0.4, 0.5};
+  VariableDensity var_comp(xx_comp, rho_comp, ye_comp, var_composition);
+  VariableDensity::Track vart_comp(2.0, 2.0, 4.0);  // Position in cm (matching x_arr units)
+
+  hid_t var_comp_group_id = H5Gcreate(file_id, "variable_density_comp", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body_group_id = H5Gcreate(var_comp_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track_group_id = H5Gcreate(var_comp_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  var_comp.Serialize(body_group_id);
+  vart_comp.Serialize(track_group_id);
+  auto varr_comp = VariableDensity::Deserialize(body_group_id);
+  auto vartr_comp = VariableDensity::Track::Deserialize(track_group_id);
+
+  // Check composition at a point
+  auto var_orig_comp = var_comp.composition(vart_comp);
+  auto var_read_comp = varr_comp->composition(*vartr_comp);
+  if (var_orig_comp.size() != var_read_comp.size())
+    std::cout << "composition size different after serializing for variable_density: Before = " << var_orig_comp.size() << " After = " << var_read_comp.size() << std::endl;
+  for (const auto& p : var_orig_comp) {
+    if (var_read_comp.find(p.first) == var_read_comp.end())
+      std::cout << "variable_density composition missing element " << static_cast<int32_t>(p.first) << " after serializing" << std::endl;
+    else if (fabs(var_read_comp.at(p.first) - p.second) > 1.0e-5)
+      std::cout << "variable_density composition element " << static_cast<int32_t>(p.first) << " different: Before = " << p.second << " After = " << var_read_comp.at(p.first) << std::endl;
+  }
+
+  H5Gclose(body_group_id);
+  H5Gclose(track_group_id);
+  H5Gclose(var_comp_group_id);
+
+  // ************************************
+  // testing earthatm with composition
+  // ************************************
+  std::string prem_path = getResourcePath() + "/astro/EARTH_MODEL_PREM_wIso.dat";
+  EarthAtm earthatm_comp(prem_path);
+  earthatm_comp.SetAtmosphereHeight(50/*km*/);
+  EarthAtm::Track earthatmt_comp = earthatm_comp.MakeTrackWithCosine(-1.0);  // Vertical through Earth
+  earthatmt_comp.SetX(0.5 * earthatmt_comp.GetFinalX());  // Midpoint (core)
+
+  hid_t earthatm_comp_group_id = H5Gcreate(file_id, "earthatm_comp", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  body_group_id = H5Gcreate(earthatm_comp_group_id, "body", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  track_group_id = H5Gcreate(earthatm_comp_group_id, "track", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  earthatm_comp.Serialize(body_group_id);
+  earthatmt_comp.Serialize(track_group_id);
+  auto earthatmr_comp = EarthAtm::Deserialize(body_group_id);
+  auto earthatmtr_comp = EarthAtm::Track::Deserialize(track_group_id);
+
+  if (fabs(earthatmr_comp->density(*earthatmtr_comp) - earthatm_comp.density(earthatmt_comp)) > 1.0e-5)
+    std::cout << "densities are different after serializing for EarthAtm with composition: Before = " << earthatm_comp.density(earthatmt_comp) << " After = " << earthatmr_comp->density(*earthatmtr_comp) << std::endl;
+  if (fabs(earthatmr_comp->ye(*earthatmtr_comp) - earthatm_comp.ye(earthatmt_comp)) > 1.0e-5)
+    std::cout << "ye are different after serializing for EarthAtm with composition" << std::endl;
+
+  // Check composition at Earth's core (should have significant iron)
+  auto earth_orig_comp = earthatm_comp.composition(earthatmt_comp);
+  auto earth_read_comp = earthatmr_comp->composition(*earthatmtr_comp);
+  if (earth_orig_comp.size() != earth_read_comp.size())
+    std::cout << "composition size different after serializing for EarthAtm: Before = " << earth_orig_comp.size() << " After = " << earth_read_comp.size() << std::endl;
+  for (const auto& p : earth_orig_comp) {
+    if (earth_read_comp.find(p.first) == earth_read_comp.end())
+      std::cout << "EarthAtm composition missing element " << static_cast<int32_t>(p.first) << " after serializing" << std::endl;
+    else if (fabs(earth_read_comp.at(p.first) - p.second) > 1.0e-5)
+      std::cout << "EarthAtm composition element " << static_cast<int32_t>(p.first) << " different: Before = " << p.second << " After = " << earth_read_comp.at(p.first) << std::endl;
+  }
+
+  // Verify iron is present in core
+  if (earth_read_comp.find(iron) == earth_read_comp.end() || earth_read_comp.at(iron) < 0.5)
+    std::cout << "EarthAtm composition should have significant iron at core after serialization" << std::endl;
+
+  H5Gclose(body_group_id);
+  H5Gclose(track_group_id);
+  H5Gclose(earthatm_comp_group_id);
 
   // closing file
   H5Fclose(file_id);
