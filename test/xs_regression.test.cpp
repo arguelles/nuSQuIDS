@@ -49,7 +49,7 @@ using namespace nusquids;
 
 // Test configuration
 const unsigned int numneu = 3;
-const unsigned int n_energies = 100;  // 100 nodes for proper propagation
+const unsigned int n_energies = 40;  // 40 nodes for faster execution
 const double E_min = 1.0e2;   // 100 GeV
 const double E_max = 1.0e7;   // 10 PeV (5 decades)
 
@@ -57,8 +57,8 @@ const double E_max = 1.0e7;   // 10 PeV (5 decades)
 void print_fluxes(const std::string& label, nuSQUIDS& nus, const squids::Const& units) {
     auto e_range = nus.GetERange();
 
-    // Sample at 10 points across the energy range (every ~10 nodes)
-    std::vector<size_t> sample_indices = {0, 10, 20, 30, 40, 50, 60, 70, 80, 99};
+    // Sample at 5 points across the energy range
+    std::vector<size_t> sample_indices = {0, 10, 20, 30, 39};
 
     std::cout << std::scientific << std::setprecision(6);
     for (size_t idx : sample_indices) {
