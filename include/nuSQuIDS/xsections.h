@@ -580,8 +580,53 @@ enum PDGCode : int32_t{
     isoscalar_nucleon=81,
     proton=2212,
     neutron=2112,
+    // Nuclear targets use PDG nuclear code format: 10LZZZAAAI
+    // L=0 (ground state), I=0 (no strange quarks), giving 100ZZZAAA0
+    hydrogen=1000010010,    ///< Z=1, A=1 (proton, but as nuclear target)
+    deuteron=1000010020,    ///< Z=1, A=2
+    carbon=1000060120,      ///< Z=6, A=12
+    oxygen=1000080160,      ///< Z=8, A=16
+    sodium=1000110230,      ///< Z=11, A=23
+    magnesium=1000120240,   ///< Z=12, A=24
+    aluminum=1000130270,    ///< Z=13, A=27
+    silicon=1000140280,     ///< Z=14, A=28
+    sulfur=1000160320,      ///< Z=16, A=32
+    calcium=1000200400,     ///< Z=20, A=40
+    iron=1000260560,        ///< Z=26, A=56
+    nickel=1000280580,      ///< Z=28, A=58
+    tungsten=1000741840,    ///< Z=74, A=184
+    lead=1000822080,        ///< Z=82, A=208
 };
-  
+
+/// \brief Check if a PDGCode is a nuclear code (format 10LZZZAAAI)
+/// \param code The PDG code to check
+/// \return true if this is a nuclear PDG code
+inline bool isNuclearPDGCode(PDGCode code) {
+    int32_t val = static_cast<int32_t>(code);
+    // Nuclear codes are in the range 1000000000 to 1099999999
+    return val >= 1000000000 && val < 1100000000;
+}
+
+/// \brief Extract the atomic number Z (number of protons) from a nuclear PDG code
+/// \param code A nuclear PDG code (format 10LZZZAAAI)
+/// \return The atomic number Z, or 0 if not a nuclear code
+inline int getAtomicNumber(PDGCode code) {
+    if (!isNuclearPDGCode(code)) return 0;
+    int32_t val = static_cast<int32_t>(code);
+    // Format: 10LZZZAAAI -> ZZZ is digits 3-5 from the right (positions 4-6)
+    return (val / 10000) % 1000;
+}
+
+/// \brief Extract the mass number A (protons + neutrons) from a nuclear PDG code
+/// \param code A nuclear PDG code (format 10LZZZAAAI)
+/// \return The mass number A, or 0 if not a nuclear code
+inline int getMassNumber(PDGCode code) {
+    if (!isNuclearPDGCode(code)) return 0;
+    int32_t val = static_cast<int32_t>(code);
+    // Format: 10LZZZAAAI -> AAA is digits 0-2 from the right (positions 1-3)
+    return (val / 10) % 1000;
+}
+
 namespace detail{
 struct PDGCodeHash{
 private:
@@ -619,11 +664,28 @@ public:
             throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, xs);
     }
+
+    /// \brief Returns the number of targets in the library
+    size_t numberOfTargets() const;
+
+    /// \brief Returns a vector of all target PDGCodes in the library
+    std::vector<PDGCode> targets() const;
+
 private:
     MapType data;
 };
     
 CrossSectionLibrary loadDefaultCrossSections();
+
+/// \brief Load WCG24 cross sections for proton/neutron targets
+/// \details Uses wcg24_base_proton.h5 and wcg24_base_neutron.h5
+/// Reference: arXiv:2408.05866
+CrossSectionLibrary loadWCG24CrossSections();
+
+/// \brief Load WCG24 cross sections for all nuclear targets needed for Earth composition
+/// \details Loads O, Na, Mg, Al, Si, S, Ca, Fe, Ni cross sections
+/// Reference: arXiv:2408.05866
+CrossSectionLibrary loadWCG24NuclearCrossSections();
 
 } // close namespace
 

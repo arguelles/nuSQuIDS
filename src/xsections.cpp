@@ -908,19 +908,63 @@ bool CrossSectionLibrary::hasTarget(PDGCode target) const{
     auto it = data.find(target);
     return(it!=data.end());
 }
-    
+
+size_t CrossSectionLibrary::numberOfTargets() const{
+    return data.size();
+}
+
+std::vector<PDGCode> CrossSectionLibrary::targets() const{
+    std::vector<PDGCode> result;
+    result.reserve(data.size());
+    for(const auto& pair : data)
+        result.push_back(pair.first);
+    return result;
+}
+
 CrossSectionLibrary loadDefaultCrossSections(){
     CrossSectionLibrary lib;
-    
+
     std::string xsdir = getResourcePath()+"/xsections/";
     //old, isoscalar table
     //lib.addTarget(isoscalar_nucleon, NeutrinoDISCrossSectionsFromTables(XSECTION_LOCATION "csms_square.h5"));
     //shiny, new, per-target tables
     lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(xsdir+"csms_proton.h5"));
     lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(xsdir+"csms_neutron.h5"));
-    
+
     lib.addTarget(electron,GlashowResonanceCrossSection());
     return lib;
 }
-    
+
+CrossSectionLibrary loadWCG24CrossSections(){
+    CrossSectionLibrary lib;
+
+    std::string xsdir = getResourcePath()+"/xsections/";
+    // WCG24 proton/neutron cross sections (arXiv:2408.05866)
+    lib.addTarget(proton, NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_base_proton.h5"));
+    lib.addTarget(neutron,NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_base_neutron.h5"));
+
+    lib.addTarget(electron,GlashowResonanceCrossSection());
+    return lib;
+}
+
+CrossSectionLibrary loadWCG24NuclearCrossSections(){
+    CrossSectionLibrary lib;
+
+    std::string xsdir = getResourcePath()+"/xsections/";
+    // WCG24 per-nucleus cross sections for Earth composition (arXiv:2408.05866)
+    // These are the elements present in the PREM Earth model with composition
+    lib.addTarget(oxygen,    NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_oxygen.h5"));
+    lib.addTarget(sodium,    NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_sodium.h5"));
+    lib.addTarget(magnesium, NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_magnesium.h5"));
+    lib.addTarget(aluminum,  NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_aluminum.h5"));
+    lib.addTarget(silicon,   NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_silicon.h5"));
+    lib.addTarget(sulfur,    NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_sulfur.h5"));
+    lib.addTarget(calcium,   NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_calcium.h5"));
+    lib.addTarget(iron,      NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_iron.h5"));
+    lib.addTarget(nickel,    NeutrinoDISCrossSectionsFromTables(xsdir+"wcg24_nickel.h5"));
+
+    lib.addTarget(electron,GlashowResonanceCrossSection());
+    return lib;
+}
+
 } // close namespace
