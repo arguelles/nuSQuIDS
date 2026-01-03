@@ -68,7 +68,7 @@ WimpSim package for WIMP detection simulations.
 }
 ```
 
-### WCG24 (Weaver, Carpio, Gonzalez-Garcia 2024)
+### WCG24 (Weigel, Conrad, Garcia 2024)
 
 **Reference:** [arXiv:2408.05866](https://arxiv.org/abs/2408.05866)
 
