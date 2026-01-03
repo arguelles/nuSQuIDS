@@ -403,6 +403,14 @@ protected:
     double current_density;
     /// \brief The electron fraction of the body at the current point on the track
     double current_ye;
+    /// \brief The composition of the body at the current point on the track (if available)
+    std::map<PDGCode, double> current_composition;
+    /// \brief Flag indicating if body provides composition (checked once at track setup)
+    bool body_has_composition = false;
+    /// \brief Cached target number fractions for performance (lazy evaluation)
+    mutable std::vector<double> cached_target_fractions;
+    /// \brief Flag indicating if cached_target_fractions is valid
+    mutable bool target_fractions_valid = false;
     /// \brief The external flux from the body at the current point on the track
     marray<double,3> current_external_flux;
 
@@ -1041,6 +1049,7 @@ protected:
     void SetNeutrinoCrossSections(std::shared_ptr<CrossSectionLibrary> xs) {
        ncs=xs;
        interactions_initialized=false;
+       int_struct.reset();  // Force re-detection of targets from new cross sections
     }
 
     /// \brief Enables neutrino flux emission from bodies
@@ -1883,12 +1892,18 @@ class nuSQUIDSAtm {
       return(evalThreads);
     }
 
-    /// \brief Stes Earth object to be use.
+    /// \brief Sets Earth object to be used.
     /// @param earth Shared pointer to Earth object.
     void Set_EarthModel(std::shared_ptr<EarthAtm> earth){
       earth_atm=earth;
-      for(BaseSQUIDS& nsq : nusq_array){
-        nsq.Set_Body(earth);
+      // Recreate tracks for the new Earth model
+      track_array.clear();
+      for(double costh : costh_array)
+        track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
+      // Update body and track for each nuSQUIDS object
+      for(unsigned int i = 0; i < nusq_array.size(); i++){
+        nusq_array[i].Set_Body(earth);
+        nusq_array[i].Set_Track(track_array[i]);
       }
     }
   

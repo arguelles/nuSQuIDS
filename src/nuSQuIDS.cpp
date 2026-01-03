@@ -279,6 +279,11 @@ void nuSQUIDS::PreDerive(double x){
   track->SetX(x-time_offset);
   current_ye = body->ye(*track);
   current_density = body->density(*track);
+  // Only fetch composition when body provides it (checked once at track setup)
+  if(body_has_composition){
+    current_composition = body->composition(*track);
+    target_fractions_valid = false;
+  }
   if(enable_neutrino_sources){
     body->injected_neutrino_flux(current_external_flux,*track,*this);
     assert(current_external_flux.extent(0) == ne && current_external_flux.extent(1) == nrhos && current_external_flux.extent(2) == numneu);
@@ -439,16 +444,137 @@ double nuSQUIDS::InteractionsScalar(unsigned int ei, unsigned int iscalar) const
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberFractions() const{
-  if(int_struct->targets.size()==1)
-    return {1}; //with only one target type, it must make up all of the material
-  //note that here we assume the order of targets defined in InitializeInteractions is proton, neutron
-  return {current_ye,1-current_ye};
+  // Use lazy evaluation with caching for performance
+  if(target_fractions_valid)
+    return cached_target_fractions;
+
+  cached_target_fractions.clear();
+  cached_target_fractions.reserve(int_struct->targets.size());
+
+  // Check if cross sections use nuclear targets
+  bool hasNuclearXS = false;
+  for(const PDGCode& tgt : int_struct->targets){
+    if(isNuclearPDGCode(tgt)){
+      hasNuclearXS = true;
+      break;
+    }
+  }
+
+  if(hasNuclearXS){
+    // Nuclear cross sections: get fractions directly from composition
+    // The body's composition() should provide fractions for each nuclear target
+    for(const PDGCode& tgt : int_struct->targets){
+      auto it = current_composition.find(tgt);
+      cached_target_fractions.push_back(it != current_composition.end() ? it->second : 0.0);
+    }
+  }
+  else if(!current_composition.empty()){
+    // We have composition but proton/neutron cross sections
+    // Need to convert nuclear composition to proton/neutron fractions
+
+    // Check if composition has nuclear codes
+    bool has_nuclear_codes = false;
+    for(const auto& pair : current_composition){
+      if(isNuclearPDGCode(pair.first)){
+        has_nuclear_codes = true;
+        break;
+      }
+    }
+
+    if(has_nuclear_codes){
+      // Convert nuclear composition to proton/neutron fractions
+      double total_nucleons = 0.0;
+      double total_protons = 0.0;
+      double total_neutrons = 0.0;
+
+      for(const auto& pair : current_composition){
+        PDGCode code = pair.first;
+        double frac = pair.second;
+        if(isNuclearPDGCode(code)){
+          int Z = getAtomicNumber(code);
+          int A = getMassNumber(code);
+          total_nucleons += frac * A;
+          total_protons += frac * Z;
+          total_neutrons += frac * (A - Z);
+        }
+      }
+
+      for(const PDGCode& tgt : int_struct->targets){
+        if(tgt == proton){
+          cached_target_fractions.push_back(total_nucleons > 0 ? total_protons / total_nucleons : current_ye);
+        } else if(tgt == neutron){
+          cached_target_fractions.push_back(total_nucleons > 0 ? total_neutrons / total_nucleons : 1.0 - current_ye);
+        } else if(tgt == isoscalar_nucleon){
+          cached_target_fractions.push_back(1.0);
+        } else {
+          cached_target_fractions.push_back(0.0);
+        }
+      }
+    } else {
+      // Composition has particle codes, use directly
+      for(const PDGCode& tgt : int_struct->targets){
+        auto it = current_composition.find(tgt);
+        cached_target_fractions.push_back(it != current_composition.end() ? it->second : 0.0);
+      }
+    }
+  }
+  else{
+    // No composition: fall back to ye-based calculation
+    if(int_struct->targets.size()==1){
+      cached_target_fractions = {1}; //with only one target type, it must make up all of the material
+    } else {
+      //note that here we assume the order of targets defined in InitializeInteractions is proton, neutron
+      cached_target_fractions = {current_ye, 1-current_ye};
+    }
+  }
+
+  target_fractions_valid = true;
+  return cached_target_fractions;
 }
   
 std::vector<double> nuSQUIDS::GetTargetNumberDensities() const{
   //start from the mass density, converted to natural units
   double density = (params.gr*pow(params.cm,-3))*current_density;
-  
+
+  // Check if cross sections use nuclear targets
+  bool hasNuclearXS = false;
+  for(const PDGCode& tgt : int_struct->targets){
+    if(isNuclearPDGCode(tgt)){
+      hasNuclearXS = true;
+      break;
+    }
+  }
+
+  if(hasNuclearXS){
+    // Nuclear cross sections: number density from composition fractions
+    // Using average nucleon mass to convert mass density to number density
+    double avg_nucleon_mass = 0.5 * (params.proton_mass + params.neutron_mass);
+    std::vector<double> densities;
+    densities.reserve(int_struct->targets.size());
+    for(const PDGCode& tgt : int_struct->targets){
+      auto it = current_composition.find(tgt);
+      double frac = (it != current_composition.end()) ? it->second : 0.0;
+      densities.push_back(frac * density / avg_nucleon_mass);
+    }
+    return densities;
+  }
+
+  // If we have composition but proton/neutron cross sections
+  if(!current_composition.empty()){
+    // Compute total nucleon number density using average nucleon mass
+    double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
+    if(num_nuc < 1.0e-10)
+      num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
+
+    // Get cached target fractions and multiply by total density
+    std::vector<double> fractions = GetTargetNumberFractions();
+    std::vector<double> densities;
+    densities.reserve(fractions.size());
+    for(double f : fractions)
+      densities.push_back(f * num_nuc);
+    return densities;
+  }
+
   //check whether we are treating the medium as isoscalar
   if(int_struct->targets.size()==1 && int_struct->targets[0]==isoscalar_nucleon){
     double num_nuc = density*2.0/(params.electron_mass+params.proton_mass+params.neutron_mass);
@@ -456,7 +582,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() const{
       num_nuc = params.Na*pow(params.cm,-3)*1.0e-10;
     return {num_nuc};
   }
-  
+
   //otherwise, treat protons and neutrons separately
   //the electron fraction is electrons/nucleon:
   //ye = ne / (np + nn)
@@ -475,7 +601,7 @@ std::vector<double> nuSQUIDS::GetTargetNumberDensities() const{
   //density = (Me + Mp) * np + Mn * (1 - ye) * np / ye
   //density = ((Me + Mp) + Mn * (1 - ye) / ye) * np
   //np = density / ((Me + Mp) + Mn * (1 - ye) / ye)
-  
+
   double ye = current_ye;
   if(ye == 0){
     //apparently the medium is all neutrons
@@ -989,26 +1115,51 @@ void nuSQUIDS::InitializeInteractions(){
     if ( ncs == nullptr) {
       ncs = std::make_shared<CrossSectionLibrary>(loadDefaultCrossSections());
     } // else we assume the user has already inintialized the object if not throw error.
-    
-    //We have to figure out what cross sections we are using. 
-    //We would prefer to use separate ones for protons and neutrons, but it is 
-    //possible that only isoscalar nuclear cross sections are available, in which
-    //case we must use those. 
-    //Note: This would be the starting point for supporting more advanced targets,
-    //      e.g. whole isotopes, etc.
-    bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
+
+    //We have to figure out what cross sections we are using.
+    //Options in order of preference:
+    //1. Per-nucleus cross sections (e.g., oxygen, iron) for detailed composition
+    //2. Per-nucleon cross sections (proton, neutron)
+    //3. Isoscalar nucleon cross sections
     unsigned int nTargets=0;
-    if(perNucleonXS){
-      int_struct->targets={proton,neutron};
-      nTargets=2;
+
+    // Get all targets from the cross section library
+    std::vector<PDGCode> allTargets = ncs->targets();
+
+    // Check if we have nuclear targets (PDG codes >= 1000000000)
+    bool hasNuclearTargets = false;
+    for(const PDGCode& tgt : allTargets){
+      if(isNuclearPDGCode(tgt)){
+        hasNuclearTargets = true;
+        break;
+      }
+    }
+
+    if(hasNuclearTargets){
+      // Use all nuclear targets from the cross section library
+      // (but exclude electron which is for Glashow resonance)
+      for(const PDGCode& tgt : allTargets){
+        if(tgt != electron){
+          int_struct->targets.push_back(tgt);
+        }
+      }
+      nTargets = int_struct->targets.size();
     }
     else{
-      if(ncs->hasTarget(isoscalar_nucleon)){
-        int_struct->targets={isoscalar_nucleon};
-        nTargets=1;
+      // Fall back to proton/neutron or isoscalar
+      bool perNucleonXS = ncs->hasTarget(proton) and ncs->hasTarget(neutron);
+      if(perNucleonXS){
+        int_struct->targets={proton,neutron};
+        nTargets=2;
       }
-      else
-        throw std::runtime_error("Cross section object does not provide any suitable nucleon cross sections");
+      else{
+        if(ncs->hasTarget(isoscalar_nucleon)){
+          int_struct->targets={isoscalar_nucleon};
+          nTargets=1;
+        }
+        else
+          throw std::runtime_error("Cross section object does not provide any suitable nucleon cross sections");
+      }
     }
     
     // initialize cross section and interaction arrays
@@ -1206,6 +1357,12 @@ void nuSQUIDS::Set_Track(std::shared_ptr<Track> track_in){
   // set track
   track = track_in;
   itrack = true;
+  // Check if body provides composition (once, for performance)
+  if(ibody){
+    current_composition = body->composition(*track);
+    body_has_composition = !current_composition.empty();
+    target_fractions_valid = false;
+  }
 }
 
 void nuSQUIDS::PositivizeFlavors(){
