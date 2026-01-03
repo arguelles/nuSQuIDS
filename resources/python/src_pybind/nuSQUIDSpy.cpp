@@ -139,6 +139,19 @@ PYBIND11_MODULE(nuSQuIDS, m)
 
   m.def("linspace",linspace,py::arg("min"),py::arg("max"),py::arg("samples"),py::return_value_policy::reference);
   m.def("logspace",logspace,py::arg("min"),py::arg("max"),py::arg("samples"),py::return_value_policy::reference);
+  m.def("getResourcePath",getResourcePath,
+        "Returns the path to nuSQuIDS data files (cross-sections, Earth models, etc.).");
+
+  // PDG code helper functions for nuclear targets
+  m.def("isNuclearPDGCode", isNuclearPDGCode,
+        "Check if a PDGCode is a nuclear code (format 10LZZZAAAI).",
+        py::arg("code"));
+  m.def("getAtomicNumber", getAtomicNumber,
+        "Extract the atomic number Z (number of protons) from a nuclear PDG code.",
+        py::arg("code"));
+  m.def("getMassNumber", getMassNumber,
+        "Extract the mass number A (protons + neutrons) from a nuclear PDG code.",
+        py::arg("code"));
 
   RegisterBasicNuSQuIDSPythonBindings<nuSQUIDS> reg1(m,"nuSQUIDS");
   RegisterBasicAtmNuSQuIDSPythonBindings<nuSQUIDS> reg2(m,"nuSQUIDSAtm");
@@ -171,6 +184,21 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .value("isoscalar_nucleon",isoscalar_nucleon)
     .value("proton",proton)
     .value("neutron",neutron)
+    // Nuclear targets use PDG nuclear code format: 10LZZZAAAI
+    .value("hydrogen",hydrogen)
+    .value("deuteron",deuteron)
+    .value("carbon",carbon)
+    .value("oxygen",oxygen)
+    .value("sodium",sodium)
+    .value("magnesium",magnesium)
+    .value("aluminum",aluminum)
+    .value("silicon",silicon)
+    .value("sulfur",sulfur)
+    .value("calcium",calcium)
+    .value("iron",iron)
+    .value("nickel",nickel)
+    .value("tungsten",tungsten)
+    .value("lead",lead)
     .export_values()
   ;
 
@@ -180,9 +208,18 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("crossSectionForTarget", &CrossSectionLibrary::crossSectionForTarget)
     .def("hasTarget", (bool(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type))&CrossSectionLibrary::hasTarget)
     .def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::hasTarget)
+    .def("numberOfTargets", &CrossSectionLibrary::numberOfTargets,
+         "Get the number of target types in the cross section library")
+    .def("targets", &CrossSectionLibrary::targets,
+         "Get the list of target PDG codes in the cross section library")
   ;
 
-  m.def("loadDefaultCrossSections",loadDefaultCrossSections);
+  m.def("loadDefaultCrossSections",loadDefaultCrossSections,
+        "Load the default cross sections (CSMS proton/neutron).");
+  m.def("loadWCG24CrossSections",loadWCG24CrossSections,
+        "Load WCG24 cross sections for proton/neutron targets (arXiv:2408.05866).");
+  m.def("loadWCG24NuclearCrossSections",loadWCG24NuclearCrossSections,
+        "Load WCG24 cross sections for all nuclear targets in Earth composition (arXiv:2408.05866).");
 
   py::class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>>(m,"TauDecaySpectra")
     .def(py::init<marray<double,1>>())
@@ -233,6 +270,10 @@ PYBIND11_MODULE(nuSQuIDS, m)
     = py::class_<Body, std::shared_ptr<Body>>(m,"Body")
     .def("density",&Body::density)
     .def("ye",&Body::ye)
+    .def("composition",&Body::composition,
+         "Get the composition at the current position on the track.\n"
+         "Returns a dictionary mapping PDGCode to number fraction.\n"
+         "For bodies without composition support, returns an empty dictionary.")
     ;
 
     py::class_<Body::Track, std::shared_ptr<Body::Track>>(outer,"Track")
@@ -267,7 +308,10 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<ConstantDensity, Body, std::shared_ptr<ConstantDensity>>(m,"ConstantDensity")
-    .def(py::init<double,double>())
+    .def(py::init<double,double>(), py::arg("density"), py::arg("ye"))
+    .def(py::init<double,double,std::map<PDGCode,double>>(),
+         py::arg("density"), py::arg("ye"), py::arg("composition"),
+         "Constructor with composition map")
     .def("density",&ConstantDensity::density)
     .def("ye",&ConstantDensity::ye)
     ;
@@ -286,7 +330,12 @@ PYBIND11_MODULE(nuSQuIDS, m)
   {
     auto outer
     = py::class_<VariableDensity, Body, std::shared_ptr<VariableDensity>>(m,"VariableDensity")
-    .def(py::init< std::vector<double>,std::vector<double>,std::vector<double>>())
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>>(),
+         py::arg("x"), py::arg("density"), py::arg("ye"))
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>,
+                  std::map<PDGCode,std::vector<double>>>(),
+         py::arg("x"), py::arg("density"), py::arg("ye"), py::arg("composition"),
+         "Constructor with composition map (vector per element type)")
     ;
 
     py::class_<VariableDensity::Track, Body::Track, std::shared_ptr<VariableDensity::Track>>(outer,"Track")
@@ -304,6 +353,12 @@ PYBIND11_MODULE(nuSQuIDS, m)
     auto outer
     = py::class_<Earth, Body, std::shared_ptr<Earth>>(m,"Earth")
     .def(py::init<std::string>(), py::arg("earthmodel") = getResourcePath() + "/astro/EARTH_MODEL_PREM.dat")
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>>(),
+         py::arg("x"), py::arg("rho"), py::arg("ye"))
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>,
+                  std::vector<std::vector<double>>>(),
+         py::arg("x"), py::arg("rho"), py::arg("ye"), py::arg("composition"),
+         "Constructor with composition arrays (one per element type)")
     ;
 
     py::class_<Earth::Track, Body::Track, std::shared_ptr<Earth::Track>>(outer,"Track")
@@ -355,9 +410,15 @@ PYBIND11_MODULE(nuSQuIDS, m)
     auto outer
     = py::class_<EarthAtm, Body, std::shared_ptr<EarthAtm>>(m,"EarthAtm")
     .def(py::init<std::string>(), py::arg("earthmodel") = getResourcePath() + "/astro/EARTH_MODEL_PREM.dat")
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>>(),
+         py::arg("x"), py::arg("rho"), py::arg("ye"))
+    .def(py::init<std::vector<double>,std::vector<double>,std::vector<double>,
+                  std::vector<std::vector<double>>>(),
+         py::arg("x"), py::arg("rho"), py::arg("ye"), py::arg("composition"),
+         "Constructor with composition arrays (one per element type)")
     .def("GetRadius",&EarthAtm::GetRadius)
     .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
-    .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
+    .def("SetAtmosphereHeight",&EarthAtm::SetAtmosphereHeight)
     .def("MakeTrack",&EarthAtm::MakeTrack)
     .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;

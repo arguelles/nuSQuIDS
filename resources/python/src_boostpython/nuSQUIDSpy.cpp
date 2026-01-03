@@ -52,6 +52,107 @@ struct ListToVectorBool {
     }
 };
 
+// Converter for Python dict -> std::map<PDGCode, double>
+struct DictToPDGCodeDoubleMap {
+    DictToPDGCodeDoubleMap() {
+        boost::python::converter::registry::push_back(
+            &convertible,
+            &construct,
+            boost::python::type_id<std::map<PDGCode, double>>());
+    }
+
+    static void* convertible(PyObject* obj_ptr) {
+        if (!PyDict_Check(obj_ptr)) return nullptr;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data) {
+        void* storage = ((boost::python::converter::rvalue_from_python_storage<std::map<PDGCode, double>>*)data)->storage.bytes;
+        new (storage) std::map<PDGCode, double>();
+        std::map<PDGCode, double>* result = (std::map<PDGCode, double>*)storage;
+
+        boost::python::dict pydict = boost::python::extract<boost::python::dict>(obj_ptr);
+        boost::python::list keys = pydict.keys();
+        for (int i = 0; i < boost::python::len(keys); ++i) {
+            PDGCode key = boost::python::extract<PDGCode>(keys[i]);
+            double value = boost::python::extract<double>(pydict[keys[i]]);
+            (*result)[key] = value;
+        }
+        data->convertible = storage;
+    }
+};
+
+// Converter for Python dict -> std::map<PDGCode, std::vector<double>>
+struct DictToPDGCodeVectorMap {
+    DictToPDGCodeVectorMap() {
+        boost::python::converter::registry::push_back(
+            &convertible,
+            &construct,
+            boost::python::type_id<std::map<PDGCode, std::vector<double>>>());
+    }
+
+    static void* convertible(PyObject* obj_ptr) {
+        if (!PyDict_Check(obj_ptr)) return nullptr;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data) {
+        void* storage = ((boost::python::converter::rvalue_from_python_storage<std::map<PDGCode, std::vector<double>>>*)data)->storage.bytes;
+        new (storage) std::map<PDGCode, std::vector<double>>();
+        std::map<PDGCode, std::vector<double>>* result = (std::map<PDGCode, std::vector<double>>*)storage;
+
+        boost::python::dict pydict = boost::python::extract<boost::python::dict>(obj_ptr);
+        boost::python::list keys = pydict.keys();
+        for (int i = 0; i < boost::python::len(keys); ++i) {
+            PDGCode key = boost::python::extract<PDGCode>(keys[i]);
+            std::vector<double> value = boost::python::extract<std::vector<double>>(pydict[keys[i]]);
+            (*result)[key] = value;
+        }
+        data->convertible = storage;
+    }
+};
+
+// Converter for std::map<PDGCode, double> -> Python dict
+struct PDGCodeDoubleMapToDict {
+    static PyObject* convert(const std::map<PDGCode, double>& map) {
+        boost::python::dict result;
+        for (const auto& pair : map) {
+            result[pair.first] = pair.second;
+        }
+        return boost::python::incref(result.ptr());
+    }
+};
+
+// Converter for Python list of lists -> std::vector<std::vector<double>>
+struct ListToVectorVectorDouble {
+    ListToVectorVectorDouble() {
+        boost::python::converter::registry::push_back(
+            &convertible,
+            &construct,
+            boost::python::type_id<std::vector<std::vector<double>>>());
+    }
+
+    static void* convertible(PyObject* obj_ptr) {
+        if (!PySequence_Check(obj_ptr)) return nullptr;
+        return obj_ptr;
+    }
+
+    static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data) {
+        void* storage = ((boost::python::converter::rvalue_from_python_storage<std::vector<std::vector<double>>>*)data)->storage.bytes;
+        new (storage) std::vector<std::vector<double>>();
+        std::vector<std::vector<double>>* vec = (std::vector<std::vector<double>>*)storage;
+        int len = PySequence_Size(obj_ptr);
+        vec->reserve(len);
+        for (int i = 0; i < len; ++i) {
+            PyObject* item = PySequence_GetItem(obj_ptr, i);
+            std::vector<double> inner = boost::python::extract<std::vector<double>>(item);
+            vec->push_back(inner);
+            Py_DECREF(item);
+        }
+        data->convertible = storage;
+    }
+};
+
 // Wrappers for EvalFlavor with vector<bool> passed by value
 double EvalFlavorWrapperEnergy(nuSQUIDS& obj, unsigned int flav, double E, unsigned int current, double x, std::vector<bool> mask) {
     return obj.EvalFlavor(flav, E, current, x, mask);
@@ -77,6 +178,12 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
 
   // register list-to-vector<bool> converter
   ListToVectorBool();
+
+  // register map converters for composition
+  DictToPDGCodeDoubleMap();
+  DictToPDGCodeVectorMap();
+  ListToVectorVectorDouble();
+  boost::python::to_python_converter<std::map<PDGCode, double>, PDGCodeDoubleMapToDict>();
 
   enum_<GSL_STEP_FUNCTIONS>("GSL_STEP_FUNCTIONS")
     .value("GSL_STEP_RK2",GSL_STEP_RK2)
@@ -230,6 +337,21 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .value("isoscalar_nucleon",isoscalar_nucleon)
     .value("proton",proton)
     .value("neutron",neutron)
+    // Nuclear targets use PDG nuclear code format: 10LZZZAAAI
+    .value("hydrogen",hydrogen)
+    .value("deuteron",deuteron)
+    .value("carbon",carbon)
+    .value("oxygen",oxygen)
+    .value("sodium",sodium)
+    .value("magnesium",magnesium)
+    .value("aluminum",aluminum)
+    .value("silicon",silicon)
+    .value("sulfur",sulfur)
+    .value("calcium",calcium)
+    .value("iron",iron)
+    .value("nickel",nickel)
+    .value("tungsten",tungsten)
+    .value("lead",lead)
   ;
     
   class_<CrossSectionLibrary, std::shared_ptr<CrossSectionLibrary>>("CrossSectionLibrary")
@@ -238,9 +360,20 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .def("crossSectionForTarget", &CrossSectionLibrary::crossSectionForTarget)
     .def("hasTarget", &CrossSectionLibrary::hasTarget)
     .def("addTarget", (void(CrossSectionLibrary::*)(PDGCode, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::addTarget)
+    .def("numberOfTargets", &CrossSectionLibrary::numberOfTargets,
+         "Get the number of target types in the cross section library")
+    .def("targets", &CrossSectionLibrary::targets,
+         "Get the list of target PDG codes in the cross section library")
   ;
-  
-  bp::def("loadDefaultCrossSections",loadDefaultCrossSections);
+
+  bp::def("loadDefaultCrossSections",loadDefaultCrossSections,
+          "Load the default cross sections (CSMS proton/neutron).");
+  bp::def("loadWCG24CrossSections",loadWCG24CrossSections,
+          "Load WCG24 cross sections for proton/neutron targets (arXiv:2408.05866).");
+  bp::def("loadWCG24NuclearCrossSections",loadWCG24NuclearCrossSections,
+          "Load WCG24 cross sections for all nuclear targets in Earth composition (arXiv:2408.05866).");
+  bp::def("isNuclearPDGCode",isNuclearPDGCode,
+          "Check if a PDGCode is a nuclear code (format 10LZZZAAAI).");
 
   class_<TauDecaySpectra, std::shared_ptr<TauDecaySpectra>, boost::noncopyable>("TauDecaySpectra")
     .def(init<marray<double,1>>())
@@ -308,6 +441,10 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     = class_<Body, std::shared_ptr<Body>, boost::noncopyable >("Body", no_init)
     .def("density",&Body::density)
     .def("ye",&Body::ye)
+    .def("composition",&Body::composition,
+         "Get the composition at the current position on the track.\n"
+         "Returns a dictionary mapping PDGCode to number fraction.\n"
+         "For bodies without composition support, returns an empty dictionary.")
     ;
 
     class_<Body::Track, std::shared_ptr<Body::Track>, boost::noncopyable >("Track", no_init)
@@ -342,6 +479,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   {
     scope outer
     = class_<ConstantDensity, bases<Body>, std::shared_ptr<ConstantDensity> >("ConstantDensity", init<double,double>())
+    .def(init<double,double,std::map<PDGCode,double>>())
     .def("density",&ConstantDensity::density)
     .def("ye",&ConstantDensity::ye)
     ;
@@ -362,6 +500,7 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
   {
     scope outer
     = class_<VariableDensity, bases<Body>, std::shared_ptr<VariableDensity> >("VariableDensity", init< std::vector<double>,std::vector<double>,std::vector<double> >())
+    .def(init<std::vector<double>,std::vector<double>,std::vector<double>,std::map<PDGCode,std::vector<double>>>())
     ;
 
     class_<VariableDensity::Track, std::shared_ptr<VariableDensity::Track> >("Track", init<double>())
@@ -381,6 +520,8 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     scope outer
     = class_<Earth, bases<Body>, std::shared_ptr<Earth> >("Earth")
     .def(init<std::string>())
+    .def(init<std::vector<double>,std::vector<double>,std::vector<double>>())
+    .def(init<std::vector<double>,std::vector<double>,std::vector<double>,std::vector<std::vector<double>>>())
     ;
 
     class_<Earth::Track, std::shared_ptr<Earth::Track> >("Track", init<double>())
@@ -439,9 +580,11 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     scope outer
     = class_<EarthAtm, bases<Body>, boost::noncopyable, std::shared_ptr<EarthAtm> >("EarthAtm")
     .def(init<std::string>())
+    .def(init<std::vector<double>,std::vector<double>,std::vector<double>>())
+    .def(init<std::vector<double>,std::vector<double>,std::vector<double>,std::vector<std::vector<double>>>())
     .def("GetRadius",&EarthAtm::GetRadius)
     .def("GetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
-    .def("SetAtmosphereHeight",&EarthAtm::GetAtmosphereHeight)
+    .def("SetAtmosphereHeight",&EarthAtm::SetAtmosphereHeight)
     .def("MakeTrack",&EarthAtm::MakeTrack)
     .def("MakeTrackWithCosine",&EarthAtm::MakeTrackWithCosine)
     ;
