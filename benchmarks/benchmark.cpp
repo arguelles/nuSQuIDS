@@ -44,6 +44,7 @@
 #include <string>
 #include <cmath>
 #include <nuSQuIDS/nuSQuIDS.h>
+#include <nuSQuIDS/resources.h>
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -179,7 +180,7 @@ void print_summary(const std::vector<BenchmarkResult>& results) {
 
 BenchmarkResult benchmark_single_energy(int iterations = 100) {
     BenchmarkResult result;
-    result.name = "Single Energy";
+    result.name = "Single Energy (isoscalar)";
     result.description = "Propagate nu_mu through Earth (cos_zen = -1), E = 100 GeV";
     result.iterations = iterations;
     result.passed = true;
@@ -237,7 +238,7 @@ BenchmarkResult benchmark_single_energy(int iterations = 100) {
 
 BenchmarkResult benchmark_multiple_energy_no_interactions(int iterations = 10) {
     BenchmarkResult result;
-    result.name = "Multiple Energy (no int.)";
+    result.name = "Multi-E isoscalar (no int.)";
     result.description = "Power-law spectrum through Earth, 1 GeV - 10 TeV (200 nodes)";
     result.iterations = iterations;
     result.passed = true;
@@ -294,7 +295,7 @@ BenchmarkResult benchmark_multiple_energy_no_interactions(int iterations = 10) {
 
 BenchmarkResult benchmark_multiple_energy_with_interactions(int iterations = 5) {
     BenchmarkResult result;
-    result.name = "Multiple Energy (with int.)";
+    result.name = "Multi-E isoscalar (with int.)";
     result.description = "Power-law spectrum through Earth, 10 GeV - 1 PeV (100 nodes), NC+CC";
     result.iterations = iterations;
     result.passed = true;
@@ -348,7 +349,7 @@ BenchmarkResult benchmark_multiple_energy_with_interactions(int iterations = 5) 
 
 BenchmarkResult benchmark_atmospheric_no_interactions(int iterations = 3) {
     BenchmarkResult result;
-    result.name = "Atmospheric (no int.)";
+    result.name = "Atm isoscalar (no int.)";
     result.description = "nuSQUIDSAtm: 10 GeV - 1 PeV (50 E) x 20 zenith, nu+nubar";
     result.iterations = iterations;
     result.passed = true;
@@ -402,7 +403,7 @@ BenchmarkResult benchmark_atmospheric_no_interactions(int iterations = 3) {
 
 BenchmarkResult benchmark_atmospheric_with_interactions(int iterations = 2) {
     BenchmarkResult result;
-    result.name = "Atmospheric (with int.)";
+    result.name = "Atm isoscalar (with int.)";
     result.description = "nuSQUIDSAtm: 10 GeV - 1 PeV (50 E) x 20 zenith, nu+nubar, NC+CC";
     result.iterations = iterations;
     result.passed = true;
@@ -455,7 +456,7 @@ BenchmarkResult benchmark_atmospheric_with_interactions(int iterations = 2) {
 
 BenchmarkResult benchmark_atmospheric_glashow(int iterations = 2) {
     BenchmarkResult result;
-    result.name = "Atmospheric (int.+Glashow)";
+    result.name = "Atm isoscalar (int.+Glashow)";
     result.description = "nuSQUIDSAtm: 10 GeV - 10 PeV (50 E) x 20 zenith, NC+CC+Glashow";
     result.iterations = iterations;
     result.passed = true;
@@ -511,7 +512,7 @@ BenchmarkResult benchmark_atmospheric_glashow(int iterations = 2) {
 
 BenchmarkResult benchmark_atmospheric_full_physics(int iterations = 2) {
     BenchmarkResult result;
-    result.name = "Atmospheric (full physics)";
+    result.name = "Atm isoscalar (full physics)";
     result.description = "nuSQUIDSAtm: 10 GeV - 10 PeV (50 E) x 20 zenith, NC+CC+Glashow+TauRegen";
     result.iterations = iterations;
     result.passed = true;
@@ -566,6 +567,73 @@ BenchmarkResult benchmark_atmospheric_full_physics(int iterations = 2) {
     return result;
 }
 
+BenchmarkResult benchmark_atmospheric_with_composition(int iterations = 2) {
+    BenchmarkResult result;
+    result.name = "Atm nuclear (PREM composition)";
+    result.description = "nuSQUIDSAtm: 10 GeV - 1 PeV (50 E) x 20 zenith, PREM+composition";
+    result.iterations = iterations;
+    result.passed = true;
+
+    squids::Const units;
+
+    double Emin = 10.0 * units.GeV;
+    double Emax = 1.0e6 * units.GeV;
+    double czmin = -1.0;
+    double czmax = 0.0;
+
+    // Load Earth model with composition
+    std::string prem_path = getResourcePath() + "/astro/EARTH_MODEL_PREM_wIso.dat";
+
+    auto start = Clock::now();
+
+    for (int iter = 0; iter < iterations; iter++) {
+        nuSQUIDSAtm<> nus_atm(linspace(czmin, czmax, 20), logspace(Emin, Emax, 50), 3, both, true);
+
+        // Use Earth model with nuclear composition
+        auto earth = std::make_shared<EarthAtm>(prem_path);
+        nus_atm.Set_EarthModel(earth);
+
+        nus_atm.Set_MixingAngle(0, 1, 0.563942);
+        nus_atm.Set_MixingAngle(0, 2, 0.154085);
+        nus_atm.Set_MixingAngle(1, 2, 0.785398);
+        nus_atm.Set_SquareMassDifference(1, 7.65e-05);
+        nus_atm.Set_SquareMassDifference(2, 0.00247);
+        nus_atm.Set_CPPhase(0, 2, 0.0);
+
+        nus_atm.Set_rel_error(1.0e-6);
+        nus_atm.Set_abs_error(1.0e-6);
+        nus_atm.Set_GSL_step(gsl_odeiv2_step_rk4);
+
+        marray<double, 4> ini_state{nus_atm.GetNumCos(), nus_atm.GetNumE(), 2, 3};
+        std::fill(ini_state.begin(), ini_state.end(), 0.0);
+        for (size_t ci = 0; ci < nus_atm.GetNumCos(); ci++) {
+            for (size_t ei = 0; ei < nus_atm.GetNumE(); ei++) {
+                for (int rho = 0; rho < 2; rho++) {
+                    ini_state[ci][ei][rho][1] = 1.0;
+                }
+            }
+        }
+
+        nus_atm.Set_initial_state(ini_state, flavor);
+        nus_atm.Set_IncludeOscillations(true);
+
+        nus_atm.EvolveState();
+
+        // Verify composition is being used by checking at a sample point
+        auto& nus = nus_atm.GetnuSQuIDS(10);  // Get a middle zenith bin
+        auto comp = earth->composition(*nus.GetTrack());
+        if (comp.empty()) {
+            result.passed = false;  // Composition should be non-empty
+        }
+    }
+
+    auto end = Clock::now();
+    result.total_time_ms = Duration(end - start).count();
+    result.time_per_iter_ms = result.total_time_ms / iterations;
+
+    return result;
+}
+
 int main(int argc, char* argv[]) {
     // Parse command line arguments for quick mode
     bool quick_mode = false;
@@ -579,41 +647,47 @@ int main(int argc, char* argv[]) {
 
     std::vector<BenchmarkResult> results;
 
-    // Run benchmarks
-    print_test_header("Single Energy Mode");
+    // Run benchmarks - isoscalar mode (default, uses proton+neutron average)
+    print_test_header("Single Energy Mode (isoscalar)");
     auto r1 = benchmark_single_energy(quick_mode ? 10 : 100);
     print_test_result(r1);
     results.push_back(r1);
 
-    print_test_header("Multiple Energy Mode (no interactions)");
+    print_test_header("Multiple Energy Mode - isoscalar (no interactions)");
     auto r2 = benchmark_multiple_energy_no_interactions(quick_mode ? 2 : 10);
     print_test_result(r2);
     results.push_back(r2);
 
-    print_test_header("Multiple Energy Mode (with interactions)");
+    print_test_header("Multiple Energy Mode - isoscalar (with interactions)");
     auto r3 = benchmark_multiple_energy_with_interactions(quick_mode ? 1 : 5);
     print_test_result(r3);
     results.push_back(r3);
 
-    print_test_header("Atmospheric Mode (no interactions)");
+    print_test_header("Atmospheric Mode - isoscalar (no interactions)");
     auto r4 = benchmark_atmospheric_no_interactions(quick_mode ? 1 : 3);
     print_test_result(r4);
     results.push_back(r4);
 
-    print_test_header("Atmospheric Mode (with interactions)");
+    print_test_header("Atmospheric Mode - isoscalar (with interactions)");
     auto r5 = benchmark_atmospheric_with_interactions(quick_mode ? 1 : 2);
     print_test_result(r5);
     results.push_back(r5);
 
-    print_test_header("Atmospheric Mode (interactions + Glashow)");
+    print_test_header("Atmospheric Mode - isoscalar (interactions + Glashow)");
     auto r6 = benchmark_atmospheric_glashow(quick_mode ? 1 : 2);
     print_test_result(r6);
     results.push_back(r6);
 
-    print_test_header("Atmospheric Mode (full physics: int. + Glashow + Tau Regen)");
+    print_test_header("Atmospheric Mode - isoscalar (full physics: int. + Glashow + Tau Regen)");
     auto r7 = benchmark_atmospheric_full_physics(quick_mode ? 1 : 2);
     print_test_result(r7);
     results.push_back(r7);
+
+    // Nuclear composition mode (uses per-element cross sections with PREM composition)
+    print_test_header("Atmospheric Mode - nuclear (PREM composition)");
+    auto r8 = benchmark_atmospheric_with_composition(quick_mode ? 1 : 2);
+    print_test_result(r8);
+    results.push_back(r8);
 
     print_summary(results);
 
