@@ -277,13 +277,16 @@ except ImportError:
 	done
 	if [ -e "$PYTHON_LIBRARY" ]; then
 		echo " Found python library $PYTHON_LIBRARY"
+		PYTHON_LDFLAGS="-L${PYTHON_LIBDIR} -l$(echo "$PYTHON_LIBRARY" | sed 's|.*lib\(python.*\)\.[a-z]*|\1|')"
 	else
-		echo " ERROR: Unable to locate the python library"
-		return
+		# For pybind11 builds, we don't actually need libpython - pybind11 modules
+		# use -undefined dynamic_lookup on macOS or no python linking on Linux.
+		# This is common in manylinux containers where libpython isn't available.
+		echo " Note: libpython not found (this is OK for pybind11 builds)"
+		PYTHON_LDFLAGS=""
 	fi
 
 	PYTHON_CFLAGS="-I${PYTHON_INCDIR}"
-	PYTHON_LDFLAGS="-L${PYTHON_LIBDIR} -l$(echo "$PYTHON_LIBRARY" | sed 's|.*lib\(python.*\)\.[a-z]*|\1|')"
 	PYTHON_FOUND=1
 }
 
@@ -674,19 +677,26 @@ if [ "$PYTHON_BINDINGS" -o "$BOOST_PYTHON_BINDINGS" ]; then
 		unset $BOOST_PYTHON_BINDINGS
 	fi
 
-	if [ $BOOST_PYTHON_BINDINGS ]; then 
-		if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
-			echo "Checking manually specified boost..."
-			try_find_boost "$BOOST_INCDIR" "$BOOST_LIBDIR"
-			if [ ! "$BOOST_FOUND" ]; then
-				echo "Warning: manually specifed boost not found; will attempt auto detection"
-			fi
-		fi
-		try_find_boost /usr
-		try_find_boost /usr/local
-		if [ "$BOOST_PYTHON_FOUND" != 1 ]; then
-			echo "*** Failed to find boost python; python bindings will not be built ***"
+	if [ $BOOST_PYTHON_BINDINGS ]; then
+		# Boost.Python actually requires libpython, unlike pybind11
+		if [ -z "$PYTHON_LIBRARY" -a -z "$PYTHON_LDFLAGS" ]; then
+			echo "*** Boost.Python requires libpython which was not found; python bindings will not be built ***"
+			unset BOOST_PYTHON_BINDINGS
 			unset PYTHON_BINDINGS
+		else
+			if [ "$BOOST_INCDIR" -a "$BOOST_LIBDIR" ]; then
+				echo "Checking manually specified boost..."
+				try_find_boost "$BOOST_INCDIR" "$BOOST_LIBDIR"
+				if [ ! "$BOOST_FOUND" ]; then
+					echo "Warning: manually specifed boost not found; will attempt auto detection"
+				fi
+			fi
+			try_find_boost /usr
+			try_find_boost /usr/local
+			if [ "$BOOST_PYTHON_FOUND" != 1 ]; then
+				echo "*** Failed to find boost python; python bindings will not be built ***"
+				unset PYTHON_BINDINGS
+			fi
 		fi
 	else
 		if [ "$PYBIND_INCDIR" ]; then 
