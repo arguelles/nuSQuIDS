@@ -34,7 +34,7 @@ The benchmark suite measures performance across different propagation modes and 
 ```
 ================================================================================
                         nuSQuIDS Performance Benchmark
-                              Version: 1.12.2
+                              Version: 1.13.0
 ================================================================================
 
 System Info:
