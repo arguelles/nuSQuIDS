@@ -138,45 +138,87 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION ${PROJECT_NAME}  # "nuSQuIDS"
         FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib" PATTERN "*.pyd")
 
+# 3. Install libSQuIDS (when built from source) into nuSQuIDS/ for bundling
+#    This is needed for wheel distribution where SQuIDS isn't a system library
+if(NOT SQuIDS_FOUND)
+    install(DIRECTORY ${SQuIDS_PREFIX}/lib/
+            DESTINATION ${PROJECT_NAME}
+            FILES_MATCHING PATTERN "libSQuIDS*")
+endif()
+
 # -------------- macOS Library Path Fixups ------------------------------------
 # For wheel distribution, we need to fix library paths to use @loader_path
-# so the Python extension can find libnuSQuIDS in the same directory
+# so the Python extension can find libnuSQuIDS and libSQuIDS in the same directory
 
 if(APPLE)
     # Create a script that will be run after installation to fix paths
     install(CODE "
-        # Fix the Python extension's references to libnuSQuIDS
-        set(NUSQUIDS_SO \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS/nuSQuIDS.so\")
+        set(NUSQUIDS_DIR \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS\")
+
+        # Helper macro to fix library references in a binary
+        macro(fix_lib_refs BINARY)
+            if(EXISTS \${BINARY})
+                execute_process(
+                    COMMAND otool -L \${BINARY}
+                    OUTPUT_VARIABLE OTOOL_OUTPUT
+                )
+
+                # Fix references to libSQuIDS (may be absolute paths from build)
+                string(REGEX MATCHALL \"[^\\n]*libSQuIDS[^\\n]*\" SQUIDS_REFS \"\${OTOOL_OUTPUT}\")
+                foreach(REF \${SQUIDS_REFS})
+                    if(REF MATCHES \"(/[^ ]+libSQuIDS[^ ]*\\\\.dylib)\")
+                        set(OLD_PATH \${CMAKE_MATCH_1})
+                        get_filename_component(LIB_NAME \${OLD_PATH} NAME)
+                        execute_process(
+                            COMMAND install_name_tool -change
+                                \${OLD_PATH}
+                                @loader_path/\${LIB_NAME}
+                                \${BINARY}
+                            ERROR_QUIET
+                        )
+                    endif()
+                endforeach()
+                # Also fix non-absolute libSQuIDS references
+                execute_process(
+                    COMMAND install_name_tool -change
+                        libSQuIDS.1.dylib
+                        @loader_path/libSQuIDS.1.dylib
+                        \${BINARY}
+                    ERROR_QUIET
+                )
+
+                # Fix references to libnuSQuIDS (may be absolute paths from build)
+                string(REGEX MATCHALL \"[^\\n]*libnuSQuIDS[^\\n]*\" NUSQUIDS_REFS \"\${OTOOL_OUTPUT}\")
+                foreach(REF \${NUSQUIDS_REFS})
+                    if(REF MATCHES \"(/[^ ]+libnuSQuIDS[^ ]*\\\\.dylib)\")
+                        set(OLD_PATH \${CMAKE_MATCH_1})
+                        get_filename_component(LIB_NAME \${OLD_PATH} NAME)
+                        execute_process(
+                            COMMAND install_name_tool -change
+                                \${OLD_PATH}
+                                @loader_path/\${LIB_NAME}
+                                \${BINARY}
+                            ERROR_QUIET
+                        )
+                    endif()
+                endforeach()
+                # Also fix non-absolute libnuSQuIDS references
+                execute_process(
+                    COMMAND install_name_tool -change
+                        libnuSQuIDS.1.dylib
+                        @loader_path/libnuSQuIDS.1.dylib
+                        \${BINARY}
+                    ERROR_QUIET
+                )
+            endif()
+        endmacro()
+
+        # Fix the Python extension nuSQuIDS.so
+        set(NUSQUIDS_SO \"\${NUSQUIDS_DIR}/nuSQuIDS.so\")
         if(EXISTS \${NUSQUIDS_SO})
             message(STATUS \"Fixing library paths in nuSQuIDS.so\")
-            # Get current install names
-            execute_process(
-                COMMAND otool -L \${NUSQUIDS_SO}
-                OUTPUT_VARIABLE OTOOL_OUTPUT
-            )
-            # Fix the libnuSQuIDS reference to use @loader_path
-            execute_process(
-                COMMAND install_name_tool -change
-                    libnuSQuIDS.1.dylib
-                    @loader_path/libnuSQuIDS.1.dylib
-                    \${NUSQUIDS_SO}
-                ERROR_QUIET
-            )
-            # Also fix any absolute paths to the build directory
-            string(REGEX MATCHALL \"[^\\n]*libnuSQuIDS[^\\n]*\" NUSQUIDS_REFS \"\${OTOOL_OUTPUT}\")
-            foreach(REF \${NUSQUIDS_REFS})
-                if(REF MATCHES \"(/[^ ]+libnuSQuIDS\\\\.1\\\\.dylib)\")
-                    set(OLD_PATH \${CMAKE_MATCH_1})
-                    execute_process(
-                        COMMAND install_name_tool -change
-                            \${OLD_PATH}
-                            @loader_path/libnuSQuIDS.1.dylib
-                            \${NUSQUIDS_SO}
-                        ERROR_QUIET
-                    )
-                endif()
-            endforeach()
-            # Fix the lib/nuSQuIDS.so reference (the incorrect id path)
+            fix_lib_refs(\${NUSQUIDS_SO})
+            # Fix lib/nuSQuIDS.so reference (incorrect id path)
             execute_process(
                 COMMAND install_name_tool -change
                     lib/nuSQuIDS.so
@@ -193,16 +235,63 @@ if(APPLE)
             )
         endif()
 
-        # Also fix the libnuSQuIDS.dylib to have a proper id
-        set(NUSQUIDS_DYLIB \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS/libnuSQuIDS.1.dylib\")
-        if(EXISTS \${NUSQUIDS_DYLIB})
+        # Fix all libnuSQuIDS dylibs
+        file(GLOB NUSQUIDS_DYLIBS \"\${NUSQUIDS_DIR}/libnuSQuIDS*.dylib\")
+        foreach(DYLIB \${NUSQUIDS_DYLIBS})
+            message(STATUS \"Fixing library paths in \${DYLIB}\")
+            fix_lib_refs(\${DYLIB})
+            get_filename_component(DYLIB_NAME \${DYLIB} NAME)
             execute_process(
                 COMMAND install_name_tool -id
-                    @loader_path/libnuSQuIDS.1.dylib
-                    \${NUSQUIDS_DYLIB}
+                    @loader_path/\${DYLIB_NAME}
+                    \${DYLIB}
+                ERROR_QUIET
+            )
+        endforeach()
+
+        # Fix all libSQuIDS dylibs (when bundled)
+        file(GLOB SQUIDS_DYLIBS \"\${NUSQUIDS_DIR}/libSQuIDS*.dylib\")
+        foreach(DYLIB \${SQUIDS_DYLIBS})
+            message(STATUS \"Fixing library paths in \${DYLIB}\")
+            fix_lib_refs(\${DYLIB})
+            get_filename_component(DYLIB_NAME \${DYLIB} NAME)
+            execute_process(
+                COMMAND install_name_tool -id
+                    @loader_path/\${DYLIB_NAME}
+                    \${DYLIB}
+                ERROR_QUIET
+            )
+        endforeach()
+    ")
+endif()
+
+# -------------- Linux Library Path Fixups ------------------------------------
+# For wheel distribution on Linux, we need to set RPATH to $ORIGIN
+# so the Python extension can find shared libraries in the same directory
+
+if(UNIX AND NOT APPLE)
+    install(CODE "
+        set(NUSQUIDS_DIR \"\${CMAKE_INSTALL_PREFIX}/nuSQuIDS\")
+
+        # Fix RPATH for nuSQuIDS.so
+        set(NUSQUIDS_SO \"\${NUSQUIDS_DIR}/nuSQuIDS.so\")
+        if(EXISTS \${NUSQUIDS_SO})
+            message(STATUS \"Setting RPATH in nuSQuIDS.so\")
+            execute_process(
+                COMMAND patchelf --set-rpath \\$ORIGIN \${NUSQUIDS_SO}
                 ERROR_QUIET
             )
         endif()
+
+        # Fix RPATH for all .so files in the nuSQuIDS directory
+        file(GLOB ALL_SO_FILES \"\${NUSQUIDS_DIR}/*.so\" \"\${NUSQUIDS_DIR}/*.so.*\")
+        foreach(SO_FILE \${ALL_SO_FILES})
+            message(STATUS \"Setting RPATH in \${SO_FILE}\")
+            execute_process(
+                COMMAND patchelf --set-rpath \\$ORIGIN \${SO_FILE}
+                ERROR_QUIET
+            )
+        endforeach()
     ")
 endif()
 
