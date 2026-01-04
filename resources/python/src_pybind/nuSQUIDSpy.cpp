@@ -187,7 +187,10 @@ PYBIND11_MODULE(nuSQuIDS, m)
     // Nuclear targets use PDG nuclear code format: 10LZZZAAAI
     .value("hydrogen",hydrogen)
     .value("deuteron",deuteron)
+    .value("helium3",helium3)
+    .value("helium4",helium4)
     .value("carbon",carbon)
+    .value("nitrogen",nitrogen)
     .value("oxygen",oxygen)
     .value("sodium",sodium)
     .value("magnesium",magnesium)
@@ -374,8 +377,18 @@ PYBIND11_MODULE(nuSQuIDS, m)
 
   {
     auto outer
-    = py::class_<Sun, Body, std::shared_ptr<Sun>>(m,"Sun")
-    .def(py::init<std::string>(), py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat")
+    = py::class_<Sun, Body, std::shared_ptr<Sun>>(m,"Sun",
+         "A model of the Sun based on the Standard Solar Model.\n\n"
+         "Parameters\n"
+         "----------\n"
+         "sunmodel : str, optional\n"
+         "    Path to the SSM data file. Default uses bs05_agsop.dat.\n"
+         "use_composition_information : bool, optional\n"
+         "    If True, parse and use nuclear composition from the SSM file\n"
+         "    (H, He4, He3, C12, N14, O16). Default is False.\n")
+    .def(py::init<std::string, bool>(),
+         py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat",
+         py::arg("use_composition_information") = false)
     ;
 
     py::class_<Sun::Track, Body::Track, std::shared_ptr<Sun::Track>>(outer,"Track")
@@ -391,8 +404,18 @@ PYBIND11_MODULE(nuSQuIDS, m)
 
   {
     auto outer
-    = py::class_<SunASnu, Body, std::shared_ptr<SunASnu>>(m,"SunASnu")
-    .def(py::init<std::string>(), py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat")
+    = py::class_<SunASnu, Body, std::shared_ptr<SunASnu>>(m,"SunASnu",
+         "A model of the Sun for atmospheric solar neutrinos.\n\n"
+         "Parameters\n"
+         "----------\n"
+         "sunmodel : str, optional\n"
+         "    Path to the SSM data file. Default uses bs05_agsop.dat.\n"
+         "use_composition_information : bool, optional\n"
+         "    If True, parse and use nuclear composition from the SSM file\n"
+         "    (H, He4, He3, C12, N14, O16). Default is False.\n")
+    .def(py::init<std::string, bool>(),
+         py::arg("sunmodel") = getResourcePath() + "/astro/bs05_agsop.dat",
+         py::arg("use_composition_information") = false)
     ;
 
     py::class_<SunASnu::Track, Body::Track, std::shared_ptr<SunASnu::Track>>(outer,"Track")

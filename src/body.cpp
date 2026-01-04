@@ -723,10 +723,11 @@ void Earth::Track::FillDerivedParams(std::vector<double>& TrackParams) const{
 */
 
 // constructor
-Sun::Sun():Sun(getResourcePath()+"/astro/bs05_agsop.dat")
+Sun::Sun():Sun(getResourcePath()+"/astro/bs05_agsop.dat", false)
 {}
 
-Sun::Sun(std::string sunlocation):Body()
+Sun::Sun(std::string sunlocation, bool use_composition_information):Body(),
+use_composition(use_composition_information)
 {
   radius = 695980.0*param.km;
 
@@ -746,6 +747,50 @@ Sun::Sun(std::string sunlocation):Body()
 
   inter_density=AkimaSpline(sun_radius,sun_density);
   inter_xh=AkimaSpline(sun_radius,sun_xh);
+
+  // Parse composition if requested
+  // SSM file format: columns 7-12 are mass fractions for H, He4, He3, C12, N14, O16
+  // (0-indexed: 6, 7, 8, 9, 10, 11)
+  if(use_composition && sun_model.extent(1) >= 12) {
+    // Element codes and their atomic mass numbers
+    // Order in SSM file: H, He4, He3, C12, N14, O16
+    std::vector<PDGCode> ssm_codes = { hydrogen, helium4, helium3, carbon, nitrogen, oxygen };
+    std::vector<double> mass_numbers = { 1.0, 4.0, 3.0, 12.0, 14.0, 16.0 };
+    size_t n_elements = ssm_codes.size();
+
+    // Convert mass fractions to number fractions at each radius point
+    std::vector<std::vector<double>> number_fractions(n_elements);
+    for(size_t e = 0; e < n_elements; e++) {
+      number_fractions[e].resize(arraysize);
+    }
+
+    for(unsigned int i = 0; i < arraysize; i++) {
+      // First compute sum of X_j / A_j for normalization
+      double sum_x_over_a = 0.0;
+      for(size_t e = 0; e < n_elements; e++) {
+        double mass_frac = sun_model[i][6 + e];  // Columns 6-11 (0-indexed)
+        sum_x_over_a += mass_frac / mass_numbers[e];
+      }
+
+      // Now compute number fractions
+      for(size_t e = 0; e < n_elements; e++) {
+        double mass_frac = sun_model[i][6 + e];
+        if(sum_x_over_a > 0) {
+          number_fractions[e][i] = (mass_frac / mass_numbers[e]) / sum_x_over_a;
+        } else {
+          number_fractions[e][i] = 0.0;
+        }
+      }
+    }
+
+    // Build composition splines
+    for(size_t e = 0; e < n_elements; e++) {
+      PDGCode code = ssm_codes[e];
+      inter_composition[code] = AkimaSpline(sun_radius, number_fractions[e]);
+      x_composition_min[code] = number_fractions[e][0];
+      x_composition_max[code] = number_fractions[e][arraysize-1];
+    }
+  }
 }
 
 Sun::Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):
@@ -806,6 +851,33 @@ double Sun::ye(const GenericTrack& track_input) const
   return 0.5*(1.0+rxh(r));
 }
 
+std::map<PDGCode, double> Sun::composition(const GenericTrack& track_input) const
+{
+  std::map<PDGCode, double> result;
+  if(!use_composition || inter_composition.empty()) {
+    return result;  // Return empty map if composition not enabled
+  }
+
+  double r = track_input.GetX() / radius;
+
+  // Interpolate composition at this radius
+  for(const auto& pair : inter_composition) {
+    PDGCode code = pair.first;
+    double frac;
+    if(r < sun_radius[0]) {
+      frac = x_composition_min.at(code);
+    } else if(r > sun_radius[arraysize-1]) {
+      frac = x_composition_max.at(code);
+    } else {
+      frac = pair.second(r);
+    }
+    if(frac > 0) {
+      result[code] = frac;
+    }
+  }
+  return result;
+}
+
 Sun::~Sun(){}
 
 void Sun::Track::Serialize(hid_t group) const {
@@ -829,10 +901,11 @@ std::shared_ptr<Sun::Track> Sun::Track::Deserialize(hid_t group){
 */
 
 // constructor
-SunASnu::SunASnu():SunASnu(getResourcePath()+"/astro/bs05_agsop.dat")
+SunASnu::SunASnu():SunASnu(getResourcePath()+"/astro/bs05_agsop.dat", false)
 {}
 
-SunASnu::SunASnu(std::string sunlocation):Body()
+SunASnu::SunASnu(std::string sunlocation, bool use_composition_information):Body(),
+use_composition(use_composition_information)
 {
   radius = 694439.0*param.km;
 
@@ -851,6 +924,50 @@ SunASnu::SunASnu(std::string sunlocation):Body()
 
   inter_density=AkimaSpline(sun_radius,sun_density);
   inter_xh=AkimaSpline(sun_radius,sun_xh);
+
+  // Parse composition if requested
+  // SSM file format: columns 7-12 are mass fractions for H, He4, He3, C12, N14, O16
+  // (0-indexed: 6, 7, 8, 9, 10, 11)
+  if(use_composition && sun_model.extent(1) >= 12) {
+    // Element codes and their atomic mass numbers
+    // Order in SSM file: H, He4, He3, C12, N14, O16
+    std::vector<PDGCode> ssm_codes = { hydrogen, helium4, helium3, carbon, nitrogen, oxygen };
+    std::vector<double> mass_numbers = { 1.0, 4.0, 3.0, 12.0, 14.0, 16.0 };
+    size_t n_elements = ssm_codes.size();
+
+    // Convert mass fractions to number fractions at each radius point
+    std::vector<std::vector<double>> number_fractions(n_elements);
+    for(size_t e = 0; e < n_elements; e++) {
+      number_fractions[e].resize(arraysize);
+    }
+
+    for(unsigned int i = 0; i < arraysize; i++) {
+      // First compute sum of X_j / A_j for normalization
+      double sum_x_over_a = 0.0;
+      for(size_t e = 0; e < n_elements; e++) {
+        double mass_frac = sun_model[i][6 + e];  // Columns 6-11 (0-indexed)
+        sum_x_over_a += mass_frac / mass_numbers[e];
+      }
+
+      // Now compute number fractions
+      for(size_t e = 0; e < n_elements; e++) {
+        double mass_frac = sun_model[i][6 + e];
+        if(sum_x_over_a > 0) {
+          number_fractions[e][i] = (mass_frac / mass_numbers[e]) / sum_x_over_a;
+        } else {
+          number_fractions[e][i] = 0.0;
+        }
+      }
+    }
+
+    // Build composition splines
+    for(size_t e = 0; e < n_elements; e++) {
+      PDGCode code = ssm_codes[e];
+      inter_composition[code] = AkimaSpline(sun_radius, number_fractions[e]);
+      x_composition_min[code] = number_fractions[e][0];
+      x_composition_max[code] = number_fractions[e][arraysize-1];
+    }
+  }
 }
 
 SunASnu::SunASnu(std::vector<double> x,std::vector<double> rho,std::vector<double> xh):
@@ -946,6 +1063,36 @@ double SunASnu::ye(const GenericTrack& track_input) const
   double b = track_sunasnu.b_impact;
   double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
   return 0.5*(1.0+rxh(r));
+}
+
+std::map<PDGCode, double> SunASnu::composition(const GenericTrack& track_input) const
+{
+  std::map<PDGCode, double> result;
+  if(!use_composition || inter_composition.empty()) {
+    return result;  // Return empty map if composition not enabled
+  }
+
+  const SunASnu::Track& track_sunasnu = static_cast<const SunASnu::Track&>(track_input);
+  double x = track_sunasnu.GetX();
+  double b = track_sunasnu.b_impact;
+  double r = sqrt(SQR(radius)+SQR(x)-2.0*x*sqrt(SQR(radius)-SQR(b)))/radius;
+
+  // Interpolate composition at this radius
+  for(const auto& pair : inter_composition) {
+    PDGCode code = pair.first;
+    double frac;
+    if(r < sun_radius[0]) {
+      frac = x_composition_min.at(code);
+    } else if(r > sun_radius[arraysize-1]) {
+      frac = x_composition_max.at(code);
+    } else {
+      frac = pair.second(r);
+    }
+    if(frac > 0) {
+      result[code] = frac;
+    }
+  }
+  return result;
 }
 
 SunASnu::~SunASnu(){}

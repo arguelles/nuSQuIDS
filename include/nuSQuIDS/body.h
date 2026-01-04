@@ -497,10 +497,19 @@ class Sun: public Body{
     /// \brief Radius of the Sun.
     double radius;
 
+    /// \brief Whether composition information is used
+    bool use_composition = false;
+
     /// \brief Density spline
     AkimaSpline inter_density;
     /// \brief Hydrogen fraction spline
     AkimaSpline inter_xh;
+    /// \brief Composition splines (optional)
+    std::map<PDGCode, AkimaSpline> inter_composition;
+    /// \brief Composition at minimum radius (optional)
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition at maximum radius (optional)
+    std::map<PDGCode, double> x_composition_max;
 
     /// \brief Returns the density in g/cm^3 at a given radius fraction x
     /// @param x Radius fraction: 0:center, 1:surface.
@@ -520,14 +529,17 @@ class Sun: public Body{
     Sun(std::vector<double> x,std::vector<double> rho,std::vector<double> xh);
     /// \brief Constructor from a user supplied solar model.
     /// @param sunmodel Path to the Sun model file.
+    /// @param use_composition_information If true, parse and use nuclear composition from the SSM file.
     /// \details The input file should have the same columns as John Bahcalls solar model file.
     /// The second column one must run from zero to one representing
     /// the center and surface of the Sun respectively. The
     /// fourth column must contain the Sun density in g/cm^3 at
     /// a given position, while the seven column must contain
     /// the hydrogen fraction which is related to the electron fraction by ye = 0.5*(1.0+rxh(r)).
+    /// If use_composition_information is true, columns 7-12 are parsed as mass fractions for
+    /// H, He4, He3, C12, N14, O16 and converted to number fractions for use with nuclear cross sections.
     /// Internally we assume that the solar radius is 695980.0 kilometers.
-    Sun(std::string sunmodel);
+    Sun(std::string sunmodel, bool use_composition_information = false);
 
 
     /// \brief Destructor
@@ -574,6 +586,8 @@ class Sun: public Body{
     double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
 
     /// \brief Returns the radius of the Sun in natural units.
     double GetRadius() const {return radius;}
@@ -598,10 +612,19 @@ class SunASnu: public Body{
     /// \brief Radius of the Sun.
     double radius;
 
+    /// \brief Whether composition information is used
+    bool use_composition = false;
+
     /// \brief Density spline
     AkimaSpline inter_density;
     /// \brief Hydrogen fraction spline
     AkimaSpline inter_xh;
+    /// \brief Composition splines (optional)
+    std::map<PDGCode, AkimaSpline> inter_composition;
+    /// \brief Composition at minimum radius (optional)
+    std::map<PDGCode, double> x_composition_min;
+    /// \brief Composition at maximum radius (optional)
+    std::map<PDGCode, double> x_composition_max;
 
     /// \brief Returns the density in g/cm^3 at a given radius fraction x
     /// @param x Radius fraction: 0:center, 1:surface.
@@ -614,14 +637,17 @@ class SunASnu: public Body{
     SunASnu();
     /// \brief Constructor from a user supplied solar model.
     /// @param sunmodel Path to the Sun model file.
+    /// @param use_composition_information If true, parse and use nuclear composition from the SSM file.
     /// \details The input file should have the same columns as John Bahcalls solar model file.
     /// The second column one must run from zero to one representing
     /// the center and surface of the Sun respectively. The
     /// fourth column must contain the Sun density in g/cm^3 at
     /// a given position, while the seven column must contain
     /// the hydrogen fraction which is related to the electron fraction by ye = 0.5*(1.0+rxh(r)).
+    /// If use_composition_information is true, columns 7-12 are parsed as mass fractions for
+    /// H, He4, He3, C12, N14, O16 and converted to number fractions for use with nuclear cross sections.
     /// Internally we assume that the solar radius is 695980.0 kilometers.
-    SunASnu(std::string sunmodel);
+    SunASnu(std::string sunmodel, bool use_composition_information = false);
     /// \brief Constructor in which the user provides, as vectors, the
     /// Sun properties.
     /// @param x Vector containing position nodes in cm.
@@ -682,6 +708,8 @@ class SunASnu: public Body{
     double density(const GenericTrack&) const override;
     /// \brief Returns the electron fraction
     double ye(const GenericTrack&) const override;
+    /// \brief Returns the composition
+    std::map<PDGCode, double> composition(const GenericTrack&) const override;
 
     /// \brief Returns the radius of the Sun in natural units.
     double GetRadius() const {return radius;}

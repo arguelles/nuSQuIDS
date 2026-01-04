@@ -584,7 +584,10 @@ enum PDGCode : int32_t{
     // L=0 (ground state), I=0 (no strange quarks), giving 100ZZZAAA0
     hydrogen=1000010010,    ///< Z=1, A=1 (proton, but as nuclear target)
     deuteron=1000010020,    ///< Z=1, A=2
+    helium3=1000020030,     ///< Z=2, A=3
+    helium4=1000020040,     ///< Z=2, A=4
     carbon=1000060120,      ///< Z=6, A=12
+    nitrogen=1000070140,    ///< Z=7, A=14
     oxygen=1000080160,      ///< Z=8, A=16
     sodium=1000110230,      ///< Z=11, A=23
     magnesium=1000120240,   ///< Z=12, A=24
