@@ -42,15 +42,50 @@ The element fractions represent number fractions (not mass fractions) and should
 
 ## Sun Model Files
 
-### bs05_agsop.dat, bs05op.dat, bs05op-org.dat
+### bs05_agsop.dat, bs05op.dat
 
-Standard Solar Model (SSM) files from Bahcall & Serenelli (2005).
+Standard Solar Model (SSM) files from Bahcall, Serenelli & Basu (2005).
 
-**Format:** Multiple columns including radius, temperature, density, electron density, and nuclear abundances.
+**Reference:** Bahcall, Serenelli, Basu, "New Solar Opacities, Abundances, Helioseismology, and Neutrino Fluxes", Astrophys.J. 621:L85-L88 (2005), [arXiv:astro-ph/0412440](https://arxiv.org/abs/astro-ph/0412440)
+
+- **bs05op.dat**: Standard solar model with older (OP) opacities
+- **bs05_agsop.dat**: Standard solar model with AGS 2005 metallicity and OP opacities
+
+**Format:** 12 columns, space-separated
+
+| Column | Description | Units |
+|--------|-------------|-------|
+| 1 | Mass fraction | M/M_sun [0, 1] |
+| 2 | Radius | R/R_sun [0, 1] |
+| 3 | Temperature | K |
+| 4 | Density | g/cm^3 |
+| 5 | Pressure | dyn/cm^2 |
+| 6 | Luminosity fraction | L/L_sun [0, 1] |
+| 7 | Hydrogen (H) | mass fraction |
+| 8 | Helium-4 (He4) | mass fraction |
+| 9 | Helium-3 (He3) | mass fraction |
+| 10 | Carbon-12 (C12) | mass fraction |
+| 11 | Nitrogen-14 (N14) | mass fraction |
+| 12 | Oxygen-16 (O16) | mass fraction |
+
+The mass fractions of elements (columns 7-12) represent the dominant species in the solar interior that are relevant for nuclear reactions and opacity calculations.
+
+### bs05op-org.dat
+
+Original unmodified version of the bs05op.dat file.
 
 ### nele_bs05op.dat
 
 Electron number density profile for the Standard Solar Model.
+
+**Format:** 2 columns, space-separated
+
+| Column | Description | Units |
+|--------|-------------|-------|
+| 1 | Radius | R/R_sun [0, 1] |
+| 2 | Electron number density | cm^-3 |
+
+This file is used by the `Sun` and `SunASnu` body classes for calculating the matter potential experienced by neutrinos propagating through the solar interior.
 
 ## Usage
 
