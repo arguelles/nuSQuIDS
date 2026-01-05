@@ -30,8 +30,8 @@ skip = "pp*"  # Skip PyPy builds
 
 [tool.cibuildwheel.linux]
 environment = { RUNNER_OS="Linux" }
-repair-wheel-command = "bash {project}/tools/wheels/repair_wheel_linux.sh {wheel} {dest_dir}"
+repair-wheel-command = "bash ./tools/wheels/repair_wheel_linux.sh {wheel} {dest_dir}"
 
 [tool.cibuildwheel.macos]
 environment = { RUNNER_OS="macOS" }
-repair-wheel-command = "bash {project}/tools/wheels/repair_wheel_macos.sh {wheel} {dest_dir} {delocate_archs}"
+repair-wheel-command = "bash ./tools/wheels/repair_wheel_macos.sh {wheel} {dest_dir} {delocate_archs}"
