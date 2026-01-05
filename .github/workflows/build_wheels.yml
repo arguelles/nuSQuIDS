@@ -8,21 +8,39 @@ on:
 
 jobs:
   build_wheels_macos:
-    name: Build wheels on ${{ matrix.os }} (${{ matrix.arch }}) - ${{ matrix.py }}
-    runs-on: ${{ matrix.os }}
+    name: Build wheels on macOS (${{ matrix.arch }}) - ${{ matrix.py }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-13]
         py: [cp39, cp310, cp311, cp312]
-        arch: [arm64, x86_64]
-        exclude:
-          # macos-14 is Apple Silicon (arm64)
-          - os: macos-14
-            arch: x86_64
-          # macos-13 is Intel (x86_64)
-          - os: macos-13
-            arch: arm64
+        include:
+          # Apple Silicon (arm64)
+          - arch: arm64
+            runner: macos-14
+            py: cp39
+          - arch: arm64
+            runner: macos-14
+            py: cp310
+          - arch: arm64
+            runner: macos-14
+            py: cp311
+          - arch: arm64
+            runner: macos-14
+            py: cp312
+          # Intel (x86_64) - cross-compile from arm64
+          - arch: x86_64
+            runner: macos-14
+            py: cp39
+          - arch: x86_64
+            runner: macos-14
+            py: cp310
+          - arch: x86_64
+            runner: macos-14
+            py: cp311
+          - arch: x86_64
+            runner: macos-14
+            py: cp312
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +53,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.py }}
+          name: wheels-macos-${{ matrix.arch }}-${{ matrix.py }}
           path: ./wheelhouse/*.whl
 
   build_wheels_linux:
