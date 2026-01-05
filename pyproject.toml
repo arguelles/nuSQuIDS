@@ -33,5 +33,6 @@ environment = { RUNNER_OS="Linux" }
 repair-wheel-command = "bash ./tools/wheels/repair_wheel_linux.sh {wheel} {dest_dir}"
 
 [tool.cibuildwheel.macos]
-environment = { RUNNER_OS="macOS" }
+# Set MACOSX_DEPLOYMENT_TARGET to 14.0 to match Homebrew libraries on macOS 14 (Sonoma)
+environment = { RUNNER_OS="macOS", MACOSX_DEPLOYMENT_TARGET="14.0" }
 repair-wheel-command = "bash ./tools/wheels/repair_wheel_macos.sh {wheel} {dest_dir} {delocate_archs}"

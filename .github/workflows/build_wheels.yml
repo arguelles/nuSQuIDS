@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py: [cp39, cp310, cp311, cp312]
+        # Skip cp39 since we're targeting macOS 14.0+ (Homebrew libs require it)
+        py: [cp310, cp311, cp312]
         # Only build arm64 for now - x86_64 cross-compile fails because
         # homebrew on arm64 runner installs arm64 libraries
         arch: [arm64]
@@ -32,36 +33,37 @@ jobs:
           name: wheels-macos-${{ matrix.arch }}-${{ matrix.py }}
           path: ./wheelhouse/*.whl
 
-  build_wheels_linux:
-    name: Build wheels on Linux (${{ matrix.arch }}) - ${{ matrix.py }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        py: [cp39, cp310, cp311, cp312]
-        arch: [x86_64, aarch64]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        if: matrix.arch == 'aarch64'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.3
-        env:
-          CIBW_BUILD: ${{ matrix.py }}-manylinux_${{ matrix.arch }}
-          CIBW_ARCHS: ${{ matrix.arch }}
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-linux-${{ matrix.arch }}-${{ matrix.py }}
-          path: ./wheelhouse/*.whl
+  # Linux builds temporarily disabled for faster iteration on macOS
+  # build_wheels_linux:
+  #   name: Build wheels on Linux (${{ matrix.arch }}) - ${{ matrix.py }}
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       py: [cp39, cp310, cp311, cp312]
+  #       arch: [x86_64, aarch64]
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Set up QEMU
+  #       if: matrix.arch == 'aarch64'
+  #       uses: docker/setup-qemu-action@v3
+  #       with:
+  #         platforms: arm64
+  #
+  #     - name: Build wheels
+  #       uses: pypa/cibuildwheel@v2.21.3
+  #       env:
+  #         CIBW_BUILD: ${{ matrix.py }}-manylinux_${{ matrix.arch }}
+  #         CIBW_ARCHS: ${{ matrix.arch }}
+  #         CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+  #         CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+  #
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: wheels-linux-${{ matrix.arch }}-${{ matrix.py }}
+  #         path: ./wheelhouse/*.whl
 
   build_sdist:
     name: Build source distribution
@@ -80,7 +82,8 @@ jobs:
   merge:
     name: Merge artifacts
     runs-on: ubuntu-latest
-    needs: [build_wheels_macos, build_wheels_linux, build_sdist]
+    # Temporarily removed build_wheels_linux dependency
+    needs: [build_wheels_macos, build_sdist]
     steps:
       - name: Merge Artifacts
         uses: actions/upload-artifact/merge@v4
