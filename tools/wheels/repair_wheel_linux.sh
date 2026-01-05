@@ -50,4 +50,12 @@ cd "$TMPDIR"
 zip -q -r "$TMPDIR/fixed_$WHEEL_NAME" ./*
 
 # Run auditwheel on the fixed wheel
+# Set LD_LIBRARY_PATH so auditwheel can find bundled libraries
+export LD_LIBRARY_PATH="$PACKAGE_DIR:$TMPDIR/lib:${LD_LIBRARY_PATH:-}"
+echo "LD_LIBRARY_PATH set to: $LD_LIBRARY_PATH"
+echo "Contents of $PACKAGE_DIR:"
+ls -la "$PACKAGE_DIR" || true
+echo "Contents of $TMPDIR/lib (if exists):"
+ls -la "$TMPDIR/lib" 2>/dev/null || echo "lib directory does not exist"
+
 auditwheel repair -w "$DEST_DIR" "$TMPDIR/fixed_$WHEEL_NAME"
