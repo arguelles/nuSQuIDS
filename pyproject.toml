@@ -22,6 +22,21 @@ plot = ["matplotlib"]
 [tool.scikit-build]
 minimum-version = "0.11"
 wheel.expand-macos-universal-tags = true
+# Exclude large data files from sdist to stay under PyPI's 100MB limit
+# Users can download cross-section data separately from the repository
+sdist.exclude = [
+    "data/xsections/*.h5",      # Cross-section splines (~270MB)
+    "examples/",                 # Examples not needed for building (~26MB)
+    "test/",                     # Test files not needed for building
+    ".git/",                     # Git history
+    "*.hdf5",                    # Any stray HDF5 files in root
+    ".DS_Store",                 # macOS metadata
+    ".claude/",                  # Claude Code settings
+    "Report.txt",                # Temporary files
+    "RELEASE_NOTES*.md",         # Release notes not needed for building
+    "benchmarks/",               # Benchmarks not needed for building
+    "binder/",                   # Binder config not needed for building
+]
 
 # cibuildwheel configuration for building wheels in CI
 [tool.cibuildwheel]
