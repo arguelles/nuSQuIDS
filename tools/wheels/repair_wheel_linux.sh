@@ -44,10 +44,10 @@ if [ -d "$TMPDIR/lib" ]; then
     done
 fi
 
-# Repack the wheel
+# Repack the wheel with original name (must match dist-info directory)
 WHEEL_NAME=$(basename "$WHEEL")
 cd "$TMPDIR"
-zip -q -r "$TMPDIR/fixed_$WHEEL_NAME" ./*
+zip -q -r "$TMPDIR/$WHEEL_NAME" ./*
 
 # Run auditwheel on the fixed wheel
 # Set LD_LIBRARY_PATH so auditwheel can find bundled libraries
@@ -58,4 +58,4 @@ ls -la "$PACKAGE_DIR" || true
 echo "Contents of $TMPDIR/lib (if exists):"
 ls -la "$TMPDIR/lib" 2>/dev/null || echo "lib directory does not exist"
 
-auditwheel repair -w "$DEST_DIR" "$TMPDIR/fixed_$WHEEL_NAME"
+auditwheel repair -w "$DEST_DIR" "$TMPDIR/$WHEEL_NAME"

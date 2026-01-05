@@ -75,12 +75,12 @@ if [ -d "$TMPDIR/lib" ]; then
     done
 fi
 
-# Repack the wheel
+# Repack the wheel with original name (must match dist-info directory)
 WHEEL_NAME=$(basename "$WHEEL")
 cd "$TMPDIR"
-zip -q -r "$TMPDIR/fixed_$WHEEL_NAME" ./*
+zip -q -r "$TMPDIR/$WHEEL_NAME" ./*
 
 # Run delocate on the fixed wheel
 # Use --ignore-missing-dependencies to handle libraries that may not be found in expected locations
 # Use --check-archs warn to allow version mismatches (Homebrew libs may target newer macOS)
-delocate-wheel --require-archs "$DELOCATE_ARCHS" -w "$DEST_DIR" -v --ignore-missing-dependencies "$TMPDIR/fixed_$WHEEL_NAME"
+delocate-wheel --require-archs "$DELOCATE_ARCHS" -w "$DEST_DIR" -v --ignore-missing-dependencies "$TMPDIR/$WHEEL_NAME"
