@@ -9,38 +9,14 @@ on:
 jobs:
   build_wheels_macos:
     name: Build wheels on macOS (${{ matrix.arch }}) - ${{ matrix.py }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
         py: [cp39, cp310, cp311, cp312]
-        include:
-          # Apple Silicon (arm64)
-          - arch: arm64
-            runner: macos-14
-            py: cp39
-          - arch: arm64
-            runner: macos-14
-            py: cp310
-          - arch: arm64
-            runner: macos-14
-            py: cp311
-          - arch: arm64
-            runner: macos-14
-            py: cp312
-          # Intel (x86_64) - cross-compile from arm64
-          - arch: x86_64
-            runner: macos-14
-            py: cp39
-          - arch: x86_64
-            runner: macos-14
-            py: cp310
-          - arch: x86_64
-            runner: macos-14
-            py: cp311
-          - arch: x86_64
-            runner: macos-14
-            py: cp312
+        # Only build arm64 for now - x86_64 cross-compile fails because
+        # homebrew on arm64 runner installs arm64 libraries
+        arch: [arm64]
 
     steps:
       - uses: actions/checkout@v4
