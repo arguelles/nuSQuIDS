@@ -10,10 +10,14 @@ echo "Project directory: $PROJECT_DIR"
 echo "Runner OS: $RUNNER_OS"
 
 if [[ $RUNNER_OS == "Linux" ]]; then
-    # manylinux_2_28 uses AlmaLinux 8 with dnf/yum
+    # manylinux_2_28 uses AlmaLinux 8 with dnf
     if command -v dnf &> /dev/null; then
+        # Enable EPEL for hdf5-devel and patchelf
+        dnf install -y epel-release
         dnf install -y hdf5-devel gsl-devel patchelf zip
     elif command -v yum &> /dev/null; then
+        # For older manylinux, enable EPEL
+        yum install -y epel-release
         yum install -y hdf5-devel gsl-devel patchelf zip
     elif command -v apk &> /dev/null; then
         # musllinux uses Alpine
