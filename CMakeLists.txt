@@ -119,6 +119,13 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/include/
 install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION lib)
 
+# Also install libSQuIDS to lib/ when built from source
+if(NOT SQuIDS_FOUND)
+    install(DIRECTORY ${SQuIDS_PREFIX}/lib/
+            DESTINATION lib
+            FILES_MATCHING PATTERN "libSQuIDS*")
+endif()
+
 # Install nusquids-config script
 install(PROGRAMS ${NUSQUIDS_INSTALL_PREFIX}/bin/nusquids-config
         DESTINATION bin)

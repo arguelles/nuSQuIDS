@@ -61,11 +61,16 @@ for f in "$PACKAGE_DIR"/*.so "$PACKAGE_DIR"/*.dylib; do
     fi
 done
 
-# Also check the lib directory if it exists
+# Also fix binaries in the lib directory if it exists
 if [ -d "$TMPDIR/lib" ]; then
     for f in "$TMPDIR/lib"/*.so "$TMPDIR/lib"/*.dylib; do
         if [ -f "$f" ]; then
             fix_lib_refs "$f"
+            # Set the install name ID for dylibs
+            if [[ "$f" == *.dylib ]]; then
+                LIB_NAME=$(basename "$f")
+                install_name_tool -id "@loader_path/$LIB_NAME" "$f" 2>/dev/null || true
+            fi
         fi
     done
 fi
