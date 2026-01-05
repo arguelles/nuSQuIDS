@@ -13,13 +13,29 @@ No installation required! Run an interactive Jupyter notebook example:
 Installation (Python)
 ---------------------
 
-The Python bindings can be installed via pip:
+### From PyPI (Recommended)
+
+The easiest way to install nuSQuIDS is from PyPI:
+
+```bash
+pip install nusquids
+```
+
+This installs pre-built wheels with all dependencies bundled - no need to install GSL, HDF5, or SQuIDS separately.
+
+**Supported platforms:**
+- Linux (x86_64, aarch64) - Python 3.9+
+- macOS (arm64) - Python 3.10+
+
+### From Source
+
+To build from source (e.g., for development or unsupported platforms):
 
 ```bash
 pip install .
 ```
 
-**Prerequisites:** GSL, HDF5, and SQuIDS must be installed on your system (see Prerequisites section below).
+**Prerequisites for source builds:** GSL, HDF5, and SQuIDS must be installed on your system (see Prerequisites section below).
 
 After installation:
 ```python
