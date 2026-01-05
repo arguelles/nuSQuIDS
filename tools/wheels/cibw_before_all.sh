@@ -12,12 +12,12 @@ echo "Runner OS: $RUNNER_OS"
 if [[ $RUNNER_OS == "Linux" ]]; then
     # manylinux_2_28 uses AlmaLinux 8 with dnf/yum
     if command -v dnf &> /dev/null; then
-        dnf install -y hdf5-devel gsl-devel patchelf
+        dnf install -y hdf5-devel gsl-devel patchelf zip
     elif command -v yum &> /dev/null; then
-        yum install -y hdf5-devel gsl-devel patchelf
+        yum install -y hdf5-devel gsl-devel patchelf zip
     elif command -v apk &> /dev/null; then
         # musllinux uses Alpine
-        apk add hdf5-dev gsl-dev patchelf
+        apk add hdf5-dev gsl-dev patchelf zip
     else
         echo "Unknown Linux package manager" 1>&2
         exit 1

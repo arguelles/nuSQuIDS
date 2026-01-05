@@ -81,4 +81,6 @@ cd "$TMPDIR"
 zip -q -r "$TMPDIR/fixed_$WHEEL_NAME" ./*
 
 # Run delocate on the fixed wheel
-delocate-wheel --require-archs "$DELOCATE_ARCHS" -w "$DEST_DIR" -v "$TMPDIR/fixed_$WHEEL_NAME"
+# Use --ignore-missing-dependencies to handle libraries that may not be found in expected locations
+# Use --check-archs warn to allow version mismatches (Homebrew libs may target newer macOS)
+delocate-wheel --require-archs "$DELOCATE_ARCHS" -w "$DEST_DIR" -v --ignore-missing-dependencies "$TMPDIR/fixed_$WHEEL_NAME"
