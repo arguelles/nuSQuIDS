@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "nuSQuIDS"
-version = "1.13.2"          # keep in sync with configure
+version = "1.13.3"          # keep in sync with configure
 description = "Neutrino propagation library with pybind11 bindings for reference see"
 authors = [{name = "Carlos A. Argüelles Delgado", email = "carguelles@fas.harvard.edu"}]
 readme = "README.md"
@@ -15,6 +15,7 @@ classifiers = [
   "Programming Language :: C++",
   "License :: OSI Approved :: MIT License",
 ]
+dependencies = ["numpy"]
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
