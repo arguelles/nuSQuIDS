@@ -1,0 +1,7 @@
+# Build artifacts
+build/
+lib/
+
+# Julia artifacts
+*.dylib
+*.so

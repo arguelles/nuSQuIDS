@@ -227,6 +227,51 @@ Alternatively, add the bindings to your PYTHONPATH:
 
 	export PYTHONPATH=$(PATH_TO_nuSQUIDS)/resources/python/bindings/:$PYTHONPATH
 
+Julia Bindings (Experimental)
+-----------------------------
+
+nuSQuIDS also provides Julia bindings via [CxxWrap.jl](https://github.com/JuliaInterop/CxxWrap.jl).
+
+**Prerequisites:**
+- Julia 1.9+
+- CxxWrap.jl (`] add CxxWrap` in Julia)
+- nuSQuIDS C++ library installed
+
+**Building:**
+
+```bash
+cd resources/julia
+./build.sh
+```
+
+**Installation:**
+
+From Julia:
+```julia
+using Pkg
+Pkg.develop(path="/path/to/nuSQuIDS/resources/julia/nuSQuIDS")
+```
+
+**Usage:**
+
+```julia
+using nuSQuIDS
+
+units = Const()
+nus = nuSQUIDS(3, neutrino)
+Set_Body_Vacuum(nus, make_Vacuum())
+Set_Track_Vacuum(nus, make_VacuumTrack(1000.0 * km(units)))
+Set_E(nus, 1.0 * GeV(units))
+Set_initial_state(nus, [0.0, 1.0, 0.0], flavor)
+EvolveState(nus)
+
+for i in 0:2
+    println("P(nu_mu -> flavor $i) = ", EvalFlavor(nus, i))
+end
+```
+
+See `resources/julia/README.md` for more details.
+
 ---
 
 Citation

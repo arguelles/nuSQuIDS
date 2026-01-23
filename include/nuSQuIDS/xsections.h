@@ -107,7 +107,13 @@ private:
   using underlying_type=typename std::underlying_type<argument_type>::type;
   using hash_type=std::hash<underlying_type>;
 public:
+#if __cplusplus >= 201703L
+  // C++17 and later: std::hash<T>::result_type is deprecated, use size_t
+  using result_type=size_t;
+#else
+  // C++11/14: use hash_type::result_type
   using result_type=typename hash_type::result_type;
+#endif
   result_type operator()(argument_type arg) const{
     return hash_(arg);
   }
@@ -636,7 +642,13 @@ private:
     using underlying_type=typename std::underlying_type<PDGCode>::type;
     using hash_type=std::hash<underlying_type>;
 public:
+#if __cplusplus >= 201703L
+    // C++17 and later: std::hash<T>::result_type is deprecated, use size_t
+    using result_type=size_t;
+#else
+    // C++11/14: use hash_type::result_type
     using result_type=typename hash_type::result_type;
+#endif
     using argument_type=PDGCode;
     result_type operator()(argument_type arg) const{
         return hash_(arg);

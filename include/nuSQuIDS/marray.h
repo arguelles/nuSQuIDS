@@ -411,6 +411,26 @@ public:
 	
 private:
 	template<typename DerefType, typename DerivedType, typename PointerType=typename std::add_pointer<DerefType>::type>
+#if __cplusplus >= 201703L
+	// C++17 and later: std::iterator is deprecated, use explicit type aliases
+	struct iterator_base {
+	private:
+		using derived_type=DerivedType;
+		friend class marray;
+	protected:
+		using array_type=typename detail::match_const<marray,DerefType>::type;
+		PointerType ptr;
+		iterator_base(array_type* a, size_type i):ptr(a->data+i){}
+	public:
+		enum{marray_iterator_tag};
+		// Explicit iterator traits (required since C++17)
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type = DerefType;
+		using difference_type = std::ptrdiff_t;
+		using pointer = PointerType;
+		using reference = DerefType&;
+#else
+	// C++11/14: use std::iterator base class
 	struct iterator_base : public std::iterator<std::random_access_iterator_tag, DerefType, std::ptrdiff_t, PointerType>{
 	private:
 		using derived_type=DerivedType;
@@ -426,6 +446,7 @@ private:
 		using typename base_type::difference_type;
 		using typename base_type::pointer;
 		using typename base_type::reference;
+#endif
 		
 		iterator_base():ptr(nullptr){}
 		iterator_base(const iterator_base<typename std::remove_const<value_type>::type,DerivedType>& other):
@@ -1605,7 +1626,13 @@ namespace detail{
 
 //Generic binary operation between marrays whose types, ranks, or sizes may not match
 template<typename T1, unsigned R1, typename T2, unsigned R2, typename F,
-		 typename OT=typename std::result_of<F(T1,T2)>::type, //output type
+#if __cplusplus >= 201703L
+         // C++17 and later: use std::invoke_result_t (std::result_of is deprecated)
+         typename OT=std::invoke_result_t<F, T1, T2>, //output type
+#else
+         // C++11/14: use std::result_of
+         typename OT=typename std::result_of<F(T1,T2)>::type, //output type
+#endif
          unsigned OR=detail::Max<R1,R2>::value //output rank
 >
 marray<OT,OR> applyOp(const marray<T1,R1>& m1, const marray<T2,R2>& m2, const F& op){

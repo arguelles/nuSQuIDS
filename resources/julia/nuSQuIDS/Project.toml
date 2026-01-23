@@ -1,0 +1,12 @@
+name = "nuSQuIDS"
+uuid = "a1b2c3d4-5678-90ab-cdef-1234567890ab"
+authors = ["Carlos Arguelles <carguelles@icecube.wisc.edu>", "Jordi Salvado <jsalvado@icecube.wisc.edu>", "Christopher Weaver <chris.weaver@icecube.wisc.edu>"]
+version = "1.13.0"
+
+[deps]
+CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[compat]
+julia = "1.6"
+CxxWrap = "0.17"
