@@ -2404,6 +2404,13 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
   // set time offset
   time_offset = squids_time - track->GetX();
 
+  // read from user parameters (before iniProjectors for derived classes)
+  hid_t user_parameters_id = H5Gopen(group, "user_parameters", H5P_DEFAULT);
+  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
+  AddToReadHDF5(user_parameters_id);
+  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
+  H5Gclose(user_parameters_id);
+
   // reinitialize projectors
   iniProjectors();
   // reinitizize H0
@@ -2455,13 +2462,6 @@ void nuSQUIDS::ReadStateHDF5Internal(std::string str,std::string grp,std::shared
       interactions_initialized = true;
     }
   }
-
-  // read from user parameters
-  hid_t user_parameters_id = H5Gopen(group, "user_parameters", H5P_DEFAULT);
-  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
-  AddToReadHDF5(user_parameters_id);
-  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
-  H5Gclose(user_parameters_id);
 
   // we assume that this was created with the writer and got to this point!
   istate = true;
@@ -2611,6 +2611,13 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
   Set_t(squids_time);
   // set time offset
   time_offset = squids_time - track->GetX();
+
+  // read from user parameters (before iniProjectors for derived classes)
+  hid_t user_parameters_id = H5Gopen(group, "user_parameters", H5P_DEFAULT);
+  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
+  AddToReadHDF5(user_parameters_id);
+  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
+  H5Gclose(user_parameters_id);
 
   // reinitialize projectors
   iniProjectors();
@@ -2887,13 +2894,6 @@ void nuSQUIDS::ReadStateHDF5(std::string str,std::string grp,std::string cross_s
 
     interactions_initialized = true;
   }
-
-  // read from user parameters
-  hid_t user_parameters_id = H5Gopen(group, "user_parameters", H5P_DEFAULT);
-  //H5Eset_auto (H5E_DEFAULT,(H5E_auto_t) H5Eprint,stderr);
-  AddToReadHDF5(user_parameters_id);
-  //H5Eset_auto (H5E_DEFAULT,nullptr,nullptr);
-  H5Gclose(user_parameters_id);
 
   // we assume that this was created with the writer and got to this point!
   istate = true;
