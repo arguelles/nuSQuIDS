@@ -1658,7 +1658,7 @@ void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux,
         if(flv < num_flavors){
           // Evaluate interpolator at (coszen, height, energy)
           double prod_rate = flux_interpolators[flv][rho](cz, height_cm, energy_GeV);
-          // Ensure non-negative
+          // Set to zero if negative (numerical artifact)
           flux[ie][rho][flv] = (prod_rate > 0) ? prod_rate : 0.0;
         } else {
           // No production data for this flavor (e.g., tau if only e/mu data)

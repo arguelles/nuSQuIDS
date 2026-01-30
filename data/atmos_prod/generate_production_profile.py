@@ -37,39 +37,45 @@ def compute_differential(flux_array, height_array):
     """
     Compute the differential production rate from integrated flux.
 
-    Uses central differences for interior points and forward/backward
-    differences at boundaries.
+    Following the convention from Calculate_Differential.sh:
+    - Heights go from high altitude to low altitude
+    - Production rate = (flux_current - flux_previous) / dh
+    - This gives positive values where neutrinos are being produced
+      (flux increases as we descend through the atmosphere)
 
     Parameters:
-        flux_array: 1D array of flux values at each height
-        height_array: 1D array of heights (in cm)
+        flux_array: 1D array of flux values at each height (high to low altitude)
+        height_array: 1D array of heights in cm (high to low altitude)
 
     Returns:
-        1D array of differential production rates
+        1D array of differential production rates (positive values)
     """
     n = len(flux_array)
     diff = np.zeros(n)
 
-    # Use log-spacing aware differentiation
-    log_h = np.log(height_array)
+    # Use log-spacing aware differentiation matching original script convention
+    # Original: EProd = ($4-PrevEFlux)/(log(10)*6.778/99*$2)
+    # This is (flux_now - flux_prev) / (h * delta_log_h)
+    log_h = np.log10(height_array)
 
     for i in range(n):
         if i == 0:
-            # Forward difference at top of atmosphere
-            dflux = flux_array[i+1] - flux_array[i]
-            dlogh = log_h[i+1] - log_h[i]
-            # d(flux)/d(h) = d(flux)/d(log h) * d(log h)/d(h) = d(flux)/d(log h) / h
-            diff[i] = dflux / (dlogh * height_array[i]) if dlogh != 0 else 0
-        elif i == n - 1:
-            # Backward difference at ground
-            dflux = flux_array[i] - flux_array[i-1]
-            dlogh = log_h[i] - log_h[i-1]
-            diff[i] = dflux / (dlogh * height_array[i]) if dlogh != 0 else 0
+            # At top of atmosphere, no previous flux - production starts here
+            # Use forward difference: how much flux is added going to next (lower) point
+            if i + 1 < n:
+                dflux = flux_array[i+1] - flux_array[i]  # positive (flux increases going down)
+                dlogh = abs(log_h[i] - log_h[i+1])  # positive step size
+                dh = np.log(10) * dlogh * height_array[i]
+                diff[i] = dflux / dh if dh != 0 else 0
         else:
-            # Central difference for interior points
-            dflux = flux_array[i+1] - flux_array[i-1]
-            dlogh = log_h[i+1] - log_h[i-1]
-            diff[i] = dflux / (dlogh * height_array[i]) if dlogh != 0 else 0
+            # Production = (flux_here - flux_above) / dh
+            dflux = flux_array[i] - flux_array[i-1]  # positive (flux increases going down)
+            dlogh = abs(log_h[i-1] - log_h[i])  # positive step size
+            dh = np.log(10) * dlogh * height_array[i]
+            diff[i] = dflux / dh if dh != 0 else 0
+
+    # Ensure non-negative (small numerical artifacts can cause negatives)
+    diff = np.maximum(diff, 0)
 
     return diff
 
