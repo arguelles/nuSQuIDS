@@ -930,7 +930,8 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/HDF5_Write_Read/read \
             examples/Constant_density_layers/const_dens_layers \
             examples/Astrophysical_neutrino_flavor_ratio/astro_flv_ratio \
-            examples/Decoherence/decoherence
+            examples/Decoherence/decoherence \
+            examples/Emitting_Atmosphere/emitting_atmosphere
 
 CXXFLAGS= -std=c++11
 
@@ -1069,6 +1070,10 @@ examples/Atm_BSM/atm_bsm: $(LIBDIR)/$(DYN_PRODUCT) examples/Atm_BSM/main.cpp
 examples/Constant_density_layers/const_dens_layers : $(LIBDIR)/$(DYN_PRODUCT) examples/Constant_density_layers/main.cpp
 	@echo Compiling constant density layer example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/Constant_density_layers/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Emitting_Atmosphere/emitting_atmosphere : $(LIBDIR)/$(DYN_PRODUCT) examples/Emitting_Atmosphere/main.cpp
+	@echo Compiling emitting atmosphere example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Emitting_Atmosphere/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 .PHONY: install uninstall clean test docs benchmark
 clean:

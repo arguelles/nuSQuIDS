@@ -33,9 +33,9 @@
 /// NUSQUIDS_VERSION / 100000 is the major version \n
 /// NUSQUIDS_VERSION / 100 % 1000 is the minor version \n
 /// NUSQUIDS_VERSION % 100 is the patch level
-#define NUSQUIDS_VERSION 101301
+#define NUSQUIDS_VERSION 101303
 
 ///\brief Human readable version number
-#define NUSQUIDS_VERSION_STR "1.13.1"
+#define NUSQUIDS_VERSION_STR "1.13.3"
 
 #endif //iNUSQUIDS_VERSION_HPP

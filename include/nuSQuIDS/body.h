@@ -824,6 +824,8 @@ class EarthAtm: public Body{
         Track(double phi,double earth_radius_,double atmheight_);
         /// \brief Returns the neutrino baseline in natural units.
         double GetBaseline() const {return L;}
+        /// \brief Returns the cosine of the zenith angle.
+        double GetCosZenith() const {return cosphi;}
         void FillDerivedParams(std::vector<double>& TrackParams) const override;
         ///Construct a track with the cosine of the zenith angle
         static Track MakeWithCosine(double cosphi,double earth_radius_,double atmheight_);
@@ -863,6 +865,66 @@ class EarthAtm: public Body{
     /// \param cosphi Cosine of the zenith angle with which the track will arrive at the surface of
     ///               the Earth, possibly after passing through the Earth
     Track MakeTrackWithCosine(double cosphi);
+};
+
+/// \class EmittingEarthAtm
+/// \brief Earth atmosphere model with continuous neutrino flux injection.
+/// \details This class extends EarthAtm to support continuous injection of neutrino
+/// flux during propagation, based on atmospheric production profiles (e.g., from MCEq).
+/// The flux injection is parameterized by cosine zenith angle, height, and energy.
+class EmittingEarthAtm: public EarthAtm {
+  friend class EarthAtm;
+protected:
+    /// \brief Bounds for the interpolation grid
+    double czen_min, czen_max;
+    double height_min, height_max;
+    double energy_min, energy_max;
+
+    /// \brief Number of flavors in the production data
+    unsigned int num_flavors;
+
+    /// \brief Interpolators for differential flux production.
+    /// Indexed as [flavor][rho], where rho=0 is neutrino, rho=1 is antineutrino.
+    /// Flavor ordering: 0=nu_e, 1=nu_mu, 2=nu_tau (standard nuSQuIDS ordering).
+    std::vector<std::vector<TriCubicInterpolator>> flux_interpolators;
+
+public:
+    /// \brief Default constructor using supplied MCEq production profile.
+    EmittingEarthAtm();
+
+    /// \brief Constructor from a user-supplied production model file.
+    /// @param prodmodel Path to the production model data file.
+    /// \details The input file should have 3 + 2*n_flavors columns:
+    /// - Column 0: cosine(zenith)
+    /// - Column 1: height in cm
+    /// - Column 2: energy in GeV
+    /// - Columns 3,4: nu_e, nu_e_bar differential production
+    /// - Columns 5,6: nu_mu, nu_mu_bar differential production
+    /// - Columns 7,8: nu_tau, nu_tau_bar differential production (optional)
+    /// The values should be differential production rates (d(flux)/d(height)).
+    EmittingEarthAtm(std::string prodmodel);
+
+    /// \brief Destructor
+    ~EmittingEarthAtm();
+
+    /// \brief Injects neutrino flux during propagation.
+    /// \details This function is called during evolution to add source terms.
+    /// @param flux Output array to fill with injected flux [energy][rho][flavor]
+    /// @param track Current track position
+    /// @param nusquids The nuSQUIDS object (used to get energy range)
+    void injected_neutrino_flux(marray<double, 3>& flux,
+                                const GenericTrack& track,
+                                const nuSQUIDS& nusquids) override;
+
+    /// \brief Returns the body identifier.
+    static unsigned int GetId() { return 8; }
+    /// \brief Returns the name of the body.
+    static std::string GetName() { return "EmittingEarthAtm"; }
+
+    /// \brief Serialization function
+    void Serialize(hid_t group) const override;
+    /// \brief Deserialization function
+    static std::shared_ptr<EmittingEarthAtm> Deserialize(hid_t group);
 };
 
   // type defining

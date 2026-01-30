@@ -479,6 +479,33 @@ double BiCubicInterpolator::operator()(double x, double y) const{
 	return result;
 }
 
+TriCubicInterpolator::TriCubicInterpolator():
+xcoords({1}),
+ycoords({1}),
+zcoords({1}),
+data({1,1,1}),
+dfdx({1,1,1}),
+dfdy({1,1,1}),
+dfdz({1,1,1}),
+d2fdxdy({1,1,1}),
+d2fdxdz({1,1,1}),
+d2fdydz({1,1,1}),
+d3fdxdydz({1,1,1})
+{
+  // Default constructor creates a minimal interpolator that returns 0
+  xcoords[0] = 0;
+  ycoords[0] = 0;
+  zcoords[0] = 0;
+  data[0][0][0] = 0;
+  dfdx[0][0][0] = 0;
+  dfdy[0][0][0] = 0;
+  dfdz[0][0][0] = 0;
+  d2fdxdy[0][0][0] = 0;
+  d2fdxdz[0][0][0] = 0;
+  d2fdydz[0][0][0] = 0;
+  d3fdxdydz[0][0][0] = 0;
+}
+
 TriCubicInterpolator::TriCubicInterpolator(marray<double,3> data_,
                                            marray<double,1> xcoords_,
                                            marray<double,1> ycoords_,

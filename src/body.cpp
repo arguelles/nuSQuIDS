@@ -24,8 +24,10 @@
 
 #include <nuSQuIDS/body.h>
 
+#include <algorithm>
 #include <cmath>
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -40,6 +42,7 @@
 
 #include <SQuIDS/const.h>
 
+#include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/resources.h>
 
 // Macros
@@ -1456,7 +1459,240 @@ inter_density(earth_radius,earth_density),inter_ye(earth_radius,earth_ye)
 }
 
 EarthAtm::~EarthAtm(){}
-    
+
+/*
+----------------------------------------------------------------------
+         EmittingEarthAtm CLASS DEFINITIONS
+----------------------------------------------------------------------
+*/
+
+EmittingEarthAtm::EmittingEarthAtm():EmittingEarthAtm(getResourcePath()+"/atmos_prod/PROD_MODEL_MCEQ.dat")
+{}
+
+EmittingEarthAtm::EmittingEarthAtm(std::string prodmodel):EarthAtm()
+{
+  // Read the production model data
+  // Format: coszen height[cm] energy[GeV] nu_e nu_e_bar nu_mu nu_mu_bar [nu_tau nu_tau_bar]
+  marray<double,2> prod_data = quickread(prodmodel);
+
+  if(prod_data.extent(0) == 0)
+    throw std::runtime_error("EmittingEarthAtm: Empty production model file: " + prodmodel);
+
+  unsigned int ncols = prod_data.extent(1);
+  if(ncols < 7)
+    throw std::runtime_error("EmittingEarthAtm: Production model file must have at least 7 columns (coszen, height, energy, nu_e, nu_e_bar, nu_mu, nu_mu_bar)");
+
+  // Determine number of flavors from number of columns
+  // 7 columns = 2 flavors (e, mu), 9 columns = 3 flavors (e, mu, tau)
+  num_flavors = (ncols >= 9) ? 3 : 2;
+
+  // Extract unique coordinate values
+  std::set<double> czen_set, height_set, energy_set;
+  for(unsigned int i = 0; i < prod_data.extent(0); i++){
+    czen_set.insert(prod_data[i][0]);
+    height_set.insert(prod_data[i][1]);
+    energy_set.insert(prod_data[i][2]);
+  }
+
+  // Convert sets to sorted arrays
+  std::vector<double> czen_vec(czen_set.begin(), czen_set.end());
+  std::vector<double> height_vec(height_set.begin(), height_set.end());
+  std::vector<double> energy_vec(energy_set.begin(), energy_set.end());
+
+  // Sort in ascending order
+  std::sort(czen_vec.begin(), czen_vec.end());
+  std::sort(height_vec.begin(), height_vec.end());
+  std::sort(energy_vec.begin(), energy_vec.end());
+
+  unsigned int n_czen = czen_vec.size();
+  unsigned int n_height = height_vec.size();
+  unsigned int n_energy = energy_vec.size();
+
+  // Store bounds
+  czen_min = czen_vec.front();
+  czen_max = czen_vec.back();
+  height_min = height_vec.front();
+  height_max = height_vec.back();
+  energy_min = energy_vec.front();
+  energy_max = energy_vec.back();
+
+  // Create index maps for faster lookup
+  std::map<double, unsigned int> czen_index, height_index, energy_index;
+  for(unsigned int i = 0; i < n_czen; i++)
+    czen_index[czen_vec[i]] = i;
+  for(unsigned int i = 0; i < n_height; i++)
+    height_index[height_vec[i]] = i;
+  for(unsigned int i = 0; i < n_energy; i++)
+    energy_index[energy_vec[i]] = i;
+
+  // Create marray for coordinates
+  marray<double,1> czen_arr({n_czen});
+  marray<double,1> height_arr({n_height});
+  marray<double,1> energy_arr({n_energy});
+  for(unsigned int i = 0; i < n_czen; i++)
+    czen_arr[i] = czen_vec[i];
+  for(unsigned int i = 0; i < n_height; i++)
+    height_arr[i] = height_vec[i];
+  for(unsigned int i = 0; i < n_energy; i++)
+    energy_arr[i] = energy_vec[i];
+
+  // Initialize flux data arrays
+  // TriCubicInterpolator uses data[z][y][x] for operator()(x, y, z)
+  // We want to interpolate as function of (coszen, height, energy)
+  // So data array is [energy][height][coszen]
+  // One array per flavor per rho (neutrino/antineutrino)
+  std::vector<std::vector<marray<double,3>>> flux_data(num_flavors);
+  for(unsigned int flv = 0; flv < num_flavors; flv++){
+    flux_data[flv].resize(2); // 0=neutrino, 1=antineutrino
+    for(unsigned int rho = 0; rho < 2; rho++){
+      flux_data[flv][rho] = marray<double,3>({n_energy, n_height, n_czen});
+      // Initialize to zero
+      for(unsigned int ie = 0; ie < n_energy; ie++)
+        for(unsigned int ih = 0; ih < n_height; ih++)
+          for(unsigned int ic = 0; ic < n_czen; ic++)
+            flux_data[flv][rho][ie][ih][ic] = 0.0;
+    }
+  }
+
+  // Fill data arrays from file
+  for(unsigned int i = 0; i < prod_data.extent(0); i++){
+    double cz = prod_data[i][0];
+    double h = prod_data[i][1];
+    double e = prod_data[i][2];
+
+    unsigned int ic = czen_index[cz];
+    unsigned int ih = height_index[h];
+    unsigned int ie = energy_index[e];
+
+    // Flavor ordering: 0=nu_e, 1=nu_mu, 2=nu_tau
+    // Data columns: 3=nu_e, 4=nu_e_bar, 5=nu_mu, 6=nu_mu_bar, 7=nu_tau, 8=nu_tau_bar
+    flux_data[0][0][ie][ih][ic] = prod_data[i][3];  // nu_e
+    flux_data[0][1][ie][ih][ic] = prod_data[i][4];  // nu_e_bar
+    flux_data[1][0][ie][ih][ic] = prod_data[i][5];  // nu_mu
+    flux_data[1][1][ie][ih][ic] = prod_data[i][6];  // nu_mu_bar
+    if(num_flavors > 2 && ncols >= 9){
+      flux_data[2][0][ie][ih][ic] = prod_data[i][7];  // nu_tau
+      flux_data[2][1][ie][ih][ic] = prod_data[i][8];  // nu_tau_bar
+    }
+  }
+
+  // Build interpolators
+  flux_interpolators.resize(num_flavors);
+  for(unsigned int flv = 0; flv < num_flavors; flv++){
+    flux_interpolators[flv].resize(2);
+    for(unsigned int rho = 0; rho < 2; rho++){
+      flux_interpolators[flv][rho] = TriCubicInterpolator(
+        std::move(flux_data[flv][rho]),
+        czen_arr,
+        height_arr,
+        energy_arr
+      );
+    }
+  }
+}
+
+EmittingEarthAtm::~EmittingEarthAtm(){}
+
+void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux,
+                                              const GenericTrack& track_input,
+                                              const nuSQUIDS& nusquids)
+{
+  const EarthAtm::Track& track = static_cast<const EarthAtm::Track&>(track_input);
+
+  // Get current position along track
+  double x = track.GetX();  // in natural units (eV^-1)
+  double xkm = x / param.km;
+
+  // Calculate current height and cosine zenith
+  double cosphi = track.GetCosZenith();
+  double sinsqphi = 1 - cosphi * cosphi;
+
+  // Calculate current radius from Earth center
+  double baseline = track.GetBaseline();
+  double dL = sqrt(SQR(earth_with_atm_radius) - radius*radius*sinsqphi) + radius*cosphi;
+  double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (baseline/param.km + dL)*xkm;
+  double r = (r2 > 0) ? sqrt(r2) : 0;
+
+  // Height above Earth surface in cm
+  double height_km = r - radius;  // in km
+  if(height_km < 0) height_km = 0;
+  double height_cm = height_km * 1e5;  // convert km to cm
+
+  // Check if we're in the atmosphere (production only happens there)
+  if(height_km <= 0 || height_km > atm_height){
+    // Zero flux - we're not in the atmosphere
+    for(unsigned int ie = 0; ie < flux.extent(0); ie++)
+      for(unsigned int rho = 0; rho < flux.extent(1); rho++)
+        for(unsigned int flv = 0; flv < flux.extent(2); flv++)
+          flux[ie][rho][flv] = 0.0;
+    return;
+  }
+
+  // Clamp height to interpolation bounds
+  if(height_cm < height_min) height_cm = height_min;
+  if(height_cm > height_max) height_cm = height_max;
+
+  // Clamp coszen to interpolation bounds
+  double cz = cosphi;
+  if(cz < czen_min) cz = czen_min;
+  if(cz > czen_max) cz = czen_max;
+
+  // Get energy range from nuSQUIDS
+  marray<double,1> E_range = nusquids.GetERange();
+  unsigned int n_energies = E_range.extent(0);
+  unsigned int n_rho = nusquids.GetNumRho();
+  unsigned int n_flavors = nusquids.GetNumNeu();
+
+  // Fill flux array
+  for(unsigned int ie = 0; ie < n_energies; ie++){
+    // Energy in GeV (nuSQUIDS uses natural units, so E is in eV)
+    double energy_eV = E_range[ie];
+    double energy_GeV = energy_eV / param.GeV;
+
+    // Clamp energy to interpolation bounds
+    if(energy_GeV < energy_min) energy_GeV = energy_min;
+    if(energy_GeV > energy_max) energy_GeV = energy_max;
+
+    for(unsigned int rho = 0; rho < n_rho; rho++){
+      for(unsigned int flv = 0; flv < n_flavors; flv++){
+        if(flv < num_flavors){
+          // Evaluate interpolator at (coszen, height, energy)
+          double prod_rate = flux_interpolators[flv][rho](cz, height_cm, energy_GeV);
+          // Ensure non-negative
+          flux[ie][rho][flv] = (prod_rate > 0) ? prod_rate : 0.0;
+        } else {
+          // No production data for this flavor (e.g., tau if only e/mu data)
+          flux[ie][rho][flv] = 0.0;
+        }
+      }
+    }
+  }
+}
+
+void EmittingEarthAtm::Serialize(hid_t group) const {
+  // Call base class serialization
+  EarthAtm::Serialize(group);
+  // Override name attribute with our name
+  // Note: The EarthAtm base class already wrote its name, we need to override
+  // For simplicity, we add a separate attribute to identify this as EmittingEarthAtm
+  addStringAttribute(group, "emitting_class_name", GetName().c_str());
+  // Store bounds for reference
+  addDoubleAttribute(group, "czen_min", czen_min);
+  addDoubleAttribute(group, "czen_max", czen_max);
+  addDoubleAttribute(group, "height_min", height_min);
+  addDoubleAttribute(group, "height_max", height_max);
+  addDoubleAttribute(group, "energy_min", energy_min);
+  addDoubleAttribute(group, "energy_max", energy_max);
+  addUIntAttribute(group, "num_flavors", num_flavors);
+}
+
+std::shared_ptr<EmittingEarthAtm> EmittingEarthAtm::Deserialize(hid_t group){
+  // For EmittingEarthAtm, we can't easily reconstruct the interpolators from HDF5
+  // So we just create a default EmittingEarthAtm (using the default production file)
+  // This is a limitation - proper serialization would require storing all the interpolator data
+  return std::make_shared<EmittingEarthAtm>();
+}
+
 void EarthAtm::SetAtmosphereHeight(double height){
   atm_height = height;
   earth_with_atm_radius = radius + atm_height;
@@ -1505,3 +1741,5 @@ NUSQUIDS_REGISTER_BODY(Earth);
 NUSQUIDS_REGISTER_BODY(EarthAtm);
 NUSQUIDS_REGISTER_BODY(Sun);
 NUSQUIDS_REGISTER_BODY(SunASnu);
+// EmittingEarthAtm uses EarthAtm::Track, so only register the body
+namespace{ nusquids::detail::registerBody body_registerer_EmittingEarthAtm(EmittingEarthAtm::GetName(),EmittingEarthAtm::Deserialize); }
