@@ -19,6 +19,11 @@ dependencies = ["numpy"]
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
+data = ["pooch>=1.6"]  # For downloading cross-section data files
+all = ["matplotlib", "pooch>=1.6"]
+
+[project.scripts]
+nusquids-fetch-data = "nuSQuIDS_data:main"
 
 [tool.scikit-build]
 minimum-version = "0.11"
