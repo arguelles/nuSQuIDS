@@ -10,9 +10,9 @@
 # Use gsl/2.7 to match libSQuIDS.so (built against libgsl.so.25)
 module load gcc/12.2.0 cuda/12.4.1 openmpi/5.0.5 hdf5/1.14.6 gsl/2.7
 
-cd /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test
+cd /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cuda
 
-source env_vars.sh
+source ../env_vars.sh
 
 # Override library paths to use correct GSL 2.7 and HDF5 1.14.6
 GSL27_LIBDIR="/n/sw/helmod-rocky8/apps/Core/gsl/2.7-fasrc01/lib64"
