@@ -52,6 +52,10 @@
 #include "nuSQuIDS/ThreadPool.h"
 #include "nuSQuIDS/xsections.h"
 
+#ifdef NUSQUIDS_CUDA_ENABLED
+#include "cuda/cuda_backend.h"
+#endif
+
 //#define FixCrossSections
 
 //#define UpdateInteractions_DEBUG
@@ -69,6 +73,16 @@ enum Basis {
   flavor=0b10,
   interaction=0b11
 };
+
+/// \brief Selects the compute backend for neutrino propagation.
+enum Backend {
+  cpu = 0,  ///< CPU backend (default) — uses ThreadPool for nuSQUIDSAtm
+  gpu = 1   ///< GPU backend — uses CUDA for accelerated propagation
+};
+
+#ifdef NUSQUIDS_CUDA_ENABLED
+class CUDABackend;
+#endif
 
 
 ///\class nuSQUIDS
@@ -1117,6 +1131,12 @@ class nuSQUIDSAtm {
     std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
     /// \brief the number of threads to use when performing the evolution
     unsigned int evalThreads;
+    /// \brief the compute backend (cpu or gpu)
+    Backend backend_ = Backend::cpu;
+#ifdef NUSQUIDS_CUDA_ENABLED
+    /// \brief CUDA backend instance (created on demand)
+    std::unique_ptr<CUDABackend> cuda_backend_;
+#endif
   public:
     /************************************************************************************
      * CONSTRUCTORS
@@ -1187,7 +1207,11 @@ class nuSQUIDSAtm {
     track_array(std::move(other.track_array)),
     ncs(std::move(other.ncs)),
     int_struct(std::move(other.int_struct)),
-    evalThreads(other.evalThreads)
+    evalThreads(other.evalThreads),
+    backend_(other.backend_)
+#ifdef NUSQUIDS_CUDA_ENABLED
+    ,cuda_backend_(std::move(other.cuda_backend_))
+#endif
     {
       other.inusquidsatm = false;
     }
@@ -1210,6 +1234,10 @@ class nuSQUIDSAtm {
       ncs = std::move(other.ncs);
       int_struct = std::move(other.int_struct);
       evalThreads = other.evalThreads;
+      backend_ = other.backend_;
+#ifdef NUSQUIDS_CUDA_ENABLED
+      cuda_backend_ = std::move(other.cuda_backend_);
+#endif
 
       // initial nusquids object render useless
       other.inusquidsatm = false;
@@ -1298,6 +1326,113 @@ class nuSQUIDSAtm {
           nsq.InitializeInteractions(); //still need to initialize intermediate buffers
         }
       }
+
+#ifdef NUSQUIDS_CUDA_ENABLED
+      if(backend_ == Backend::gpu){
+        if(!cuda_backend_)
+          cuda_backend_.reset(new CUDABackend());
+
+        const int n_paths = nusq_array.size();
+        const int ne_local = nusq_array[0].GetNumE();
+        const int nrhos_local = nusq_array[0].GetNumRho();
+        const int numneu_local = nusq_array[0].GetNumNeu();
+        const int su_size = numneu_local * numneu_local;
+
+        // Extract H0 from first nuSQUIDS (same for all paths)
+        std::vector<double> H0_array(nrhos_local * ne_local * su_size, 0.0);
+        {
+          BaseSQUIDS& nsq0 = nusq_array[0];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              squids::SU_vector h = nsq0.H0(nsq0.E_range[ie], rho);
+              auto comps = h.GetComponents();
+              for(int c = 0; c < su_size; c++)
+                H0_array[(rho * ne_local + ie) * su_size + c] = comps[c];
+            }
+          }
+        }
+
+        // Extract b1 projectors
+        std::vector<double> b1_proj_data(nrhos_local * numneu_local * su_size, 0.0);
+        {
+          BaseSQUIDS& nsq0 = nusq_array[0];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int flv = 0; flv < numneu_local; flv++){
+              auto comps = nsq0.b1_proj[rho][flv].GetComponents();
+              for(int c = 0; c < su_size; c++)
+                b1_proj_data[(rho * numneu_local + flv) * su_size + c] = comps[c];
+            }
+          }
+        }
+
+        // Extract initial states: layout [n_paths][nrhos][ne][su_size]
+        std::vector<double> gpu_states(n_paths * nrhos_local * ne_local * su_size, 0.0);
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              const squids::SU_vector& sv = nsq.state[ie].rho[rho];
+              for(int c = 0; c < su_size; c++)
+                gpu_states[((p * nrhos_local + rho) * ne_local + ie) * su_size + c] = sv[c];
+            }
+          }
+        }
+
+        // Extract per-path body profiles
+        std::vector<GPUPathData> gpu_paths(n_paths);
+        const int n_density_samples = 500;
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          auto& trk = *nsq.track;
+          gpu_paths[p].xini = trk.GetInitialX();
+          gpu_paths[p].xend = trk.GetFinalX();
+          gpu_paths[p].time_offset = 0.0;
+          gpu_paths[p].n_density_samples = n_density_samples;
+          gpu_paths[p].density_x.resize(n_density_samples);
+          gpu_paths[p].density_vals.resize(n_density_samples);
+          gpu_paths[p].ye_vals.resize(n_density_samples);
+
+          double dx = (gpu_paths[p].xend - gpu_paths[p].xini) / (n_density_samples - 1);
+          for(int s = 0; s < n_density_samples; s++){
+            double x_s = gpu_paths[p].xini + s * dx;
+            trk.SetX(x_s);
+            gpu_paths[p].density_x[s] = x_s;
+            gpu_paths[p].density_vals[s] = nsq.body->density(trk);
+            gpu_paths[p].ye_vals[s] = nsq.body->ye(trk);
+          }
+          trk.SetX(gpu_paths[p].xini);
+        }
+
+        // Extract HI_constants and NT_type from first nuSQUIDS
+        double HI_constants_val = nusq_array[0].HI_constants;
+        int NT_type_val = static_cast<int>(nusq_array[0].NT);
+
+        // Evolve on GPU (modifies states in-place)
+        // Pass the nuSQUIDS error tolerances to the GPU solver
+        double gpu_rel_error = nusq_array[0].Get_rel_error();
+        double gpu_abs_error = nusq_array[0].Get_abs_error();
+        cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
+                              H0_array.data(), b1_proj_data.data(),
+                              n_paths, ne_local, nrhos_local, numneu_local,
+                              HI_constants_val, NT_type_val,
+                              gpu_rel_error, gpu_abs_error);
+
+        // Write evolved states back into nuSQUIDS objects
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              squids::SU_vector& sv = nsq.state[ie].rho[rho];
+              for(int c = 0; c < su_size; c++)
+                sv[c] = gpu_states[((p * nrhos_local + rho) * ne_local + ie) * su_size + c];
+            }
+          }
+          nsq.Set_t(nsq.track->GetFinalX());
+        }
+
+        return;
+      }
+#endif
 
       if(evalThreads==1){
         unsigned int i = 0;
@@ -1891,6 +2026,19 @@ class nuSQUIDSAtm {
     unsigned int Get_EvalThreads() const{
       return(evalThreads);
     }
+
+    /// \brief Sets the compute backend (cpu or gpu).
+    /// \param b Backend::cpu or Backend::gpu
+    void Set_Backend(Backend b){
+#ifndef NUSQUIDS_CUDA_ENABLED
+      if(b == Backend::gpu)
+        throw std::runtime_error("nuSQUIDSAtm::Error::GPU backend requested but nuSQuIDS was not compiled with CUDA support. Rebuild with ENABLE_CUDA=ON or CUDA=1.");
+#endif
+      backend_ = b;
+    }
+
+    /// \brief Returns the current compute backend.
+    Backend Get_Backend() const { return backend_; }
 
     /// \brief Sets Earth object to be used.
     /// @param earth Shared pointer to Earth object.

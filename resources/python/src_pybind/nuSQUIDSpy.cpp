@@ -22,6 +22,9 @@
  ******************************************************************************/
 
 #include "nuSQUIDSpy.h"
+#ifdef NUSQUIDS_CUDA_ENABLED
+#include <nuSQuIDS/cuda/cuda_backend.h>
+#endif
 
 PYBIND11_MODULE(nuSQuIDS, m)
 {
@@ -134,6 +137,12 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .value("neutrino",neutrino)
     .value("antineutrino",antineutrino)
     .value("both",both)
+    .export_values()
+  ;
+
+  py::enum_<Backend>(m,"Backend")
+    .value("cpu",Backend::cpu)
+    .value("gpu",Backend::gpu)
     .export_values()
   ;
 
@@ -457,5 +466,21 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .def("ReverseTrack",&EarthAtm::Track::ReverseTrack)
     ;
   }
+  // CUDA GPU support
+#ifdef NUSQUIDS_CUDA_ENABLED
+  m.def("cuda_available", &CUDABackend::IsAvailable,
+        "Check if CUDA GPU support is available at runtime.");
+  m.def("cuda_device_count", &CUDABackend::DeviceCount,
+        "Get the number of available CUDA GPU devices.");
+  m.def("cuda_device_info", &CUDABackend::DeviceInfo,
+        "Get a string describing available CUDA GPU devices.");
+#else
+  m.def("cuda_available", []() { return false; },
+        "Check if CUDA GPU support is available at runtime.");
+  m.def("cuda_device_count", []() { return 0; },
+        "Get the number of available CUDA GPU devices.");
+  m.def("cuda_device_info", []() { return std::string("CUDA support not compiled"); },
+        "Get a string describing available CUDA GPU devices.");
+#endif
 } // close pybind module
 

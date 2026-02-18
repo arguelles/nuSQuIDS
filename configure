@@ -494,9 +494,13 @@ For the python bindings the following flags are used:
   --python-config=PYTHON_CONFIG  use this python-config to determine compilation and linking settings
                                  (default is 'python-config')
   --python-module-dir=DIR        install python module to this directory, rather
-                                 than the default system location. The special 
+                                 than the default system location. The special
                                  value site.USER_SITE will be automatically
                                  expanded using the python interpreter
+
+For CUDA GPU support:
+  --enable-cuda                  enable CUDA GPU backend
+  --with-cuda=DIR                use the CUDA toolkit in DIR
 
 Some influential environment variables:
 CC          C compiler command
@@ -588,6 +592,12 @@ do
 
 	TMP=`echo "$var" | sed -n 's/^--with-julia-bindings/true/p'`
 	if [ "$TMP" ]; then JULIA_BINDINGS=true; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--enable-cuda/true/p'`
+	if [ "$TMP" ]; then ENABLE_CUDA=true; continue; fi
+
+	TMP=`echo "$var" | sed -n 's/^--with-cuda=\(.*\)$/\1/p'`
+	if [ "$TMP" ]; then ENABLE_CUDA=true; CUDA_DIR="$TMP"; continue; fi
 
 	echo "config.sh: Unknown or malformed option '$var'" 1>&2
 	exit 1
@@ -728,6 +738,71 @@ if [ "$PYTHON_BINDINGS" -o "$BOOST_PYTHON_BINDINGS" ]; then
 		echo "*** Failed to find numpy; python bindings will not be built ***"
 		unset PYTHON_BINDINGS
 	fi
+fi
+
+# ---- CUDA detection ----
+if [ "$ENABLE_CUDA" ]; then
+	echo "Checking for CUDA toolkit..."
+
+	# Find nvcc
+	NVCC=""
+	if [ "$CUDA_DIR" ]; then
+		if [ -x "$CUDA_DIR/bin/nvcc" ]; then
+			NVCC="$CUDA_DIR/bin/nvcc"
+			CUDA_INCDIR="$CUDA_DIR/include"
+			CUDA_LIBDIR="$CUDA_DIR/lib64"
+			if [ ! -d "$CUDA_LIBDIR" ]; then
+				CUDA_LIBDIR="$CUDA_DIR/lib"
+			fi
+		else
+			echo "Error: nvcc not found in $CUDA_DIR/bin"
+			exit 1
+		fi
+	else
+		# Auto-detect
+		if command -v nvcc > /dev/null 2>&1; then
+			NVCC=`command -v nvcc`
+			CUDA_DIR=`dirname "$NVCC"`
+			CUDA_DIR=`dirname "$CUDA_DIR"`
+			CUDA_INCDIR="$CUDA_DIR/include"
+			CUDA_LIBDIR="$CUDA_DIR/lib64"
+			if [ ! -d "$CUDA_LIBDIR" ]; then
+				CUDA_LIBDIR="$CUDA_DIR/lib"
+			fi
+		elif [ -x "/usr/local/cuda/bin/nvcc" ]; then
+			NVCC="/usr/local/cuda/bin/nvcc"
+			CUDA_DIR="/usr/local/cuda"
+			CUDA_INCDIR="$CUDA_DIR/include"
+			CUDA_LIBDIR="$CUDA_DIR/lib64"
+			if [ ! -d "$CUDA_LIBDIR" ]; then
+				CUDA_LIBDIR="$CUDA_DIR/lib"
+			fi
+		fi
+	fi
+
+	if [ -z "$NVCC" ]; then
+		echo "Error: CUDA requested but nvcc not found."
+		echo "  Use --with-cuda=DIR to specify the CUDA toolkit location."
+		exit 1
+	fi
+
+	CUDA_VERSION=`"$NVCC" --version | grep "release" | sed 's/.*release \([0-9]*\.[0-9]*\).*/\1/'`
+	echo "  Found CUDA $CUDA_VERSION at $CUDA_DIR"
+	echo "  nvcc: $NVCC"
+
+	CUDA_CFLAGS="-I$CUDA_INCDIR"
+	CUDA_LDFLAGS="-L$CUDA_LIBDIR -lcudart"
+	CUDA_CFLAGS_ENV="-DNUSQUIDS_CUDA_ENABLED $CUDA_CFLAGS"
+	CUDA_LDFLAGS_ENV="$CUDA_LDFLAGS"
+
+	# nvcc flags: C++17, fast math, PIC, sm_80+ architectures
+	NVCC_FLAGS="-std=c++17 --use_fast_math -Xcompiler=-fPIC"
+	NVCC_FLAGS="$NVCC_FLAGS --generate-code=arch=compute_80,code=[sm_80,compute_80]"
+	NVCC_FLAGS="$NVCC_FLAGS --generate-code=arch=compute_86,code=[sm_86,compute_86]"
+	NVCC_FLAGS="$NVCC_FLAGS --generate-code=arch=compute_89,code=[sm_89,compute_89]"
+	NVCC_FLAGS="$NVCC_FLAGS --generate-code=arch=compute_90,code=[sm_90,compute_90]"
+
+	echo "  CUDA support: enabled"
 fi
 
 ensure_found gsl
@@ -917,7 +992,22 @@ PATH_SQUIDS=$(SQUIDS_DIR)
 
 SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
+' >> ./Makefile
 
+# CUDA variable definitions must come right after OBJECTS so they are
+# included before the library target rules.
+if [ "$ENABLE_CUDA" ]; then
+	echo '
+# CUDA GPU backend (variables)
+CUDA_SOURCES = $(wildcard src/cuda/*.cu)
+CUDA_OBJECTS = $(patsubst src/cuda/%.cu,build/%.cu.o,$(CUDA_SOURCES))
+OBJECTS += $(CUDA_OBJECTS)
+CFLAGS += -DNUSQUIDS_CUDA_ENABLED $(CUDA_CFLAGS)
+LDFLAGS += $(CUDA_LDFLAGS)
+' >> ./Makefile
+fi
+
+echo '
 EXAMPLES := examples/Single_energy/single_energy \
             examples/Multiple_energy/multiple_energy \
             examples/Atm_default/atm_default \
@@ -965,6 +1055,13 @@ if [ "$JULIA_BINDINGS" ]; then
 	echo "CXX_JULIA_LDFLAGS=$CXX_JULIA_LDFLAGS" >> ./Makefile
 	echo "CXX_JULIA_CFLAGS=$CXX_JULIA_CFLAGS" >> ./Makefile
 	echo "JULIA_MODULEDIR=$JULIA_MODULEDIR" >> ./Makefile
+fi
+
+if [ "$ENABLE_CUDA" ]; then
+	echo "NVCC=$NVCC" >> ./Makefile
+	echo "NVCC_FLAGS=$NVCC_FLAGS" >> ./Makefile
+	echo "CUDA_CFLAGS=$CUDA_CFLAGS" >> ./Makefile
+	echo "CUDA_LDFLAGS=$CUDA_LDFLAGS" >> ./Makefile
 fi
 
 echo '
@@ -1215,12 +1312,35 @@ julia-uninstall : $(JULIAN_LIB)
 ' >> ./Makefile
 fi
 
+if [ "$ENABLE_CUDA" ]; then
+	echo '
+
+# CUDA GPU backend (rules)
+# Filter flags for nvcc: keep -I/-D, wrap other flags with -Xcompiler
+NVCC_INCFLAGS = $(filter -I% -D%,$(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS))
+NVCC_HOSTFLAGS = $(filter-out -I% -D%,$(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS))
+NVCC_XCOMPILER = $(if $(NVCC_HOSTFLAGS),-Xcompiler="$(NVCC_HOSTFLAGS)",)
+
+build/%.cu.o : src/cuda/%.cu
+	@echo Compiling CUDA $< to $@
+	@$(NVCC) $(NVCC_FLAGS) -Ibuild -I$(INCnuSQUIDS) $(NVCC_INCFLAGS) $(NVCC_XCOMPILER) -c $< -o $@
+
+install-cuda-headers:
+	@mkdir -p "$(PREFIX)/include/nuSQuIDS/cuda"
+	@mkdir -p "$(PREFIX)/include/nuSQuIDS/cuda/detail"
+	@cp "$(INCnuSQUIDS)"/nuSQuIDS/cuda/*.h "$(PREFIX)/include/nuSQuIDS/cuda/"
+	@cp "$(INCnuSQUIDS)"/nuSQuIDS/cuda/detail/*.cuh "$(PREFIX)/include/nuSQuIDS/cuda/detail/"
+
+install: install-cuda-headers
+
+' >> ./Makefile
+fi
 
 echo "
 export CXX=\"${CXX}\"
-export CFLAGS=\"${CFLAGS} -I${SOURCE_PATH}/include ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS}\"
+export CFLAGS=\"${CFLAGS} -I${SOURCE_PATH}/include ${SQUIDS_CFLAGS} ${GSL_CFLAGS} ${HDF5_CFLAGS} ${CUDA_CFLAGS_ENV}\"
 export CXXFLAGS=\"${CXXFLAGS} -std=c++11\"
-export LDFLAGS=\"${LDFLAGS} -L${SOURCE_PATH}/lib -Wl,-rpath -Wl,${SOURCE_PATH}/lib -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS}\"
+export LDFLAGS=\"${LDFLAGS} -L${SOURCE_PATH}/lib -Wl,-rpath -Wl,${SOURCE_PATH}/lib -lnuSQuIDS -lpthread ${SQUIDS_LDFLAGS} ${GSL_LDFLAGS} ${HDF5_LDFLAGS} ${CUDA_LDFLAGS_ENV}\"
 " > test/env_vars.sh
 if uname | grep -q 'Darwin' ; then
 	printf "export DYLD_LIBRARY_PATH=\"" >> test/env_vars.sh

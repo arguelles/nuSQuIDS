@@ -1530,6 +1530,24 @@ array
       class_object->def("Set_PositivyConstrainStep",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrainStep, py::arg("step"));
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
       class_object->def("Set_EvalThreads",&nuSQUIDSAtm<BaseType>::Set_EvalThreads);
+
+      class_object->def("Set_Backend",&nuSQUIDSAtm<BaseType>::Set_Backend, py::arg("backend"),
+R"doc(Set the computation backend.
+
+Parameters
+----------
+backend : Backend
+    Backend.cpu for CPU (default) or Backend.gpu for CUDA GPU.
+)doc");
+      class_object->def("Get_Backend",&nuSQUIDSAtm<BaseType>::Get_Backend,
+R"doc(Get the current computation backend.
+
+Returns
+-------
+Backend
+    The active backend (cpu or gpu).
+)doc");
+
       class_object->def("Set_EarthModel",&nuSQUIDSAtm<BaseType>::Set_EarthModel);
       class_object->def("SetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::SetNeutrinoCrossSections, py::arg("xs"));
       class_object->def("GetNeutrinoCrossSections",&nuSQUIDSAtm<BaseType>::GetNeutrinoCrossSections);

@@ -28,6 +28,9 @@
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/resources.h>
 #include <nuSQuIDS/marray.h>
+#ifdef NUSQUIDS_CUDA_ENABLED
+#include <nuSQuIDS/cuda/cuda_backend.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -173,6 +176,10 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
     mod.set_const("CC", NeutrinoCrossSections::Current::CC);
     mod.set_const("NC", NeutrinoCrossSections::Current::NC);
     mod.set_const("GR", NeutrinoCrossSections::Current::GR);
+
+    mod.add_bits<Backend>("Backend", jlcxx::julia_type("CppEnum"));
+    mod.set_const("Backend_cpu", Backend::cpu);
+    mod.set_const("Backend_gpu", Backend::gpu);
 
     mod.add_bits<PDGCode>("PDGCode", jlcxx::julia_type("CppEnum"));
     mod.set_const("electron_pdg", electron);
@@ -626,7 +633,9 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
         .method("Set_GlashowResonance", &nuSQUIDSAtm<nuSQUIDS>::Set_GlashowResonance)
         .method("Set_ProgressBar", &nuSQUIDSAtm<nuSQUIDS>::Set_ProgressBar)
         .method("GetNumCos", &nuSQUIDSAtm<nuSQUIDS>::GetNumCos)
-        .method("GetNumE", &nuSQUIDSAtm<nuSQUIDS>::GetNumE);
+        .method("GetNumE", &nuSQUIDSAtm<nuSQUIDS>::GetNumE)
+        .method("Set_Backend", &nuSQUIDSAtm<nuSQUIDS>::Set_Backend)
+        .method("Get_Backend", &nuSQUIDSAtm<nuSQUIDS>::Get_Backend);
 
     // nuSQUIDSAtm constructors
     mod.method("nuSQUIDSAtm_new", [](const std::vector<double>& costh_vec,
@@ -680,4 +689,15 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
     mod.method("isNuclearPDGCode", &isNuclearPDGCode);
     mod.method("getAtomicNumber", &getAtomicNumber);
     mod.method("getMassNumber", &getMassNumber);
+
+    // CUDA GPU support
+#ifdef NUSQUIDS_CUDA_ENABLED
+    mod.method("cuda_available", &CUDABackend::IsAvailable);
+    mod.method("cuda_device_count", &CUDABackend::DeviceCount);
+    mod.method("cuda_device_info", &CUDABackend::DeviceInfo);
+#else
+    mod.method("cuda_available", []() { return false; });
+    mod.method("cuda_device_count", []() { return 0; });
+    mod.method("cuda_device_info", []() { return std::string("CUDA support not compiled"); });
+#endif
 }
