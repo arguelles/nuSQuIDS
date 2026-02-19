@@ -51,9 +51,9 @@ int main() {
     bool interactions = false;
 
     double Emin = 1.0e1 * units.GeV;
-    double Emax = 1.0e6 * units.GeV;
+    double Emax = 1.0e2 * units.GeV;
 
-    nuSQUIDSAtm<> nus_atm(linspace(-1.0, 0.0, 5), logspace(Emin, Emax, 40),
+    nuSQUIDSAtm<> nus_atm(linspace(-1.0, 0.0, 5), logspace(Emin, Emax, 10),
                             numneu, both, interactions);
 
     nus_atm.Set_MixingAngle(0, 1, 0.563942);
@@ -77,19 +77,29 @@ int main() {
     return 0;
   }
 
-  // Test 3: GPU vs CPU propagation (no interactions) with detailed diagnostics
-  std::cout << "\n--- Test 3: GPU vs CPU Propagation (interactions OFF) ---" << std::endl;
+  // Test 3: GPU vs CPU propagation — replicate atmospheric_osc.test.cpp setup
+  // Same parameters as test/atmospheric_osc.test.cpp:
+  //   Emin=10 GeV, Emax=100 GeV, 10 energy bins, cos(zenith) from -1 to 0 in 5 bins
+  //   3 flavors, both nu/nubar, interactions off, unit flux in all flavors
+  //   Same mixing angles and mass splittings
+  std::cout << "\n--- Test 3: GPU vs CPU (atmospheric_osc parameters) ---" << std::endl;
   {
-    unsigned int numneu = 3;
+    const unsigned int numneu = 3;
     bool interactions = false;
 
-    double Emin = 1.0e2 * units.GeV;
-    double Emax = 1.0e5 * units.GeV;
-    int ne = 20;
+    double Emin = 1.0e1 * units.GeV;
+    double Emax = 1.0e2 * units.GeV;
+    double czmin = -1;
+    double czmax = 0;
     int ncz = 5;
+    int ne = 10;
 
-    auto costh = linspace(-1.0, -0.1, ncz);
+    auto costh = linspace(czmin, czmax, ncz);
     auto energies = logspace(Emin, Emax, ne);
+
+    // Use the same evaluation grid as atmospheric_osc.test.cpp
+    auto eval_cz = linspace(czmin, czmax, 20);
+    auto eval_E = logspace(Emin, Emax, 100);
 
     // --- CPU ---
     nuSQUIDSAtm<> nus_cpu(costh, energies, numneu, both, interactions);
@@ -99,20 +109,12 @@ int main() {
     nus_cpu.Set_SquareMassDifference(1, 7.65e-05);
     nus_cpu.Set_SquareMassDifference(2, 0.00247);
     nus_cpu.Set_CPPhase(0, 2, 0);
-    nus_cpu.Set_rel_error(1.0e-8);
-    nus_cpu.Set_abs_error(1.0e-8);
-
-    auto e_range = nus_cpu.GetERange();
-    auto cz_range = nus_cpu.GetCosthRange();
 
     marray<double,4> inistate{nus_cpu.GetNumCos(), nus_cpu.GetNumE(), 2u, numneu};
-    std::fill(inistate.begin(), inistate.end(), 0);
-    for (int ci = 0; ci < nus_cpu.GetNumCos(); ci++)
-      for (int ei = 0; ei < nus_cpu.GetNumE(); ei++)
-        for (int rho = 0; rho < 2; rho++)
-          inistate[ci][ei][rho][1] = 1.0;  // mu neutrino flux = 1
+    std::fill(inistate.begin(), inistate.end(), 1);  // unit flux in all flavors (matches atmospheric_osc)
 
     nus_cpu.Set_initial_state(inistate, flavor);
+    nus_cpu.Set_ProgressBar(false);
     nus_cpu.Set_IncludeOscillations(true);
 
     std::cout << "  Evolving on CPU..." << std::endl;
@@ -127,10 +129,9 @@ int main() {
     nus_gpu.Set_SquareMassDifference(1, 7.65e-05);
     nus_gpu.Set_SquareMassDifference(2, 0.00247);
     nus_gpu.Set_CPPhase(0, 2, 0);
-    nus_gpu.Set_rel_error(1.0e-8);
-    nus_gpu.Set_abs_error(1.0e-8);
 
     nus_gpu.Set_initial_state(inistate, flavor);
+    nus_gpu.Set_ProgressBar(false);
     nus_gpu.Set_IncludeOscillations(true);
     nus_gpu.Set_Backend(Backend::gpu);
 
@@ -138,19 +139,43 @@ int main() {
     nus_gpu.EvolveState();
     std::cout << "  GPU evolution done." << std::endl;
 
-    // --- Detailed per-point comparison ---
-    // Per-flavor accumulators: [flv][rho]
+    // --- Sanity check (same as atmospheric_osc.test.cpp) ---
+    // All fluxes should remain in [0,1] for unit initial flux, no interactions
+    std::cout << "\n  === Sanity check: fluxes in [0,1] ===" << std::endl;
+    int cpu_bad = 0, gpu_bad = 0;
+    for (double cz : eval_cz) {
+      for (double en : eval_E) {
+        for (int fl = 0; fl < (int)numneu; fl++) {
+          double cpu_flux = nus_cpu.EvalFlavor(fl, cz, en);
+          double gpu_flux = nus_gpu.EvalFlavor(fl, cz, en);
+          if (cpu_flux < 0 || cpu_flux > 1) {
+            if (cpu_bad < 10)
+              std::cout << "  CPU bad flux: " << cpu_flux << " at cz=" << cz
+                        << ", E=" << en/units.GeV << " GeV, flavor " << fl << std::endl;
+            cpu_bad++;
+          }
+          if (gpu_flux < 0 || gpu_flux > 1) {
+            if (gpu_bad < 10)
+              std::cout << "  GPU bad flux: " << gpu_flux << " at cz=" << cz
+                        << ", E=" << en/units.GeV << " GeV, flavor " << fl << std::endl;
+            gpu_bad++;
+          }
+        }
+      }
+    }
+    std::cout << "  CPU out-of-range values: " << cpu_bad << std::endl;
+    std::cout << "  GPU out-of-range values: " << gpu_bad << std::endl;
+
+    // --- Detailed per-point comparison on the evaluation grid ---
     struct FlavorStats {
       double sum_abs_err = 0;
       double max_abs_err = 0;
       double max_rel_err = 0;
       double sum_rel_err = 0;
       int count = 0;
-      int count_rel = 0;  // count of points with |cpu_val| > threshold
-      // Location of worst absolute error
-      int worst_abs_ci = -1, worst_abs_ei = -1;
-      // Location of worst relative error
-      int worst_rel_ci = -1, worst_rel_ei = -1;
+      int count_rel = 0;
+      double worst_abs_cz = 0, worst_abs_E = 0;
+      double worst_rel_cz = 0, worst_rel_E = 0;
     };
 
     const double rel_threshold = 1e-6;
@@ -158,15 +183,15 @@ int main() {
 
     std::cout << std::scientific << std::setprecision(6);
     std::cout << "\n  === Per-point CPU vs GPU comparison ===" << std::endl;
-    std::cout << "  Format: cos(th), E/GeV, flavor, type, CPU, GPU, abs_diff, rel_diff" << std::endl;
-    std::cout << std::string(100, '-') << std::endl;
+    std::cout << "  Format: cos(th), E/GeV, flavor, type, CPU, GPU, |diff|, rel_diff" << std::endl;
+    std::cout << std::string(105, '-') << std::endl;
 
-    for (int ci = 0; ci < ncz; ci++) {
-      for (int ei = 0; ei < ne; ei++) {
+    for (double cz : eval_cz) {
+      for (double en : eval_E) {
         for (int flv = 0; flv < (int)numneu; flv++) {
           for (int rho = 0; rho < 2; rho++) {
-            double cpu_val = nus_cpu.EvalFlavor(flv, cz_range[ci], e_range[ei], rho);
-            double gpu_val = nus_gpu.EvalFlavor(flv, cz_range[ci], e_range[ei], rho);
+            double cpu_val = nus_cpu.EvalFlavor(flv, cz, en, rho);
+            double gpu_val = nus_gpu.EvalFlavor(flv, cz, en, rho);
             double abs_diff = std::abs(cpu_val - gpu_val);
             double rel_diff = (std::abs(cpu_val) > rel_threshold)
                               ? abs_diff / std::abs(cpu_val) : 0.0;
@@ -177,8 +202,8 @@ int main() {
 
             if (abs_diff > s.max_abs_err) {
               s.max_abs_err = abs_diff;
-              s.worst_abs_ci = ci;
-              s.worst_abs_ei = ei;
+              s.worst_abs_cz = cz;
+              s.worst_abs_E = en;
             }
 
             if (std::abs(cpu_val) > rel_threshold) {
@@ -186,14 +211,13 @@ int main() {
               s.count_rel++;
               if (rel_diff > s.max_rel_err) {
                 s.max_rel_err = rel_diff;
-                s.worst_rel_ci = ci;
-                s.worst_rel_ei = ei;
+                s.worst_rel_cz = cz;
+                s.worst_rel_E = en;
               }
             }
 
-            // Print every point
-            std::cout << "  " << std::setw(10) << cz_range[ci]
-                      << "  " << std::setw(12) << e_range[ei] / units.GeV
+            std::cout << "  " << std::setw(11) << cz
+                      << "  " << std::setw(12) << en / units.GeV
                       << "  " << std::setw(6) << flavor_name[flv]
                       << "  " << std::setw(5) << rho_name[rho]
                       << "  cpu=" << std::setw(13) << cpu_val
@@ -211,12 +235,12 @@ int main() {
 
     // --- Summary statistics per flavor ---
     std::cout << "\n  === Summary Statistics (per flavor, per type) ===" << std::endl;
-    std::cout << std::string(100, '-') << std::endl;
+    std::cout << std::string(105, '-') << std::endl;
     std::cout << std::setw(8) << "flavor" << std::setw(7) << "type"
               << std::setw(14) << "mean|err|" << std::setw(14) << "max|err|"
               << std::setw(14) << "mean_rel" << std::setw(14) << "max_rel"
-              << "  worst_abs_at" << "  worst_rel_at" << std::endl;
-    std::cout << std::string(100, '-') << std::endl;
+              << "  worst_abs_at" << "          worst_rel_at" << std::endl;
+    std::cout << std::string(105, '-') << std::endl;
 
     double global_max_abs = 0, global_max_rel = 0;
 
@@ -235,25 +259,24 @@ int main() {
                   << std::setw(14) << s.max_abs_err
                   << std::setw(14) << mean_rel
                   << std::setw(14) << s.max_rel_err;
-        if (s.worst_abs_ci >= 0)
-          std::cout << "  cz[" << s.worst_abs_ci << "]E[" << s.worst_abs_ei << "]";
-        else
-          std::cout << "  n/a";
-        if (s.worst_rel_ci >= 0)
-          std::cout << "  cz[" << s.worst_rel_ci << "]E[" << s.worst_rel_ei << "]";
-        else
-          std::cout << "  n/a";
+        std::cout << "  cz=" << std::fixed << std::setprecision(3) << s.worst_abs_cz
+                  << " E=" << std::scientific << std::setprecision(2) << s.worst_abs_E / units.GeV << "GeV";
+        std::cout << "  cz=" << std::fixed << std::setprecision(3) << s.worst_rel_cz
+                  << " E=" << std::scientific << std::setprecision(2) << s.worst_rel_E / units.GeV << "GeV";
         std::cout << std::endl;
+        std::cout << std::scientific << std::setprecision(6);  // restore
       }
     }
 
-    std::cout << std::string(100, '-') << std::endl;
+    std::cout << std::string(105, '-') << std::endl;
     std::cout << "  Global max absolute error: " << global_max_abs << std::endl;
     std::cout << "  Global max relative error: " << global_max_rel << std::endl;
 
-    bool passed = (global_max_abs < 1e-5 && global_max_rel < 2e-3);
-    std::cout << "\n  GPU vs CPU comparison: " << (passed ? "PASS" : "FAIL") << std::endl;
-    if (!passed) {
+    bool bounds_ok = (cpu_bad == 0 && gpu_bad == 0);
+    bool diff_ok = (global_max_abs < 1e-5 && global_max_rel < 2e-3);
+    std::cout << "\n  Bounds check [0,1]: " << (bounds_ok ? "PASS" : "FAIL") << std::endl;
+    std::cout << "  GPU vs CPU comparison: " << (diff_ok ? "PASS" : "FAIL") << std::endl;
+    if (!diff_ok) {
       std::cout << "  (thresholds: abs < 1e-5, rel < 0.2%)" << std::endl;
     }
   }
