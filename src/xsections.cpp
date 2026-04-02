@@ -331,7 +331,10 @@ void NeutrinoDISCrossSectionsFromTables::ReadText(const std::string& prefix){
 		xsData[tau]=readFlavorText(prefix+"tau_",erangeSrc);
 	}
 	else
-		throw std::runtime_error("Unrecognized text file layout in "+prefix);
+		throw std::runtime_error("Cross-section data files not found at: "+prefix+"\n"
+			"If you installed nuSQuIDS via pip, download the data files with:\n"
+			"  pip install 'nuSQuIDS[data]' && nusquids-fetch-data\n"
+			"Or set the NUSQUIDS_DATA_PATH environment variable to your data directory.");
 }
 
 void NeutrinoDISCrossSectionsFromTables::WriteText(const std::string& prefix) const{

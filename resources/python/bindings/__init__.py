@@ -1,5 +1,54 @@
+import os as _os
 import sys as _sys
 import importlib as _importlib
+
+
+def _setup_data_path():
+    """Auto-configure NUSQUIDS_DATA_PATH for pip installations.
+
+    When nuSQuIDS is installed via pip, the compiled library contains hardcoded
+    paths from the build machine that don't exist on the user's system. This
+    function detects available data locations and sets the environment variable
+    so the C++ code can find cross-section and model data files.
+    """
+    if 'NUSQUIDS_DATA_PATH' in _os.environ:
+        return
+
+    # 1. Check pooch cache directory (populated by nusquids-fetch-data)
+    if 'NUSQUIDS_DATA_HOME' in _os.environ:
+        _cache_base = _os.environ['NUSQUIDS_DATA_HOME']
+    elif _sys.platform == 'win32':
+        _cache_base = _os.path.join(
+            _os.environ.get('LOCALAPPDATA',
+                            _os.path.join(_os.path.expanduser('~'), 'AppData', 'Local')),
+            'nuSQuIDS')
+    else:
+        _cache_base = _os.path.join(
+            _os.environ.get('XDG_DATA_HOME',
+                            _os.path.join(_os.path.expanduser('~'), '.local', 'share')),
+            'nuSQuIDS')
+
+    if _os.path.isdir(_cache_base):
+        # Find the latest versioned directory that has cross-section data
+        try:
+            for _entry in sorted(_os.listdir(_cache_base), reverse=True):
+                _candidate = _os.path.join(_cache_base, _entry)
+                if (_os.path.isdir(_candidate) and
+                        _os.path.isfile(_os.path.join(_candidate, 'xsections',
+                                                      'csms_proton.h5'))):
+                    _os.environ['NUSQUIDS_DATA_PATH'] = _candidate
+                    return
+        except OSError:
+            pass
+
+    # 2. Check for data files bundled with the Python package
+    _pkg_data = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data')
+    if _os.path.isdir(_pkg_data):
+        _os.environ['NUSQUIDS_DATA_PATH'] = _pkg_data
+        return
+
+
+_setup_data_path()
 
 # Import the extension module
 _ext_module = _importlib.import_module('.nuSQuIDS', __name__)

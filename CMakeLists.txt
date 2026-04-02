@@ -145,7 +145,17 @@ install(DIRECTORY ${NUSQUIDS_INSTALL_PREFIX}/lib/
         DESTINATION ${PROJECT_NAME}  # "nuSQuIDS"
         FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib" PATTERN "*.pyd")
 
-# 3. Install libSQuIDS (when built from source) into nuSQuIDS/ for bundling
+# 3. Data manager module (top-level, so nusquids-fetch-data CLI works)
+install(FILES ${CMAKE_SOURCE_DIR}/resources/python/nuSQuIDS_data.py
+        DESTINATION .)
+
+# 4. Bundle small data files (body models) in the package for offline use
+#    Cross-section HDF5 files are too large; users download them via nusquids-fetch-data
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/data/astro/
+        DESTINATION ${PROJECT_NAME}/data/astro
+        FILES_MATCHING PATTERN "*.dat")
+
+# 5. Install libSQuIDS (when built from source) into nuSQuIDS/ for bundling
 #    This is needed for wheel distribution where SQuIDS isn't a system library
 if(NOT SQuIDS_FOUND)
     install(DIRECTORY ${SQuIDS_PREFIX}/lib/
