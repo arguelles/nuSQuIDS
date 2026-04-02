@@ -11,6 +11,7 @@
 #include "physics.cuh"
 #include "body_gpu.cuh"
 #include "solver_gpu.cuh"
+#include "interactions_gpu.cuh"
 
 namespace nusquids { namespace cuda {
 
@@ -38,7 +39,7 @@ void launchEvolve(const PhysicsParams& params,
                   const PathDeviceData* d_paths,
                   const double* d_H0_array,
                   const double* d_b1_proj,
-                  const double* d_interaction_data,
+                  const InteractionDataGPU* d_interaction_data,
                   const SolverConfig& solver_config,
                   double* d_states,
                   int n_paths, int numneu,

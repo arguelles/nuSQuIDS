@@ -10,6 +10,7 @@
 #include "nuSQuIDS/cuda/detail/solver_gpu.cuh"
 #include "nuSQuIDS/cuda/detail/physics.cuh"
 #include "nuSQuIDS/cuda/detail/memory.cuh"
+#include "nuSQuIDS/cuda/detail/interactions_gpu.cuh"
 
 namespace nusquids { namespace cuda {
 
@@ -59,6 +60,91 @@ void iCommutatorSU3(const double* __restrict__ A,
 
   R[8] = s3*(A[6]*B[2] + A[7]*B[5]
        - A[2]*B[6] - A[5]*B[7]);
+}
+
+// ============================================================
+// Anticommutator {A, B} for SU(3) — from SQuIDS AnticonmutatorSU3.txt
+// Used for absorption: dρ/dt -= {Γ, ρ}
+// ============================================================
+
+__device__ __forceinline__
+void antiCommutatorSU3(const double* __restrict__ A,
+                       const double* __restrict__ B,
+                       double* __restrict__ R)
+{
+  const double s3 = 1.7320508075688772;
+
+  R[0] = (2.0*(3.0*A[0]*B[0] + 2.0*(A[1]*B[1] + A[2]*B[2] + A[3]*B[3]
+        + A[4]*B[4] + A[5]*B[5] + A[6]*B[6] + A[7]*B[7] + A[8]*B[8])))/3.0;
+
+  R[1] = 2.0*A[0]*B[1] + (2.0*A[8]*B[1])/s3 + A[5]*B[2] + A[2]*B[5]
+       + A[7]*B[6] + A[6]*B[7] + A[1]*(2.0*B[0] + (2.0*B[8])/s3);
+
+  R[2] = A[5]*B[1] + ((6.0*A[0] + 3.0*A[4] - s3*A[8])*B[2])/3.0
+       - A[7]*B[3] + A[1]*B[5] - A[3]*B[7]
+       + A[2]*(2.0*B[0] + B[4] - B[8]/s3);
+
+  R[3] = -(A[7]*B[2]) + 2.0*A[0]*B[3] + (2.0*A[8]*B[3])/s3
+       + A[6]*B[5] + A[5]*B[6] - A[2]*B[7]
+       + A[3]*(2.0*B[0] + (2.0*B[8])/s3);
+
+  R[4] = A[2]*B[2] + 2.0*A[0]*B[4] + (2.0*A[8]*B[4])/s3
+       - A[5]*B[5] + A[6]*B[6] - A[7]*B[7]
+       + A[4]*(2.0*B[0] + (2.0*B[8])/s3);
+
+  R[5] = A[2]*B[1] + A[1]*B[2] + A[6]*B[3]
+       + ((6.0*A[0] - 3.0*A[4] - s3*A[8])*B[5])/3.0 + A[3]*B[6]
+       + A[5]*(2.0*B[0] - B[4] - B[8]/s3);
+
+  R[6] = A[7]*B[1] + A[5]*B[3] + A[3]*B[5]
+       + ((6.0*A[0] + 3.0*A[4] - s3*A[8])*B[6])/3.0 + A[1]*B[7]
+       + A[6]*(2.0*B[0] + B[4] - B[8]/s3);
+
+  R[7] = A[6]*B[1] - A[3]*B[2] - A[2]*B[3] + A[1]*B[6]
+       + ((6.0*A[0] - 3.0*A[4] - s3*A[8])*B[7])/3.0
+       + A[7]*(2.0*B[0] - B[4] - B[8]/s3);
+
+  R[8] = (2.0*A[1]*B[1] - A[2]*B[2] + 2.0*A[3]*B[3] + 2.0*A[4]*B[4]
+       - A[5]*B[5] - A[6]*B[6] - A[7]*B[7]
+       + 2.0*A[8]*(s3*B[0] - B[8]) + 2.0*s3*A[0]*B[8]) / s3;
+}
+
+// ============================================================
+// Compute evolved projectors at position x_eval for SU(3)
+// Returns the SinCosEvol-rotated projectors in evol_proj_out
+// ============================================================
+
+__device__ __forceinline__
+void evolveProjectorsSU3(double x_eval, double xini,
+                         const double* __restrict__ H0,
+                         const double* __restrict__ b1_proj,
+                         int numneu,
+                         double* __restrict__ evol_proj_out)
+{
+  const double s3 = 1.7320508075688772;
+  double dt = x_eval - xini;
+  double w12 = 2.0 * H0[4];
+  double w13 = H0[4] + s3 * H0[8];
+  double w23 = H0[4] - s3 * H0[8];
+
+  double CX0, SX0, CX1, SX1, CX2, SX2;
+  sincos(w12 * dt, &SX0, &CX0);
+  sincos(w13 * dt, &SX1, &CX1);
+  sincos(w23 * dt, &SX2, &CX2);
+
+  for (int flv = 0; flv < numneu; flv++) {
+    const double* p = b1_proj + flv * 9;
+    double* e = evol_proj_out + flv * 9;
+    e[0] = p[0];
+    e[1] = CX0*p[1] + SX0*p[3];
+    e[2] = CX1*p[2] + SX1*p[6];
+    e[3] = CX0*p[3] - SX0*p[1];
+    e[4] = p[4];
+    e[5] = CX2*p[5] - SX2*p[7];
+    e[6] = CX1*p[6] - SX1*p[2];
+    e[7] = CX2*p[7] + SX2*p[5];
+    e[8] = p[8];
+  }
 }
 
 // ============================================================
@@ -142,6 +228,73 @@ void computeHI_SU3(double x_eval, double xini,
 }
 
 // ============================================================
+// Compute inverse interaction lengths from cross sections × density
+// invlen[flv] = sum_target density * Na * sigma[target][flv] * target_fraction[target]
+//
+// For nuSQuIDS, invlen_INT is stored as invlen_CC + invlen_NC.
+// HI_constants already encodes sqrt(2)*GF*Na/cm^3 in eV, so we need
+// the density in g/cm^3 and sigma in eV^-2. The product is in eV.
+// ============================================================
+
+__device__ __forceinline__
+void computeInvlenSU3(int ie, int rho, int ne,
+                      double density, double ye,
+                      const InteractionDataGPU& idata,
+                      double* __restrict__ invlen_out)  // [numneu] output: invlen_INT per flavor
+{
+  // For standard proton+neutron targets: fractions are {ye, 1-ye}
+  // For single target (isoscalar): fraction is {1}
+  // For nuclear targets: would need composition fractions (future work)
+  double tfrac[MAX_TARGETS];
+  if (idata.n_targets == 1) {
+    tfrac[0] = 1.0;
+  } else {
+    // Assume proton, neutron ordering (standard nuSQuIDS convention)
+    tfrac[0] = ye;
+    tfrac[1] = 1.0 - ye;
+    for (int t = 2; t < idata.n_targets && t < MAX_TARGETS; t++)
+      tfrac[t] = 0.0;
+  }
+
+  // invlen_INT[flv] = sum over targets: target_fraction[t] * density * (sigma_CC + sigma_NC)
+  for (int flv = 0; flv < 3; flv++) {
+    double invlen = 0.0;
+    for (int t = 0; t < idata.n_targets; t++) {
+      size_t idx = sigma_index(t, rho, flv, ie, idata.nrhos, 3, ne);
+      double sig = idata.d_sigma_CC[idx] + idata.d_sigma_NC[idx];
+      invlen += tfrac[t] * sig;
+    }
+    invlen *= density;
+    invlen_out[flv] = invlen;
+  }
+}
+
+// ============================================================
+// Compute GammaRho (absorption term) for SU(3)
+// GammaRho = sum_flv 0.5 * invlen_INT[flv] * evol_proj[flv]
+//
+// The factor 0.5 comes from the master equation: dρ/dt -= {Γ, ρ}
+// where the anticommutator doubles the effect.
+// ============================================================
+
+__device__ __forceinline__
+void computeGammaRhoSU3(const double* __restrict__ invlen,  // [3] invlen_INT per flavor
+                         const double* __restrict__ evol_proj,  // [3][9] evolved projectors
+                         double* __restrict__ Gamma)  // [9] output
+{
+  #pragma unroll
+  for (int c = 0; c < 9; c++) Gamma[c] = 0.0;
+
+  for (int flv = 0; flv < 3; flv++) {
+    double w = 0.5 * invlen[flv];
+    const double* ep = evol_proj + flv * 9;
+    #pragma unroll
+    for (int c = 0; c < 9; c++)
+      Gamma[c] += w * ep[c];
+  }
+}
+
+// ============================================================
 // RK4 step for SU(3) interaction picture evolution
 // d/dt rho_tilde = iCommutator(rho_tilde, HI_tilde(t))
 //
@@ -196,6 +349,109 @@ void rk4StepSU3(const double* __restrict__ y, double x, double h,
 }
 
 // ============================================================
+// RK4 step for SU(3) with interactions (absorption term)
+//
+// dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
+//
+// For now: oscillation + absorption only. InteractionsRho (cascade)
+// will be added in Phase 4.
+// ============================================================
+
+__device__
+void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
+                             double xini,
+                             const double* __restrict__ H0,
+                             const double* __restrict__ b1_proj,
+                             const GPUDensityProfileDevice& profile,
+                             double HI_constants, bool is_antinu,
+                             int ie, int rho, int ne, int numneu,
+                             const InteractionDataGPU& idata,
+                             double* __restrict__ y_out)
+{
+  // Helper lambda: compute derivative at given (x_eval, state)
+  // derivative = iCommutator(state, HI) - ACommutator(Gamma, state)
+  auto computeDerivative = [&](double x_eval, const double* state, double* deriv) {
+    // Evolve projectors to current time
+    double evol_proj[3 * 9];
+    evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
+
+    // Matter potential HI from evolved projectors
+    double density = evaluateDensity(profile, x_eval);
+    double ye = evaluateYe(profile, x_eval);
+    double HI[9];
+    {
+      double CC = HI_constants * density * ye;
+      double NC;
+      if (ye < 1.0e-10) NC = HI_constants * density;
+      else NC = CC * (-0.5 * (1.0 - ye) / ye);
+      if (is_antinu) { CC = -CC; NC = -NC; }
+      double weights[3] = {CC + NC, NC, NC};
+      #pragma unroll
+      for (int c = 0; c < 9; c++) HI[c] = 0.0;
+      for (int flv = 0; flv < 3; flv++) {
+        const double* ep = evol_proj + flv * 9;
+        #pragma unroll
+        for (int c = 0; c < 9; c++) HI[c] += weights[flv] * ep[c];
+      }
+    }
+
+    // Coherent: i[ρ, HI]
+    double comm[9];
+    iCommutatorSU3(state, HI, comm);
+
+    // Absorption: -ACommutator(Gamma, ρ)
+    double invlen[3];
+    computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
+
+    double Gamma[9];
+    computeGammaRhoSU3(invlen, evol_proj, Gamma);
+
+    double acomm[9];
+    antiCommutatorSU3(Gamma, state, acomm);
+
+    // deriv = i[ρ, HI] - {Γ, ρ}
+    #pragma unroll
+    for (int c = 0; c < 9; c++)
+      deriv[c] = comm[c] - acomm[c];
+    // Note: InteractionsRho (cascade source) will be added in Phase 4
+  };
+
+  double k[9], acc[9], tmp[9];
+
+  // k1 = f(x, y)
+  computeDerivative(x, y, k);
+  #pragma unroll
+  for (int c = 0; c < 9; c++) {
+    acc[c] = k[c] / 6.0;
+    tmp[c] = y[c] + 0.5 * h * k[c];
+  }
+
+  // k2 = f(x + h/2, y + h/2*k1)
+  computeDerivative(x + 0.5*h, tmp, k);
+  #pragma unroll
+  for (int c = 0; c < 9; c++) {
+    acc[c] += k[c] / 3.0;
+    tmp[c] = y[c] + 0.5 * h * k[c];
+  }
+
+  // k3 = f(x + h/2, y + h/2*k2)
+  computeDerivative(x + 0.5*h, tmp, k);
+  #pragma unroll
+  for (int c = 0; c < 9; c++) {
+    acc[c] += k[c] / 3.0;
+    tmp[c] = y[c] + h * k[c];
+  }
+
+  // k4 = f(x + h, y + h*k3)
+  computeDerivative(x + h, tmp, k);
+  #pragma unroll
+  for (int c = 0; c < 9; c++) {
+    acc[c] += k[c] / 6.0;
+    y_out[c] = y[c] + h * acc[c];
+  }
+}
+
+// ============================================================
 // Main evolve kernel — SU(3)
 //
 // One block per path (zenith angle).
@@ -217,7 +473,7 @@ evolveKernelImpl(const PhysicsParams params,
                  const PathDeviceData* __restrict__ paths,
                  const double* __restrict__ H0_array,
                  const double* __restrict__ b1_proj,
-                 const double* __restrict__ interaction_data,
+                 const InteractionDataGPU interaction_data,
                  const SolverConfig solver_config,
                  double* __restrict__ states,
                  int n_paths)
@@ -289,15 +545,30 @@ evolveKernelImpl(const PhysicsParams params,
 
         // Full step of size h_try
         double sf[SU];
-        rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
+        if (params.iinteraction && interaction_data.n_targets > 0) {
+          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, sf);
+        } else {
+          rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
+        }
 
         // Two half-steps of size h_try/2
         double st[SU], sh[SU];
-        rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+        if (params.iinteraction && interaction_data.n_targets > 0) {
+          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, st);
+          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, sh);
+        } else {
+          rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
-        rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+          rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
+        }
 
         // Richardson extrapolation and error estimate
         double* corr = corrected_buf + pair_idx * SU;
@@ -381,7 +652,7 @@ void launchEvolve(const PhysicsParams& params,
                   const PathDeviceData* d_paths,
                   const double* d_H0_array,
                   const double* d_b1_proj,
-                  const double* d_interaction_data,
+                  const InteractionDataGPU* d_interaction_data,
                   const SolverConfig& solver_config,
                   double* d_states,
                   int n_paths, int numneu,
@@ -390,16 +661,24 @@ void launchEvolve(const PhysicsParams& params,
 
   int threads = 128;
 
+  // Build InteractionDataGPU to pass by value to kernel
+  // (empty if no interaction data)
+  InteractionDataGPU idata;
+  if (d_interaction_data)
+    idata = *d_interaction_data;
+  else
+    memset(&idata, 0, sizeof(idata));
+
   switch (numneu) {
     case 3:
       evolveKernelImpl<3><<<n_paths, threads, 0, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
-        d_interaction_data, solver_config, d_states, n_paths);
+        idata, solver_config, d_states, n_paths);
       break;
     case 4:
       evolveKernelImpl<4><<<n_paths, threads, 0, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
-        d_interaction_data, solver_config, d_states, n_paths);
+        idata, solver_config, d_states, n_paths);
       break;
   }
   NUSQUIDS_CUDA_CHECK(cudaGetLastError());
