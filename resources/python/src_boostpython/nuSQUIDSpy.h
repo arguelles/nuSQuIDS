@@ -354,6 +354,8 @@ template<typename BaseType, typename = typename std::enable_if<std::is_base_of<n
       class_object->def("Set_GlashowResonance",&BaseType::Set_GlashowResonance);
       class_object->def("Set_NeutrinoSources",&BaseType::Set_NeutrinoSources);
       class_object->def("Get_NeutrinoSources",&BaseType::Get_NeutrinoSources);
+      class_object->def("Set_Backend",&BaseType::Set_Backend);
+      class_object->def("Get_Backend",&BaseType::Get_Backend);
     }
     std::shared_ptr<class_<BaseType, boost::noncopyable, std::shared_ptr<BaseType>>> GetClassObject() {
       return class_object;

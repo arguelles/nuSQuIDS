@@ -27,15 +27,12 @@ ssh ${REMOTE_HOST} "bash -l -c '
   cd ${REMOTE_DIR}
   module load gcc/12.2.0 cuda/12.4.1 openmpi/5.0.5 hdf5/1.14.6 gsl/2.8
 
-  SQUIDS_PATH=\$(dirname \$(dirname \$(which SQuIDS-config 2>/dev/null || echo /usr/local/bin/x)))
-  if [ ! -f \${SQUIDS_PATH}/lib/libSQuIDS.so ] && [ ! -f \${SQUIDS_PATH}/lib/libSQuIDS.a ]; then
-    SQUIDS_PATH=/n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/SQuIDS
-  fi
+  SQUIDS_PATH=/n/home06/carguelles/programs/local
   echo \"Using SQuIDS at: \${SQUIDS_PATH}\"
 
   echo \"\"
   echo \"--- Configuring ---\"
-  ./configure \
+  CXX=g++ ./configure \
     --with-squids=\${SQUIDS_PATH} \
     --with-hdf5=\${HDF5_HOME} \
     --enable-cuda
@@ -54,7 +51,7 @@ ssh ${REMOTE_HOST} "bash -l -c '
 echo ""
 echo "=== Step 3: Submitting test job ==="
 ssh ${REMOTE_HOST} "bash -l -c '
-  cd ${REMOTE_DIR}/test
+  cd ${REMOTE_DIR}/test/cuda
   sbatch run_cuda_test.sh
 '"
 

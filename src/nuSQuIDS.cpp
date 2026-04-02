@@ -1439,6 +1439,96 @@ void nuSQUIDS::EvolveState(){
   if( !ioscillations && iinteraction)
     SetUpInteractionCache();
 
+#ifdef NUSQUIDS_CUDA_ENABLED
+  if(backend_ == Backend::gpu && ne > 1 && !iinteraction){
+    if(!cuda_backend_)
+      cuda_backend_.reset(new CUDABackend());
+
+    const int ne_local = ne;
+    const int nrhos_local = nrhos;
+    const int numneu_local = numneu;
+    const int su_size = numneu_local * numneu_local;
+
+    // Extract H0 (same layout as nuSQUIDSAtm GPU path)
+    std::vector<double> H0_data(nrhos_local * ne_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        squids::SU_vector h = H0(E_range[ie], rho);
+        auto comps = h.GetComponents();
+        for(int c = 0; c < su_size; c++)
+          H0_data[(rho * ne_local + ie) * su_size + c] = comps[c];
+      }
+    }
+
+    // Extract b1 projectors
+    std::vector<double> b1_proj_data(nrhos_local * numneu_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int flv = 0; flv < numneu_local; flv++){
+        auto comps = b1_proj[rho][flv].GetComponents();
+        for(int c = 0; c < su_size; c++)
+          b1_proj_data[(rho * numneu_local + flv) * su_size + c] = comps[c];
+      }
+    }
+
+    // Extract initial states: layout [1][nrhos][ne][su_size]
+    std::vector<double> gpu_states(nrhos_local * ne_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        const squids::SU_vector& sv = state[ie].rho[rho];
+        for(int c = 0; c < su_size; c++)
+          gpu_states[(rho * ne_local + ie) * su_size + c] = sv[c];
+      }
+    }
+
+    // Sample density profile along track
+    const int n_density_samples = 500;
+    GPUPathData gpu_path;
+    gpu_path.xini = track->GetInitialX();
+    gpu_path.xend = track->GetFinalX();
+    gpu_path.time_offset = 0.0;
+    gpu_path.n_density_samples = n_density_samples;
+    gpu_path.density_x.resize(n_density_samples);
+    gpu_path.density_vals.resize(n_density_samples);
+    gpu_path.ye_vals.resize(n_density_samples);
+
+    double dx = (gpu_path.xend - gpu_path.xini) / (n_density_samples - 1);
+    for(int s = 0; s < n_density_samples; s++){
+      double x_s = gpu_path.xini + s * dx;
+      track->SetX(x_s);
+      gpu_path.density_x[s] = x_s;
+      gpu_path.density_vals[s] = body->density(*track);
+      gpu_path.ye_vals[s] = body->ye(*track);
+    }
+    track->SetX(gpu_path.xini);
+
+    std::vector<GPUPathData> gpu_paths = {gpu_path};
+
+    int NT_type_val = static_cast<int>(NT);
+    double gpu_rel_error = Get_rel_error();
+    double gpu_abs_error = Get_abs_error();
+
+    cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
+                          H0_data.data(), b1_proj_data.data(),
+                          1, ne_local, nrhos_local, numneu_local,
+                          HI_constants, NT_type_val,
+                          gpu_rel_error, gpu_abs_error);
+
+    // Write evolved states back
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        squids::SU_vector& sv = state[ie].rho[rho];
+        for(int c = 0; c < su_size; c++)
+          sv[c] = gpu_states[(rho * ne_local + ie) * su_size + c];
+      }
+    }
+    Set_t(track->GetFinalX());
+
+    if(progressbar)
+      ProgressBar();
+    return;
+  }
+#endif
+
   // is track time reversed
   if(track->GetFinalX() < track->GetInitialX()){
     // flip the arrow of time

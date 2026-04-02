@@ -621,6 +621,10 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod)
         wrap_Set_GSL_STEP(&nus, step);
     });
 
+    // Backend control for nuSQUIDS
+    mod.method("Set_Backend", [](nuSQUIDS& nus, Backend b) { nus.Set_Backend(b); });
+    mod.method("Get_Backend", [](const nuSQUIDS& nus) { return nus.Get_Backend(); });
+
     // ========== nuSQUIDSAtm Class ==========
 
     mod.add_type<nuSQUIDSAtm<nuSQUIDS>>("nuSQUIDSAtm")

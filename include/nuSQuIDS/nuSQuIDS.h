@@ -503,6 +503,12 @@ protected:
     bool positivization = false;
     /// \brief Boolean that allows to use fast constant density evolution technique.
     bool allowConstantDensityOscillationOnlyEvolution = false;
+    /// \brief The compute backend (cpu or gpu)
+    Backend backend_ = Backend::cpu;
+#ifdef NUSQUIDS_CUDA_ENABLED
+    /// \brief CUDA backend instance (created on demand)
+    std::unique_ptr<CUDABackend> cuda_backend_;
+#endif
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Integer to keep track of the progress bar evolution.
@@ -1081,6 +1087,19 @@ protected:
     bool Get_NeutrinoSources(){
       return enable_neutrino_sources;
     }
+
+    /// \brief Sets the compute backend (cpu or gpu).
+    /// \param b Backend::cpu or Backend::gpu
+    void Set_Backend(Backend b){
+#ifndef NUSQUIDS_CUDA_ENABLED
+      if(b == Backend::gpu)
+        throw std::runtime_error("nuSQUIDS::Error::GPU backend requested but nuSQuIDS was not compiled with CUDA support.");
+#endif
+      backend_ = b;
+    }
+
+    /// \brief Returns the current compute backend.
+    Backend Get_Backend() const { return backend_; }
 };
 
 /**

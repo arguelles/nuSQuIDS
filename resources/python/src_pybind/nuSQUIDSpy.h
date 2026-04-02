@@ -1076,6 +1076,24 @@ Returns
 bool
     True if body neutrino sources are enabled.
 )doc");
+
+      class_object->def("Set_Backend",&BaseType::Set_Backend, py::arg("backend"),
+R"doc(Set the computation backend.
+
+Parameters
+----------
+backend : Backend
+    Backend.cpu for CPU (default) or Backend.gpu for CUDA GPU.
+)doc");
+
+      class_object->def("Get_Backend",&BaseType::Get_Backend,
+R"doc(Get the current computation backend.
+
+Returns
+-------
+Backend
+    The active backend (cpu or gpu).
+)doc");
     }
     std::shared_ptr<py::class_<BaseType, std::shared_ptr<BaseType>>> GetClassObject() {
       return class_object;
