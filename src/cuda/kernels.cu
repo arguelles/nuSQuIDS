@@ -349,12 +349,137 @@ void rk4StepSU3(const double* __restrict__ y, double x, double h,
 }
 
 // ============================================================
-// RK4 step for SU(3) with interactions (absorption term)
+// Cooperative NC cascade computation for SU(3)
+//
+// Computes nc_factors[rho][alpha][e1] using the state in shared memory.
+// Called cooperatively by all threads in a block at the start of each step.
+//
+// nc_factors[rho][alpha][e1] = sum_{e2>e1} sum_target:
+//     targetFrac[t] * Tr(evol_proj[rho][alpha][e2] . state[rho][e2])
+//     * invlen_NC[rho][alpha][e2] * delE[e2-1] * dNdE_NC[t][rho][alpha][e2][e1]
+//
+// s_state: [nrhos][ne][SU] — current state in shared memory
+// s_nc_factors: [nrhos][3][ne] — output nc_factors in shared memory
+// ============================================================
+
+__device__
+void computeNCCascadeSU3(int ne, int nrhos, int numneu,
+                         double density, double ye,
+                         double x_eval, double xini,
+                         const double* __restrict__ H0_array,
+                         const double* __restrict__ b1_proj,
+                         const InteractionDataGPU& idata,
+                         const double* __restrict__ s_state,  // shared: [nrhos][ne][9]
+                         double* __restrict__ s_nc_factors)    // shared: [nrhos][3][ne]
+{
+  constexpr int SU = 9;
+
+  // Compute ye-based target fractions
+  double tfrac[MAX_TARGETS];
+  if (idata.n_targets == 1) { tfrac[0] = 1.0; }
+  else { tfrac[0] = ye; tfrac[1] = 1.0 - ye; }
+
+  // Each thread handles a subset of output energies e1
+  for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
+    for (int rho = 0; rho < nrhos; rho++) {
+      // Evolved projectors at e1's H0 (for flavor extraction at other energies)
+      // Actually, for the cascade we need projectors at each e2, not e1.
+      // But the projectors in the interaction picture only depend on H0(e) and time.
+      // We compute Tr(evol_proj[rho][alpha][e2] . state[rho][e2]) for each e2.
+
+      for (int alpha = 0; alpha < 3; alpha++) {
+        double nc_factor = 0.0;
+
+        // Accumulate contributions from higher energies e2 > e1
+        for (int e2 = e1 + 1; e2 < ne; e2++) {
+          // Get H0 and projectors at energy e2
+          const double* H0_e2 = H0_array + (rho * ne + e2) * SU;
+          const double* proj_e2 = b1_proj + rho * numneu * SU;
+
+          // Evolve projector for flavor alpha at time x_eval - xini
+          double evol_proj_alpha[9];
+          {
+            const double s3 = 1.7320508075688772;
+            double dt = x_eval - xini;
+            double w12 = 2.0 * H0_e2[4];
+            double w13 = H0_e2[4] + s3 * H0_e2[8];
+            double w23 = H0_e2[4] - s3 * H0_e2[8];
+            double CX0, SX0, CX1, SX1, CX2, SX2;
+            sincos(w12 * dt, &SX0, &CX0);
+            sincos(w13 * dt, &SX1, &CX1);
+            sincos(w23 * dt, &SX2, &CX2);
+            const double* p = proj_e2 + alpha * SU;
+            evol_proj_alpha[0] = p[0];
+            evol_proj_alpha[1] = CX0*p[1] + SX0*p[3];
+            evol_proj_alpha[2] = CX1*p[2] + SX1*p[6];
+            evol_proj_alpha[3] = CX0*p[3] - SX0*p[1];
+            evol_proj_alpha[4] = p[4];
+            evol_proj_alpha[5] = CX2*p[5] - SX2*p[7];
+            evol_proj_alpha[6] = CX1*p[6] - SX1*p[2];
+            evol_proj_alpha[7] = CX2*p[7] + SX2*p[5];
+            evol_proj_alpha[8] = p[8];
+          }
+
+          // Flavor flux at e2: Tr(evol_proj[alpha] . state[rho][e2])
+          const double* state_e2 = s_state + (rho * ne + e2) * SU;
+          double flux = suTrace3(evol_proj_alpha, state_e2);
+
+          // invlen_NC at e2
+          double invlen_NC_e2 = 0.0;
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t idx = sigma_index(t, rho, alpha, e2, idata.nrhos, 3, ne);
+            invlen_NC_e2 += tfrac[t] * idata.d_sigma_NC[idx];
+          }
+          invlen_NC_e2 *= density;
+
+          // Energy bin width
+          double dE = idata.d_delE[e2 - 1];
+
+          // Accumulate cascade contribution
+          double flux_weighted = flux * invlen_NC_e2 * dE;
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t dNdE_idx = dNdE_index(t, rho, alpha, e2, e1,
+                                          idata.nrhos, 3, ne);
+            nc_factor += tfrac[t] * flux_weighted * idata.d_dNdE_NC[dNdE_idx];
+          }
+        }
+
+        s_nc_factors[(rho * 3 + alpha) * ne + e1] = nc_factor;
+      }
+    }
+  }
+}
+
+// ============================================================
+// Compute InteractionsRho for SU(3)
+// InteractionsRho = sum_flv nc_factors[rho][flv][e1] * evol_proj[flv]
+// (Tau regeneration and Glashow will be added in Phase 5)
+// ============================================================
+
+__device__ __forceinline__
+void computeInteractionsRhoSU3(int ie, int rho, int ne,
+                                const double* __restrict__ nc_factors, // [nrhos][3][ne]
+                                const double* __restrict__ evol_proj,  // [3][9]
+                                double* __restrict__ F)                // [9] output
+{
+  #pragma unroll
+  for (int c = 0; c < 9; c++) F[c] = 0.0;
+
+  for (int flv = 0; flv < 3; flv++) {
+    double nc_f = nc_factors[(rho * 3 + flv) * ne + ie];
+    const double* ep = evol_proj + flv * 9;
+    #pragma unroll
+    for (int c = 0; c < 9; c++)
+      F[c] += nc_f * ep[c];
+  }
+}
+
+// ============================================================
+// RK4 step for SU(3) with full interactions
 //
 // dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
 //
-// For now: oscillation + absorption only. InteractionsRho (cascade)
-// will be added in Phase 4.
+// Uses precomputed nc_factors (lagged from start of step).
 // ============================================================
 
 __device__
@@ -366,6 +491,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
                              double HI_constants, bool is_antinu,
                              int ie, int rho, int ne, int numneu,
                              const InteractionDataGPU& idata,
+                             const double* __restrict__ nc_factors, // [nrhos][3][ne] precomputed
                              double* __restrict__ y_out)
 {
   // Helper lambda: compute derivative at given (x_eval, state)
@@ -409,11 +535,18 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
     double acomm[9];
     antiCommutatorSU3(Gamma, state, acomm);
 
-    // deriv = i[ρ, HI] - {Γ, ρ}
+    // InteractionsRho (cascade source term) using precomputed nc_factors
+    double F_int[9];
+    if (nc_factors) {
+      computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
+    }
+
+    // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
     #pragma unroll
-    for (int c = 0; c < 9; c++)
+    for (int c = 0; c < 9; c++) {
       deriv[c] = comm[c] - acomm[c];
-    // Note: InteractionsRho (cascade source) will be added in Phase 4
+      if (nc_factors) deriv[c] += F_int[c];
+    }
   };
 
   double k[9], acc[9], tmp[9];
@@ -520,9 +653,42 @@ evolveKernelImpl(const PhysicsParams params,
   constexpr int MAX_PAIRS = 32;
   double corrected_buf[MAX_PAIRS * SU];
 
+  // Shared memory layout for interactions (when enabled):
+  // [0 .. nrhos*ne*SU)           : state buffer for cascade computation
+  // [nrhos*ne*SU .. + nrhos*3*ne): nc_factors output
+  // Dynamic shared memory is allocated in the kernel launch.
+  extern __shared__ double smem[];
+  const bool do_interactions = params.iinteraction && interaction_data.n_targets > 0;
+  double* s_state = smem;                          // [nrhos][ne][SU]
+  double* s_nc_factors = smem + nrhos * ne * SU;   // [nrhos][3][ne]
+
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
     if (h_try <= 0.0) break;
+
+    // ============================================================
+    // Cooperative interaction precomputation (Phase 4)
+    // Compute nc_factors using the current accepted state.
+    // This uses a "lagged" approximation — nc_factors are computed
+    // at the start of the step and held constant during sub-steps.
+    // The adaptive step controller ensures this approximation is bounded.
+    // ============================================================
+    if (do_interactions) {
+      // Load current state to shared memory
+      for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
+        s_state[idx] = my_state[idx];
+      __syncthreads();
+
+      // Get density/ye at the start of this step
+      double density_x = evaluateDensity(path.profile, x);
+      double ye_x = evaluateYe(path.profile, x);
+
+      // Compute NC cascade factors cooperatively
+      computeNCCascadeSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
+                          H0_array, b1_proj, interaction_data,
+                          s_state, s_nc_factors);
+      __syncthreads();
+    }
 
     double local_max_err = 0.0;
     int pair_idx = 0;
@@ -545,10 +711,10 @@ evolveKernelImpl(const PhysicsParams params,
 
         // Full step of size h_try
         double sf[SU];
-        if (params.iinteraction && interaction_data.n_targets > 0) {
+        if (do_interactions) {
           rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, sf);
+                    interaction_data, s_nc_factors, sf);
         } else {
           rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
@@ -556,13 +722,13 @@ evolveKernelImpl(const PhysicsParams params,
 
         // Two half-steps of size h_try/2
         double st[SU], sh[SU];
-        if (params.iinteraction && interaction_data.n_targets > 0) {
+        if (do_interactions) {
           rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, st);
+                    interaction_data, s_nc_factors, st);
           rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, sh);
+                    interaction_data, s_nc_factors, sh);
         } else {
           rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
@@ -669,14 +835,24 @@ void launchEvolve(const PhysicsParams& params,
   else
     memset(&idata, 0, sizeof(idata));
 
+  // Compute shared memory for interaction cascade computation
+  // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
+  size_t shared_bytes = 0;
+  if (params.iinteraction && idata.n_targets > 0) {
+    int su_size = numneu * numneu;
+    shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
+                          + params.nrhos * 3 * params.ne)        // nc_factors
+                   * sizeof(double);
+  }
+
   switch (numneu) {
     case 3:
-      evolveKernelImpl<3><<<n_paths, threads, 0, stream>>>(
+      evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
         idata, solver_config, d_states, n_paths);
       break;
     case 4:
-      evolveKernelImpl<4><<<n_paths, threads, 0, stream>>>(
+      evolveKernelImpl<4><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
         idata, solver_config, d_states, n_paths);
       break;
