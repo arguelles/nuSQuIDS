@@ -28,6 +28,41 @@ template<typename,typename> class nuSQUIDSAtm;
 class EarthAtm;
 class Body;
 
+/// \brief Host-side interaction data for GPU upload.
+///
+/// Holds flat pointers to the cross-section tables from InteractionStructure.
+/// Filled by the caller (nuSQUIDS) and passed to CUDABackend::Evolve().
+/// No CUDA types — safe to include from any translation unit.
+struct InteractionDataHost {
+  int n_targets;     ///< Number of nuclear target types
+  int nrhos;         ///< Number of density matrix equations
+  int numneu;        ///< Number of neutrino flavors
+  int ne;            ///< Number of energy nodes
+
+  const double* sigma_CC;      ///< Total CC cross section [n_targets * nrhos * numneu * ne]
+  const double* sigma_NC;      ///< Total NC cross section [n_targets * nrhos * numneu * ne]
+  const double* dNdE_CC;       ///< Differential CC xsec  [n_targets * nrhos * numneu * ne * ne]
+  const double* dNdE_NC;       ///< Differential NC xsec  [n_targets * nrhos * numneu * ne * ne]
+  const double* sigma_GR;      ///< Glashow cross section [ne] (may be nullptr)
+  const double* dNdE_GR;       ///< Glashow differential  [ne * ne] (may be nullptr)
+  const double* dNdE_tau_all;  ///< Tau decay → all       [nrhos * ne * ne] (may be nullptr)
+  const double* dNdE_tau_lep;  ///< Tau decay → leptons    [nrhos * ne * ne] (may be nullptr)
+  const double* energies;      ///< Energy nodes [ne]
+  const double* delE;          ///< Energy bin widths [ne-1]
+
+  bool has_glashow;       ///< Whether Glashow resonance data is present
+  bool has_tau_regen;     ///< Whether tau regeneration data is present
+
+  InteractionDataHost() :
+    n_targets(0), nrhos(0), numneu(0), ne(0),
+    sigma_CC(nullptr), sigma_NC(nullptr),
+    dNdE_CC(nullptr), dNdE_NC(nullptr),
+    sigma_GR(nullptr), dNdE_GR(nullptr),
+    dNdE_tau_all(nullptr), dNdE_tau_lep(nullptr),
+    energies(nullptr), delE(nullptr),
+    has_glashow(false), has_tau_regen(false) {}
+};
+
 /// \brief Parameters needed for GPU propagation of a single path.
 struct GPUPathData {
   double xini;         ///< Start position along track
@@ -86,7 +121,8 @@ public:
               const double* b1_proj,
               int n_paths, int ne, int nrhos, int numneu,
               double HI_constants, int NT_type,
-              double rel_error = 0.0, double abs_error = 0.0);
+              double rel_error = 0.0, double abs_error = 0.0,
+              const InteractionDataHost* interaction_data = nullptr);
 
   /// \brief Runtime GPU detection — returns true if any CUDA GPU is available.
   static bool IsAvailable();

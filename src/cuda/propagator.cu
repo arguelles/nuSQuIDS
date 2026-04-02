@@ -8,6 +8,7 @@
 #include "nuSQuIDS/cuda/detail/kernels.cuh"
 #include "nuSQuIDS/cuda/detail/memory.cuh"
 #include "nuSQuIDS/cuda/detail/interactions_gpu.cuh"
+#include "nuSQuIDS/cuda/cuda_backend.h"  // InteractionDataHost
 
 #include <algorithm>
 #include <cstring>
@@ -34,7 +35,7 @@ void freeInteractionData(InteractionDataGPU& data) {
   data.total_bytes = 0;
 }
 
-InteractionDataGPU uploadInteractionData(const void* /*int_struct*/,
+InteractionDataGPU uploadInteractionData(const void* int_data_host_ptr,
                                          int ne, int nrhos, int numneu,
                                          const double* energies,
                                          const double* delE,
@@ -49,17 +50,26 @@ InteractionDataGPU uploadInteractionData(const void* /*int_struct*/,
   data.n_targets = 0;
   data.total_bytes = 0;
 
-  // Upload energy grid
-  size_t ene_bytes = ne * sizeof(double);
-  NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_energies, ene_bytes));
-  NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_energies, energies, ene_bytes,
-                                       cudaMemcpyHostToDevice, stream));
-  data.total_bytes += ene_bytes;
+  // If interaction data provides energies/delE, use those as fallbacks
+  const nusquids::InteractionDataHost* idata_ptr = nullptr;
+  if (int_data_host_ptr)
+    idata_ptr = reinterpret_cast<const nusquids::InteractionDataHost*>(int_data_host_ptr);
+  const double* ene_src = energies ? energies : (idata_ptr ? idata_ptr->energies : nullptr);
+  const double* delE_src = delE ? delE : (idata_ptr ? idata_ptr->delE : nullptr);
 
-  if (ne > 1) {
+  // Upload energy grid
+  if (ene_src) {
+    size_t ene_bytes = ne * sizeof(double);
+    NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_energies, ene_bytes));
+    NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_energies, ene_src, ene_bytes,
+                                         cudaMemcpyHostToDevice, stream));
+    data.total_bytes += ene_bytes;
+  }
+
+  if (delE_src && ne > 1) {
     size_t del_bytes = (ne - 1) * sizeof(double);
     NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_delE, del_bytes));
-    NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_delE, delE, del_bytes,
+    NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_delE, delE_src, del_bytes,
                                          cudaMemcpyHostToDevice, stream));
     data.total_bytes += del_bytes;
   }
@@ -81,9 +91,72 @@ InteractionDataGPU uploadInteractionData(const void* /*int_struct*/,
     data.total_bytes += b1_bytes;
   }
 
-  // TODO: Upload full cross-section tables from int_struct
-  // (dNdE_CC, dNdE_NC, sigma_CC, sigma_NC, tau spectra, Glashow)
-  // For now, cross-section pointers remain null — vacuum propagation works without them.
+  // Upload cross-section tables if interaction data is provided
+  if (idata_ptr) {
+    const auto& idata = *idata_ptr;
+
+    data.n_targets = idata.n_targets;
+
+    if (idata.n_targets > 0 && idata.sigma_CC && idata.sigma_NC) {
+      // Total cross sections: [n_targets * nrhos * numneu * ne]
+      size_t sigma_count = (size_t)idata.n_targets * nrhos * numneu * ne;
+      size_t sigma_bytes = sigma_count * sizeof(double);
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_sigma_CC, sigma_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_sigma_CC, idata.sigma_CC, sigma_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += sigma_bytes;
+
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_sigma_NC, sigma_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_sigma_NC, idata.sigma_NC, sigma_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += sigma_bytes;
+
+      // Differential cross sections: [n_targets * nrhos * numneu * ne * ne]
+      size_t dNdE_count = sigma_count * ne;
+      size_t dNdE_bytes = dNdE_count * sizeof(double);
+      if (idata.dNdE_CC) {
+        NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_CC, dNdE_bytes));
+        NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_CC, idata.dNdE_CC, dNdE_bytes,
+                                             cudaMemcpyHostToDevice, stream));
+        data.total_bytes += dNdE_bytes;
+      }
+      if (idata.dNdE_NC) {
+        NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_NC, dNdE_bytes));
+        NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_NC, idata.dNdE_NC, dNdE_bytes,
+                                             cudaMemcpyHostToDevice, stream));
+        data.total_bytes += dNdE_bytes;
+      }
+    }
+
+    // Glashow resonance
+    if (idata.has_glashow && idata.sigma_GR && idata.dNdE_GR) {
+      size_t gr_sigma_bytes = ne * sizeof(double);
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_sigma_GR, gr_sigma_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_sigma_GR, idata.sigma_GR, gr_sigma_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += gr_sigma_bytes;
+
+      size_t gr_dNdE_bytes = (size_t)ne * ne * sizeof(double);
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_GR, gr_dNdE_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_GR, idata.dNdE_GR, gr_dNdE_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += gr_dNdE_bytes;
+    }
+
+    // Tau decay spectra
+    if (idata.has_tau_regen && idata.dNdE_tau_all && idata.dNdE_tau_lep) {
+      size_t tau_bytes = (size_t)nrhos * ne * ne * sizeof(double);
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_tau_all, tau_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_tau_all, idata.dNdE_tau_all, tau_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += tau_bytes;
+
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_tau_lep, tau_bytes));
+      NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_tau_lep, idata.dNdE_tau_lep, tau_bytes,
+                                           cudaMemcpyHostToDevice, stream));
+      data.total_bytes += tau_bytes;
+    }
+  }
 
   return data;
 }
@@ -116,7 +189,7 @@ Propagator::~Propagator() {
 }
 
 void Propagator::uploadSharedData(const PhysicsParams& params,
-                                  const InteractionDataGPU& interaction_data,
+                                  const void* interaction_host_data,
                                   const double* H0_array_host,
                                   const double* b1_proj_host,
                                   const SolverConfig& solver_config) {
@@ -124,7 +197,16 @@ void Propagator::uploadSharedData(const PhysicsParams& params,
 
   params_ = params;
   solver_config_ = solver_config;
-  interaction_data_ = interaction_data;
+
+  // Upload interaction data to this GPU if provided
+  freeInteractionData(interaction_data_);
+  if (interaction_host_data) {
+    interaction_data_ = uploadInteractionData(
+      interaction_host_data, params.ne, params.nrhos, params.numneu,
+      nullptr, nullptr, nullptr, nullptr, stream_);
+  } else {
+    memset(&interaction_data_, 0, sizeof(interaction_data_));
+  }
 
   int su_size = params.numneu * params.numneu;
 
@@ -287,8 +369,11 @@ void Propagator::evolveBatch(const std::vector<GPUDensityProfile>& profiles,
   NUSQUIDS_CUDA_CHECK(cudaStreamSynchronize(stream_));
 
   // Launch evolution kernel
+  // Pass interaction data if cross-sections have been uploaded (n_targets > 0)
+  const InteractionDataGPU* int_data_ptr =
+    (interaction_data_.n_targets > 0) ? &interaction_data_ : nullptr;
   launchEvolve(params_, d_paths_, d_H0_array_, d_b1_proj_,
-               nullptr, // interaction_data pointer — TODO: wire up
+               int_data_ptr,
                solver_config_, d_states_, n_paths, params_.numneu, stream_);
 
   // Download final states

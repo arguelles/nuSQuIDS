@@ -182,7 +182,8 @@ void CUDABackend::Evolve(double* states,
                           const double* b1_proj,
                           int n_paths, int ne, int nrhos, int numneu,
                           double HI_constants, int NT_type,
-                          double rel_error, double abs_error) {
+                          double rel_error, double abs_error,
+                          const InteractionDataHost* interaction_data) {
   if (n_paths == 0) return;
 
   int su_size = numneu * numneu;
@@ -196,10 +197,11 @@ void CUDABackend::Evolve(double* states,
   params.su_size = su_size;
   params.HI_constants = HI_constants;
   params.NT_type = NT_type;
-  params.iinteraction = false;
+  bool has_interactions = (interaction_data != nullptr && interaction_data->n_targets > 0);
+  params.iinteraction = has_interactions;
   params.ioscillations = true;
-  params.tauregeneration = false;
-  params.iglashow = false;
+  params.tauregeneration = has_interactions && interaction_data->has_tau_regen;
+  params.iglashow = has_interactions && interaction_data->has_glashow;
   params.basis = 2; // interaction basis
 
   // Build solver config — use caller-provided tolerances if given
@@ -217,10 +219,10 @@ void CUDABackend::Evolve(double* states,
     profiles[i] = impl_->convertPath(paths[i]);
 
   // Upload shared data to all GPUs
-  cuda::InteractionDataGPU empty_interaction;
-  memset(&empty_interaction, 0, sizeof(empty_interaction));
+  // Each propagator uploads its own copy of interaction data (multi-GPU safe)
   for (auto& prop : impl_->propagators) {
-    prop->uploadSharedData(params, empty_interaction,
+    prop->uploadSharedData(params,
+                          has_interactions ? (const void*)interaction_data : nullptr,
                           H0_array, b1_proj,
                           solver_config);
   }

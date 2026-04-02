@@ -33,8 +33,11 @@ public:
 
   /// Upload shared physics data (done once per evolution)
   /// This includes H0 array, projectors, interaction data
+  /// \param interaction_host_data  Pointer to InteractionDataHost (from cuda_backend.h),
+  ///                               or nullptr for oscillation-only. Passed as void* to
+  ///                               avoid coupling this header to cuda_backend.h.
   void uploadSharedData(const PhysicsParams& params,
-                        const InteractionDataGPU& interaction_data,
+                        const void* interaction_host_data,
                         const double* H0_array_host,
                         const double* b1_proj_host,
                         const SolverConfig& solver_config);
