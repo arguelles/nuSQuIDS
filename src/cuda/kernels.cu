@@ -764,6 +764,162 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
 }
 
 // ============================================================
+// Cooperative RK4 with per-step nc_factors for SU(3) interactions
+//
+// ALL threads in the block call this together. Uses shared memory
+// for the state (nc_factors input) and nc_factors output. The RK4
+// accumulator and original y are kept in per-thread registers.
+//
+// Flow per ki evaluation:
+//   1. Each thread writes its intermediate state to s_work
+//   2. __syncthreads()
+//   3. Cooperative nc_factors from s_work → s_nc
+//   4. __syncthreads()
+//   5. Each thread computes derivative using s_nc
+//   6. Each thread updates accumulator and next intermediate in registers
+//
+// s_work: [nrhos*ne*SU] shared memory for intermediate states
+// s_nc:   [nrhos*3*ne] shared memory for nc_factors
+// my_state: global memory, original state (read-only during step)
+// y_out: global memory, result destination
+// ============================================================
+
+__device__
+void cooperativeRK4StepSU3(
+    const double* __restrict__ y_in,   // input state [nrhos*ne*SU] (global, read-only)
+    double* __restrict__ y_out,         // output state [nrhos*ne*SU] (global)
+    double x, double h, double xini,
+    const double* __restrict__ H0_array,
+    const double* __restrict__ b1_proj,
+    const GPUDensityProfileDevice& profile,
+    const PhysicsParams& params,
+    const InteractionDataGPU& idata,
+    double* __restrict__ s_work,     // shared: [nrhos*ne*SU]
+    double* __restrict__ s_nc)       // shared: [nrhos*3*ne]
+{
+  constexpr int SU = 9;
+  const int ne = params.ne;
+  const int nrhos = params.nrhos;
+  const int numneu = params.numneu;
+  const int smem_size = nrhos * ne * SU;
+
+  // Each thread handles some (ie, rho) pairs. Store y and accumulator in registers.
+  // With ne ≤ 128 and blockDim=128, each thread handles ≤ nrhos pairs.
+  constexpr int MAX_LOCAL_PAIRS = 4; // nrhos * ceil(ne/blockDim), typically 2
+  double y_local[MAX_LOCAL_PAIRS][SU];
+  double acc_local[MAX_LOCAL_PAIRS][SU];
+  int local_ie[MAX_LOCAL_PAIRS], local_rho[MAX_LOCAL_PAIRS];
+  int n_local = 0;
+
+  // Load y into per-thread registers and index mapping
+  for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+    for (int rho = 0; rho < nrhos; rho++) {
+      if (n_local >= MAX_LOCAL_PAIRS) break;
+      int off = (rho * ne + ie) * SU;
+      local_ie[n_local] = ie;
+      local_rho[n_local] = rho;
+      #pragma unroll
+      for (int c = 0; c < SU; c++) y_local[n_local][c] = y_in[off + c];
+      n_local++;
+    }
+  }
+
+  // ---- k1 at (x, y) ----
+  // Write y to s_work for nc_factors
+  for (int idx = threadIdx.x; idx < smem_size; idx += blockDim.x)
+    s_work[idx] = y_in[idx];
+  __syncthreads();
+  computeNCCascadeSU3(ne, nrhos, numneu, x, xini, H0_array, b1_proj, idata, profile, s_work, s_nc);
+  __syncthreads();
+
+  for (int p = 0; p < n_local; p++) {
+    int off = (local_rho[p] * ne + local_ie[p]) * SU;
+    bool is_anti = ((local_rho[p] == 1) && params.NT_type == 3) || (params.NT_type == 2);
+    double k[SU];
+    computeDerivativeSU3(x, xini, y_local[p], H0_array + off,
+                         b1_proj + local_rho[p] * numneu * SU, profile,
+                         params.HI_constants, is_anti, local_ie[p], local_rho[p], ne, numneu,
+                         idata, s_nc, k);
+    #pragma unroll
+    for (int c = 0; c < SU; c++) {
+      acc_local[p][c] = k[c] / 6.0;
+      // Write y + h/2*k1 to s_work for next nc_factors
+      s_work[off + c] = y_local[p][c] + 0.5 * h * k[c];
+    }
+  }
+  __syncthreads();
+
+  // ---- k2 at (x+h/2, y+h/2*k1) ----
+  computeNCCascadeSU3(ne, nrhos, numneu, x+0.5*h, xini, H0_array, b1_proj, idata, profile, s_work, s_nc);
+  __syncthreads();
+
+  for (int p = 0; p < n_local; p++) {
+    int off = (local_rho[p] * ne + local_ie[p]) * SU;
+    bool is_anti = ((local_rho[p] == 1) && params.NT_type == 3) || (params.NT_type == 2);
+    double tmp[SU];
+    #pragma unroll
+    for (int c = 0; c < SU; c++) tmp[c] = s_work[off + c]; // y+h/2*k1
+    double k[SU];
+    computeDerivativeSU3(x+0.5*h, xini, tmp, H0_array + off,
+                         b1_proj + local_rho[p] * numneu * SU, profile,
+                         params.HI_constants, is_anti, local_ie[p], local_rho[p], ne, numneu,
+                         idata, s_nc, k);
+    #pragma unroll
+    for (int c = 0; c < SU; c++) {
+      acc_local[p][c] += k[c] / 3.0;
+      s_work[off + c] = y_local[p][c] + 0.5 * h * k[c]; // y+h/2*k2
+    }
+  }
+  __syncthreads();
+
+  // ---- k3 at (x+h/2, y+h/2*k2) ----
+  computeNCCascadeSU3(ne, nrhos, numneu, x+0.5*h, xini, H0_array, b1_proj, idata, profile, s_work, s_nc);
+  __syncthreads();
+
+  for (int p = 0; p < n_local; p++) {
+    int off = (local_rho[p] * ne + local_ie[p]) * SU;
+    bool is_anti = ((local_rho[p] == 1) && params.NT_type == 3) || (params.NT_type == 2);
+    double tmp[SU];
+    #pragma unroll
+    for (int c = 0; c < SU; c++) tmp[c] = s_work[off + c];
+    double k[SU];
+    computeDerivativeSU3(x+0.5*h, xini, tmp, H0_array + off,
+                         b1_proj + local_rho[p] * numneu * SU, profile,
+                         params.HI_constants, is_anti, local_ie[p], local_rho[p], ne, numneu,
+                         idata, s_nc, k);
+    #pragma unroll
+    for (int c = 0; c < SU; c++) {
+      acc_local[p][c] += k[c] / 3.0;
+      s_work[off + c] = y_local[p][c] + h * k[c]; // y+h*k3
+    }
+  }
+  __syncthreads();
+
+  // ---- k4 at (x+h, y+h*k3) ----
+  computeNCCascadeSU3(ne, nrhos, numneu, x+h, xini, H0_array, b1_proj, idata, profile, s_work, s_nc);
+  __syncthreads();
+
+  for (int p = 0; p < n_local; p++) {
+    int off = (local_rho[p] * ne + local_ie[p]) * SU;
+    bool is_anti = ((local_rho[p] == 1) && params.NT_type == 3) || (params.NT_type == 2);
+    double tmp[SU];
+    #pragma unroll
+    for (int c = 0; c < SU; c++) tmp[c] = s_work[off + c];
+    double k[SU];
+    computeDerivativeSU3(x+h, xini, tmp, H0_array + off,
+                         b1_proj + local_rho[p] * numneu * SU, profile,
+                         params.HI_constants, is_anti, local_ie[p], local_rho[p], ne, numneu,
+                         idata, s_nc, k);
+    #pragma unroll
+    for (int c = 0; c < SU; c++) {
+      acc_local[p][c] += k[c] / 6.0;
+      y_out[off + c] = y_local[p][c] + h * acc_local[p][c];
+    }
+  }
+  __syncthreads();
+}
+
+// ============================================================
 // Main evolve kernel — SU(3)
 //
 // One block per path (zenith angle).
@@ -856,68 +1012,85 @@ evolveKernelImpl(const PhysicsParams params,
   constexpr int MAX_PAIRS = 32;
   double corrected_buf[MAX_PAIRS * SU];
 
-  // Shared memory layout for interactions (when enabled):
-  // [0 .. nrhos*ne*SU)           : state buffer for cascade computation
-  // [nrhos*ne*SU .. + nrhos*3*ne): nc_factors output
-  // Dynamic shared memory is allocated in the kernel launch.
+  // Shared memory layout for interactions:
+  //   s_work  [nrhos*ne*SU] : intermediate state for nc_factors + derivative
+  //   s_half  [nrhos*ne*SU] : half-step intermediate result (st)
+  //   s_nc    [nrhos*3*ne]  : nc_factors output
   extern __shared__ double smem[];
   const bool do_interactions = params.iinteraction && interaction_data.n_targets > 0;
-  double* s_state = smem;                          // [nrhos][ne][SU]
-  double* s_nc_factors = smem + nrhos * ne * SU;   // [nrhos][3][ne]
+  const int N = nrhos * ne * SU;
+  double* s_work = smem;
+  double* s_half = smem + N;       // buffer for st (half-step result)
+  double* s_nc   = smem + 2 * N;
 
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
     if (h_try <= 0.0) break;
 
-    // ============================================================
-    // Cooperative interaction precomputation (Phase 4)
-    // Compute nc_factors using the current accepted state.
-    // This uses a "lagged" approximation — nc_factors are computed
-    // at the start of the step and held constant during sub-steps.
-    // The adaptive step controller ensures this approximation is bounded.
-    // ============================================================
-    if (do_interactions) {
-      // Load current state to shared memory
-      for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
-        s_state[idx] = my_state[idx];
-      __syncthreads();
-
-      // Compute NC cascade factors cooperatively
-      // Target number densities are interpolated from profile splines
-      // (precomputed on CPU in natural units using squids::Const)
-      computeNCCascadeSU3(ne, nrhos, NFLV, x, xini,
-                          H0_array, b1_proj, interaction_data, path.profile,
-                          s_state, s_nc_factors);
-      __syncthreads();
-
-      // Tau regeneration (adds to nc_factors in-place)
-      // TODO: update to use profile-based number densities
-      if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        double dens_x = evaluateDensity(path.profile, x);
-        double ye_x = evaluateYe(path.profile, x);
-        computeTauRegenSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
-                           H0_array, b1_proj, interaction_data,
-                           s_state, s_nc_factors);
-        __syncthreads();
-      }
-
-      // Glashow resonance (adds to nc_factors in-place)
-      // TODO: update to use profile-based number densities
-      if (params.iglashow && interaction_data.d_sigma_GR) {
-        double dens_x = evaluateDensity(path.profile, x);
-        double ye_x = evaluateYe(path.profile, x);
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  params.NT_type, s_state, s_nc_factors);
-        __syncthreads();
-      }
-    }
-
     double local_max_err = 0.0;
     int pair_idx = 0;
 
-    // Phase 1: Compute corrected states and error for all (ie, rho) pairs.
-    // Store corrected states in local buffer — do NOT write to global memory yet.
+    if (do_interactions) {
+      // ============================================================
+      // Cooperative RK4 with step-doubling, nc_factors recomputed at
+      // every sub-evaluation (12 cascade computations per adaptive step).
+      // Uses cooperativeRK4StepSU3 which synchronizes all threads at
+      // each ki evaluation for nc_factors.
+      // ============================================================
+
+      // Step 1: Full step → sf to s_work, save to corrected_buf
+      cooperativeRK4StepSU3(my_state, s_work, x, h_try, xini,
+                            H0_array, b1_proj, path.profile, params, interaction_data,
+                            s_work, s_nc);
+      pair_idx = 0;
+      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+        for (int rho = 0; rho < nrhos; rho++) {
+          int off = (rho * ne + ie) * SU;
+          double* buf = corrected_buf + pair_idx * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) buf[c] = s_work[off + c];
+          pair_idx++;
+        }
+      }
+      __syncthreads();
+
+      // Step 2: First half-step → st to s_half
+      cooperativeRK4StepSU3(my_state, s_half, x, h_try * 0.5, xini,
+                            H0_array, b1_proj, path.profile, params, interaction_data,
+                            s_work, s_nc);
+
+      // Step 3: Second half-step from st (s_half) → sh to s_work
+      cooperativeRK4StepSU3(s_half, s_work, x + h_try * 0.5, h_try * 0.5, xini,
+                            H0_array, b1_proj, path.profile, params, interaction_data,
+                            s_work, s_nc);
+      // s_work has sh
+
+      // Richardson extrapolation and error estimate
+      pair_idx = 0;
+      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+        for (int rho = 0; rho < nrhos; rho++) {
+          int off = (rho * ne + ie) * SU;
+          double* sf_buf = corrected_buf + pair_idx * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) {
+            double sf_c = sf_buf[c];
+            double sh_c = s_work[off + c];
+            double corr = sh_c + (sh_c - sf_c) / 15.0;
+            double err = fabs(sf_c - sh_c) / 15.0;
+            double scale = solver_config.abs_error +
+                           solver_config.rel_error * fmax(fabs(sf_c), fabs(sh_c));
+            if (scale > 0.0)
+              local_max_err = fmax(local_max_err, err / scale);
+            sf_buf[c] = corr;  // corrected_buf now holds corrected result
+          }
+          pair_idx++;
+        }
+      }
+      // Skip the oscillation-only code path below
+      goto step_acceptance;
+    }
+
+    // Oscillation-only path (existing per-thread RK4)
     for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
       for (int rho = 0; rho < nrhos; rho++) {
         double* state_ptr = my_state + (rho * ne + ie) * SU;
@@ -927,37 +1100,19 @@ evolveKernelImpl(const PhysicsParams params,
         bool is_antinu = ((rho == 1) && params.NT_type == 3)
                        || (params.NT_type == 2);
 
-        // Load current state from global memory
         double y[SU];
         #pragma unroll
         for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-        // Full step of size h_try
         double sf[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sf);
-        } else {
-          rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
+        rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
-        }
 
-        // Two half-steps of size h_try/2
         double st[SU], sh[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, st);
-          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sh);
-        } else {
-          rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+        rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
-          rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+        rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
-        }
 
         // Richardson extrapolation and error estimate
         double* corr = corrected_buf + pair_idx * SU;
@@ -974,6 +1129,7 @@ evolveKernelImpl(const PhysicsParams params,
       }
     }
 
+    step_acceptance:
     // Phase 2: Block-wide error reduction
     double max_err = blockReduceMax(local_max_err);
 
@@ -1055,8 +1211,8 @@ void launchEvolve(const PhysicsParams& params,
   size_t shared_bytes = 0;
   if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
     int su_size = numneu * numneu;
-    shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
-                          + params.nrhos * 3 * params.ne)        // nc_factors
+    shared_bytes = (size_t)(2 * params.nrhos * params.ne * su_size  // s_work + s_half
+                          + params.nrhos * 3 * params.ne)            // s_nc
                    * sizeof(double);
   }
 
