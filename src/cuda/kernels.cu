@@ -856,7 +856,7 @@ evolveKernelImpl(const PhysicsParams params,
     // at the start of the step and held constant during sub-steps.
     // The adaptive step controller ensures this approximation is bounded.
     // ============================================================
-    if (do_interactions) {
+    if (false && do_interactions) { // DEBUG: skip preamble entirely
       // Load current state to shared memory
       for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
         s_state[idx] = my_state[idx];
