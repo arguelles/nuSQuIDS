@@ -25,6 +25,16 @@ echo "=== Running cuda_single_baseline_test ==="
 ./cuda_single_baseline_test
 
 echo ""
+echo "=== Compiling cuda_interactions_test ==="
+$CXX $CXXFLAGS $CFLAGS -o cuda_interactions_test cuda_interactions_test.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
+if [ $? -eq 0 ]; then
+  echo "=== Running cuda_interactions_test ==="
+  ./cuda_interactions_test
+else
+  echo "=== COMPILATION FAILED ==="
+fi
+
+echo ""
 echo "=== Compiling benchmark_cuda ==="
 $CXX $CXXFLAGS $CFLAGS -o benchmark_cuda benchmark_cuda.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
 echo "=== Running benchmark_cuda ==="
