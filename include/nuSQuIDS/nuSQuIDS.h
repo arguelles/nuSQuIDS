@@ -1444,8 +1444,8 @@ class nuSQUIDSAtm {
           int_data.sigma_NC = int_struct->sigma_NC.get_data();
           int_data.dNdE_CC = int_struct->dNdE_CC.get_data();
           int_data.dNdE_NC = int_struct->dNdE_NC.get_data();
-          bool has_gl = nusq_array.front().Get_GlashowResonance();
-          bool has_tr = nusq_array.front().Get_TauRegeneration();
+          bool has_gl = nusq_array.front().iglashow;
+          bool has_tr = nusq_array.front().tauregeneration;
           int_data.sigma_GR = has_gl ? int_struct->sigma_GR.get_data() : nullptr;
           int_data.dNdE_GR = has_gl ? int_struct->dNdE_GR.get_data() : nullptr;
           int_data.dNdE_tau_all = has_tr ? int_struct->dNdE_tau_all.get_data() : nullptr;

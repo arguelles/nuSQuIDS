@@ -113,8 +113,8 @@ int main() {
       for (int ie = 0; ie < ne; ie++) {
         for (int rho = 0; rho < 2; rho++) {
           for (unsigned int flv = 0; flv < numneu; flv++) {
-            double cpu_val = nus_cpu.EvalFlavorAtNode(flv, ic, ie, rho);
-            double gpu_val = nus_gpu.EvalFlavorAtNode(flv, ic, ie, rho);
+            double cpu_val = nus_cpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
+            double gpu_val = nus_gpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
 
             double abs_err = std::abs(cpu_val - gpu_val);
             double rel_err = (std::abs(cpu_val) > 1e-15) ?
@@ -237,8 +237,8 @@ int main() {
       for (int ie = 0; ie < ne; ie++) {
         for (int rho = 0; rho < 2; rho++) {
           for (unsigned int flv = 0; flv < numneu; flv++) {
-            double cpu_val = nus_cpu.EvalFlavorAtNode(flv, ic, ie, rho);
-            double gpu_val = nus_gpu.EvalFlavorAtNode(flv, ic, ie, rho);
+            double cpu_val = nus_cpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
+            double gpu_val = nus_gpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
             double abs_err = std::abs(cpu_val - gpu_val);
             double rel_err = (std::abs(cpu_val) > 1e-15) ?
                              abs_err / std::abs(cpu_val) : 0.0;
