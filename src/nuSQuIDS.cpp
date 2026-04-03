@@ -1440,7 +1440,7 @@ void nuSQUIDS::EvolveState(){
     SetUpInteractionCache();
 
 #ifdef NUSQUIDS_CUDA_ENABLED
-  if(backend_ == Backend::gpu && ne > 1 && !iinteraction){
+  if(backend_ == Backend::gpu && ne > 1){
     if(!cuda_backend_)
       cuda_backend_.reset(new CUDABackend());
 
@@ -1507,11 +1507,35 @@ void nuSQUIDS::EvolveState(){
     double gpu_rel_error = Get_rel_error();
     double gpu_abs_error = Get_abs_error();
 
+    // Extract interaction data for GPU if interactions are enabled
+    InteractionDataHost* int_data_ptr = nullptr;
+    InteractionDataHost int_data;
+    if(iinteraction && int_struct){
+      int_data.n_targets = int_struct->targets.size();
+      int_data.nrhos = nrhos_local;
+      int_data.numneu = numneu_local;
+      int_data.ne = ne_local;
+      int_data.sigma_CC = int_struct->sigma_CC.get_data();
+      int_data.sigma_NC = int_struct->sigma_NC.get_data();
+      int_data.dNdE_CC = int_struct->dNdE_CC.get_data();
+      int_data.dNdE_NC = int_struct->dNdE_NC.get_data();
+      int_data.sigma_GR = iglashow ? int_struct->sigma_GR.get_data() : nullptr;
+      int_data.dNdE_GR = iglashow ? int_struct->dNdE_GR.get_data() : nullptr;
+      int_data.dNdE_tau_all = tauregeneration ? int_struct->dNdE_tau_all.get_data() : nullptr;
+      int_data.dNdE_tau_lep = tauregeneration ? int_struct->dNdE_tau_lep.get_data() : nullptr;
+      int_data.energies = E_range.get_data();
+      int_data.delE = delE.get_data();
+      int_data.has_glashow = iglashow;
+      int_data.has_tau_regen = tauregeneration;
+      int_data_ptr = &int_data;
+    }
+
     cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
                           H0_data.data(), b1_proj_data.data(),
                           1, ne_local, nrhos_local, numneu_local,
                           HI_constants, NT_type_val,
-                          gpu_rel_error, gpu_abs_error);
+                          gpu_rel_error, gpu_abs_error,
+                          int_data_ptr);
 
     // Write evolved states back
     for(int rho = 0; rho < nrhos_local; rho++){

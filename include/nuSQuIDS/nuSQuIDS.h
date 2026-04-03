@@ -1430,11 +1430,39 @@ class nuSQUIDSAtm {
         // Pass the nuSQUIDS error tolerances to the GPU solver
         double gpu_rel_error = nusq_array[0].Get_rel_error();
         double gpu_abs_error = nusq_array[0].Get_abs_error();
+
+        // Extract interaction data for GPU if interactions are enabled
+        InteractionDataHost* int_data_ptr = nullptr;
+        InteractionDataHost int_data;
+        bool use_interactions = nusq_array.front().GetUseInteractions();
+        if(use_interactions && int_struct){
+          int_data.n_targets = int_struct->targets.size();
+          int_data.nrhos = nrhos_local;
+          int_data.numneu = numneu_local;
+          int_data.ne = ne_local;
+          int_data.sigma_CC = int_struct->sigma_CC.get_data();
+          int_data.sigma_NC = int_struct->sigma_NC.get_data();
+          int_data.dNdE_CC = int_struct->dNdE_CC.get_data();
+          int_data.dNdE_NC = int_struct->dNdE_NC.get_data();
+          bool has_gl = nusq_array.front().Get_GlashowResonance();
+          bool has_tr = nusq_array.front().Get_TauRegeneration();
+          int_data.sigma_GR = has_gl ? int_struct->sigma_GR.get_data() : nullptr;
+          int_data.dNdE_GR = has_gl ? int_struct->dNdE_GR.get_data() : nullptr;
+          int_data.dNdE_tau_all = has_tr ? int_struct->dNdE_tau_all.get_data() : nullptr;
+          int_data.dNdE_tau_lep = has_tr ? int_struct->dNdE_tau_lep.get_data() : nullptr;
+          int_data.energies = nusq_array[0].E_range.get_data();
+          int_data.delE = nusq_array[0].delE.get_data();
+          int_data.has_glashow = has_gl;
+          int_data.has_tau_regen = has_tr;
+          int_data_ptr = &int_data;
+        }
+
         cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
                               H0_array.data(), b1_proj_data.data(),
                               n_paths, ne_local, nrhos_local, numneu_local,
                               HI_constants_val, NT_type_val,
-                              gpu_rel_error, gpu_abs_error);
+                              gpu_rel_error, gpu_abs_error,
+                              int_data_ptr);
 
         // Write evolved states back into nuSQUIDS objects
         for(int p = 0; p < n_paths; p++){

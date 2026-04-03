@@ -451,6 +451,185 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
 }
 
 // ============================================================
+// Cooperative tau regeneration computation for SU(3)
+// Two-pass O(ne²): production of taus from CC, then decay back to neutrinos.
+// Adds tau_lep and tau_hadlep contributions to nc_factors in-place.
+// ============================================================
+
+__device__
+void computeTauRegenSU3(int ne, int nrhos, int numneu,
+                        double density, double ye,
+                        double x_eval, double xini,
+                        const double* __restrict__ H0_array,
+                        const double* __restrict__ b1_proj,
+                        const InteractionDataGPU& idata,
+                        const double* __restrict__ s_state,
+                        double* __restrict__ s_nc_factors)
+{
+  constexpr int SU = 9;
+  constexpr int tau_flavor = 2;
+
+  double tfrac[MAX_TARGETS];
+  if (idata.n_targets == 1) { tfrac[0] = 1.0; }
+  else { tfrac[0] = ye; tfrac[1] = 1.0 - ye; }
+
+  // Pass 1: Compute tau decay fluxes — each thread handles a subset of et
+  // Use thread-local accumulation, then add to nc_factors atomically
+  // tau_decay_fluxes[et] = sum_{en>et} nu_tau_flux(en) * invlen_CC_tau(en) * dE * dNdE_CC(en->et) * dEt
+  // For simplicity, we compute this as a single-pass per thread over the (en, e1) space.
+
+  // Each thread handles a subset of final neutrino energies e1
+  for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
+    double tau_lep_nu = 0.0, tau_lep_nubar = 0.0;
+    double tau_hadlep_nu = 0.0, tau_hadlep_nubar = 0.0;
+
+    // For each intermediate tau energy et > e1
+    for (int et = e1 + 1; et < ne; et++) {
+      double tau_flux = 0.0, taubar_flux = 0.0;
+
+      // Accumulate tau production from all en > et
+      for (int en = et + 1; en < ne; en++) {
+        for (int rho_src = 0; rho_src < nrhos; rho_src++) {
+          // Extract tau neutrino flux at en
+          const double* H0_en = H0_array + (rho_src * ne + en) * SU;
+          const double* proj_en = b1_proj + rho_src * numneu * SU;
+          const double* state_en = s_state + (rho_src * ne + en) * SU;
+
+          // Evolve tau projector
+          double evol_tau[9];
+          {
+            const double s3 = 1.7320508075688772;
+            double dt = x_eval - xini;
+            double w12 = 2.0 * H0_en[4];
+            double w13 = H0_en[4] + s3 * H0_en[8];
+            double w23 = H0_en[4] - s3 * H0_en[8];
+            double CX0, SX0, CX1, SX1, CX2, SX2;
+            sincos(w12 * dt, &SX0, &CX0);
+            sincos(w13 * dt, &SX1, &CX1);
+            sincos(w23 * dt, &SX2, &CX2);
+            const double* p = proj_en + tau_flavor * SU;
+            evol_tau[0] = p[0]; evol_tau[1] = CX0*p[1] + SX0*p[3];
+            evol_tau[2] = CX1*p[2] + SX1*p[6]; evol_tau[3] = CX0*p[3] - SX0*p[1];
+            evol_tau[4] = p[4]; evol_tau[5] = CX2*p[5] - SX2*p[7];
+            evol_tau[6] = CX1*p[6] - SX1*p[2]; evol_tau[7] = CX2*p[7] + SX2*p[5];
+            evol_tau[8] = p[8];
+          }
+
+          double flux = suTrace3(evol_tau, state_en);
+          double invlen_CC = 0.0;
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, ne);
+            invlen_CC += tfrac[t] * idata.d_sigma_CC[idx];
+          }
+          invlen_CC *= density;
+
+          double dEn = idata.d_delE[en - 1];
+          double dEt = idata.d_delE[et - 1];
+          // dNdE_CC[target][rho][tau][en][et]
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t dNdE_idx = dNdE_index(t, rho_src, tau_flavor, en, et,
+                                          idata.nrhos, 3, ne);
+            double contrib = flux * invlen_CC * dEn * idata.d_dNdE_CC[dNdE_idx] * dEt;
+            if (rho_src == 0) tau_flux += tfrac[t] * contrib;
+            else              taubar_flux += tfrac[t] * contrib;
+          }
+        }
+      }
+
+      // Decay contributions: tau → neutrinos at energy e1
+      if (tau_flux > 0.0 || taubar_flux > 0.0) {
+        // dNdE_tau_all[rho][et][e1], dNdE_tau_lep[rho][et][e1]
+        size_t tau_idx_nu    = (0 * ne + et) * ne + e1;
+        size_t tau_idx_nubar = (1 * ne + et) * ne + e1;
+
+        tau_hadlep_nu    += tau_flux    * idata.d_dNdE_tau_all[tau_idx_nu];
+        tau_lep_nubar    += tau_flux    * idata.d_dNdE_tau_lep[tau_idx_nubar];
+        tau_hadlep_nubar += taubar_flux * idata.d_dNdE_tau_all[tau_idx_nubar];
+        tau_lep_nu       += taubar_flux * idata.d_dNdE_tau_lep[tau_idx_nu];
+      }
+    }
+
+    // Add tau regen contributions to nc_factors
+    // tau_lep → e and mu flavors, tau_hadlep → tau flavor
+    if (nrhos >= 1) {
+      s_nc_factors[(0 * 3 + 0) * ne + e1] += tau_lep_nu;    // electron
+      s_nc_factors[(0 * 3 + 1) * ne + e1] += tau_lep_nu;    // muon
+      s_nc_factors[(0 * 3 + 2) * ne + e1] += tau_hadlep_nu; // tau
+    }
+    if (nrhos >= 2) {
+      s_nc_factors[(1 * 3 + 0) * ne + e1] += tau_lep_nubar;
+      s_nc_factors[(1 * 3 + 1) * ne + e1] += tau_lep_nubar;
+      s_nc_factors[(1 * 3 + 2) * ne + e1] += tau_hadlep_nubar;
+    }
+  }
+}
+
+// ============================================================
+// Cooperative Glashow resonance computation for SU(3)
+// Only for electron antineutrinos.
+// Adds gr_factors to all flavors of nc_factors.
+// ============================================================
+
+__device__
+void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
+                               double density, double ye,
+                               double x_eval, double xini,
+                               const double* __restrict__ H0_array,
+                               const double* __restrict__ b1_proj,
+                               const InteractionDataGPU& idata,
+                               int NT_type,
+                               const double* __restrict__ s_state,
+                               double* __restrict__ s_nc_factors)
+{
+  constexpr int SU = 9;
+  // Glashow resonance only affects electron antineutrinos
+  int rho = (NT_type == 3) ? 1 : 0; // antineutrino rho index
+
+  for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
+    double gr_factor = 0.0;
+
+    for (int e2 = e1 + 1; e2 < ne; e2++) {
+      // Extract electron antineutrino flux at e2
+      const double* H0_e2 = H0_array + (rho * ne + e2) * SU;
+      const double* proj_e2 = b1_proj + rho * numneu * SU;
+      const double* state_e2 = s_state + (rho * ne + e2) * SU;
+
+      // Evolve electron projector (flavor 0)
+      double evol_e[9];
+      {
+        const double s3 = 1.7320508075688772;
+        double dt = x_eval - xini;
+        double w12 = 2.0 * H0_e2[4];
+        double w13 = H0_e2[4] + s3 * H0_e2[8];
+        double w23 = H0_e2[4] - s3 * H0_e2[8];
+        double CX0, SX0, CX1, SX1, CX2, SX2;
+        sincos(w12 * dt, &SX0, &CX0);
+        sincos(w13 * dt, &SX1, &CX1);
+        sincos(w23 * dt, &SX2, &CX2);
+        const double* p = proj_e2; // flavor 0 = electron
+        evol_e[0] = p[0]; evol_e[1] = CX0*p[1] + SX0*p[3];
+        evol_e[2] = CX1*p[2] + SX1*p[6]; evol_e[3] = CX0*p[3] - SX0*p[1];
+        evol_e[4] = p[4]; evol_e[5] = CX2*p[5] - SX2*p[7];
+        evol_e[6] = CX1*p[6] - SX1*p[2]; evol_e[7] = CX2*p[7] + SX2*p[5];
+        evol_e[8] = p[8];
+      }
+
+      double flux = suTrace3(evol_e, state_e2);
+
+      // invlen_GR at e2 (independent of target, uses electron number density)
+      double invlen_GR = idata.d_sigma_GR[e2] * density * ye;
+
+      double dE = idata.d_delE[e2 - 1];
+      gr_factor += flux * invlen_GR * dE * idata.d_dNdE_GR[e2 * ne + e1];
+    }
+
+    // Glashow contributes equally to all flavors (for the antineutrino rho)
+    for (int flv = 0; flv < 3; flv++)
+      s_nc_factors[(rho * 3 + flv) * ne + e1] += gr_factor;
+  }
+}
+
+// ============================================================
 // Compute InteractionsRho for SU(3)
 // InteractionsRho = sum_flv nc_factors[rho][flv][e1] * evol_proj[flv]
 // (Tau regeneration and Glashow will be added in Phase 5)
@@ -688,6 +867,22 @@ evolveKernelImpl(const PhysicsParams params,
                           H0_array, b1_proj, interaction_data,
                           s_state, s_nc_factors);
       __syncthreads();
+
+      // Tau regeneration (adds to nc_factors in-place)
+      if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
+        computeTauRegenSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
+                           H0_array, b1_proj, interaction_data,
+                           s_state, s_nc_factors);
+        __syncthreads();
+      }
+
+      // Glashow resonance (adds to nc_factors in-place)
+      if (params.iglashow && interaction_data.d_sigma_GR) {
+        computeGlashowCascadeSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
+                                  H0_array, b1_proj, interaction_data,
+                                  params.NT_type, s_state, s_nc_factors);
+        __syncthreads();
+      }
     }
 
     double local_max_err = 0.0;
