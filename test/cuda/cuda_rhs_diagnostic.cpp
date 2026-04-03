@@ -37,12 +37,12 @@ int main() {
 
   squids::Const units;
 
-  // Setup: small problem, single zenith, few energies
+  // Setup: match the interaction test parameters
   const unsigned int numneu = 3;
-  double Emin = 1.0e3 * units.GeV;
-  double Emax = 1.0e5 * units.GeV;
+  double Emin = 1.0e2 * units.GeV;
+  double Emax = 1.0e6 * units.GeV;
   int ncz = 1;
-  int ne = 10;
+  int ne = 40;
 
   auto costh = linspace(-1.0, -1.0, ncz); // single zenith: through center of Earth
   auto energies = logspace(Emin, Emax, ne);
@@ -182,7 +182,8 @@ int main() {
       p->Set_GlashowResonance(false);
     }
 
-    marray<double,4> ini{1u, (unsigned)ne, 2u, numneu};
+    int ncz_short = 1;
+    marray<double,4> ini{(unsigned)ncz_short, (unsigned)ne, 2u, numneu};
     std::fill(ini.begin(), ini.end(), 1);
     cpu.Set_initial_state(ini, flavor);
     gpu_obj.Set_initial_state(ini, flavor);
