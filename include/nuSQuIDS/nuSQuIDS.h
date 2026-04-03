@@ -1452,7 +1452,6 @@ class nuSQUIDSAtm {
         // Extract interaction data for GPU if interactions are enabled
         InteractionDataHost* int_data_ptr = nullptr;
         InteractionDataHost int_data;
-        bool use_interactions = nusq_array.front().GetUseInteractions();
         if(use_interactions && int_struct){
           int_data.n_targets = int_struct->targets.size();
           int_data.nrhos = nrhos_local;
