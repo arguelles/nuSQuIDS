@@ -989,6 +989,16 @@ evolveKernelImpl(const PhysicsParams params,
   double xend = path.xend;
   double total_length = xend - xini;
 
+  // Debug: print target number densities at midpoint for first block
+  if (path_idx == 0 && threadIdx.x == 0 && do_interactions) {
+    double xmid = 0.5 * (xini + xend);
+    for (int t = 0; t < interaction_data.n_targets; t++) {
+      double nd = evaluateTargetFraction(path.profile, t, xmid);
+      printf("path[0] target[%d] ndens_mid=%e n_targets=%d profile.n_targets=%d\n",
+             t, nd, interaction_data.n_targets, path.profile.n_targets);
+    }
+  }
+
   // Vacuum: in interaction picture, d/dt rho_tilde = 0 → no change
   if (path.profile.type == ProfileType::VACUUM || !params.ioscillations)
     return;
