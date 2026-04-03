@@ -891,16 +891,22 @@ evolveKernelImpl(const PhysicsParams params,
       __syncthreads();
 
       // Tau regeneration (adds to nc_factors in-place)
+      // TODO: update to use profile-based number densities
       if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        computeTauRegenSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
+        double dens_x = evaluateDensity(path.profile, x);
+        double ye_x = evaluateYe(path.profile, x);
+        computeTauRegenSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
                            H0_array, b1_proj, interaction_data,
                            s_state, s_nc_factors);
         __syncthreads();
       }
 
       // Glashow resonance (adds to nc_factors in-place)
+      // TODO: update to use profile-based number densities
       if (params.iglashow && interaction_data.d_sigma_GR) {
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
+        double dens_x = evaluateDensity(path.profile, x);
+        double ye_x = evaluateYe(path.profile, x);
+        computeGlashowCascadeSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
                                   H0_array, b1_proj, interaction_data,
                                   params.NT_type, s_state, s_nc_factors);
         __syncthreads();
