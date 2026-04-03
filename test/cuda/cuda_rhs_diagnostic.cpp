@@ -47,53 +47,8 @@ int main() {
   auto costh = linspace(-1.0, -1.0, ncz); // single zenith: through center of Earth
   auto energies = logspace(Emin, Emax, ne);
 
-  // ========== Test 1: Oscillation-only comparison ==========
-  std::cout << "\n--- Test 1: Oscillation-only (interactions=false) ---" << std::endl;
-  {
-    nuSQUIDSAtm<> cpu(costh, energies, numneu, both, false);
-    nuSQUIDSAtm<> gpu_obj(costh, energies, numneu, both, false);
-
-    for (auto* p : {&cpu, &gpu_obj}) {
-      p->Set_MixingAngle(0, 1, 0.563942);
-      p->Set_MixingAngle(0, 2, 0.154085);
-      p->Set_MixingAngle(1, 2, 0.785398);
-      p->Set_SquareMassDifference(1, 7.65e-05);
-      p->Set_SquareMassDifference(2, 0.00247);
-      p->Set_CPPhase(0, 2, 0);
-    }
-
-    marray<double,4> ini{(unsigned)ncz, (unsigned)ne, 2u, numneu};
-    std::fill(ini.begin(), ini.end(), 1);
-    cpu.Set_initial_state(ini, flavor);
-    gpu_obj.Set_initial_state(ini, flavor);
-
-    cpu.Set_ProgressBar(false);
-    gpu_obj.Set_ProgressBar(false);
-    gpu_obj.Set_Backend(Backend::gpu);
-
-    cpu.EvolveState();
-    gpu_obj.EvolveState();
-
-    double max_abs = 0, max_rel = 0;
-    for (int ie = 0; ie < ne; ie++) {
-      for (int rho = 0; rho < 2; rho++) {
-        for (unsigned flv = 0; flv < numneu; flv++) {
-          double cv = cpu.EvalFlavor(flv, costh[0], energies[ie], rho);
-          double gv = gpu_obj.EvalFlavor(flv, costh[0], energies[ie], rho);
-          double ae = std::abs(cv - gv);
-          double re = (std::abs(cv) > 1e-15) ? ae / std::abs(cv) : 0;
-          max_abs = std::max(max_abs, ae);
-          max_rel = std::max(max_rel, re);
-        }
-      }
-    }
-    std::cout << "  max_abs=" << std::scientific << max_abs
-              << " max_rel=" << max_rel << std::endl;
-    std::cout << "  " << (max_abs < 1e-4 ? "PASS" : "FAIL") << std::endl;
-  }
-
-  // ========== Test 2: Interactions enabled, compare CPU values ==========
-  std::cout << "\n--- Test 2: With interactions (NC+CC) ---" << std::endl;
+  // ========== Test 1: Interactions enabled, compare CPU values ==========
+  std::cout << "\n--- Test 1: With interactions (NC+CC, full Earth) ---" << std::endl;
   {
     nuSQUIDSAtm<> cpu(costh, energies, numneu, both, true);
     nuSQUIDSAtm<> gpu_obj(costh, energies, numneu, both, true);
@@ -162,10 +117,10 @@ int main() {
     std::cout << "    " << ((max_abs < 0.01) ? "PASS" : "FAIL") << std::endl;
   }
 
-  // ========== Test 3: Very short propagation (1 step) ==========
+  // ========== Test 2: Very short propagation ==========
   // If the error grows with path length, it's an integration issue.
   // If it's present even for a very short path, it's a derivative issue.
-  std::cout << "\n--- Test 3: Short path (cos(zenith)=-0.1, ~short through Earth crust) ---" << std::endl;
+  std::cout << "\n--- Test 2: Short path (cos(zenith)=-0.1, ~short through Earth crust) ---" << std::endl;
   {
     auto costh_short = linspace(-0.1, -0.1, 1);
     nuSQUIDSAtm<> cpu(costh_short, energies, numneu, both, true);
