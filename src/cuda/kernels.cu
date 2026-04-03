@@ -673,37 +673,21 @@ void computeDerivativeSU3(double x_eval, double xini,
                           const double* __restrict__ nc_factors,
                           double* __restrict__ deriv)
 {
-  // Evolve projectors to current time
-  double evol_proj[3 * 9];
-  evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
-
-  // Matter potential HI from evolved projectors
-  double density = evaluateDensity(profile, x_eval);
-  double ye = evaluateYe(profile, x_eval);
+  // Coherent term: reuse the proven computeHI_SU3 + iCommutator path
   double HI[9];
-  {
-    double CC = HI_constants * density * ye;
-    double NC;
-    if (ye < 1.0e-10) NC = HI_constants * density;
-    else NC = CC * (-0.5 * (1.0 - ye) / ye);
-    if (is_antinu) { CC = -CC; NC = -NC; }
-    double weights[3] = {CC + NC, NC, NC};
-    #pragma unroll
-    for (int c = 0; c < 9; c++) HI[c] = 0.0;
-    for (int flv = 0; flv < 3; flv++) {
-      const double* ep = evol_proj + flv * 9;
-      #pragma unroll
-      for (int c = 0; c < 9; c++) HI[c] += weights[flv] * ep[c];
-    }
-  }
-
-  // Coherent: i[ρ, HI]
-  double comm[9];
-  iCommutatorSU3(state, HI, comm);
+  computeHI_SU3(x_eval, xini, H0, b1_proj, profile, HI_constants, is_antinu, HI);
+  iCommutatorSU3(state, HI, deriv);  // deriv = i[ρ, HI]
 
   // Absorption: -ACommutator(Gamma, ρ)
+  double density = evaluateDensity(profile, x_eval);
+  double ye = evaluateYe(profile, x_eval);
+
   double invlen[3];
   computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
+
+  // Evolved projectors for GammaRho and InteractionsRho
+  double evol_proj[3 * 9];
+  evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
 
   double Gamma[9];
   computeGammaRhoSU3(invlen, evol_proj, Gamma);
@@ -711,7 +695,7 @@ void computeDerivativeSU3(double x_eval, double xini,
   double acomm[9];
   antiCommutatorSU3(Gamma, state, acomm);
 
-  // InteractionsRho (cascade source term) using precomputed nc_factors
+  // Cascade source term
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
   if (nc_factors) {
     computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
@@ -720,7 +704,7 @@ void computeDerivativeSU3(double x_eval, double xini,
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
   #pragma unroll
   for (int c = 0; c < 9; c++)
-    deriv[c] = comm[c] - acomm[c] + F_int[c];
+    deriv[c] += -acomm[c] + F_int[c];
 }
 
 // ============================================================
