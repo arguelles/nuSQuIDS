@@ -800,10 +800,27 @@ evolveKernelImpl(const PhysicsParams params,
 
   // Copy interaction data to local (avoids repeated global dereference)
   InteractionDataGPU interaction_data;
-  if (interaction_data_ptr)
+  if (interaction_data_ptr) {
     interaction_data = *interaction_data_ptr;
-  else
-    memset(&interaction_data, 0, sizeof(interaction_data));
+  } else {
+    interaction_data.n_targets = 0;
+    interaction_data.nrhos = 0;
+    interaction_data.numneu = 0;
+    interaction_data.ne = 0;
+    interaction_data.d_dNdE_CC = nullptr;
+    interaction_data.d_dNdE_NC = nullptr;
+    interaction_data.d_sigma_CC = nullptr;
+    interaction_data.d_sigma_NC = nullptr;
+    interaction_data.d_dNdE_tau_all = nullptr;
+    interaction_data.d_dNdE_tau_lep = nullptr;
+    interaction_data.d_sigma_GR = nullptr;
+    interaction_data.d_dNdE_GR = nullptr;
+    interaction_data.d_energies = nullptr;
+    interaction_data.d_delE = nullptr;
+    interaction_data.d_b0_proj = nullptr;
+    interaction_data.d_b1_proj = nullptr;
+    interaction_data.total_bytes = 0;
+  }
 
   const int ne = params.ne;
   const int nrhos = params.nrhos;
@@ -1049,6 +1066,10 @@ void launchEvolve(const PhysicsParams& params,
                                          sizeof(InteractionDataGPU),
                                          cudaMemcpyHostToDevice, stream));
   }
+
+  // Debug: print launch config
+  fprintf(stderr, "launchEvolve: n_paths=%d threads=%d shared=%zu idata=%p numneu=%d\n",
+          n_paths, threads, shared_bytes, (void*)d_idata_on_device, numneu);
 
   switch (numneu) {
     case 3:
