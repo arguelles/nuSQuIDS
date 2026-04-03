@@ -780,7 +780,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
 
 template<int NFLV>
 __global__
-void __launch_bounds__(128, 2)
+void __launch_bounds__(128)
 evolveKernelImpl(const PhysicsParams params,
                  const PathDeviceData* __restrict__ paths,
                  const double* __restrict__ H0_array,
