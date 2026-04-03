@@ -1067,9 +1067,11 @@ void launchEvolve(const PhysicsParams& params,
                                          cudaMemcpyHostToDevice, stream));
   }
 
-  // Debug: print launch config
-  fprintf(stderr, "launchEvolve: n_paths=%d threads=%d shared=%zu idata=%p numneu=%d\n",
-          n_paths, threads, shared_bytes, (void*)d_idata_on_device, numneu);
+  // Debug: print launch config and check for prior errors
+  cudaError_t prior_err = cudaGetLastError();
+  fprintf(stderr, "launchEvolve: n_paths=%d threads=%d shared=%zu idata=%p numneu=%d prior_err=%d(%s)\n",
+          n_paths, threads, shared_bytes, (void*)d_idata_on_device, numneu,
+          (int)prior_err, cudaGetErrorString(prior_err));
 
   switch (numneu) {
     case 3:
