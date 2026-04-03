@@ -700,6 +700,12 @@ void computeDerivativeSU3(double x_eval, double xini,
     computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
   }
 
+  // DEBUG: print derivative components for first energy of first block
+  if (ie == 0 && rho == 0 && blockIdx.x == 0) {
+    printf("deriv[ie=0,rho=0]: comm[0]=%e acomm[0]=%e F[0]=%e invlen={%e,%e,%e} dens=%e ye=%e\n",
+           deriv[0], acomm[0], F_int[0], invlen[0], invlen[1], invlen[2], density, ye);
+  }
+
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
   #pragma unroll
   for (int c = 0; c < 9; c++)
