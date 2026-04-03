@@ -909,31 +909,17 @@ evolveKernelImpl(const PhysicsParams params,
         for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
         // Full step of size h_try
+        // DEBUG: always use oscillation-only step to test branching
         double sf[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sf);
-        } else {
-          rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
+        rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
-        }
 
         // Two half-steps of size h_try/2
         double st[SU], sh[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, st);
-          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sh);
-        } else {
-          rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+        rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
-          rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+        rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
-        }
 
         // Richardson extrapolation and error estimate
         double* corr = corrected_buf + pair_idx * SU;
