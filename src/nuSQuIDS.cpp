@@ -1491,6 +1491,12 @@ void nuSQUIDS::EvolveState(){
     gpu_path.density_vals.resize(n_density_samples);
     gpu_path.ye_vals.resize(n_density_samples);
 
+    // Determine number of interaction targets
+    int n_tgts = (iinteraction && int_struct) ? (int)int_struct->targets.size() : 0;
+    gpu_path.n_targets = n_tgts;
+    if(n_tgts > 0)
+      gpu_path.target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
+
     double dx = (gpu_path.xend - gpu_path.xini) / (n_density_samples - 1);
     for(int s = 0; s < n_density_samples; s++){
       double x_s = gpu_path.xini + s * dx;
@@ -1498,6 +1504,18 @@ void nuSQUIDS::EvolveState(){
       gpu_path.density_x[s] = x_s;
       gpu_path.density_vals[s] = body->density(*track);
       gpu_path.ye_vals[s] = body->ye(*track);
+
+      // Sample target number densities using the full nuSQUIDS machinery
+      if(n_tgts > 0){
+        current_density = body->density(*track);
+        current_ye = body->ye(*track);
+        if(body_has_composition)
+          current_composition = body->composition(*track);
+        target_fractions_valid = false;  // force recomputation
+        std::vector<double> ndens = GetTargetNumberDensities();
+        for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
+          gpu_path.target_ndens[t][s] = ndens[t];
+      }
     }
     track->SetX(gpu_path.xini);
 

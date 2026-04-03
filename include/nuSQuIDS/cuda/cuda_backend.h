@@ -70,8 +70,14 @@ struct GPUPathData {
   double time_offset;  ///< Time offset for evolution
   int n_density_samples;  ///< Number of density profile samples
   std::vector<double> density_x;    ///< Sample positions
-  std::vector<double> density_vals; ///< Density at each sample
+  std::vector<double> density_vals; ///< Density at each sample (g/cm³ for HI computation)
   std::vector<double> ye_vals;      ///< Electron fraction at each sample
+
+  // Target number densities along the track (natural units, eV³)
+  // Precomputed on CPU using GetTargetNumberDensities() from squids::Const.
+  // n_targets arrays, each of size n_density_samples.
+  int n_targets;                                     ///< Number of target types
+  std::vector<std::vector<double>> target_ndens;     ///< [n_targets][n_density_samples]
 };
 
 /// \brief CUDA GPU backend for nuSQuIDS propagation.

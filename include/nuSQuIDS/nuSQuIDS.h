@@ -1397,7 +1397,10 @@ class nuSQUIDSAtm {
           }
         }
 
-        // Extract per-path body profiles
+        // Extract per-path body profiles and target number densities
+        bool use_interactions = nusq_array.front().GetUseInteractions();
+        int n_tgts = (use_interactions && int_struct) ? (int)int_struct->targets.size() : 0;
+
         std::vector<GPUPathData> gpu_paths(n_paths);
         const int n_density_samples = 500;
         for(int p = 0; p < n_paths; p++){
@@ -1407,9 +1410,12 @@ class nuSQUIDSAtm {
           gpu_paths[p].xend = trk.GetFinalX();
           gpu_paths[p].time_offset = 0.0;
           gpu_paths[p].n_density_samples = n_density_samples;
+          gpu_paths[p].n_targets = n_tgts;
           gpu_paths[p].density_x.resize(n_density_samples);
           gpu_paths[p].density_vals.resize(n_density_samples);
           gpu_paths[p].ye_vals.resize(n_density_samples);
+          if(n_tgts > 0)
+            gpu_paths[p].target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
 
           double dx = (gpu_paths[p].xend - gpu_paths[p].xini) / (n_density_samples - 1);
           for(int s = 0; s < n_density_samples; s++){
@@ -1418,6 +1424,18 @@ class nuSQUIDSAtm {
             gpu_paths[p].density_x[s] = x_s;
             gpu_paths[p].density_vals[s] = nsq.body->density(trk);
             gpu_paths[p].ye_vals[s] = nsq.body->ye(trk);
+
+            // Sample target number densities using nuSQUIDS unit system
+            if(n_tgts > 0){
+              nsq.current_density = nsq.body->density(trk);
+              nsq.current_ye = nsq.body->ye(trk);
+              if(nsq.body_has_composition)
+                nsq.current_composition = nsq.body->composition(trk);
+              nsq.target_fractions_valid = false;
+              std::vector<double> ndens = nsq.GetTargetNumberDensities();
+              for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
+                gpu_paths[p].target_ndens[t][s] = ndens[t];
+            }
           }
           trk.SetX(gpu_paths[p].xini);
         }

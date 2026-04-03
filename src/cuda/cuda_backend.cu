@@ -158,7 +158,15 @@ struct CUDABackend::Impl {
     profile.constant_ye = 0.0;
     profile.density_spline = cuda::fitAkimaSpline(path.density_x, path.density_vals);
     profile.ye_spline = cuda::fitAkimaSpline(path.density_x, path.ye_vals);
-    profile.n_targets = 0;
+
+    // Fit Akima splines for target number densities (precomputed on CPU in natural units)
+    profile.n_targets = path.n_targets;
+    for (int t = 0; t < path.n_targets; t++) {
+      profile.target_splines.push_back(
+        cuda::fitAkimaSpline(path.density_x, path.target_ndens[t]));
+      if (t < (int)path.target_ndens.size())
+        profile.constant_target_fractions.push_back(path.target_ndens[t][0]);
+    }
 
     return profile;
   }
@@ -203,18 +211,6 @@ void CUDABackend::Evolve(double* states,
   params.tauregeneration = has_interactions && interaction_data->has_tau_regen;
   params.iglashow = has_interactions && interaction_data->has_glashow;
   params.basis = 2; // interaction basis
-
-  // Unit conversion constants for interaction number densities
-  // From SQuIDS::Const (natural units ℏ=c=1):
-  //   gr  = 5.6095886038e32 eV  (1 gram in eV)
-  //   cm  = 5.0677307162e4  eV^{-1}  (1 cm in eV^{-1})
-  //   gr * cm^{-3} converts g/cm³ → eV^4 (mass density in natural units)
-  constexpr double gr_eV  = 5.6095886038e32;
-  constexpr double cm_inv = 5.0677307162e4;
-  params.gr_to_eV_cm3 = gr_eV / (cm_inv * cm_inv * cm_inv); // 4.3157e18
-  params.proton_mass  = 0.938272046e9;  // eV
-  params.neutron_mass = 0.939565378e9;  // eV
-  params.electron_mass = 0.510998928e6; // eV
 
   // Build solver config — use caller-provided tolerances if given
   cuda::SolverConfig solver_config;
