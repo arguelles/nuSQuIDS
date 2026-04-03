@@ -673,11 +673,37 @@ void computeDerivativeSU3(double x_eval, double xini,
                           const double* __restrict__ nc_factors,
                           double* __restrict__ deriv)
 {
-  // DEBUG: oscillation-only to verify RK4 mechanics work
-  // TODO: re-enable interaction terms after confirming coherent evolution matches
+  // Coherent term: reuse the proven computeHI_SU3 + iCommutator path
   double HI[9];
   computeHI_SU3(x_eval, xini, H0, b1_proj, profile, HI_constants, is_antinu, HI);
-  iCommutatorSU3(state, HI, deriv);
+  iCommutatorSU3(state, HI, deriv);  // deriv = i[ρ, HI]
+
+  // Absorption: -ACommutator(Gamma, ρ)
+  double density = evaluateDensity(profile, x_eval);
+  double ye = evaluateYe(profile, x_eval);
+
+  double invlen[3];
+  computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
+
+  double evol_proj[3 * 9];
+  evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
+
+  double Gamma[9];
+  computeGammaRhoSU3(invlen, evol_proj, Gamma);
+
+  double acomm[9];
+  antiCommutatorSU3(Gamma, state, acomm);
+
+  // Cascade source term
+  double F_int[9] = {0,0,0,0,0,0,0,0,0};
+  if (nc_factors) {
+    computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
+  }
+
+  // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
+  #pragma unroll
+  for (int c = 0; c < 9; c++)
+    deriv[c] += -acomm[c] + F_int[c];
 }
 
 // ============================================================
@@ -856,7 +882,7 @@ evolveKernelImpl(const PhysicsParams params,
     // at the start of the step and held constant during sub-steps.
     // The adaptive step controller ensures this approximation is bounded.
     // ============================================================
-    if (false && do_interactions) { // DEBUG: skip preamble entirely
+    if (do_interactions) {
       // Load current state to shared memory
       for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
         s_state[idx] = my_state[idx];
@@ -909,17 +935,31 @@ evolveKernelImpl(const PhysicsParams params,
         for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
         // Full step of size h_try
-        // DEBUG: always use oscillation-only step to test branching
         double sf[SU];
-        rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
+        if (do_interactions) {
+          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, sf);
+        } else {
+          rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
+        }
 
         // Two half-steps of size h_try/2
         double st[SU], sh[SU];
-        rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+        if (do_interactions) {
+          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, st);
+          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, sh);
+        } else {
+          rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
-        rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+          rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
+        }
 
         // Richardson extrapolation and error estimate
         double* corr = corrected_buf + pair_idx * SU;

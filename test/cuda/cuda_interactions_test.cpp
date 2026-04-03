@@ -42,7 +42,7 @@ int main() {
   std::cout << "\n--- Test 1: GPU vs CPU with interactions (NC+CC) ---" << std::endl;
   {
     const unsigned int numneu = 3;
-    bool interactions = false; // DEBUG: oscillation-only to isolate
+    bool interactions = true;
 
     double Emin = 1.0e2 * units.GeV;
     double Emax = 1.0e6 * units.GeV;
