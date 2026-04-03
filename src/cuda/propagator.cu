@@ -173,6 +173,11 @@ Propagator::Propagator(int device_id, int batch_size_limit)
     shared_data_uploaded_(false) {
 
   NUSQUIDS_CUDA_CHECK(cudaSetDevice(device_id_));
+
+  // The interacting kernel uses deep call stacks (anticommutator, cascade, etc.)
+  // Default thread stack is 1024 bytes; we need ~4KB for the full interaction chain
+  NUSQUIDS_CUDA_CHECK(cudaDeviceSetLimit(cudaLimitStackSize, 4096));
+
   NUSQUIDS_CUDA_CHECK(cudaStreamCreate(&stream_));
   NUSQUIDS_CUDA_CHECK(cudaEventCreate(&event_));
 }
