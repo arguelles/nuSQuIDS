@@ -785,7 +785,7 @@ evolveKernelImpl(const PhysicsParams params,
                  const PathDeviceData* __restrict__ paths,
                  const double* __restrict__ H0_array,
                  const double* __restrict__ b1_proj,
-                 const InteractionDataGPU interaction_data,
+                 const InteractionDataGPU* __restrict__ interaction_data_ptr,
                  const SolverConfig solver_config,
                  double* __restrict__ states,
                  int n_paths)
@@ -797,6 +797,13 @@ evolveKernelImpl(const PhysicsParams params,
 
   int path_idx = blockIdx.x;
   if (path_idx >= n_paths) return;
+
+  // Copy interaction data to local (avoids repeated global dereference)
+  InteractionDataGPU interaction_data;
+  if (interaction_data_ptr)
+    interaction_data = *interaction_data_ptr;
+  else
+    memset(&interaction_data, 0, sizeof(interaction_data));
 
   const int ne = params.ne;
   const int nrhos = params.nrhos;
@@ -1022,37 +1029,46 @@ void launchEvolve(const PhysicsParams& params,
 
   int threads = 128;
 
-  // Build InteractionDataGPU to pass by value to kernel
-  // (empty if no interaction data)
-  InteractionDataGPU idata;
-  if (d_interaction_data)
-    idata = *d_interaction_data;
-  else
-    memset(&idata, 0, sizeof(idata));
-
   // Compute shared memory for interaction cascade computation
   // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
   size_t shared_bytes = 0;
-  if (params.iinteraction && idata.n_targets > 0) {
+  if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
     int su_size = numneu * numneu;
     shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
                           + params.nrhos * 3 * params.ne)        // nc_factors
                    * sizeof(double);
   }
 
+  // Upload InteractionDataGPU struct to device if needed
+  // (the struct itself contains device pointers, but it needs to be device-resident
+  //  for the kernel to read it via a device pointer)
+  InteractionDataGPU* d_idata_on_device = nullptr;
+  if (d_interaction_data && d_interaction_data->n_targets > 0) {
+    NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_idata_on_device, sizeof(InteractionDataGPU)));
+    NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(d_idata_on_device, d_interaction_data,
+                                         sizeof(InteractionDataGPU),
+                                         cudaMemcpyHostToDevice, stream));
+  }
+
   switch (numneu) {
     case 3:
       evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
-        idata, solver_config, d_states, n_paths);
+        d_idata_on_device, solver_config, d_states, n_paths);
       break;
     case 4:
       evolveKernelImpl<4><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj,
-        idata, solver_config, d_states, n_paths);
+        d_idata_on_device, solver_config, d_states, n_paths);
       break;
   }
   NUSQUIDS_CUDA_CHECK(cudaGetLastError());
+
+  // Free the temporary device struct
+  if (d_idata_on_device) {
+    cudaStreamSynchronize(stream);
+    cudaFree(d_idata_on_device);
+  }
 }
 
 void launchEvalFlavors(const double* d_states,
