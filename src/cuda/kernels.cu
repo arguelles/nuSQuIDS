@@ -654,6 +654,76 @@ void computeInteractionsRhoSU3(int ie, int rho, int ne,
 }
 
 // ============================================================
+// Compute full interacting derivative for SU(3)
+// dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
+//
+// Explicit device function — replaces lambda to avoid CUDA
+// device lambda capture issues that can silently zero results.
+// ============================================================
+
+__device__ __forceinline__
+void computeDerivativeSU3(double x_eval, double xini,
+                          const double* __restrict__ state,
+                          const double* __restrict__ H0,
+                          const double* __restrict__ b1_proj,
+                          const GPUDensityProfileDevice& profile,
+                          double HI_constants, bool is_antinu,
+                          int ie, int rho, int ne, int numneu,
+                          const InteractionDataGPU& idata,
+                          const double* __restrict__ nc_factors,
+                          double* __restrict__ deriv)
+{
+  // Evolve projectors to current time
+  double evol_proj[3 * 9];
+  evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
+
+  // Matter potential HI from evolved projectors
+  double density = evaluateDensity(profile, x_eval);
+  double ye = evaluateYe(profile, x_eval);
+  double HI[9];
+  {
+    double CC = HI_constants * density * ye;
+    double NC;
+    if (ye < 1.0e-10) NC = HI_constants * density;
+    else NC = CC * (-0.5 * (1.0 - ye) / ye);
+    if (is_antinu) { CC = -CC; NC = -NC; }
+    double weights[3] = {CC + NC, NC, NC};
+    #pragma unroll
+    for (int c = 0; c < 9; c++) HI[c] = 0.0;
+    for (int flv = 0; flv < 3; flv++) {
+      const double* ep = evol_proj + flv * 9;
+      #pragma unroll
+      for (int c = 0; c < 9; c++) HI[c] += weights[flv] * ep[c];
+    }
+  }
+
+  // Coherent: i[ρ, HI]
+  double comm[9];
+  iCommutatorSU3(state, HI, comm);
+
+  // Absorption: -ACommutator(Gamma, ρ)
+  double invlen[3];
+  computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
+
+  double Gamma[9];
+  computeGammaRhoSU3(invlen, evol_proj, Gamma);
+
+  double acomm[9];
+  antiCommutatorSU3(Gamma, state, acomm);
+
+  // InteractionsRho (cascade source term) using precomputed nc_factors
+  double F_int[9] = {0,0,0,0,0,0,0,0,0};
+  if (nc_factors) {
+    computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
+  }
+
+  // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
+  #pragma unroll
+  for (int c = 0; c < 9; c++)
+    deriv[c] = comm[c] - acomm[c] + F_int[c];
+}
+
+// ============================================================
 // RK4 step for SU(3) with full interactions
 //
 // dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
@@ -670,68 +740,15 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
                              double HI_constants, bool is_antinu,
                              int ie, int rho, int ne, int numneu,
                              const InteractionDataGPU& idata,
-                             const double* __restrict__ nc_factors, // [nrhos][3][ne] precomputed
+                             const double* __restrict__ nc_factors,
                              double* __restrict__ y_out)
 {
-  // Helper lambda: compute derivative at given (x_eval, state)
-  // derivative = iCommutator(state, HI) - ACommutator(Gamma, state)
-  auto computeDerivative = [&](double x_eval, const double* state, double* deriv) {
-    // Evolve projectors to current time
-    double evol_proj[3 * 9];
-    evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
-
-    // Matter potential HI from evolved projectors
-    double density = evaluateDensity(profile, x_eval);
-    double ye = evaluateYe(profile, x_eval);
-    double HI[9];
-    {
-      double CC = HI_constants * density * ye;
-      double NC;
-      if (ye < 1.0e-10) NC = HI_constants * density;
-      else NC = CC * (-0.5 * (1.0 - ye) / ye);
-      if (is_antinu) { CC = -CC; NC = -NC; }
-      double weights[3] = {CC + NC, NC, NC};
-      #pragma unroll
-      for (int c = 0; c < 9; c++) HI[c] = 0.0;
-      for (int flv = 0; flv < 3; flv++) {
-        const double* ep = evol_proj + flv * 9;
-        #pragma unroll
-        for (int c = 0; c < 9; c++) HI[c] += weights[flv] * ep[c];
-      }
-    }
-
-    // Coherent: i[ρ, HI]
-    double comm[9];
-    iCommutatorSU3(state, HI, comm);
-
-    // Absorption: -ACommutator(Gamma, ρ)
-    double invlen[3];
-    computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
-
-    double Gamma[9];
-    computeGammaRhoSU3(invlen, evol_proj, Gamma);
-
-    double acomm[9];
-    antiCommutatorSU3(Gamma, state, acomm);
-
-    // InteractionsRho (cascade source term) using precomputed nc_factors
-    double F_int[9];
-    if (nc_factors) {
-      computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-    }
-
-    // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
-    #pragma unroll
-    for (int c = 0; c < 9; c++) {
-      deriv[c] = comm[c] - acomm[c];
-      if (nc_factors) deriv[c] += F_int[c];
-    }
-  };
-
   double k[9], acc[9], tmp[9];
 
   // k1 = f(x, y)
-  computeDerivative(x, y, k);
+  computeDerivativeSU3(x, xini, y, H0, b1_proj, profile,
+                       HI_constants, is_antinu, ie, rho, ne, numneu,
+                       idata, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] = k[c] / 6.0;
@@ -739,7 +756,9 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   }
 
   // k2 = f(x + h/2, y + h/2*k1)
-  computeDerivative(x + 0.5*h, tmp, k);
+  computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
+                       HI_constants, is_antinu, ie, rho, ne, numneu,
+                       idata, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -747,7 +766,9 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   }
 
   // k3 = f(x + h/2, y + h/2*k2)
-  computeDerivative(x + 0.5*h, tmp, k);
+  computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
+                       HI_constants, is_antinu, ie, rho, ne, numneu,
+                       idata, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -755,7 +776,9 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   }
 
   // k4 = f(x + h, y + h*k3)
-  computeDerivative(x + h, tmp, k);
+  computeDerivativeSU3(x + h, xini, tmp, H0, b1_proj, profile,
+                       HI_constants, is_antinu, ie, rho, ne, numneu,
+                       idata, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 6.0;
@@ -832,19 +855,6 @@ evolveKernelImpl(const PhysicsParams params,
   double xini = path.xini;
   double xend = path.xend;
   double total_length = xend - xini;
-
-  // Debug: print path info for first block
-  if (path_idx == 0 && threadIdx.x == 0) {
-    double d0 = evaluateDensity(path.profile, xini + 0.5*total_length);
-    double y0 = evaluateYe(path.profile, xini + 0.5*total_length);
-    printf("evolveKernel: path[0] type=%d xini=%e xend=%e len=%e iosc=%d iint=%d ntgt=%d density_mid=%e ye_mid=%e\n",
-           (int)path.profile.type, xini, xend, total_length,
-           (int)params.ioscillations, (int)params.iinteraction, interaction_data.n_targets,
-           d0, y0);
-    // Print first state component
-    printf("  state[0][0]=%e H0[0][4]=%e H0[0][8]=%e\n",
-           my_state[0], (H0_array + 0)[4], (H0_array + 0)[8]);
-  }
 
   // Vacuum: in interaction picture, d/dt rho_tilde = 0 → no change
   if (path.profile.type == ProfileType::VACUUM || !params.ioscillations)
@@ -1080,11 +1090,8 @@ void launchEvolve(const PhysicsParams& params,
                                          cudaMemcpyHostToDevice, stream));
   }
 
-  // Debug: print launch config and check for prior errors
-  cudaError_t prior_err = cudaGetLastError();
-  fprintf(stderr, "launchEvolve: n_paths=%d threads=%d shared=%zu idata=%p numneu=%d prior_err=%d(%s)\n",
-          n_paths, threads, shared_bytes, (void*)d_idata_on_device, numneu,
-          (int)prior_err, cudaGetErrorString(prior_err));
+  // Clear any stale CUDA errors (e.g., from cudaDeviceSetLimit on MIG)
+  cudaGetLastError();
 
   switch (numneu) {
     case 3:
