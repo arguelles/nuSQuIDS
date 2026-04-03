@@ -53,6 +53,14 @@ struct PhysicsParams {
 
   // Basis
   int basis;            ///< 0=mass, 1=flavor, 2=interaction
+
+  // Unit conversion for interaction densities
+  // density_natural = density_g_cm3 * gr_to_eV_cm3
+  // number_density = density_natural / nucleon_mass
+  double gr_to_eV_cm3;  ///< params.gr * pow(params.cm, -3) [eV^4 per g/cm³]
+  double proton_mass;    ///< [eV]
+  double neutron_mass;   ///< [eV]
+  double electron_mass;  ///< [eV]
 };
 
 /// Per-path device data: state + evolved projectors + body profile

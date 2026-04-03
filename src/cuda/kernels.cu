@@ -238,33 +238,45 @@ void computeHI_SU3(double x_eval, double xini,
 
 __device__ __forceinline__
 void computeInvlenSU3(int ie, int rho, int ne,
-                      double density, double ye,
+                      double density_g_cm3, double ye,
                       const InteractionDataGPU& idata,
+                      const PhysicsParams& params,
                       double* __restrict__ invlen_out)  // [numneu] output: invlen_INT per flavor
 {
-  // For standard proton+neutron targets: fractions are {ye, 1-ye}
-  // For single target (isoscalar): fraction is {1}
-  // For nuclear targets: would need composition fractions (future work)
-  double tfrac[MAX_TARGETS];
+  // Convert mass density (g/cm³) to natural units (eV^4) then to number densities
+  // Following CPU's GetTargetNumberDensities():
+  //   density_nat = density_g_cm3 * gr * cm^{-3}
+  //   np = density_nat / (m_e + m_p + m_n*(1-ye)/ye)
+  //   nn = (1-ye)*np/ye
+  double density_nat = density_g_cm3 * params.gr_to_eV_cm3;
+
+  double target_ndens[MAX_TARGETS];
   if (idata.n_targets == 1) {
-    tfrac[0] = 1.0;
+    // Isoscalar: total nucleon number density
+    double num_nuc = density_nat * 2.0 / (params.electron_mass + params.proton_mass + params.neutron_mass);
+    target_ndens[0] = num_nuc;
   } else {
-    // Assume proton, neutron ordering (standard nuSQuIDS convention)
-    tfrac[0] = ye;
-    tfrac[1] = 1.0 - ye;
-    for (int t = 2; t < idata.n_targets && t < MAX_TARGETS; t++)
-      tfrac[t] = 0.0;
+    // Proton + neutron: use ye-based decomposition
+    if (ye < 1.0e-10) {
+      target_ndens[0] = 0.0;  // no protons
+      target_ndens[1] = density_nat / params.neutron_mass;
+    } else {
+      double np = density_nat / (params.electron_mass + params.proton_mass + params.neutron_mass * ((1.0 - ye) / ye));
+      double nn = (1.0 - ye) * np / ye;
+      target_ndens[0] = np;  // proton
+      target_ndens[1] = nn;  // neutron
+    }
+    for (int t = 2; t < MAX_TARGETS; t++) target_ndens[t] = 0.0;
   }
 
-  // invlen_INT[flv] = sum over targets: target_fraction[t] * density * (sigma_CC + sigma_NC)
+  // invlen_INT[flv] = sum over targets: ndens[t] * (sigma_CC + sigma_NC)
   for (int flv = 0; flv < 3; flv++) {
     double invlen = 0.0;
     for (int t = 0; t < idata.n_targets; t++) {
       size_t idx = sigma_index(t, rho, flv, ie, idata.nrhos, 3, ne);
       double sig = idata.d_sigma_CC[idx] + idata.d_sigma_NC[idx];
-      invlen += tfrac[t] * sig;
+      invlen += target_ndens[t] * sig;
     }
-    invlen *= density;
     invlen_out[flv] = invlen;
   }
 }
@@ -364,20 +376,39 @@ void rk4StepSU3(const double* __restrict__ y, double x, double h,
 
 __device__
 void computeNCCascadeSU3(int ne, int nrhos, int numneu,
-                         double density, double ye,
+                         double density_g_cm3, double ye,
                          double x_eval, double xini,
                          const double* __restrict__ H0_array,
                          const double* __restrict__ b1_proj,
                          const InteractionDataGPU& idata,
+                         const PhysicsParams& params,
                          const double* __restrict__ s_state,  // shared: [nrhos][ne][9]
                          double* __restrict__ s_nc_factors)    // shared: [nrhos][3][ne]
 {
   constexpr int SU = 9;
 
-  // Compute ye-based target fractions
-  double tfrac[MAX_TARGETS];
-  if (idata.n_targets == 1) { tfrac[0] = 1.0; }
-  else { tfrac[0] = ye; tfrac[1] = 1.0 - ye; }
+  // Convert density to number densities (same as GetTargetNumberDensities on CPU)
+  double density_nat = density_g_cm3 * params.gr_to_eV_cm3;
+  double target_ndens[MAX_TARGETS];
+  double target_frac[MAX_TARGETS];
+  if (idata.n_targets == 1) {
+    double num_nuc = density_nat * 2.0 / (params.electron_mass + params.proton_mass + params.neutron_mass);
+    target_ndens[0] = num_nuc;
+    target_frac[0] = 1.0;
+  } else {
+    if (ye < 1.0e-10) {
+      target_ndens[0] = 0.0;
+      target_ndens[1] = density_nat / params.neutron_mass;
+      target_frac[0] = 0.0; target_frac[1] = 1.0;
+    } else {
+      double np = density_nat / (params.electron_mass + params.proton_mass + params.neutron_mass * ((1.0 - ye) / ye));
+      double nn = (1.0 - ye) * np / ye;
+      target_ndens[0] = np; target_ndens[1] = nn;
+      double total = np + nn;
+      target_frac[0] = (total > 0) ? np / total : ye;
+      target_frac[1] = (total > 0) ? nn / total : 1.0 - ye;
+    }
+  }
 
   // Each thread handles a subset of output energies e1
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
@@ -424,13 +455,12 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
           const double* state_e2 = s_state + (rho * ne + e2) * SU;
           double flux = suTrace3(evol_proj_alpha, state_e2);
 
-          // invlen_NC at e2
+          // invlen_NC at e2 using proper number densities
           double invlen_NC_e2 = 0.0;
           for (int t = 0; t < idata.n_targets; t++) {
             size_t idx = sigma_index(t, rho, alpha, e2, idata.nrhos, 3, ne);
-            invlen_NC_e2 += tfrac[t] * idata.d_sigma_NC[idx];
+            invlen_NC_e2 += target_ndens[t] * idata.d_sigma_NC[idx];
           }
-          invlen_NC_e2 *= density;
 
           // Energy bin width
           double dE = idata.d_delE[e2 - 1];
@@ -440,7 +470,7 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
           for (int t = 0; t < idata.n_targets; t++) {
             size_t dNdE_idx = dNdE_index(t, rho, alpha, e2, e1,
                                           idata.nrhos, 3, ne);
-            nc_factor += tfrac[t] * flux_weighted * idata.d_dNdE_NC[dNdE_idx];
+            nc_factor += target_frac[t] * flux_weighted * idata.d_dNdE_NC[dNdE_idx];
           }
         }
 
@@ -670,6 +700,7 @@ void computeDerivativeSU3(double x_eval, double xini,
                           double HI_constants, bool is_antinu,
                           int ie, int rho, int ne, int numneu,
                           const InteractionDataGPU& idata,
+                          const PhysicsParams& params,
                           const double* __restrict__ nc_factors,
                           double* __restrict__ deriv)
 {
@@ -683,7 +714,7 @@ void computeDerivativeSU3(double x_eval, double xini,
   double ye = evaluateYe(profile, x_eval);
 
   double invlen[3];
-  computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
+  computeInvlenSU3(ie, rho, ne, density, ye, idata, params, invlen);
 
   double evol_proj[3 * 9];
   evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
@@ -698,12 +729,6 @@ void computeDerivativeSU3(double x_eval, double xini,
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
   if (nc_factors) {
     computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-  }
-
-  // DEBUG: print derivative components for first energy of first block
-  if (ie == 0 && rho == 0 && blockIdx.x == 0) {
-    printf("deriv[ie=0,rho=0]: comm[0]=%e acomm[0]=%e F[0]=%e invlen={%e,%e,%e} dens=%e ye=%e\n",
-           deriv[0], acomm[0], F_int[0], invlen[0], invlen[1], invlen[2], density, ye);
   }
 
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
@@ -729,6 +754,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
                              double HI_constants, bool is_antinu,
                              int ie, int rho, int ne, int numneu,
                              const InteractionDataGPU& idata,
+                             const PhysicsParams& params,
                              const double* __restrict__ nc_factors,
                              double* __restrict__ y_out)
 {
@@ -737,7 +763,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k1 = f(x, y)
   computeDerivativeSU3(x, xini, y, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, params, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] = k[c] / 6.0;
@@ -747,7 +773,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k2 = f(x + h/2, y + h/2*k1)
   computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, params, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -757,7 +783,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k3 = f(x + h/2, y + h/2*k2)
   computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, params, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -767,7 +793,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k4 = f(x + h, y + h*k3)
   computeDerivativeSU3(x + h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, params, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 6.0;
@@ -900,7 +926,7 @@ evolveKernelImpl(const PhysicsParams params,
 
       // Compute NC cascade factors cooperatively
       computeNCCascadeSU3(ne, nrhos, NFLV, density_x, ye_x, x, xini,
-                          H0_array, b1_proj, interaction_data,
+                          H0_array, b1_proj, interaction_data, params,
                           s_state, s_nc_factors);
       __syncthreads();
 
@@ -945,7 +971,7 @@ evolveKernelImpl(const PhysicsParams params,
         if (do_interactions) {
           rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sf);
+                    interaction_data, params, s_nc_factors, sf);
         } else {
           rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
@@ -956,10 +982,10 @@ evolveKernelImpl(const PhysicsParams params,
         if (do_interactions) {
           rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, st);
+                    interaction_data, params, s_nc_factors, st);
           rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sh);
+                    interaction_data, params, s_nc_factors, sh);
         } else {
           rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
@@ -990,12 +1016,6 @@ evolveKernelImpl(const PhysicsParams params,
     if (threadIdx.x == 0)
       step_accepted = (max_err <= 1.0);
     __syncthreads();
-
-    // DEBUG: track step acceptance for first block
-    if (path_idx == 0 && threadIdx.x == 0 && step_count < 3) {
-      printf("step %d: x=%e h_try=%e max_err=%e accepted=%d\n",
-             step_count, x, h_try, max_err, (int)step_accepted);
-    }
 
     if (step_accepted) {
       // Phase 3: Write corrected states to global memory
