@@ -37,12 +37,12 @@ int main() {
 
   squids::Const units;
 
-  // Setup: match the interaction test parameters
+  // Setup: small problem for fast debugging
   const unsigned int numneu = 3;
   double Emin = 1.0e2 * units.GeV;
   double Emax = 1.0e6 * units.GeV;
-  int ncz = 3;
-  int ne = 40;
+  int ncz = 2;
+  int ne = 10;
 
   auto costh = linspace(-1.0, -0.5, ncz);
   auto energies = logspace(Emin, Emax, ne);
