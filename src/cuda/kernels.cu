@@ -835,9 +835,15 @@ evolveKernelImpl(const PhysicsParams params,
 
   // Debug: print path info for first block
   if (path_idx == 0 && threadIdx.x == 0) {
-    printf("evolveKernel: path[0] profile.type=%d xini=%e xend=%e len=%e ioscillations=%d iinteraction=%d n_targets=%d\n",
+    double d0 = evaluateDensity(path.profile, xini + 0.5*total_length);
+    double y0 = evaluateYe(path.profile, xini + 0.5*total_length);
+    printf("evolveKernel: path[0] type=%d xini=%e xend=%e len=%e iosc=%d iint=%d ntgt=%d density_mid=%e ye_mid=%e\n",
            (int)path.profile.type, xini, xend, total_length,
-           (int)params.ioscillations, (int)params.iinteraction, interaction_data.n_targets);
+           (int)params.ioscillations, (int)params.iinteraction, interaction_data.n_targets,
+           d0, y0);
+    // Print first state component
+    printf("  state[0][0]=%e H0[0][4]=%e H0[0][8]=%e\n",
+           my_state[0], (H0_array + 0)[4], (H0_array + 0)[8]);
   }
 
   // Vacuum: in interaction picture, d/dt rho_tilde = 0 → no change
