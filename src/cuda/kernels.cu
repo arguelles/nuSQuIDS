@@ -991,6 +991,12 @@ evolveKernelImpl(const PhysicsParams params,
       step_accepted = (max_err <= 1.0);
     __syncthreads();
 
+    // DEBUG: track step acceptance for first block
+    if (path_idx == 0 && threadIdx.x == 0 && step_count < 3) {
+      printf("step %d: x=%e h_try=%e max_err=%e accepted=%d\n",
+             step_count, x, h_try, max_err, (int)step_accepted);
+    }
+
     if (step_accepted) {
       // Phase 3: Write corrected states to global memory
       pair_idx = 0;
