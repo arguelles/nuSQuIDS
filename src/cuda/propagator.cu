@@ -176,7 +176,14 @@ Propagator::Propagator(int device_id, int batch_size_limit)
 
   // The interacting kernel uses deep call stacks (anticommutator, cascade, etc.)
   // Default thread stack is 1024 bytes; we need ~4KB for the full interaction chain
-  NUSQUIDS_CUDA_CHECK(cudaDeviceSetLimit(cudaLimitStackSize, 4096));
+  // Note: cudaDeviceSetLimit may fail on MIG partitions; ignore the error
+  cudaError_t stack_err = cudaDeviceSetLimit(cudaLimitStackSize, 4096);
+  if (stack_err != cudaSuccess) {
+    fprintf(stderr, "Warning: cudaDeviceSetLimit(stackSize,4096) failed: %s (continuing)\n",
+            cudaGetErrorString(stack_err));
+    // Clear the error so it doesn't propagate to kernel launches
+    cudaGetLastError();
+  }
 
   NUSQUIDS_CUDA_CHECK(cudaStreamCreate(&stream_));
   NUSQUIDS_CUDA_CHECK(cudaEventCreate(&event_));
