@@ -673,38 +673,11 @@ void computeDerivativeSU3(double x_eval, double xini,
                           const double* __restrict__ nc_factors,
                           double* __restrict__ deriv)
 {
-  // Coherent term: reuse the proven computeHI_SU3 + iCommutator path
+  // DEBUG: oscillation-only to verify RK4 mechanics work
+  // TODO: re-enable interaction terms after confirming coherent evolution matches
   double HI[9];
   computeHI_SU3(x_eval, xini, H0, b1_proj, profile, HI_constants, is_antinu, HI);
-  iCommutatorSU3(state, HI, deriv);  // deriv = i[ρ, HI]
-
-  // Absorption: -ACommutator(Gamma, ρ)
-  double density = evaluateDensity(profile, x_eval);
-  double ye = evaluateYe(profile, x_eval);
-
-  double invlen[3];
-  computeInvlenSU3(ie, rho, ne, density, ye, idata, invlen);
-
-  // Evolved projectors for GammaRho and InteractionsRho
-  double evol_proj[3 * 9];
-  evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
-
-  double Gamma[9];
-  computeGammaRhoSU3(invlen, evol_proj, Gamma);
-
-  double acomm[9];
-  antiCommutatorSU3(Gamma, state, acomm);
-
-  // Cascade source term
-  double F_int[9] = {0,0,0,0,0,0,0,0,0};
-  if (nc_factors) {
-    computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-  }
-
-  // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
-  #pragma unroll
-  for (int c = 0; c < 9; c++)
-    deriv[c] += -acomm[c] + F_int[c];
+  iCommutatorSU3(state, HI, deriv);
 }
 
 // ============================================================
