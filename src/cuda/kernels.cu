@@ -833,6 +833,13 @@ evolveKernelImpl(const PhysicsParams params,
   double xend = path.xend;
   double total_length = xend - xini;
 
+  // Debug: print path info for first block
+  if (path_idx == 0 && threadIdx.x == 0) {
+    printf("evolveKernel: path[0] profile.type=%d xini=%e xend=%e len=%e ioscillations=%d iinteraction=%d n_targets=%d\n",
+           (int)path.profile.type, xini, xend, total_length,
+           (int)params.ioscillations, (int)params.iinteraction, interaction_data.n_targets);
+  }
+
   // Vacuum: in interaction picture, d/dt rho_tilde = 0 → no change
   if (path.profile.type == ProfileType::VACUUM || !params.ioscillations)
     return;
