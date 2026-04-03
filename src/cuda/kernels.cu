@@ -1023,15 +1023,6 @@ evolveKernelImpl(const PhysicsParams params,
   double* s_half = smem + N;       // buffer for st (half-step result)
   double* s_nc   = smem + 2 * N;
 
-  // Debug: print target number densities at midpoint
-  if (path_idx == 0 && threadIdx.x == 0 && do_interactions) {
-    double xmid = 0.5 * (xini + xend);
-    for (int t = 0; t < interaction_data.n_targets; t++) {
-      double nd = evaluateTargetFraction(path.profile, t, xmid);
-      printf("target[%d] ndens_mid=%e profile.n_targets=%d\n", t, nd, path.profile.n_targets);
-    }
-  }
-
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
     if (h_try <= 0.0) break;

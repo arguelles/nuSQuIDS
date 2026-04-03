@@ -13,6 +13,16 @@ cd /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cud
 
 source ../env_vars.sh
 
+echo "=== Compiling cuda_rhs_diagnostic ==="
+$CXX $CXXFLAGS $CFLAGS -o cuda_rhs_diagnostic cuda_rhs_diagnostic.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
+if [ $? -eq 0 ]; then
+  echo "=== Running cuda_rhs_diagnostic ==="
+  ./cuda_rhs_diagnostic
+else
+  echo "=== DIAGNOSTIC COMPILATION FAILED ==="
+fi
+
+echo ""
 echo "=== Compiling cuda_test ==="
 $CXX $CXXFLAGS $CFLAGS -o cuda_test cuda_test.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
 echo "=== Running cuda_test ==="
