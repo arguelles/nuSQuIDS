@@ -38,11 +38,11 @@ int main() {
   const char* flavor_name[] = {"nu_e", "nu_mu", "nu_tau"};
   const char* rho_name[] = {"nu", "nubar"};
 
-  // Test 1: Atmospheric propagation with interactions (no tau regen, no Glashow)
+  // Test 1: DEBUG — oscillation-only at interaction energy range to isolate issue
   std::cout << "\n--- Test 1: GPU vs CPU with interactions (NC+CC) ---" << std::endl;
   {
     const unsigned int numneu = 3;
-    bool interactions = true;
+    bool interactions = false; // DEBUG: oscillation-only to isolate
 
     double Emin = 1.0e2 * units.GeV;
     double Emax = 1.0e6 * units.GeV;
