@@ -41,10 +41,10 @@ int main() {
   const unsigned int numneu = 3;
   double Emin = 1.0e2 * units.GeV;
   double Emax = 1.0e6 * units.GeV;
-  int ncz = 1;
+  int ncz = 3;
   int ne = 40;
 
-  auto costh = linspace(-1.0, -1.0, ncz); // single zenith: through center of Earth
+  auto costh = linspace(-1.0, -0.5, ncz);
   auto energies = logspace(Emin, Emax, ne);
 
   // ========== Test 1: Interactions enabled, compare CPU values ==========
@@ -122,7 +122,7 @@ int main() {
   // If it's present even for a very short path, it's a derivative issue.
   std::cout << "\n--- Test 2: Short path (cos(zenith)=-0.1, ~short through Earth crust) ---" << std::endl;
   {
-    auto costh_short = linspace(-0.1, -0.1, 1);
+    auto costh_short = linspace(-0.2, -0.1, 2);
     nuSQUIDSAtm<> cpu(costh_short, energies, numneu, both, true);
     nuSQUIDSAtm<> gpu_obj(costh_short, energies, numneu, both, true);
 
@@ -137,7 +137,7 @@ int main() {
       p->Set_GlashowResonance(false);
     }
 
-    int ncz_short = 1;
+    int ncz_short = 2;
     marray<double,4> ini{(unsigned)ncz_short, (unsigned)ne, 2u, numneu};
     std::fill(ini.begin(), ini.end(), 1);
     cpu.Set_initial_state(ini, flavor);
