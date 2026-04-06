@@ -970,6 +970,13 @@ evolveKernelImpl(const PhysicsParams params,
           if (scale > 0.0)
             local_max_err = fmax(local_max_err, err / scale);
         }
+        // Debug: print sf, sh, y for first pair on first rejection
+        if (path_idx == 0 && ie == threadIdx.x && rho == 0 && step_count == 0 && pair_idx == 0) {
+          printf("  ie=%d rho=0: y[0]=%e sf[0]=%e sh[0]=%e st[0]=%e\n",
+                 ie, y[0], sf[0], sh[0], st[0]);
+          printf("  y[1]=%e sf[1]=%e sh[1]=%e diff01=%e\n",
+                 y[1], sf[1], sh[1], sf[0]-sh[0]);
+        }
         pair_idx++;
       }
     }
