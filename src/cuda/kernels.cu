@@ -1012,6 +1012,12 @@ evolveKernelImpl(const PhysicsParams params,
     h = fmax(h, solver_config.h_min);
     h = fmin(h, solver_config.h_max);
   }
+
+  // Debug: report if max steps reached
+  if (path_idx == 0 && threadIdx.x == 0 && step_count >= solver_config.max_steps) {
+    printf("WARNING: max_steps=%d reached at x=%e (xend=%e) h=%e do_int=%d\n",
+           solver_config.max_steps, x, xend, h, (int)do_interactions);
+  }
 }
 
 // ============================================================
