@@ -44,7 +44,7 @@ int main() {
   int ncz = 2;
   int ne = 10;
 
-  auto costh = linspace(-1.0, -0.5, ncz);
+  auto costh = linspace(-0.3, -0.1, ncz);  // short paths only for fast debugging
   auto energies = logspace(Emin, Emax, ne);
 
   // ========== Test 1: Interactions enabled, compare CPU values ==========
