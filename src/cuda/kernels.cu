@@ -691,11 +691,22 @@ void computeDerivativeSU3(double x_eval, double xini,
   for (int cc = 0; cc < 9; cc++) acomm[cc] = 0.0;
 
   // Cascade source term
-  // DEBUG: disable cascade to test oscillation-only in interacting path
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
-  //if (nc_factors) {
-  //  computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-  //}
+  if (nc_factors) {
+    computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
+    // DEBUG: print F_int magnitude for one point
+    if (ie == 0 && rho == 0 && blockIdx.x == 0) {
+      double fmag = 0;
+      for (int cc = 0; cc < 9; cc++) fmag += F_int[cc]*F_int[cc];
+      static int print_count = 0;
+      if (print_count < 3) {
+        printf("F_int[ie=0,rho=0]: |F|=%e F[0]=%e nc[0]=%e nc[1]=%e nc[2]=%e\n",
+               sqrt(fmag), F_int[0],
+               nc_factors[(0*3+0)*ne+0], nc_factors[(0*3+1)*ne+0], nc_factors[(0*3+2)*ne+0]);
+        print_count++;
+      }
+    }
+  }
 
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
   #pragma unroll
