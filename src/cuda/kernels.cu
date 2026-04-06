@@ -686,7 +686,9 @@ void computeDerivativeSU3(double x_eval, double xini,
   computeGammaRhoSU3(invlen, evol_proj, Gamma);
 
   double acomm[9];
-  antiCommutatorSU3(Gamma, state, acomm);
+  // DEBUG: disable absorption to test cascade alone
+  //antiCommutatorSU3(Gamma, state, acomm);
+  for (int cc = 0; cc < 9; cc++) acomm[cc] = 0.0;
 
   // Cascade source term
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
