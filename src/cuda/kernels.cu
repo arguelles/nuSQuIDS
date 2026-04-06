@@ -691,10 +691,11 @@ void computeDerivativeSU3(double x_eval, double xini,
   for (int cc = 0; cc < 9; cc++) acomm[cc] = 0.0;
 
   // Cascade source term
+  // DEBUG: disable cascade to test oscillation-only in interacting path
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
-  if (nc_factors) {
-    computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-  }
+  //if (nc_factors) {
+  //  computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
+  //}
 
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
   #pragma unroll
