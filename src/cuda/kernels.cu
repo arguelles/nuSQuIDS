@@ -970,22 +970,6 @@ evolveKernelImpl(const PhysicsParams params,
           if (scale > 0.0)
             local_max_err = fmax(local_max_err, err / scale);
         }
-        // Debug: print local_err for all (ie,rho) pairs on first step attempt
-        if (path_idx == 0 && step_count == 0) {
-          double local_err_pair = 0;
-          int worst_c = -1;
-          for (int cc = 0; cc < SU; cc++) {
-            double e = fabs(sf[cc] - sh[cc]) / 15.0;
-            double s = solver_config.abs_error + solver_config.rel_error * fmax(fabs(y[cc]), fabs(sh[cc]));
-            double nerr = (s > 0) ? e/s : 0;
-            if (nerr > local_err_pair) { local_err_pair = nerr; worst_c = cc; }
-          }
-          if (local_err_pair > 100.0) {
-            printf("  BIG ERR ie=%d rho=%d comp=%d local_err=%e sf[c]=%e sh[c]=%e y[c]=%e |diff|=%e\n",
-                   ie, rho, worst_c, local_err_pair,
-                   sf[worst_c], sh[worst_c], y[worst_c], fabs(sf[worst_c]-sh[worst_c]));
-          }
-        }
         pair_idx++;
       }
     }
@@ -995,12 +979,8 @@ evolveKernelImpl(const PhysicsParams params,
 
     // Decide accept/reject via shared memory
     __shared__ bool step_accepted;
-    if (threadIdx.x == 0) {
+    if (threadIdx.x == 0)
       step_accepted = (max_err <= 1.0);
-      if (path_idx == 0 && step_count < 5)
-        printf("  step %d: h=%e max_err=%e %s\n", step_count, h_try, max_err,
-               step_accepted ? "ACCEPT" : "REJECT");
-    }
     __syncthreads();
 
     if (step_accepted) {

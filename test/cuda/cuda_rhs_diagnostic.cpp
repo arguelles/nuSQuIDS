@@ -70,7 +70,11 @@ int main() {
     gpu_obj.Set_initial_state(ini, flavor);
 
     cpu.Set_ProgressBar(false);
+    cpu.Set_rel_error(1e-6);
+    cpu.Set_abs_error(1e-6);
     gpu_obj.Set_ProgressBar(false);
+    gpu_obj.Set_rel_error(1e-6);
+    gpu_obj.Set_abs_error(1e-6);
 
     // Print CPU cross-section info
     cpu.EvolveState(); // this initializes interactions
@@ -143,7 +147,11 @@ int main() {
     cpu.Set_initial_state(ini, flavor);
     gpu_obj.Set_initial_state(ini, flavor);
     cpu.Set_ProgressBar(false);
+    cpu.Set_rel_error(1e-6);
+    cpu.Set_abs_error(1e-6);
     gpu_obj.Set_ProgressBar(false);
+    gpu_obj.Set_rel_error(1e-6);
+    gpu_obj.Set_abs_error(1e-6);
     gpu_obj.Set_Backend(Backend::gpu);
 
     cpu.EvolveState();

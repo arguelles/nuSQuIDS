@@ -219,7 +219,7 @@ void CUDABackend::Evolve(double* states,
   solver_config.h_max = 1e20;
   solver_config.rel_error = (rel_error > 0.0) ? rel_error : impl_->config.rel_error;
   solver_config.abs_error = (abs_error > 0.0) ? abs_error : impl_->config.abs_error;
-  solver_config.max_steps = 10000; // reduced for debugging (was 1M)
+  solver_config.max_steps = 1000000;
 
   // Convert paths to GPU density profiles
   std::vector<cuda::GPUDensityProfile> profiles(n_paths);
