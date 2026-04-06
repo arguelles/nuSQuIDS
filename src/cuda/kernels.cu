@@ -686,26 +686,12 @@ void computeDerivativeSU3(double x_eval, double xini,
   computeGammaRhoSU3(invlen, evol_proj, Gamma);
 
   double acomm[9];
-  // DEBUG: disable absorption to test cascade alone
-  //antiCommutatorSU3(Gamma, state, acomm);
-  for (int cc = 0; cc < 9; cc++) acomm[cc] = 0.0;
+  antiCommutatorSU3(Gamma, state, acomm);
 
   // Cascade source term
   double F_int[9] = {0,0,0,0,0,0,0,0,0};
   if (nc_factors) {
     computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
-    // DEBUG: print F_int magnitude for one point
-    if (ie == 0 && rho == 0 && blockIdx.x == 0) {
-      double fmag = 0;
-      for (int cc = 0; cc < 9; cc++) fmag += F_int[cc]*F_int[cc];
-      static int print_count = 0;
-      if (print_count < 3) {
-        printf("F_int[ie=0,rho=0]: |F|=%e F[0]=%e nc[0]=%e nc[1]=%e nc[2]=%e\n",
-               sqrt(fmag), F_int[0],
-               nc_factors[(0*3+0)*ne+0], nc_factors[(0*3+1)*ne+0], nc_factors[(0*3+2)*ne+0]);
-        print_count++;
-      }
-    }
   }
 
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
@@ -984,16 +970,21 @@ evolveKernelImpl(const PhysicsParams params,
           if (scale > 0.0)
             local_max_err = fmax(local_max_err, err / scale);
         }
-        // Debug: print sf, sh for both rho=0 and rho=1 at first energy
-        if (path_idx == 0 && ie == 0 && step_count == 0) {
-          double local_err = 0;
+        // Debug: print local_err for all (ie,rho) pairs on first step attempt
+        if (path_idx == 0 && step_count == 0) {
+          double local_err_pair = 0;
+          int worst_c = -1;
           for (int cc = 0; cc < SU; cc++) {
             double e = fabs(sf[cc] - sh[cc]) / 15.0;
             double s = solver_config.abs_error + solver_config.rel_error * fmax(fabs(y[cc]), fabs(sh[cc]));
-            if (s > 0) local_err = fmax(local_err, e/s);
+            double nerr = (s > 0) ? e/s : 0;
+            if (nerr > local_err_pair) { local_err_pair = nerr; worst_c = cc; }
           }
-          printf("  ie=0 rho=%d: y[0]=%e sf[0]=%e sh[0]=%e local_err=%e\n",
-                 rho, y[0], sf[0], sh[0], local_err);
+          if (local_err_pair > 100.0) {
+            printf("  BIG ERR ie=%d rho=%d comp=%d local_err=%e sf[c]=%e sh[c]=%e y[c]=%e |diff|=%e\n",
+                   ie, rho, worst_c, local_err_pair,
+                   sf[worst_c], sh[worst_c], y[worst_c], fabs(sf[worst_c]-sh[worst_c]));
+          }
         }
         pair_idx++;
       }
