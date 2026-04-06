@@ -694,30 +694,6 @@ void computeDerivativeSU3(double x_eval, double xini,
     computeInteractionsRhoSU3(ie, rho, ne, nc_factors, evol_proj, F_int);
   }
 
-  // Debug: print per-flavor diagnostics for ie=0, rho=0, first call only
-  if (ie == 0 && rho == 0 && blockIdx.x == 0) {
-    // Use a flag in shared memory to print only once
-    __shared__ int printed;
-    if (threadIdx.x == 0) printed = 0;
-    __syncthreads();
-    if (atomicCAS(&printed, 0, 1) == 0) {
-      printf("=== GPU derivative at ie=0 rho=0 ===\n");
-      printf("  invlen: e=%e mu=%e tau=%e\n", invlen[0], invlen[1], invlen[2]);
-      if (nc_factors) {
-        printf("  nc_factors: e=%e mu=%e tau=%e\n",
-               nc_factors[(0*3+0)*ne+0], nc_factors[(0*3+1)*ne+0], nc_factors[(0*3+2)*ne+0]);
-      }
-      printf("  Gamma[0]=%e [1]=%e [8]=%e\n", Gamma[0], Gamma[1], Gamma[8]);
-      printf("  acomm[0]=%e [1]=%e [8]=%e\n", acomm[0], acomm[1], acomm[8]);
-      printf("  F_int[0]=%e [1]=%e [8]=%e\n", F_int[0], F_int[1], F_int[8]);
-      printf("  comm[0]=%e [1]=%e [8]=%e\n", deriv[0], deriv[1], deriv[8]);
-      // Print evol_proj for each flavor at ie=0
-      for (int f = 0; f < 3; f++)
-        printf("  evol_proj[%d][0]=%e [4]=%e [8]=%e\n", f,
-               evol_proj[f*9+0], evol_proj[f*9+4], evol_proj[f*9+8]);
-    }
-  }
-
   // deriv = i[ρ, HI] - {Γ, ρ} + F_interactions
   #pragma unroll
   for (int c = 0; c < 9; c++)
@@ -913,6 +889,25 @@ evolveKernelImpl(const PhysicsParams params,
                           H0_array, b1_proj, interaction_data, path.profile,
                           s_state, s_nc_factors);
       __syncthreads();
+
+      // Debug: print nc_factors and invlen at ie=0, rho=0 (first step only)
+      if (path_idx == 0 && threadIdx.x == 0 && step_count == 0) {
+        printf("=== GPU nc_factors at ie=0 rho=0 (step 0) ===\n");
+        printf("  nc[e]=%e nc[mu]=%e nc[tau]=%e\n",
+               s_nc_factors[(0*3+0)*ne+0], s_nc_factors[(0*3+1)*ne+0], s_nc_factors[(0*3+2)*ne+0]);
+        printf("  nc[e,ie=5]=%e nc[mu,ie=5]=%e nc[tau,ie=5]=%e\n",
+               s_nc_factors[(0*3+0)*ne+5], s_nc_factors[(0*3+1)*ne+5], s_nc_factors[(0*3+2)*ne+5]);
+        // Also print nc_factors at rho=1
+        printf("  rho=1: nc[e]=%e nc[mu]=%e nc[tau]=%e\n",
+               s_nc_factors[(1*3+0)*ne+0], s_nc_factors[(1*3+1)*ne+0], s_nc_factors[(1*3+2)*ne+0]);
+        // Print state at ie=0
+        printf("  state[rho=0,ie=0]: [0]=%e [1]=%e [4]=%e [8]=%e\n",
+               s_state[0], s_state[1], s_state[4], s_state[8]);
+        // Print target ndens at x
+        for (int t = 0; t < interaction_data.n_targets; t++)
+          printf("  target_ndens[%d] at x=%e: %e\n", t, x,
+                 evaluateTargetFraction(path.profile, t, x));
+      }
 
       // Tau regeneration (adds to nc_factors in-place)
       // TODO: update to use profile-based number densities
