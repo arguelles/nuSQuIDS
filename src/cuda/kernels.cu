@@ -979,8 +979,12 @@ evolveKernelImpl(const PhysicsParams params,
 
     // Decide accept/reject via shared memory
     __shared__ bool step_accepted;
-    if (threadIdx.x == 0)
+    if (threadIdx.x == 0) {
       step_accepted = (max_err <= 1.0);
+      if (path_idx == 0 && step_count < 5)
+        printf("  step %d: h=%e max_err=%e %s\n", step_count, h_try, max_err,
+               step_accepted ? "ACCEPT" : "REJECT");
+    }
     __syncthreads();
 
     if (step_accepted) {
@@ -1014,9 +1018,12 @@ evolveKernelImpl(const PhysicsParams params,
   }
 
   // Debug: report if max steps reached
-  if (path_idx == 0 && threadIdx.x == 0 && step_count >= solver_config.max_steps) {
-    printf("WARNING: max_steps=%d reached at x=%e (xend=%e) h=%e do_int=%d\n",
-           solver_config.max_steps, x, xend, h, (int)do_interactions);
+  if (path_idx == 0 && threadIdx.x == 0) {
+    if (step_count >= solver_config.max_steps)
+      printf("WARNING: max_steps=%d reached at x=%e (xend=%e) h=%e do_int=%d\n",
+             solver_config.max_steps, x, xend, h, (int)do_interactions);
+    else
+      printf("OK: completed in %d steps, x=%e xend=%e\n", step_count, x, xend);
   }
 }
 
