@@ -20,6 +20,7 @@ struct InteractionDataGPU {
   int nrhos;           ///< Number of density matrix equations
   int numneu;          ///< Number of neutrino flavors
   int ne;              ///< Number of energy nodes
+  int rounded_ne;      ///< ne rounded to preferred_alignment (stride for last dim of dNdE/sigma)
 
   // Cross-section tables on device
   // Layout: [target][rho][flavor][ie_in][ie_out] for dNdE
@@ -69,19 +70,19 @@ InteractionDataGPU uploadInteractionData(const void* int_struct,
 void freeInteractionData(InteractionDataGPU& data);
 
 /// Helper: compute flat index for dNdE arrays
-/// Layout: [target][rho][flavor][ie_in * ne + ie_out]
+/// Layout: [target][rho][flavor][ie_in][ie_out] with stride rounded_ne on last dim
 __device__ __host__ __forceinline__
 size_t dNdE_index(int target, int rho, int flavor, int ie_in, int ie_out,
-                  int nrhos, int numneu, int ne) {
-  return ((((size_t)target * nrhos + rho) * numneu + flavor) * ne + ie_in) * ne + ie_out;
+                  int nrhos, int numneu, int ne, int rounded_ne) {
+  return ((((size_t)target * nrhos + rho) * numneu + flavor) * ne + ie_in) * rounded_ne + ie_out;
 }
 
 /// Helper: compute flat index for sigma arrays
-/// Layout: [target][rho][flavor][ie]
+/// Layout: [target][rho][flavor][ie] with stride rounded_ne on last dim
 __device__ __host__ __forceinline__
 size_t sigma_index(int target, int rho, int flavor, int ie,
-                   int nrhos, int numneu, int ne) {
-  return (((size_t)target * nrhos + rho) * numneu + flavor) * ne + ie;
+                   int nrhos, int numneu, int rounded_ne) {
+  return (((size_t)target * nrhos + rho) * numneu + flavor) * rounded_ne + ie;
 }
 
 }} // namespace nusquids::cuda

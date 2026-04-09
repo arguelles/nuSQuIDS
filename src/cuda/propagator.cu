@@ -96,10 +96,13 @@ InteractionDataGPU uploadInteractionData(const void* int_data_host_ptr,
     const auto& idata = *idata_ptr;
 
     data.n_targets = idata.n_targets;
+    data.rounded_ne = idata.rounded_ne;
 
     if (idata.n_targets > 0 && idata.sigma_CC && idata.sigma_NC) {
-      // Total cross sections: [n_targets * nrhos * numneu * ne]
-      size_t sigma_count = (size_t)idata.n_targets * nrhos * numneu * ne;
+      // Total cross sections: [n_targets * nrhos * numneu * rounded_ne]
+      // (last dimension is rounded_ne due to CPU alignment)
+      int rne = idata.rounded_ne;
+      size_t sigma_count = (size_t)idata.n_targets * nrhos * numneu * rne;
       size_t sigma_bytes = sigma_count * sizeof(double);
       NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_sigma_CC, sigma_bytes));
       NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_sigma_CC, idata.sigma_CC, sigma_bytes,
@@ -111,8 +114,8 @@ InteractionDataGPU uploadInteractionData(const void* int_data_host_ptr,
                                            cudaMemcpyHostToDevice, stream));
       data.total_bytes += sigma_bytes;
 
-      // Differential cross sections: [n_targets * nrhos * numneu * ne * ne]
-      size_t dNdE_count = sigma_count * ne;
+      // Differential cross sections: [n_targets * nrhos * numneu * ne * rounded_ne]
+      size_t dNdE_count = (size_t)idata.n_targets * nrhos * numneu * ne * rne;
       size_t dNdE_bytes = dNdE_count * sizeof(double);
       if (idata.dNdE_CC) {
         NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_CC, dNdE_bytes));
@@ -130,13 +133,14 @@ InteractionDataGPU uploadInteractionData(const void* int_data_host_ptr,
 
     // Glashow resonance
     if (idata.has_glashow && idata.sigma_GR && idata.dNdE_GR) {
-      size_t gr_sigma_bytes = ne * sizeof(double);
+      int rne = idata.rounded_ne;
+      size_t gr_sigma_bytes = rne * sizeof(double);
       NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_sigma_GR, gr_sigma_bytes));
       NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_sigma_GR, idata.sigma_GR, gr_sigma_bytes,
                                            cudaMemcpyHostToDevice, stream));
       data.total_bytes += gr_sigma_bytes;
 
-      size_t gr_dNdE_bytes = (size_t)ne * ne * sizeof(double);
+      size_t gr_dNdE_bytes = (size_t)ne * rne * sizeof(double);
       NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_GR, gr_dNdE_bytes));
       NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_GR, idata.dNdE_GR, gr_dNdE_bytes,
                                            cudaMemcpyHostToDevice, stream));
@@ -145,7 +149,8 @@ InteractionDataGPU uploadInteractionData(const void* int_data_host_ptr,
 
     // Tau decay spectra
     if (idata.has_tau_regen && idata.dNdE_tau_all && idata.dNdE_tau_lep) {
-      size_t tau_bytes = (size_t)nrhos * ne * ne * sizeof(double);
+      int rne = idata.rounded_ne;
+      size_t tau_bytes = (size_t)nrhos * ne * rne * sizeof(double);
       NUSQUIDS_CUDA_CHECK(cudaMalloc(&data.d_dNdE_tau_all, tau_bytes));
       NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(data.d_dNdE_tau_all, idata.dNdE_tau_all, tau_bytes,
                                            cudaMemcpyHostToDevice, stream));

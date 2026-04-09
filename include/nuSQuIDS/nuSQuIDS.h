@@ -1457,6 +1457,7 @@ class nuSQUIDSAtm {
           int_data.nrhos = nrhos_local;
           int_data.numneu = numneu_local;
           int_data.ne = ne_local;
+          int_data.rounded_ne = BaseSQUIDS::round_up_to_aligned(ne_local);
           int_data.sigma_CC = int_struct->sigma_CC.get_data();
           int_data.sigma_NC = int_struct->sigma_NC.get_data();
           int_data.dNdE_CC = int_struct->dNdE_CC.get_data();

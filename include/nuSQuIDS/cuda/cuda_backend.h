@@ -49,12 +49,13 @@ struct InteractionDataHost {
   const double* dNdE_tau_lep;  ///< Tau decay → leptons    [nrhos * ne * ne] (may be nullptr)
   const double* energies;      ///< Energy nodes [ne]
   const double* delE;          ///< Energy bin widths [ne-1]
+  int rounded_ne;              ///< ne rounded up to preferred_alignment (stride for last dim)
 
   bool has_glashow;       ///< Whether Glashow resonance data is present
   bool has_tau_regen;     ///< Whether tau regeneration data is present
 
   InteractionDataHost() :
-    n_targets(0), nrhos(0), numneu(0), ne(0),
+    n_targets(0), nrhos(0), numneu(0), ne(0), rounded_ne(0),
     sigma_CC(nullptr), sigma_NC(nullptr),
     dNdE_CC(nullptr), dNdE_NC(nullptr),
     sigma_GR(nullptr), dNdE_GR(nullptr),

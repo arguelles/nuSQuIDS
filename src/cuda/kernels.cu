@@ -247,7 +247,7 @@ void computeInvlenSU3(int ie, int rho, int ne,
   for (int flv = 0; flv < 3; flv++) {
     double invlen = 0.0;
     for (int t = 0; t < idata.n_targets; t++) {
-      size_t idx = sigma_index(t, rho, flv, ie, idata.nrhos, 3, ne);
+      size_t idx = sigma_index(t, rho, flv, ie, idata.nrhos, 3, idata.rounded_ne);
       double sig = idata.d_sigma_CC[idx] + idata.d_sigma_NC[idx];
       invlen += target_ndens[t] * sig;
     }
@@ -420,7 +420,7 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
           // invlen_NC at e2 using proper number densities
           double invlen_NC_e2 = 0.0;
           for (int t = 0; t < idata.n_targets; t++) {
-            size_t idx = sigma_index(t, rho, alpha, e2, idata.nrhos, 3, ne);
+            size_t idx = sigma_index(t, rho, alpha, e2, idata.nrhos, 3, idata.rounded_ne);
             invlen_NC_e2 += target_ndens[t] * idata.d_sigma_NC[idx];
           }
 
@@ -431,7 +431,7 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
           double flux_weighted = flux * invlen_NC_e2 * dE;
           for (int t = 0; t < idata.n_targets; t++) {
             size_t dNdE_idx = dNdE_index(t, rho, alpha, e2, e1,
-                                          idata.nrhos, 3, ne);
+                                          idata.nrhos, 3, ne, idata.rounded_ne);
             nc_factor += target_frac[t] * flux_weighted * idata.d_dNdE_NC[dNdE_idx];
           }
         }
@@ -510,7 +510,7 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
           double flux = suTrace3(evol_tau, state_en);
           double invlen_CC = 0.0;
           for (int t = 0; t < idata.n_targets; t++) {
-            size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, ne);
+            size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, idata.rounded_ne);
             invlen_CC += tfrac[t] * idata.d_sigma_CC[idx];
           }
           invlen_CC *= density;
@@ -520,7 +520,7 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
           // dNdE_CC[target][rho][tau][en][et]
           for (int t = 0; t < idata.n_targets; t++) {
             size_t dNdE_idx = dNdE_index(t, rho_src, tau_flavor, en, et,
-                                          idata.nrhos, 3, ne);
+                                          idata.nrhos, 3, ne, idata.rounded_ne);
             double contrib = flux * invlen_CC * dEn * idata.d_dNdE_CC[dNdE_idx] * dEt;
             if (rho_src == 0) tau_flux += tfrac[t] * contrib;
             else              taubar_flux += tfrac[t] * contrib;
@@ -530,9 +530,10 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
 
       // Decay contributions: tau → neutrinos at energy e1
       if (tau_flux > 0.0 || taubar_flux > 0.0) {
-        // dNdE_tau_all[rho][et][e1], dNdE_tau_lep[rho][et][e1]
-        size_t tau_idx_nu    = (0 * ne + et) * ne + e1;
-        size_t tau_idx_nubar = (1 * ne + et) * ne + e1;
+        // dNdE_tau_all[rho][et][e1], dNdE_tau_lep[rho][et][e1] with rounded_ne stride
+        int rne = idata.rounded_ne;
+        size_t tau_idx_nu    = (0 * ne + et) * rne + e1;
+        size_t tau_idx_nubar = (1 * ne + et) * rne + e1;
 
         tau_hadlep_nu    += tau_flux    * idata.d_dNdE_tau_all[tau_idx_nu];
         tau_lep_nubar    += tau_flux    * idata.d_dNdE_tau_lep[tau_idx_nubar];
@@ -612,7 +613,7 @@ void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
       double invlen_GR = idata.d_sigma_GR[e2] * density * ye;
 
       double dE = idata.d_delE[e2 - 1];
-      gr_factor += flux * invlen_GR * dE * idata.d_dNdE_GR[e2 * ne + e1];
+      gr_factor += flux * invlen_GR * dE * idata.d_dNdE_GR[e2 * idata.rounded_ne + e1];
     }
 
     // Glashow contributes equally to all flavors (for the antineutrino rho)
@@ -890,24 +891,6 @@ evolveKernelImpl(const PhysicsParams params,
                           s_state, s_nc_factors);
       __syncthreads();
 
-      // Debug: print nc_factors and invlen at ie=0, rho=0 (first step only)
-      if (path_idx == 0 && threadIdx.x == 0 && step_count == 0) {
-        printf("=== GPU nc_factors at ie=0 rho=0 (step 0) ===\n");
-        printf("  nc[e]=%e nc[mu]=%e nc[tau]=%e\n",
-               s_nc_factors[(0*3+0)*ne+0], s_nc_factors[(0*3+1)*ne+0], s_nc_factors[(0*3+2)*ne+0]);
-        printf("  nc[e,ie=5]=%e nc[mu,ie=5]=%e nc[tau,ie=5]=%e\n",
-               s_nc_factors[(0*3+0)*ne+5], s_nc_factors[(0*3+1)*ne+5], s_nc_factors[(0*3+2)*ne+5]);
-        // Also print nc_factors at rho=1
-        printf("  rho=1: nc[e]=%e nc[mu]=%e nc[tau]=%e\n",
-               s_nc_factors[(1*3+0)*ne+0], s_nc_factors[(1*3+1)*ne+0], s_nc_factors[(1*3+2)*ne+0]);
-        // Print state at ie=0
-        printf("  state[rho=0,ie=0]: [0]=%e [1]=%e [4]=%e [8]=%e\n",
-               s_state[0], s_state[1], s_state[4], s_state[8]);
-        // Print target ndens at x
-        for (int t = 0; t < interaction_data.n_targets; t++)
-          printf("  target_ndens[%d] at x=%e: %e\n", t, x,
-                 evaluateTargetFraction(path.profile, t, x));
-      }
 
       // Tau regeneration (adds to nc_factors in-place)
       // TODO: update to use profile-based number densities
