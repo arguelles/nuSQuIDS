@@ -1516,6 +1516,14 @@ EmittingEarthAtm::EmittingEarthAtm(std::string prodmodel):EarthAtm()
   energy_min = energy_vec.front();
   energy_max = energy_vec.back();
 
+  // Set atmosphere height to cover the full production profile range
+  // height_max is in cm, atm_height is in km
+  double profile_atm_height_km = height_max / 1.0e5;
+  if(profile_atm_height_km > atm_height){
+    atm_height = profile_atm_height_km;
+    earth_with_atm_radius = radius + atm_height;
+  }
+
   // Create index maps for faster lookup
   std::map<double, unsigned int> czen_index, height_index, energy_index;
   for(unsigned int i = 0; i < n_czen; i++)
@@ -1554,7 +1562,7 @@ EmittingEarthAtm::EmittingEarthAtm(std::string prodmodel):EarthAtm()
     }
   }
 
-  // Fill data arrays from file
+  // Fill data arrays from file (raw values, not log-space)
   for(unsigned int i = 0; i < prod_data.extent(0); i++){
     double cz = prod_data[i][0];
     double h = prod_data[i][1];
@@ -1618,6 +1626,18 @@ void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux,
   if(height_km < 0) height_km = 0;
   double height_cm = height_km * 1e5;  // convert km to cm
 
+  // Compute |dh/dx|, the geometric correction for slant paths.
+  // The production profile is d(flux)/d(vertical_h), but the ODE integrates
+  // over track distance x. We need d(flux)/dx = d(flux)/dh * |dh/dx|.
+  // From r^2 = R_atm^2 + x^2 - (L+dL)*x:  
+  //   dr/dx = (2x-(L+dL))/(2r) = (x-(L+dL)/2)/r
+  double drdx = 0.0;
+  if(r > 0){
+    double L_km = baseline / param.km;
+    drdx = (xkm - (L_km + dL) / 2.0) / r;
+  }
+  double abs_dhdx = std::abs(drdx);  // |dh/dx| = |dr/dx| since h = r - const
+
   // Check if we're in the atmosphere (production only happens there)
   if(height_km <= 0 || height_km > atm_height){
     // Zero flux - we're not in the atmosphere
@@ -1654,11 +1674,29 @@ void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux,
     if(energy_GeV > energy_max) energy_GeV = energy_max;
 
     for(unsigned int rho = 0; rho < n_rho; rho++){
+      // Map rho index to interpolator index:
+      // For NeutrinoType::both: rho 0=nu, 1=nubar -> interp_rho = rho
+      // For NeutrinoType::neutrino: rho 0=nu -> interp_rho = 0
+      // For NeutrinoType::antineutrino: rho 0=nubar -> interp_rho = 1
+      unsigned int interp_rho = rho;
+      if(n_rho == 1 && nusquids.GetNeutrinoType() == antineutrino) {
+        interp_rho = 1;
+      }
+
       for(unsigned int flv = 0; flv < n_flavors; flv++){
         if(flv < num_flavors){
           // Evaluate interpolator at (coszen, height, energy)
-          double prod_rate = flux_interpolators[flv][rho](cz, height_cm, energy_GeV);
-          // Set to zero if negative (numerical artifact)
+          double prod_rate = flux_interpolators[flv][interp_rho](cz, height_cm, energy_GeV);
+          // Apply geometric correction: production profile is d(flux)/d(vertical_h),
+          // but ODE integrates over track distance x. Multiply by |dh/dx| to get d(flux)/dx.
+          prod_rate *= abs_dhdx;
+          // Convert from per-cm (file units) to per-eV^-1 (natural units for ODE integration)
+          prod_rate /= param.cm;
+          
+          // TEMPORARY: scale up to help solver precision (divide output by same factor)
+          // prod_rate *= 1.0e15;
+          
+          // Set to zero if negative (interpolation artifact at data boundaries)
           flux[ie][rho][flv] = (prod_rate > 0) ? prod_rate : 0.0;
         } else {
           // No production data for this flavor (e.g., tau if only e/mu data)
