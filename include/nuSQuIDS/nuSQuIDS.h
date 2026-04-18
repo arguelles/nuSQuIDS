@@ -870,6 +870,9 @@ protected:
     /// \brief Returns the number of rho equations.
     unsigned int GetNumRho() const;
 
+    /// \brief Returns the neutrino type (neutrino, antineutrino, or both).
+    NeutrinoType GetNeutrinoType() const { return NT; }
+
     /// \brief Returns true if noncoherent interactions are considered
     bool GetUseInteractions() const {return iinteraction;}
 
