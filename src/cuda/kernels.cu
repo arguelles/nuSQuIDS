@@ -483,20 +483,31 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
 
 __device__
 void computeTauRegenSU3(int ne, int nrhos, int numneu,
-                        double density, double ye,
                         double x_eval, double xini,
                         const double* __restrict__ H0_array,
                         const double* __restrict__ b1_proj,
                         const InteractionDataGPU& idata,
+                        const GPUDensityProfileDevice& profile,
                         const double* __restrict__ s_state,
                         double* __restrict__ s_nc_factors)
 {
   constexpr int SU = 9;
   constexpr int tau_flavor = 2;
 
+  // Evaluate precomputed target number densities from profile splines
+  // (same as computeNCCascadeSU3, matching CPU's GetTargetNumberDensities()).
+  // invlen_CC_tau = sum_t target_ndens[t] * sigma_CC[t,rho,tau,en] and
+  // targetFractions[t] = target_ndens[t] / total_ndens, matching the CPU
+  // code in src/nuSQuIDS.cpp:1061-1064.
+  double target_ndens[MAX_TARGETS];
   double tfrac[MAX_TARGETS];
-  if (idata.n_targets == 1) { tfrac[0] = 1.0; }
-  else { tfrac[0] = ye; tfrac[1] = 1.0 - ye; }
+  double total_ndens = 0.0;
+  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++) {
+    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
+    total_ndens += target_ndens[t];
+  }
+  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
+    tfrac[t] = (total_ndens > 0.0) ? target_ndens[t] / total_ndens : 0.0;
 
   // Pass 1: Compute tau decay fluxes — each thread handles a subset of et
   // Use thread-local accumulation, then add to nc_factors atomically
@@ -541,12 +552,13 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
           }
 
           double flux = suTrace3(evol_tau, state_en);
+          // invlen_CC_tau = sum_t target_ndens[t] * sigma_CC[t] in natural
+          // units, matching int_state.invlen_CC on CPU.
           double invlen_CC = 0.0;
           for (int t = 0; t < idata.n_targets; t++) {
             size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, idata.rounded_ne);
-            invlen_CC += tfrac[t] * idata.d_sigma_CC[idx];
+            invlen_CC += target_ndens[t] * idata.d_sigma_CC[idx];
           }
-          invlen_CC *= density;
 
           double dEn = idata.d_delE[en - 1];
           double dEt = idata.d_delE[et - 1];
@@ -938,14 +950,12 @@ evolveKernelImpl(const PhysicsParams params,
       __syncthreads();
 
 
-      // Tau regeneration (adds to nc_factors in-place)
-      // TODO: update to use profile-based number densities
+      // Tau regeneration (adds to nc_factors in-place).
+      // Uses profile-based target number densities via evaluateTargetFraction.
       if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        double dens_x = evaluateDensity(path.profile, x);
-        double ye_x = evaluateYe(path.profile, x);
-        computeTauRegenSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
+        computeTauRegenSU3(ne, nrhos, NFLV, x, xini,
                            H0_array, b1_proj, interaction_data,
-                           s_state, s_nc_factors);
+                           path.profile, s_state, s_nc_factors);
         __syncthreads();
       }
 
@@ -1059,11 +1069,9 @@ evolveKernelImpl(const PhysicsParams params,
       __syncthreads();
 
       if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        double dens_mid = evaluateDensity(path.profile, x_mid);
-        double ye_mid = evaluateYe(path.profile, x_mid);
-        computeTauRegenSU3(ne, nrhos, NFLV, dens_mid, ye_mid, x_mid, xini,
+        computeTauRegenSU3(ne, nrhos, NFLV, x_mid, xini,
                            H0_array, b1_proj, interaction_data,
-                           s_state, s_nc_factors);
+                           path.profile, s_state, s_nc_factors);
         __syncthreads();
       }
 
