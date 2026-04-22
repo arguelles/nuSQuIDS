@@ -211,7 +211,6 @@ int main() {
     const double Emin = 1.0e-2 * units.GeV;
     const double Emax = 1.0e2 * units.GeV;
     const int ne = 100;
-    const double baseline = 1000.0 * units.km;
 
     auto energies = logspace(Emin, Emax, ne);
 
@@ -224,9 +223,9 @@ int main() {
     nus_cpu.Set_SquareMassDifference(2, 0.00247);
     nus_cpu.Set_CPPhase(0, 2, 0);
 
-    auto earth = std::make_shared<Earth>();
+    auto earth = std::make_shared<EarthAtm>();
     double costh = -0.5;  // 60 degrees from vertical
-    auto earth_track = std::make_shared<Earth::Track>(earth->MakeTrackWithCosine(costh));
+    auto earth_track = std::make_shared<EarthAtm::Track>(earth->MakeTrackWithCosine(costh));
     nus_cpu.Set_Body(earth);
     nus_cpu.Set_Track(earth_track);
 
@@ -252,7 +251,7 @@ int main() {
     nus_gpu.Set_CPPhase(0, 2, 0);
 
     nus_gpu.Set_Body(earth);
-    nus_gpu.Set_Track(std::make_shared<Earth::Track>(earth->MakeTrackWithCosine(costh)));
+    nus_gpu.Set_Track(std::make_shared<EarthAtm::Track>(earth->MakeTrackWithCosine(costh)));
     nus_gpu.Set_initial_state(inistate, flavor);
     nus_gpu.Set_ProgressBar(false);
     nus_gpu.Set_Backend(Backend::gpu);
