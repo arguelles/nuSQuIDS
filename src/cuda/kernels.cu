@@ -598,11 +598,11 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
 
 __device__
 void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
-                               double density, double ye,
                                double x_eval, double xini,
                                const double* __restrict__ H0_array,
                                const double* __restrict__ b1_proj,
                                const InteractionDataGPU& idata,
+                               const GPUDensityProfileDevice& profile,
                                int NT_type,
                                const double* __restrict__ s_state,
                                double* __restrict__ s_nc_factors)
@@ -610,6 +610,15 @@ void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
   constexpr int SU = 9;
   // Glashow resonance only affects electron antineutrinos
   int rho = (NT_type == 3) ? 1 : 0; // antineutrino rho index
+
+  // Compute electron number density from the same target splines used by
+  // NC/CC absorption. In neutral matter n_e = n_p (proton target) when
+  // n_targets>=2; for isoscalar nucleon targets, n_e = N_nuc * ye.
+  double target_ndens[MAX_TARGETS];
+  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
+    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
+  double ye = evaluateYe(profile, x_eval);
+  double num_e = electronNumberDensitySU3(target_ndens, idata.n_targets, ye);
 
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
     double gr_factor = 0.0;
@@ -642,8 +651,8 @@ void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
 
       double flux = suTrace3(evol_e, state_e2);
 
-      // invlen_GR at e2 (independent of target, uses electron number density)
-      double invlen_GR = idata.d_sigma_GR[e2] * density * ye;
+      // invlen_GR at e2 = sigma_GR * electron number density (natural units).
+      double invlen_GR = idata.d_sigma_GR[e2] * num_e;
 
       double dE = idata.d_delE[e2 - 1];
       gr_factor += flux * invlen_GR * dE * idata.d_dNdE_GR[e2 * idata.rounded_ne + e1];
@@ -696,6 +705,7 @@ void computeDerivativeSU3(double x_eval, double xini,
                           double HI_constants, bool is_antinu,
                           int ie, int rho, int ne, int numneu,
                           const InteractionDataGPU& idata,
+                          bool iglashow, int NT_type,
                           const double* __restrict__ nc_factors,
                           double* __restrict__ deriv)
 {
@@ -710,8 +720,10 @@ void computeDerivativeSU3(double x_eval, double xini,
   for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
     target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
 
+  double ye_x = evaluateYe(profile, x_eval);
   double invlen[3];
-  computeInvlenSU3(ie, rho, ne, target_ndens, idata, invlen);
+  computeInvlenSU3(ie, rho, ne, target_ndens, idata,
+                   iglashow, NT_type, ye_x, invlen);
 
   double evol_proj[3 * 9];
   evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
@@ -751,6 +763,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
                              double HI_constants, bool is_antinu,
                              int ie, int rho, int ne, int numneu,
                              const InteractionDataGPU& idata,
+                             bool iglashow, int NT_type,
                              const double* __restrict__ nc_factors,
                              double* __restrict__ y_out)
 {
@@ -759,7 +772,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k1 = f(x, y)
   computeDerivativeSU3(x, xini, y, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, iglashow, NT_type, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] = k[c] / 6.0;
@@ -769,7 +782,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k2 = f(x + h/2, y + h/2*k1)
   computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, iglashow, NT_type, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -779,7 +792,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k3 = f(x + h/2, y + h/2*k2)
   computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, iglashow, NT_type, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 3.0;
@@ -789,7 +802,7 @@ void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
   // k4 = f(x + h, y + h*k3)
   computeDerivativeSU3(x + h, xini, tmp, H0, b1_proj, profile,
                        HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, nc_factors, k);
+                       idata, iglashow, NT_type, nc_factors, k);
   #pragma unroll
   for (int c = 0; c < 9; c++) {
     acc[c] += k[c] / 6.0;
@@ -936,14 +949,13 @@ evolveKernelImpl(const PhysicsParams params,
         __syncthreads();
       }
 
-      // Glashow resonance (adds to nc_factors in-place)
-      // TODO: update to use profile-based number densities
+      // Glashow resonance (adds to nc_factors in-place).
+      // Uses profile-based electron number density via evaluateTargetFraction.
       if (params.iglashow && interaction_data.d_sigma_GR) {
-        double dens_x = evaluateDensity(path.profile, x);
-        double ye_x = evaluateYe(path.profile, x);
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, dens_x, ye_x, x, xini,
+        computeGlashowCascadeSU3(ne, nrhos, NFLV, x, xini,
                                   H0_array, b1_proj, interaction_data,
-                                  params.NT_type, s_state, s_nc_factors);
+                                  path.profile, params.NT_type,
+                                  s_state, s_nc_factors);
         __syncthreads();
       }
     }
@@ -1014,13 +1026,15 @@ evolveKernelImpl(const PhysicsParams params,
           double* sf = sf_buf + pair_idx * SU;
           rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sf);
+                    interaction_data, params.iglashow, params.NT_type,
+                    s_nc_factors, sf);
 
           // First half-step → s_state (shared memory) for cascade refresh
           double st[SU];
           rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, st);
+                    interaction_data, params.iglashow, params.NT_type,
+                    s_nc_factors, st);
 
           // Store st to shared memory so cascade can read all energies
           double* s_st = s_state + (rho * ne + ie) * SU;
@@ -1054,11 +1068,10 @@ evolveKernelImpl(const PhysicsParams params,
       }
 
       if (params.iglashow && interaction_data.d_sigma_GR) {
-        double dens_mid = evaluateDensity(path.profile, x_mid);
-        double ye_mid = evaluateYe(path.profile, x_mid);
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, dens_mid, ye_mid, x_mid, xini,
+        computeGlashowCascadeSU3(ne, nrhos, NFLV, x_mid, xini,
                                   H0_array, b1_proj, interaction_data,
-                                  params.NT_type, s_state, s_nc_factors);
+                                  path.profile, params.NT_type,
+                                  s_state, s_nc_factors);
         __syncthreads();
       }
 
@@ -1083,7 +1096,8 @@ evolveKernelImpl(const PhysicsParams params,
           double sh[SU];
           rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sh);
+                    interaction_data, params.iglashow, params.NT_type,
+                    s_nc_factors, sh);
 
           // Richardson extrapolation and error estimate
           const double* sf = sf_buf + pair_idx * SU;
