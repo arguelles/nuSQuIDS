@@ -148,7 +148,20 @@ struct CUDABackend::Impl {
       profile.type = cuda::ProfileType::CONSTANT;
       profile.constant_density = path.density_vals[0];
       profile.constant_ye = path.ye_vals[0];
-      profile.n_targets = 0;
+      // Preserve precomputed target number densities so CC/NC absorption and
+      // the NC cascade are not silently zeroed on constant-density paths.
+      // evaluateTargetFraction() returns constant_target_fractions[t] for
+      // non-TABULATED profiles, and those values are consumed as number
+      // densities (natural units, eV^3) by computeInvlenSU3 and
+      // computeNCCascadeSU3.
+      profile.n_targets = path.n_targets;
+      for (int t = 0; t < path.n_targets; t++) {
+        double ndens = (t < (int)path.target_ndens.size() &&
+                        !path.target_ndens[t].empty())
+                         ? path.target_ndens[t][0]
+                         : 0.0;
+        profile.constant_target_fractions.push_back(ndens);
+      }
       return profile;
     }
 
