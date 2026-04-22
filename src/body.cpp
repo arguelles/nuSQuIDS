@@ -1692,10 +1692,7 @@ void EmittingEarthAtm::injected_neutrino_flux(marray<double, 3>& flux,
           prod_rate *= abs_dhdx;
           // Convert from per-cm (file units) to per-eV^-1 (natural units for ODE integration)
           prod_rate /= param.cm;
-          
-          // TEMPORARY: scale up to help solver precision (divide output by same factor)
-          // prod_rate *= 1.0e15;
-          
+
           // Set to zero if negative (interpolation artifact at data boundaries)
           flux[ie][rho][flv] = (prod_rate > 0) ? prod_rate : 0.0;
         } else {
