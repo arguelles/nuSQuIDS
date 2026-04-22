@@ -74,27 +74,24 @@ void suZero(double* __restrict__ a) {
 // ============================================================
 
 /// Trace Tr(A·B) for SU(3) represented as 9-component vectors.
-/// Uses the SQuIDS SU(3) basis convention.
+/// Matches SQuIDS SUTrace: dim*a[0]*b[0] + 2*sum_{i>0} a[i]*b[i]
 __device__ __forceinline__
 double suTrace3(const double* __restrict__ a, const double* __restrict__ b) {
-  // Component 0 has factor 1/3 in the trace for the identity part
-  // Following SQuIDS convention: Tr = sum_i c_i * a_i * b_i
-  // where c_0 = 1/3, c_{1..3} = 1/2 for diagonal generators,
-  // c_{4..8} = 1/2 for off-diagonal generators
-  double result = a[0] * b[0] / 3.0;
+  double result = 3.0 * a[0] * b[0];
   #pragma unroll
   for (int i = 1; i < 9; i++)
-    result += a[i] * b[i] * 0.5;
+    result += 2.0 * a[i] * b[i];
   return result;
 }
 
 /// Trace Tr(A·B) for SU(4) represented as 16-component vectors.
+/// Matches SQuIDS SUTrace: dim*a[0]*b[0] + 2*sum_{i>0} a[i]*b[i]
 __device__ __forceinline__
 double suTrace4(const double* __restrict__ a, const double* __restrict__ b) {
-  double result = a[0] * b[0] * 0.25;
+  double result = 4.0 * a[0] * b[0];
   #pragma unroll
   for (int i = 1; i < 16; i++)
-    result += a[i] * b[i] * 0.5;
+    result += 2.0 * a[i] * b[i];
   return result;
 }
 
