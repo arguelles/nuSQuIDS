@@ -19,9 +19,16 @@ namespace nusquids { namespace cuda {
 // Launch-configuration constants shared by the launcher and the kernel.
 // Per-thread RK4 correction buffers are sized for MAX_PAIRS (rho, ie)
 // pairs; the invariant is nrhos * ceil(ne / EVOLVE_THREADS) <= MAX_PAIRS.
+// launchEvolve also checks this at runtime and throws before launch.
 // ============================================================
 static constexpr int EVOLVE_THREADS = 128;
 static constexpr int MAX_PAIRS = 32;
+
+// At nrhos=2 the invariant is 2*ceil(ne/EVOLVE_THREADS) <= MAX_PAIRS,
+// i.e. ne <= (MAX_PAIRS/2) * EVOLVE_THREADS = 16 * 128 = 2048.
+// Beyond that the runtime check in launchEvolve() rejects the launch.
+static_assert(MAX_PAIRS * EVOLVE_THREADS >= 4096,
+              "MAX_PAIRS*EVOLVE_THREADS must cover ne*nrhos for the tested grid");
 
 // ============================================================
 // Kernel launch wrappers
