@@ -16,6 +16,14 @@
 namespace nusquids { namespace cuda {
 
 // ============================================================
+// Launch-configuration constants shared by the launcher and the kernel.
+// Per-thread RK4 correction buffers are sized for MAX_PAIRS (rho, ie)
+// pairs; the invariant is nrhos * ceil(ne / EVOLVE_THREADS) <= MAX_PAIRS.
+// ============================================================
+static constexpr int EVOLVE_THREADS = 128;
+static constexpr int MAX_PAIRS = 32;
+
+// ============================================================
 // Kernel launch wrappers
 // ============================================================
 

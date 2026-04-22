@@ -228,18 +228,41 @@ void computeHI_SU3(double x_eval, double xini,
 }
 
 // ============================================================
+// Electron number density for Glashow (natural units, eV^3).
+//
+// Mirrors the CPU logic in src/nuSQuIDS.cpp UpdateInteractions(),
+// without the composition/nuclear-XS branch (not yet plumbed to GPU):
+//   - n_targets == 1 (isoscalar nucleon): n_e = N_nuc * ye
+//   - n_targets >= 2 (proton/neutron):    n_e = N_p  (neutral matter)
+// ============================================================
+
+__device__ __forceinline__
+double electronNumberDensitySU3(const double* __restrict__ target_ndens,
+                                int n_targets, double ye)
+{
+  if (n_targets <= 0) return 0.0;
+  if (n_targets == 1) return target_ndens[0] * ye;
+  return target_ndens[0]; // proton density; in neutral matter n_e = n_p
+}
+
+// ============================================================
 // Compute inverse interaction lengths from cross sections × density
 // invlen[flv] = sum_target density * Na * sigma[target][flv] * target_fraction[target]
 //
 // For nuSQuIDS, invlen_INT is stored as invlen_CC + invlen_NC.
 // HI_constants already encodes sqrt(2)*GF*Na/cm^3 in eV, so we need
 // the density in g/cm^3 and sigma in eV^-2. The product is in eV.
+//
+// When Glashow is enabled and this is the electron antineutrino rho,
+// invlen_GR = sigma_GR(e) * n_e is added into invlen[0] (electron), matching
+// the CPU in src/nuSQuIDS.cpp:794-803.
 // ============================================================
 
 __device__ __forceinline__
 void computeInvlenSU3(int ie, int rho, int ne,
                       const double* __restrict__ target_ndens, // [n_targets] precomputed number densities
                       const InteractionDataGPU& idata,
+                      bool iglashow, int NT_type, double ye,
                       double* __restrict__ invlen_out)  // [numneu] output: invlen_INT per flavor
 {
   // invlen_INT[flv] = sum over targets: ndens[t] * (sigma_CC + sigma_NC)
@@ -252,6 +275,16 @@ void computeInvlenSU3(int ie, int rho, int ne,
       invlen += target_ndens[t] * sig;
     }
     invlen_out[flv] = invlen;
+  }
+
+  // Glashow adds to electron antineutrino absorption only.
+  // NT_type==3 means "both" (rho=0 nu, rho=1 nubar); NT_type==2 means pure antineutrino.
+  if (iglashow && idata.d_sigma_GR != nullptr) {
+    int gr_rho = (NT_type == 3) ? 1 : 0;
+    if (rho == gr_rho && (NT_type == 2 || NT_type == 3)) {
+      double num_e = electronNumberDensitySU3(target_ndens, idata.n_targets, ye);
+      invlen_out[0] += idata.d_sigma_GR[ie] * num_e;
+    }
   }
 }
 
@@ -853,8 +886,8 @@ evolveKernelImpl(const PhysicsParams params,
 
   // Buffer for corrected states: each thread handles at most
   // ceil(ne/blockDim) * nrhos pairs, each with SU components.
-  // Max buffer: 32 pairs * 9 components = 288 doubles.
-  constexpr int MAX_PAIRS = 32;
+  // The invariant nrhos * ceil(ne / EVOLVE_THREADS) <= MAX_PAIRS is
+  // checked on the host side in launchEvolve() before kernel launch.
   double corrected_buf[MAX_PAIRS * SU];
 
   // Shared memory layout for interactions (when enabled):
@@ -1152,7 +1185,23 @@ void launchEvolve(const PhysicsParams& params,
                   cudaStream_t stream) {
   if (n_paths == 0) return;
 
-  int threads = 128;
+  constexpr int threads = EVOLVE_THREADS;
+
+  // Guard: the kernel sizes per-thread RK4 correction buffers for at most
+  // MAX_PAIRS (rho, ie) pairs. Silently exceeding this overruns thread-local
+  // memory and produces non-local numerical corruption.
+  {
+    const int pairs_per_thread = params.nrhos * ((params.ne + threads - 1) / threads);
+    if (pairs_per_thread > MAX_PAIRS) {
+      throw std::runtime_error(
+        "nuSQuIDS CUDA backend: evolveKernel per-thread pair count " +
+        std::to_string(pairs_per_thread) + " exceeds MAX_PAIRS=" +
+        std::to_string(MAX_PAIRS) + " (ne=" + std::to_string(params.ne) +
+        ", nrhos=" + std::to_string(params.nrhos) +
+        ", threads=" + std::to_string(threads) +
+        "). Reduce ne or raise MAX_PAIRS/EVOLVE_THREADS in kernels.cuh.");
+    }
+  }
 
   // Compute shared memory for interaction cascade computation
   // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
