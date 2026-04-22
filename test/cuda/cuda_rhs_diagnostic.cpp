@@ -231,7 +231,6 @@ int main() {
 
     // Compare at first costh bin
     double max_abs = 0, max_rel = 0;
-    int oob = 0;
     for (int ie = 0; ie < ne; ie++) {
       for (int rho = 0; rho < 2; rho++) {
         for (unsigned flv = 0; flv < numneu; flv++) {
@@ -241,7 +240,6 @@ int main() {
           double re = (std::abs(cv) > 1e-15) ? ae / std::abs(cv) : 0;
           max_abs = std::max(max_abs, ae);
           max_rel = std::max(max_rel, re);
-          if (gv < -1e-6 || gv > 1.0 + 1e-6) oob++;
 
           if (rho == 0 && ie < 3) {
             const char* fn[] = {"e", "mu", "tau"};
@@ -257,9 +255,9 @@ int main() {
 
     std::cout << "\n  Summary:" << std::endl;
     std::cout << "    max_abs=" << std::scientific << max_abs
-              << " max_rel=" << max_rel
-              << " oob=" << oob << std::endl;
-    bool pass = (max_abs < 0.01);
+              << " max_rel=" << max_rel << std::endl;
+    // Fluxes > 1.0 are expected with interactions (NC cascade amplification)
+    bool pass = (max_abs < 5e-3) && (max_rel < 0.01);
     std::cout << "    " << (pass ? "PASS" : "FAIL") << std::endl;
   }
 

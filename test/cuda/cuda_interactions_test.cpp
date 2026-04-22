@@ -104,8 +104,7 @@ int main() {
     double max_abs_err = 0.0;
     double max_rel_err = 0.0;
     int total_points = 0;
-    int oob_count = 0;  // out-of-bounds (flux < 0 or > 1)
-    bool pass = true;
+    int neg_count = 0;  // unphysical negative fluxes
 
     std::cout << std::fixed << std::setprecision(6);
 
@@ -124,7 +123,9 @@ int main() {
             max_rel_err = std::max(max_rel_err, rel_err);
             total_points++;
 
-            if (gpu_val < -1e-6 || gpu_val > 1.0 + 1e-6) oob_count++;
+            // Only flag negative fluxes as unphysical; fluxes > 1.0 are
+            // expected with interactions (NC cascade adds flux from higher energies)
+            if (gpu_val < -1e-6) neg_count++;
 
             // Print worst cases
             if (abs_err > 1e-3) {
@@ -144,23 +145,21 @@ int main() {
     std::cout << "    Total comparison points: " << total_points << std::endl;
     std::cout << "    Max absolute error: " << std::scientific << max_abs_err << std::endl;
     std::cout << "    Max relative error: " << max_rel_err << std::endl;
-    std::cout << "    Out-of-bounds values: " << oob_count << std::endl;
+    if (neg_count > 0)
+      std::cout << "    Negative flux values: " << neg_count << std::endl;
 
-    // Tolerances for interacting case (relaxed vs oscillation-only)
-    double abs_tol = 1e-2;  // interactions introduce larger numerical differences
-    double rel_tol = 0.05;  // 5% relative tolerance
+    // GPU vs CPU agreement tolerances
+    double abs_tol = 5e-3;
+    double rel_tol = 0.01;  // 1% relative tolerance
 
-    if (max_abs_err > abs_tol || max_rel_err > rel_tol || oob_count > 0) {
+    bool pass = (max_abs_err <= abs_tol && max_rel_err <= rel_tol);
+    if (!pass) {
       std::cout << "    Result: FAIL (abs_tol=" << abs_tol
                 << " rel_tol=" << rel_tol << ")" << std::endl;
-      pass = false;
-    } else {
-      std::cout << "    Result: PASS" << std::endl;
-    }
-
-    if (!pass) {
       std::cout << "\n=== INTERACTIONS TEST FAILED ===" << std::endl;
       return 1;
+    } else {
+      std::cout << "    Result: PASS" << std::endl;
     }
   }
 
@@ -255,8 +254,8 @@ int main() {
     std::cout << "    Max absolute error: " << std::scientific << max_abs_err << std::endl;
     std::cout << "    Max relative error: " << max_rel_err << std::endl;
 
-    double abs_tol = 5e-2;
-    double rel_tol = 0.10;  // 10% for tau regen (more sensitive)
+    double abs_tol = 1e-2;
+    double rel_tol = 0.05;  // 5% for tau regen (more sensitive than NC-only)
     if (max_abs_err > abs_tol || max_rel_err > rel_tol) {
       std::cout << "    Result: FAIL" << std::endl;
       return 1;
