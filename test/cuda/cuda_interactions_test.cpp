@@ -264,6 +264,110 @@ int main() {
     }
   }
 
+  // Test 3: With Glashow resonance (electron antineutrinos at ~6.3 PeV)
+  std::cout << "\n--- Test 3: GPU vs CPU with Glashow resonance ---" << std::endl;
+  {
+    const unsigned int numneu = 3;
+    bool interactions = true;
+
+    // Energy range bracketing the 6.3 PeV Glashow resonance
+    double Emin = 1.0e5 * units.GeV;
+    double Emax = 1.0e8 * units.GeV;
+    int ncz = 3;
+    int ne = 40;
+
+    auto costh = linspace(-1.0, -0.2, ncz);
+    auto energies = logspace(Emin, Emax, ne);
+
+    // --- CPU ---
+    nuSQUIDSAtm<> nus_cpu(costh, energies, numneu, both, interactions);
+    nus_cpu.Set_MixingAngle(0, 1, 0.563942);
+    nus_cpu.Set_MixingAngle(0, 2, 0.154085);
+    nus_cpu.Set_MixingAngle(1, 2, 0.785398);
+    nus_cpu.Set_SquareMassDifference(1, 7.65e-05);
+    nus_cpu.Set_SquareMassDifference(2, 0.00247);
+    nus_cpu.Set_CPPhase(0, 2, 0);
+    nus_cpu.Set_TauRegeneration(false);
+    nus_cpu.Set_GlashowResonance(true);
+
+    marray<double,4> inistate{(unsigned int)ncz, (unsigned int)ne, 2u, numneu};
+    std::fill(inistate.begin(), inistate.end(), 0);
+    // Inject electron antineutrinos to exercise the Glashow channel, and a
+    // small nu_mu baseline to keep absorption/oscillation active.
+    for (unsigned int ic = 0; ic < (unsigned int)ncz; ic++)
+      for (unsigned int ie = 0; ie < (unsigned int)ne; ie++) {
+        inistate[ic][ie][0][1] = 1.0;  // nu_mu
+        inistate[ic][ie][1][0] = 1.0;  // nubar_e  (Glashow source)
+        inistate[ic][ie][1][1] = 1.0;  // nubar_mu (Glashow-produced regen)
+      }
+
+    nus_cpu.Set_initial_state(inistate, flavor);
+    nus_cpu.Set_ProgressBar(false);
+    nus_cpu.Set_rel_error(1e-6);
+    nus_cpu.Set_abs_error(1e-6);
+
+    std::cout << "  Evolving on CPU..." << std::flush;
+    nus_cpu.EvolveState();
+    std::cout << " done." << std::endl;
+
+    // --- GPU ---
+    nuSQUIDSAtm<> nus_gpu(costh, energies, numneu, both, interactions);
+    nus_gpu.Set_MixingAngle(0, 1, 0.563942);
+    nus_gpu.Set_MixingAngle(0, 2, 0.154085);
+    nus_gpu.Set_MixingAngle(1, 2, 0.785398);
+    nus_gpu.Set_SquareMassDifference(1, 7.65e-05);
+    nus_gpu.Set_SquareMassDifference(2, 0.00247);
+    nus_gpu.Set_CPPhase(0, 2, 0);
+    nus_gpu.Set_TauRegeneration(false);
+    nus_gpu.Set_GlashowResonance(true);
+
+    nus_gpu.Set_initial_state(inistate, flavor);
+    nus_gpu.Set_ProgressBar(false);
+    nus_gpu.Set_rel_error(1e-6);
+    nus_gpu.Set_abs_error(1e-6);
+    nus_gpu.Set_Backend(Backend::gpu);
+
+    std::cout << "  Evolving on GPU..." << std::flush;
+    nus_gpu.EvolveState();
+    std::cout << " done." << std::endl;
+
+    // --- Compare ---
+    double max_abs_err = 0.0;
+    double max_rel_err = 0.0;
+    int total_points = 0;
+
+    for (int ic = 0; ic < ncz; ic++) {
+      for (int ie = 0; ie < ne; ie++) {
+        for (int rho = 0; rho < 2; rho++) {
+          for (unsigned int flv = 0; flv < numneu; flv++) {
+            double cpu_val = nus_cpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
+            double gpu_val = nus_gpu.EvalFlavor(flv, costh[ic], energies[ie], rho);
+            double abs_err = std::abs(cpu_val - gpu_val);
+            double rel_err = (std::abs(cpu_val) > 1e-15) ?
+                             abs_err / std::abs(cpu_val) : 0.0;
+            max_abs_err = std::max(max_abs_err, abs_err);
+            max_rel_err = std::max(max_rel_err, rel_err);
+            total_points++;
+          }
+        }
+      }
+    }
+
+    std::cout << "\n  Summary:" << std::endl;
+    std::cout << "    Total comparison points: " << total_points << std::endl;
+    std::cout << "    Max absolute error: " << std::scientific << max_abs_err << std::endl;
+    std::cout << "    Max relative error: " << max_rel_err << std::endl;
+
+    double abs_tol = 1e-2;
+    double rel_tol = 0.05;
+    if (max_abs_err > abs_tol || max_rel_err > rel_tol) {
+      std::cout << "    Result: FAIL" << std::endl;
+      return 1;
+    } else {
+      std::cout << "    Result: PASS" << std::endl;
+    }
+  }
+
   std::cout << "\n=== ALL INTERACTION TESTS PASSED ===" << std::endl;
   return 0;
 #endif
