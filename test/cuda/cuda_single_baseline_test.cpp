@@ -32,7 +32,8 @@ struct ComparisonStats {
 bool run_comparison(const std::string& test_name,
                     nuSQUIDS& nus_cpu, nuSQUIDS& nus_gpu,
                     unsigned int numneu, int nrhos,
-                    double abs_tol, double rel_tol) {
+                    double abs_tol, double rel_tol,
+                    bool interactions_active = false) {
   squids::Const units;
   const char* flavor_name[] = {"nu_e", "nu_mu", "nu_tau", "nu_s1", "nu_s2", "nu_s3"};
   const char* rho_name[] = {"nu", "nubar"};
@@ -54,7 +55,10 @@ bool run_comparison(const std::string& test_name,
         double rel_diff = (std::abs(cpu_val) > rel_threshold)
                           ? abs_diff / std::abs(cpu_val) : 0.0;
 
-        if(gpu_val < -0.01 || gpu_val > 1.01)
+        // NC cascade can push fluxes above 1.0 physically (regeneration from
+        // higher-energy bins). Only enforce the upper bound when interactions
+        // are off. Negative fluxes are always unphysical.
+        if(gpu_val < -0.01 || (!interactions_active && gpu_val > 1.01))
           bounds_bad++;
 
         auto& s = stats[flv][rho];
@@ -389,9 +393,11 @@ int main() {
     std::cout << "  Evolving on GPU..." << std::endl;
     nus_gpu.EvolveState();
 
-    // Tolerances match the NC+CC tabulated validation (~0.2%).
+    // Tolerances match the NC+CC tabulated validation (~0.2%). Pass
+    // interactions_active=true so the OOB check does not flag NC-cascade
+    // fluxes above 1.0 as unphysical.
     bool pass = run_comparison("Constant Density + Interactions",
-                               nus_cpu, nus_gpu, numneu, 2, 1e-3, 5e-3);
+                               nus_cpu, nus_gpu, numneu, 2, 1e-3, 5e-3, true);
     all_pass = all_pass && pass;
   }
 
