@@ -918,61 +918,154 @@ evolveKernelImpl(const PhysicsParams params,
     double local_max_err = 0.0;
     int pair_idx = 0;
 
-    // Phase 1: Compute corrected states and error for all (ie, rho) pairs.
-    // Store corrected states in local buffer — do NOT write to global memory yet.
-    for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
-      for (int rho = 0; rho < nrhos; rho++) {
-        double* state_ptr = my_state + (rho * ne + ie) * SU;
-        const double* H0 = H0_array + (rho * ne + ie) * SU;
-        const double* proj = b1_proj + rho * NFLV * SU;
+    // For oscillation-only, all computation is per-thread with no sync needed.
+    // For interactions, we split into phases to refresh nc_factors between
+    // the two half-steps, matching the CPU's per-evaluation cascade update.
+    if (!do_interactions) {
+      // ---- Oscillation-only path: single pass, no sync ----
+      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+        for (int rho = 0; rho < nrhos; rho++) {
+          double* state_ptr = my_state + (rho * ne + ie) * SU;
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
 
-        bool is_antinu = ((rho == 1) && params.NT_type == 3)
-                       || (params.NT_type == 2);
+          double y[SU];
+          #pragma unroll
+          for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-        // Load current state from global memory
-        double y[SU];
-        #pragma unroll
-        for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
-
-        // Full step of size h_try
-        double sf[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sf);
-        } else {
+          double sf[SU];
           rk4StepSU3(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sf);
-        }
 
-        // Two half-steps of size h_try/2
-        double st[SU], sh[SU];
-        if (do_interactions) {
-          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, st);
-          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, s_nc_factors, sh);
-        } else {
+          double st[SU], sh[SU];
           rk4StepSU3(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, st);
           rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
-        }
 
-        // Richardson extrapolation and error estimate
-        double* corr = corrected_buf + pair_idx * SU;
-        #pragma unroll
-        for (int c = 0; c < SU; c++) {
-          corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
-          double err = fabs(sf[c] - sh[c]) / 15.0;
-          double scale = solver_config.abs_error +
-                         solver_config.rel_error * fmax(fabs(y[c]), fabs(sh[c]));
-          if (scale > 0.0)
-            local_max_err = fmax(local_max_err, err / scale);
+          double* corr = corrected_buf + pair_idx * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) {
+            corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
+            double err = fabs(sf[c] - sh[c]) / 15.0;
+            double scale = solver_config.abs_error +
+                           solver_config.rel_error * fmax(fabs(y[c]), fabs(sh[c]));
+            if (scale > 0.0)
+              local_max_err = fmax(local_max_err, err / scale);
+          }
+          pair_idx++;
         }
-        pair_idx++;
+      }
+    } else {
+      // ---- Interaction path: refresh nc_factors between half-steps ----
+      // Buffer for full-step results (needed for Richardson at end)
+      double sf_buf[MAX_PAIRS * SU];
+
+      // Pass 1: Full step + first half-step using initial nc_factors.
+      // Write first half-step results (st) to shared memory for cascade refresh.
+      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+        for (int rho = 0; rho < nrhos; rho++) {
+          double* state_ptr = my_state + (rho * ne + ie) * SU;
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y[SU];
+          #pragma unroll
+          for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
+
+          // Full step → sf_buf
+          double* sf = sf_buf + pair_idx * SU;
+          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, sf);
+
+          // First half-step → s_state (shared memory) for cascade refresh
+          double st[SU];
+          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, st);
+
+          // Store st to shared memory so cascade can read all energies
+          double* s_st = s_state + (rho * ne + ie) * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) s_st[c] = st[c];
+
+          // Also store st to corrected_buf temporarily (reused in Pass 2)
+          double* st_buf = corrected_buf + pair_idx * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) st_buf[c] = st[c];
+
+          pair_idx++;
+        }
+      }
+      __syncthreads();
+
+      // Refresh nc_factors from mid-step state at position x + h_try/2
+      double x_mid = x + h_try * 0.5;
+      computeNCCascadeSU3(ne, nrhos, NFLV, x_mid, xini,
+                          H0_array, b1_proj, interaction_data, path.profile,
+                          s_state, s_nc_factors);
+      __syncthreads();
+
+      if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
+        double dens_mid = evaluateDensity(path.profile, x_mid);
+        double ye_mid = evaluateYe(path.profile, x_mid);
+        computeTauRegenSU3(ne, nrhos, NFLV, dens_mid, ye_mid, x_mid, xini,
+                           H0_array, b1_proj, interaction_data,
+                           s_state, s_nc_factors);
+        __syncthreads();
+      }
+
+      if (params.iglashow && interaction_data.d_sigma_GR) {
+        double dens_mid = evaluateDensity(path.profile, x_mid);
+        double ye_mid = evaluateYe(path.profile, x_mid);
+        computeGlashowCascadeSU3(ne, nrhos, NFLV, dens_mid, ye_mid, x_mid, xini,
+                                  H0_array, b1_proj, interaction_data,
+                                  params.NT_type, s_state, s_nc_factors);
+        __syncthreads();
+      }
+
+      // Pass 2: Second half-step using refreshed nc_factors + Richardson
+      pair_idx = 0;
+      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
+        for (int rho = 0; rho < nrhos; rho++) {
+          double* state_ptr = my_state + (rho * ne + ie) * SU;
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y[SU];
+          #pragma unroll
+          for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
+
+          // Read st from corrected_buf (stored in Pass 1)
+          double* st = corrected_buf + pair_idx * SU;
+
+          // Second half-step using refreshed nc_factors
+          double sh[SU];
+          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, s_nc_factors, sh);
+
+          // Richardson extrapolation and error estimate
+          const double* sf = sf_buf + pair_idx * SU;
+          double* corr = corrected_buf + pair_idx * SU;
+          #pragma unroll
+          for (int c = 0; c < SU; c++) {
+            corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
+            double err = fabs(sf[c] - sh[c]) / 15.0;
+            double scale = solver_config.abs_error +
+                           solver_config.rel_error * fmax(fabs(y[c]), fabs(sh[c]));
+            if (scale > 0.0)
+              local_max_err = fmax(local_max_err, err / scale);
+          }
+          pair_idx++;
+        }
       }
     }
 
