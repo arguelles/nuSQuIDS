@@ -573,17 +573,23 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
         }
       }
 
-      // Decay contributions: tau → neutrinos at energy e1
+      // Decay contributions: tau → neutrinos at energy e1.
+      // dNdE_tau_{all,lep}[rho][et][e1] with rounded_ne stride on the fast
+      // axis. The rho index labels the source tau species (0 = nu_tau,
+      // 1 = nubar_tau). Matching CPU src/nuSQuIDS.cpp:1099-1102:
+      //   nu dest, hadlep = nu_tau flux * dNdE_tau_all[0]
+      //   nu dest, lep    = nubar_tau flux * dNdE_tau_lep[1]
+      //   nubar dest, hadlep = nubar_tau flux * dNdE_tau_all[1]
+      //   nubar dest, lep    = nu_tau flux * dNdE_tau_lep[0]
       if (tau_flux > 0.0 || taubar_flux > 0.0) {
-        // dNdE_tau_all[rho][et][e1], dNdE_tau_lep[rho][et][e1] with rounded_ne stride
         int rne = idata.rounded_ne;
-        size_t tau_idx_nu    = (0 * ne + et) * rne + e1;
-        size_t tau_idx_nubar = (1 * ne + et) * rne + e1;
+        size_t tau_idx_nu    = (0 * ne + et) * rne + e1; // rho=0 spectrum
+        size_t tau_idx_nubar = (1 * ne + et) * rne + e1; // rho=1 spectrum
 
         tau_hadlep_nu    += tau_flux    * idata.d_dNdE_tau_all[tau_idx_nu];
-        tau_lep_nubar    += tau_flux    * idata.d_dNdE_tau_lep[tau_idx_nubar];
+        tau_lep_nubar    += tau_flux    * idata.d_dNdE_tau_lep[tau_idx_nu];
         tau_hadlep_nubar += taubar_flux * idata.d_dNdE_tau_all[tau_idx_nubar];
-        tau_lep_nu       += taubar_flux * idata.d_dNdE_tau_lep[tau_idx_nu];
+        tau_lep_nu       += taubar_flux * idata.d_dNdE_tau_lep[tau_idx_nubar];
       }
     }
 
