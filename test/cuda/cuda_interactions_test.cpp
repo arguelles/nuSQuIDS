@@ -38,6 +38,10 @@ int main() {
   const char* flavor_name[] = {"nu_e", "nu_mu", "nu_tau"};
   const char* rho_name[] = {"nu", "nubar"};
 
+  // Track failures across all subtests so each test reports independently and
+  // a failure in one (e.g. tau regen) does not hide diagnostics from the rest.
+  bool all_pass = true;
+
   // Test 1: DEBUG — oscillation-only at interaction energy range to isolate issue
   std::cout << "\n--- Test 1: GPU vs CPU with interactions (NC+CC) ---" << std::endl;
   {
@@ -156,8 +160,7 @@ int main() {
     if (!pass) {
       std::cout << "    Result: FAIL (abs_tol=" << abs_tol
                 << " rel_tol=" << rel_tol << ")" << std::endl;
-      std::cout << "\n=== INTERACTIONS TEST FAILED ===" << std::endl;
-      return 1;
+      all_pass = false;
     } else {
       std::cout << "    Result: PASS" << std::endl;
     }
@@ -258,7 +261,7 @@ int main() {
     double rel_tol = 0.05;  // 5% for tau regen (more sensitive than NC-only)
     if (max_abs_err > abs_tol || max_rel_err > rel_tol) {
       std::cout << "    Result: FAIL" << std::endl;
-      return 1;
+      all_pass = false;
     } else {
       std::cout << "    Result: PASS" << std::endl;
     }
@@ -362,13 +365,18 @@ int main() {
     double rel_tol = 0.05;
     if (max_abs_err > abs_tol || max_rel_err > rel_tol) {
       std::cout << "    Result: FAIL" << std::endl;
-      return 1;
+      all_pass = false;
     } else {
       std::cout << "    Result: PASS" << std::endl;
     }
   }
 
-  std::cout << "\n=== ALL INTERACTION TESTS PASSED ===" << std::endl;
-  return 0;
+  if (all_pass) {
+    std::cout << "\n=== ALL INTERACTION TESTS PASSED ===" << std::endl;
+    return 0;
+  } else {
+    std::cout << "\n=== INTERACTION TESTS FAILED ===" << std::endl;
+    return 1;
+  }
 #endif
 }
