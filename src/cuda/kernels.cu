@@ -851,6 +851,8 @@ evolveKernelImpl(const PhysicsParams params,
                  const double* __restrict__ H0_array,
                  const double* __restrict__ b1_proj,
                  const InteractionDataGPU* __restrict__ interaction_data_ptr,
+                 double* __restrict__ d_workspace_corrected,
+                 double* __restrict__ d_workspace_sf,
                  const SolverConfig solver_config,
                  double* __restrict__ states,
                  int n_paths)
@@ -915,11 +917,14 @@ evolveKernelImpl(const PhysicsParams params,
   double x = xini;
   int step_count = 0;
 
-  // Buffer for corrected states: each thread handles at most
-  // ceil(ne/blockDim) * nrhos pairs, each with SU components.
-  // The invariant nrhos * ceil(ne / EVOLVE_THREADS) <= MAX_PAIRS is
-  // checked on the host side in launchEvolve() before kernel launch.
-  double corrected_buf[MAX_PAIRS * SU];
+  // Per-path slices of the persistent RK4 staging workspace.
+  // Layout: [path_idx * nrhos * ne * SU + (rho * ne + ie) * SU + c].
+  // This replaces the former per-thread corrected_buf[MAX_PAIRS*SU] +
+  // sf_buf[MAX_PAIRS*SU] locals, which were the dominant source of stack
+  // spill and register pressure.
+  const int path_state_size = nrhos * ne * SU;
+  double* path_corrected = d_workspace_corrected + (size_t)path_idx * path_state_size;
+  double* path_sf        = d_workspace_sf        + (size_t)path_idx * path_state_size;
 
   // Shared memory layout for interactions (when enabled):
   // [0 .. nrhos*ne*SU)           : state buffer for cascade computation
@@ -977,7 +982,6 @@ evolveKernelImpl(const PhysicsParams params,
     }
 
     double local_max_err = 0.0;
-    int pair_idx = 0;
 
     // For oscillation-only, all computation is per-thread with no sync needed.
     // For interactions, we split into phases to refresh nc_factors between
@@ -1006,7 +1010,7 @@ evolveKernelImpl(const PhysicsParams params,
           rk4StepSU3(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, sh);
 
-          double* corr = corrected_buf + pair_idx * SU;
+          double* corr = path_corrected + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++) {
             corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
@@ -1016,14 +1020,10 @@ evolveKernelImpl(const PhysicsParams params,
             if (scale > 0.0)
               local_max_err = fmax(local_max_err, err / scale);
           }
-          pair_idx++;
         }
       }
     } else {
       // ---- Interaction path: refresh nc_factors between half-steps ----
-      // Buffer for full-step results (needed for Richardson at end)
-      double sf_buf[MAX_PAIRS * SU];
-
       // Pass 1: Full step + first half-step using initial nc_factors.
       // Write first half-step results (st) to shared memory for cascade refresh.
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
@@ -1038,8 +1038,8 @@ evolveKernelImpl(const PhysicsParams params,
           #pragma unroll
           for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-          // Full step → sf_buf
-          double* sf = sf_buf + pair_idx * SU;
+          // Full step → path_sf workspace slot
+          double* sf = path_sf + (rho * ne + ie) * SU;
           rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
                     interaction_data, params.iglashow, params.NT_type,
@@ -1057,12 +1057,10 @@ evolveKernelImpl(const PhysicsParams params,
           #pragma unroll
           for (int c = 0; c < SU; c++) s_st[c] = st[c];
 
-          // Also store st to corrected_buf temporarily (reused in Pass 2)
-          double* st_buf = corrected_buf + pair_idx * SU;
+          // Also store st to path_corrected workspace (reused in Pass 2)
+          double* st_buf = path_corrected + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++) st_buf[c] = st[c];
-
-          pair_idx++;
         }
       }
       __syncthreads();
@@ -1090,7 +1088,6 @@ evolveKernelImpl(const PhysicsParams params,
       }
 
       // Pass 2: Second half-step using refreshed nc_factors + Richardson
-      pair_idx = 0;
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
           double* state_ptr = my_state + (rho * ne + ie) * SU;
@@ -1103,8 +1100,8 @@ evolveKernelImpl(const PhysicsParams params,
           #pragma unroll
           for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-          // Read st from corrected_buf (stored in Pass 1)
-          double* st = corrected_buf + pair_idx * SU;
+          // Read st from path_corrected workspace (stored in Pass 1)
+          double* st = path_corrected + (rho * ne + ie) * SU;
 
           // Second half-step using refreshed nc_factors
           double sh[SU];
@@ -1114,8 +1111,8 @@ evolveKernelImpl(const PhysicsParams params,
                     s_nc_factors, sh);
 
           // Richardson extrapolation and error estimate
-          const double* sf = sf_buf + pair_idx * SU;
-          double* corr = corrected_buf + pair_idx * SU;
+          const double* sf = path_sf + (rho * ne + ie) * SU;
+          double* corr = path_corrected + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++) {
             corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
@@ -1125,7 +1122,6 @@ evolveKernelImpl(const PhysicsParams params,
             if (scale > 0.0)
               local_max_err = fmax(local_max_err, err / scale);
           }
-          pair_idx++;
         }
       }
     }
@@ -1141,15 +1137,13 @@ evolveKernelImpl(const PhysicsParams params,
 
     if (step_accepted) {
       // Phase 3: Write corrected states to global memory
-      pair_idx = 0;
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
           double* state_ptr = my_state + (rho * ne + ie) * SU;
-          const double* corr = corrected_buf + pair_idx * SU;
+          const double* corr = path_corrected + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++)
             state_ptr[c] = corr[c];
-          pair_idx++;
         }
       }
       x += h_try;
@@ -1207,6 +1201,8 @@ void launchEvolve(const PhysicsParams& params,
                   const double* d_H0_array,
                   const double* d_b1_proj,
                   const InteractionDataGPU* d_interaction_data,
+                  double* d_workspace_corrected,
+                  double* d_workspace_sf,
                   const SolverConfig& solver_config,
                   double* d_states,
                   int n_paths, int numneu,
@@ -1214,22 +1210,6 @@ void launchEvolve(const PhysicsParams& params,
   if (n_paths == 0) return;
 
   constexpr int threads = EVOLVE_THREADS;
-
-  // Guard: the kernel sizes per-thread RK4 correction buffers for at most
-  // MAX_PAIRS (rho, ie) pairs. Silently exceeding this overruns thread-local
-  // memory and produces non-local numerical corruption.
-  {
-    const int pairs_per_thread = params.nrhos * ((params.ne + threads - 1) / threads);
-    if (pairs_per_thread > MAX_PAIRS) {
-      throw std::runtime_error(
-        "nuSQuIDS CUDA backend: evolveKernel per-thread pair count " +
-        std::to_string(pairs_per_thread) + " exceeds MAX_PAIRS=" +
-        std::to_string(MAX_PAIRS) + " (ne=" + std::to_string(params.ne) +
-        ", nrhos=" + std::to_string(params.nrhos) +
-        ", threads=" + std::to_string(threads) +
-        "). Reduce ne or raise MAX_PAIRS/EVOLVE_THREADS in kernels.cuh.");
-    }
-  }
 
   // Compute shared memory for interaction cascade computation
   // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
@@ -1258,13 +1238,15 @@ void launchEvolve(const PhysicsParams& params,
   switch (numneu) {
     case 3:
       evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
-        params, d_paths, d_H0_array, d_b1_proj,
-        d_idata_on_device, solver_config, d_states, n_paths);
+        params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
+        d_workspace_corrected, d_workspace_sf,
+        solver_config, d_states, n_paths);
       break;
     case 4:
       evolveKernelImpl<4><<<n_paths, threads, shared_bytes, stream>>>(
-        params, d_paths, d_H0_array, d_b1_proj,
-        d_idata_on_device, solver_config, d_states, n_paths);
+        params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
+        d_workspace_corrected, d_workspace_sf,
+        solver_config, d_states, n_paths);
       break;
   }
   NUSQUIDS_CUDA_CHECK(cudaGetLastError());

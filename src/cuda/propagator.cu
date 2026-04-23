@@ -171,6 +171,9 @@ Propagator::Propagator(int device_id, int batch_size_limit)
     batch_size_limit_(batch_size_limit),
     d_states_(nullptr),
     d_paths_(nullptr),
+    d_workspace_corrected_(nullptr),
+    d_workspace_sf_(nullptr),
+    workspace_size_bytes_(0),
     d_H0_array_(nullptr),
     d_b1_proj_(nullptr),
     d_spline_buffer_(nullptr),
@@ -198,6 +201,8 @@ Propagator::~Propagator() {
   if (d_H0_array_) cudaFree(d_H0_array_);
   if (d_b1_proj_) cudaFree(d_b1_proj_);
   if (d_spline_buffer_) cudaFree(d_spline_buffer_);
+  if (d_workspace_corrected_) cudaFree(d_workspace_corrected_);
+  if (d_workspace_sf_) cudaFree(d_workspace_sf_);
   freeInteractionData(interaction_data_);
   cudaStreamDestroy(stream_);
   cudaEventDestroy(event_);
@@ -253,6 +258,16 @@ void Propagator::allocateBatch(int n_paths) {
 
   if (d_paths_) cudaFree(d_paths_);
   NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_paths_, n_paths * sizeof(PathDeviceData)));
+
+  // RK4 staging workspaces: same layout as d_states_, one slot per (path, rho, ie, c).
+  // Grow on demand; keep across batches to avoid repeated cudaMalloc/Free.
+  if (state_bytes > workspace_size_bytes_) {
+    if (d_workspace_corrected_) cudaFree(d_workspace_corrected_);
+    if (d_workspace_sf_)        cudaFree(d_workspace_sf_);
+    NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_workspace_corrected_, state_bytes));
+    NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_workspace_sf_,        state_bytes));
+    workspace_size_bytes_ = state_bytes;
+  }
 }
 
 void Propagator::freeBatch() {
@@ -389,6 +404,7 @@ void Propagator::evolveBatch(const std::vector<GPUDensityProfile>& profiles,
     (interaction_data_.n_targets > 0) ? &interaction_data_ : nullptr;
   launchEvolve(params_, d_paths_, d_H0_array_, d_b1_proj_,
                int_data_ptr,
+               d_workspace_corrected_, d_workspace_sf_,
                solver_config_, d_states_, n_paths, params_.numneu, stream_);
 
   // Download final states

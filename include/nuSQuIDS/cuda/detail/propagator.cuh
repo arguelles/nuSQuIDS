@@ -66,6 +66,13 @@ private:
   double* d_states_;           ///< State data on device
   PathDeviceData* d_paths_;    ///< Per-path data on device
 
+  // Persistent RK4 staging workspaces (grow-on-demand, freed in destructor).
+  // Sized n_paths * nrhos * ne * SU doubles each; replace the per-thread
+  // corrected_buf/sf_buf locals that dominated stack spill.
+  double* d_workspace_corrected_;
+  double* d_workspace_sf_;
+  size_t workspace_size_bytes_;
+
   // Shared data (persists across batches)
   double* d_H0_array_;
   double* d_b1_proj_;
