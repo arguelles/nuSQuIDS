@@ -230,16 +230,25 @@ void computeHI_SU3(double x_eval, double xini,
 // ============================================================
 // Electron number density for Glashow (natural units, eV^3).
 //
-// Mirrors the CPU logic in src/nuSQuIDS.cpp UpdateInteractions(),
-// without the composition/nuclear-XS branch (not yet plumbed to GPU):
-//   - n_targets == 1 (isoscalar nucleon): n_e = N_nuc * ye
-//   - n_targets >= 2 (proton/neutron):    n_e = N_p  (neutral matter)
+// All branches are precomputed on the CPU side (see the GPU path builder
+// in nuSQuIDS.cpp, which mirrors UpdateInteractions and handles isoscalar,
+// p/n, body-composition, and nuclear-XS cases in squids::Const natural
+// units) and uploaded as either a constant or an Akima spline along the
+// track. CPU is the oracle.
+//
+// Falls back to the legacy isoscalar / p-n derivation from target number
+// densities when num_e was not provided (e.g. older callers or test paths
+// that skip the precomputation).
 // ============================================================
 
 __device__ __forceinline__
-double electronNumberDensitySU3(const double* __restrict__ target_ndens,
+double electronNumberDensitySU3(const GPUDensityProfileDevice& profile,
+                                double x_eval,
+                                const double* __restrict__ target_ndens,
                                 int n_targets, double ye)
 {
+  if (profile.has_num_e)
+    return evaluateNumE(profile, x_eval);
   if (n_targets <= 0) return 0.0;
   if (n_targets == 1) return target_ndens[0] * ye;
   return target_ndens[0]; // proton density; in neutral matter n_e = n_p
@@ -263,6 +272,8 @@ void computeInvlenSU3(int ie, int rho, int ne,
                       const double* __restrict__ target_ndens, // [n_targets] precomputed number densities
                       const InteractionDataGPU& idata,
                       bool iglashow, int NT_type, double ye,
+                      const GPUDensityProfileDevice& profile,
+                      double x_eval,
                       double* __restrict__ invlen_out)  // [numneu] output: invlen_INT per flavor
 {
   // invlen_INT[flv] = sum over targets: ndens[t] * (sigma_CC + sigma_NC)
@@ -282,7 +293,8 @@ void computeInvlenSU3(int ie, int rho, int ne,
   if (iglashow && idata.d_sigma_GR != nullptr) {
     int gr_rho = (NT_type == 3) ? 1 : 0;
     if (rho == gr_rho && (NT_type == 2 || NT_type == 3)) {
-      double num_e = electronNumberDensitySU3(target_ndens, idata.n_targets, ye);
+      double num_e = electronNumberDensitySU3(profile, x_eval,
+                                              target_ndens, idata.n_targets, ye);
       invlen_out[0] += idata.d_sigma_GR[ie] * num_e;
     }
   }
@@ -629,14 +641,16 @@ void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
   // Glashow resonance only affects electron antineutrinos
   int rho = (NT_type == 3) ? 1 : 0; // antineutrino rho index
 
-  // Compute electron number density from the same target splines used by
-  // NC/CC absorption. In neutral matter n_e = n_p (proton target) when
-  // n_targets>=2; for isoscalar nucleon targets, n_e = N_nuc * ye.
+  // Use precomputed electron number density (CPU side mirrors UpdateInteractions
+  // and handles isoscalar, p/n, body-composition, and nuclear-XS branches in
+  // squids::Const natural units). Falls back to the legacy isoscalar / p-n
+  // derivation when num_e is not provided.
   double target_ndens[MAX_TARGETS];
   for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
     target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
   double ye = evaluateYe(profile, x_eval);
-  double num_e = electronNumberDensitySU3(target_ndens, idata.n_targets, ye);
+  double num_e = electronNumberDensitySU3(profile, x_eval,
+                                          target_ndens, idata.n_targets, ye);
 
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
     double gr_factor = 0.0;
@@ -741,7 +755,7 @@ void computeDerivativeSU3(double x_eval, double xini,
   double ye_x = evaluateYe(profile, x_eval);
   double invlen[3];
   computeInvlenSU3(ie, rho, ne, target_ndens, idata,
-                   iglashow, NT_type, ye_x, invlen);
+                   iglashow, NT_type, ye_x, profile, x_eval, invlen);
 
   double evol_proj[3 * 9];
   evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);

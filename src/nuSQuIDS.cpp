@@ -1497,6 +1497,23 @@ void nuSQUIDS::EvolveState(){
     if(n_tgts > 0)
       gpu_path.target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
 
+    // Whether to provide a precomputed electron number density profile for
+    // the GPU's Glashow path. We mirror UpdateInteractions exactly so the
+    // GPU never needs to know about composition / nuclear-XS branches.
+    bool gpu_needs_num_e =
+      iinteraction && int_struct && iglashow &&
+      (NT == both || NT == antineutrino);
+    bool hasNuclearXS = false;
+    if(gpu_needs_num_e){
+      for(const PDGCode& tgt : int_struct->targets){
+        if(isNuclearPDGCode(tgt)){
+          hasNuclearXS = true;
+          break;
+        }
+      }
+      gpu_path.num_e_vals.assign(n_density_samples, 0.0);
+    }
+
     double dx = (gpu_path.xend - gpu_path.xini) / (n_density_samples - 1);
     for(int s = 0; s < n_density_samples; s++){
       double x_s = gpu_path.xini + s * dx;
@@ -1515,6 +1532,27 @@ void nuSQUIDS::EvolveState(){
         std::vector<double> ndens = GetTargetNumberDensities();
         for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
           gpu_path.target_ndens[t][s] = ndens[t];
+
+        // Mirror nuSQUIDS::UpdateInteractions Glashow electron-density logic
+        // exactly. Use squids::Const natural units throughout — no hardcoded
+        // conversion factors on the GPU.
+        if(gpu_needs_num_e){
+          double num_e = 0.0;
+          if(body_has_composition || hasNuclearXS){
+            double density_nat = (params.gr*pow(params.cm,-3))*current_density;
+            double ye_s = current_ye;
+            if(ye_s != 0){
+              num_e = density_nat /
+                (params.electron_mass + params.proton_mass +
+                 params.neutron_mass*((1-ye_s)/ye_s));
+            }
+          } else if(n_tgts == 1){
+            num_e = ndens[0] * current_ye;
+          } else if(!ndens.empty()){
+            num_e = ndens[0]; // proton density; in neutral matter n_e = n_p
+          }
+          gpu_path.num_e_vals[s] = num_e;
+        }
       }
     }
     track->SetX(gpu_path.xini);

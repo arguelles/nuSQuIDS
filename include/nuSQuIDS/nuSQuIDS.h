@@ -1403,6 +1403,27 @@ class nuSQUIDSAtm {
 
         std::vector<GPUPathData> gpu_paths(n_paths);
         const int n_density_samples = 500;
+
+        // Whether to provide a precomputed electron number density profile
+        // for the GPU's Glashow path. We mirror nuSQUIDS::UpdateInteractions
+        // exactly so the GPU never needs to know about composition or
+        // nuclear-XS branches.
+        bool gpu_needs_num_e_atm = false;
+        bool hasNuclearXS_atm = false;
+        if(use_interactions && int_struct){
+          BaseSQUIDS& nsq0 = nusq_array.front();
+          gpu_needs_num_e_atm = nsq0.iglashow &&
+                                (nsq0.NT == both || nsq0.NT == antineutrino);
+          if(gpu_needs_num_e_atm){
+            for(const PDGCode& tgt : int_struct->targets){
+              if(isNuclearPDGCode(tgt)){
+                hasNuclearXS_atm = true;
+                break;
+              }
+            }
+          }
+        }
+
         for(int p = 0; p < n_paths; p++){
           BaseSQUIDS& nsq = nusq_array[p];
           auto& trk = *nsq.track;
@@ -1416,6 +1437,8 @@ class nuSQUIDSAtm {
           gpu_paths[p].ye_vals.resize(n_density_samples);
           if(n_tgts > 0)
             gpu_paths[p].target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
+          if(gpu_needs_num_e_atm)
+            gpu_paths[p].num_e_vals.assign(n_density_samples, 0.0);
 
           double dx = (gpu_paths[p].xend - gpu_paths[p].xini) / (n_density_samples - 1);
           for(int s = 0; s < n_density_samples; s++){
@@ -1435,6 +1458,28 @@ class nuSQUIDSAtm {
               std::vector<double> ndens = nsq.GetTargetNumberDensities();
               for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
                 gpu_paths[p].target_ndens[t][s] = ndens[t];
+
+              // Mirror nuSQUIDS::UpdateInteractions Glashow electron-density
+              // logic exactly. Use squids::Const natural units throughout —
+              // no hardcoded conversion factors on the GPU.
+              if(gpu_needs_num_e_atm){
+                double num_e = 0.0;
+                if(nsq.body_has_composition || hasNuclearXS_atm){
+                  double density_nat =
+                    (nsq.params.gr*pow(nsq.params.cm,-3))*nsq.current_density;
+                  double ye_s = nsq.current_ye;
+                  if(ye_s != 0){
+                    num_e = density_nat /
+                      (nsq.params.electron_mass + nsq.params.proton_mass +
+                       nsq.params.neutron_mass*((1-ye_s)/ye_s));
+                  }
+                } else if(n_tgts == 1){
+                  num_e = ndens[0] * nsq.current_ye;
+                } else if(!ndens.empty()){
+                  num_e = ndens[0]; // proton density; n_e = n_p in neutral matter
+                }
+                gpu_paths[p].num_e_vals[s] = num_e;
+              }
             }
           }
           trk.SetX(gpu_paths[p].xini);

@@ -113,6 +113,8 @@ struct CUDABackend::Impl {
     cuda::GPUDensityProfile profile;
     profile.xini = path.xini;
     profile.xend = path.xend;
+    profile.has_num_e = !path.num_e_vals.empty();
+    profile.constant_num_e = 0.0;
 
     if (path.xend <= path.xini || path.n_density_samples == 0) {
       profile.type = cuda::ProfileType::VACUUM;
@@ -162,6 +164,8 @@ struct CUDABackend::Impl {
                          : 0.0;
         profile.constant_target_fractions.push_back(ndens);
       }
+      if (profile.has_num_e)
+        profile.constant_num_e = path.num_e_vals[0];
       return profile;
     }
 
@@ -179,6 +183,14 @@ struct CUDABackend::Impl {
         cuda::fitAkimaSpline(path.density_x, path.target_ndens[t]));
       if (t < (int)path.target_ndens.size())
         profile.constant_target_fractions.push_back(path.target_ndens[t][0]);
+    }
+
+    // Fit Akima spline for the precomputed electron number density used by
+    // Glashow. Mirrors the CPU UpdateInteractions branches in natural units;
+    // CPU is the oracle.
+    if (profile.has_num_e) {
+      profile.num_e_spline = cuda::fitAkimaSpline(path.density_x, path.num_e_vals);
+      profile.constant_num_e = path.num_e_vals[0];
     }
 
     return profile;

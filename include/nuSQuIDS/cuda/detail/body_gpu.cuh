@@ -51,6 +51,14 @@ struct GPUDensityProfile {
   std::vector<AkimaCoeffs> target_splines;
   int n_targets;
 
+  /// Electron number density along the track (natural units, eV^3),
+  /// precomputed on CPU using squids::Const so that Glashow on the GPU
+  /// matches the CPU's body-composition / nuclear-XS branches in
+  /// nuSQUIDS::UpdateInteractions. has_num_e is false when not provided.
+  bool has_num_e;
+  double constant_num_e;        ///< Used for VACUUM/CONSTANT type
+  AkimaCoeffs num_e_spline;     ///< Used for TABULATED type
+
   double xini;  ///< Track start position
   double xend;  ///< Track end position
 };
@@ -108,6 +116,17 @@ struct GPUDensityProfileDevice {
   const double* target_a1[MAX_TARGETS];
   const double* target_a2[MAX_TARGETS];
   const double* target_a3[MAX_TARGETS];
+
+  // Electron number density (precomputed on CPU in eV^3) used by Glashow.
+  // For VACUUM/CONSTANT profiles (or when not provided), constant_num_e is
+  // returned. For TABULATED profiles, the Akima spline is evaluated on the
+  // shared density_x nodes.
+  bool has_num_e;
+  double constant_num_e;
+  const double* num_e_a0;
+  const double* num_e_a1;
+  const double* num_e_a2;
+  const double* num_e_a3;
 };
 
 /// Evaluate Akima spline at position x
@@ -155,6 +174,23 @@ double evaluateYe(const GPUDensityProfileDevice& profile, double x) {
                               profile.ye_x, profile.ye_a0,
                               profile.ye_a1, profile.ye_a2,
                               profile.ye_a3);
+}
+
+/// Evaluate electron number density at position x (natural units, eV^3)
+/// Falls back to 0.0 when num_e was not provided (e.g. Glashow disabled).
+__device__ __forceinline__
+double evaluateNumE(const GPUDensityProfileDevice& profile, double x) {
+  if (!profile.has_num_e) return 0.0;
+  if (profile.type == ProfileType::VACUUM)
+    return 0.0;
+  if (profile.type == ProfileType::CONSTANT)
+    return profile.constant_num_e;
+  if (profile.num_e_a0 == nullptr)
+    return profile.constant_num_e;
+  return evaluateAkimaSpline(x, profile.n_nodes,
+                              profile.density_x, // shares x nodes with density
+                              profile.num_e_a0, profile.num_e_a1,
+                              profile.num_e_a2, profile.num_e_a3);
 }
 
 /// Evaluate target fraction at position x

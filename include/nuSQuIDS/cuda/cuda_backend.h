@@ -79,6 +79,13 @@ struct GPUPathData {
   // n_targets arrays, each of size n_density_samples.
   int n_targets;                                     ///< Number of target types
   std::vector<std::vector<double>> target_ndens;     ///< [n_targets][n_density_samples]
+
+  // Electron number density along the track (natural units, eV³),
+  // precomputed on CPU using the same logic as nuSQUIDS::UpdateInteractions
+  // (handles isoscalar, p/n, body-composition, and nuclear-XS branches in
+  // squids::Const natural units). Used by Glashow on the GPU. Empty when
+  // Glashow is disabled.
+  std::vector<double> num_e_vals;                    ///< [n_density_samples]
 };
 
 /// \brief CUDA GPU backend for nuSQuIDS propagation.

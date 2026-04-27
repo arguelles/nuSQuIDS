@@ -291,6 +291,9 @@ void Propagator::uploadProfiles(const std::vector<GPUDensityProfile>& profiles,
         if (!prof.target_splines.empty())
           total_spline_doubles += prof.density_spline.n * 4; // 4 coefficients per target
       }
+      // num_e (Glashow): 4 coefficients sharing x with density
+      if (prof.has_num_e)
+        total_spline_doubles += prof.density_spline.n * 4;
     }
   }
 
@@ -327,6 +330,14 @@ void Propagator::uploadProfiles(const std::vector<GPUDensityProfile>& profiles,
       path.profile.target_a3[t] = nullptr;
     }
 
+    // Glashow electron number density (precomputed on CPU in natural units).
+    path.profile.has_num_e = prof.has_num_e;
+    path.profile.constant_num_e = prof.constant_num_e;
+    path.profile.num_e_a0 = nullptr;
+    path.profile.num_e_a1 = nullptr;
+    path.profile.num_e_a2 = nullptr;
+    path.profile.num_e_a3 = nullptr;
+
     if (prof.type == ProfileType::TABULATED) {
       int n = prof.density_spline.n;
       path.profile.n_nodes = n;
@@ -358,6 +369,14 @@ void Propagator::uploadProfiles(const std::vector<GPUDensityProfile>& profiles,
         path.profile.target_a1[t] = copyArray(prof.target_splines[t].a1);
         path.profile.target_a2[t] = copyArray(prof.target_splines[t].a2);
         path.profile.target_a3[t] = copyArray(prof.target_splines[t].a3);
+      }
+
+      // num_e (Glashow): shares x nodes with density.
+      if (prof.has_num_e) {
+        path.profile.num_e_a0 = copyArray(prof.num_e_spline.a0);
+        path.profile.num_e_a1 = copyArray(prof.num_e_spline.a1);
+        path.profile.num_e_a2 = copyArray(prof.num_e_spline.a2);
+        path.profile.num_e_a3 = copyArray(prof.num_e_spline.a3);
       }
     }
   }
