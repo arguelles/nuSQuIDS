@@ -1,0 +1,54 @@
+{
+  "planPath": "docs/superpowers/plans/2026-04-27-cuda-backend-completion.md",
+  "tasks": [
+    {
+      "id": 12,
+      "subject": "Task 1: Benchmark Perf #1 (RK4 staging buffers → workspace)",
+      "executor": "deployer",
+      "status": "pending",
+      "blockedBy": [],
+      "verifyCommand": "ssh mimo \"grep -E 'PASS|FAIL|residual' /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cuda/cuda_test_*.out | tail -20\""
+    },
+    {
+      "id": 8,
+      "subject": "Task 2: Codex re-review of GPU interaction backend (post Perf #1)",
+      "executor": "codex-reviewer",
+      "status": "in_progress",
+      "blockedBy": [],
+      "verifyCommand": "test -f docs/superpowers/reviews/2026-04-27-cuda-backend-codex-review.md && grep -cE '^### \\[(blocker|important|nit)\\]' docs/superpowers/reviews/2026-04-27-cuda-backend-codex-review.md"
+    },
+    {
+      "id": 9,
+      "subject": "Task 3: Diagnose and close tau regen 40% residual",
+      "executor": "physics-dev",
+      "status": "in_progress",
+      "blockedBy": [],
+      "verifyCommand": "ssh mimo \"grep -E 'Test 2.*Tau|residual' /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cuda/cuda_test_*.out | tail -10\""
+    },
+    {
+      "id": 10,
+      "subject": "Task 4: Perf #2 — fuse computeDerivativeSU3 stages",
+      "executor": "perf-dev",
+      "status": "pending",
+      "blockedBy": [8, 9, 12],
+      "verifyCommand": "ssh mimo \"grep -E 'PASS|FAIL|residual|GPU.*CPU' /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cuda/cuda_test_*.out | tail -20\""
+    },
+    {
+      "id": 13,
+      "subject": "Task 5: Perf #3 — precompute NC cascade src_factor",
+      "executor": "perf-dev",
+      "status": "pending",
+      "blockedBy": [10],
+      "verifyCommand": "ssh mimo \"grep -E 'PASS|FAIL|residual|GPU.*CPU' /n/holylfs05/LABS/arguelles_delgado_lab/Lab/common_software/nuSQuIDS/test/cuda/cuda_test_*.out | tail -20\""
+    },
+    {
+      "id": 11,
+      "subject": "Task 6: Clean up cuda-backend commit history before merge",
+      "executor": "codex-reviewer",
+      "status": "in_progress",
+      "blockedBy": [8, 9, 10, 12, 13],
+      "verifyCommand": "test -f docs/superpowers/reviews/2026-04-27-cuda-backend-merge-checklist.md && grep -cE '^\\| [0-9a-f]{7,40} \\|' docs/superpowers/reviews/2026-04-27-cuda-backend-merge-checklist.md"
+    }
+  ],
+  "lastUpdated": "2026-04-27T00:00:00Z"
+}
