@@ -1023,9 +1023,17 @@ evolveKernelImpl(const PhysicsParams params,
         }
       }
     } else {
-      // ---- Interaction path: refresh nc_factors between half-steps ----
-      // Pass 1: Full step + first half-step using initial nc_factors.
-      // Write first half-step results (st) to shared memory for cascade refresh.
+      // ---- Interaction path: Option F — predictor half-step, refresh
+      //      cascade factors at mid-step, then redo BOTH Richardson branches
+      //      with the refreshed factors so sf and sh solve the SAME ODE.
+      //      The previous scheme (commit f041533) refreshed nc_factors
+      //      between half-steps but left sf computed with start-of-step
+      //      factors; that asymmetry biased the Richardson estimator and
+      //      drove a ~40% residual on tau regen and ~100% on Glashow.
+      //      Cost: ~2x the rk4StepSU3_interacting calls per macro-step.
+
+      // Pass 1: predictor half-step using start-of-step nc_factors,
+      //         stored to s_state for the cascade refresh.
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
           double* state_ptr = my_state + (rho * ne + ie) * SU;
@@ -1038,34 +1046,20 @@ evolveKernelImpl(const PhysicsParams params,
           #pragma unroll
           for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-          // Full step → path_sf workspace slot
-          double* sf = path_sf + (rho * ne + ie) * SU;
-          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, sf);
-
-          // First half-step → s_state (shared memory) for cascade refresh
-          double st[SU];
+          double st_pred[SU];
           rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
                     interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, st);
+                    s_nc_factors, st_pred);
 
-          // Store st to shared memory so cascade can read all energies
           double* s_st = s_state + (rho * ne + ie) * SU;
           #pragma unroll
-          for (int c = 0; c < SU; c++) s_st[c] = st[c];
-
-          // Also store st to path_corrected workspace (reused in Pass 2)
-          double* st_buf = path_corrected + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++) st_buf[c] = st[c];
+          for (int c = 0; c < SU; c++) s_st[c] = st_pred[c];
         }
       }
       __syncthreads();
 
-      // Refresh nc_factors from mid-step state at position x + h_try/2
+      // Refresh nc_factors at x + h/2 using the predicted mid-state.
       double x_mid = x + h_try * 0.5;
       computeNCCascadeSU3(ne, nrhos, NFLV, x_mid, xini,
                           H0_array, b1_proj, interaction_data, path.profile,
@@ -1087,7 +1081,8 @@ evolveKernelImpl(const PhysicsParams params,
         __syncthreads();
       }
 
-      // Pass 2: Second half-step using refreshed nc_factors + Richardson
+      // Pass 2: redo full step AND both half-steps using refreshed factors.
+      // Both Richardson branches now solve the same ODE.
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
           double* state_ptr = my_state + (rho * ne + ie) * SU;
@@ -1100,18 +1095,28 @@ evolveKernelImpl(const PhysicsParams params,
           #pragma unroll
           for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
 
-          // Read st from path_corrected workspace (stored in Pass 1)
-          double* st = path_corrected + (rho * ne + ie) * SU;
+          // Full step using refreshed factors → path_sf workspace
+          double* sf = path_sf + (rho * ne + ie) * SU;
+          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, params.iglashow, params.NT_type,
+                    s_nc_factors, sf);
 
-          // Second half-step using refreshed nc_factors
+          // First half-step using refreshed factors
+          double st[SU];
+          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
+                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
+                    interaction_data, params.iglashow, params.NT_type,
+                    s_nc_factors, st);
+
+          // Second half-step using refreshed factors
           double sh[SU];
           rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
                     params.HI_constants, is_antinu, ie, rho, ne, NFLV,
                     interaction_data, params.iglashow, params.NT_type,
                     s_nc_factors, sh);
 
-          // Richardson extrapolation and error estimate
-          const double* sf = path_sf + (rho * ne + ie) * SU;
+          // Richardson extrapolation — sf and sh share the same ODE now.
           double* corr = path_corrected + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++) {
