@@ -721,6 +721,52 @@ void computeInteractionsRhoSU3(int ie, int rho, int ne,
 }
 
 // ============================================================
+// Refresh nc_factors / tau_lep / tau_hadlep / Glashow contributions
+// using the current `s_state` as the source state at time `x_eval`.
+//
+// This is cooperative: every thread in the block participates in the
+// computeNCCascadeSU3 / computeTauRegenSU3 / computeGlashowCascadeSU3
+// helpers (they each loop e1 = threadIdx.x; e1 < ne; e1 += blockDim.x).
+//
+// The caller is responsible for the __syncthreads() *before* this call
+// to publish s_state to all threads; this routine emits the syncs *after*
+// each contributor so subsequent reads of s_nc_factors see the updated
+// values. Matches the CPU's per-substage PreDerive() refresh.
+// ============================================================
+
+__device__ __forceinline__
+void refreshCascadeFactorsSU3(int ne, int nrhos, int numneu,
+                              double x_eval, double xini,
+                              const double* __restrict__ H0_array,
+                              const double* __restrict__ b1_proj,
+                              const InteractionDataGPU& idata,
+                              const GPUDensityProfileDevice& profile,
+                              bool tauregeneration,
+                              bool iglashow, int NT_type,
+                              const double* __restrict__ s_state,
+                              double* __restrict__ s_nc_factors)
+{
+  computeNCCascadeSU3(ne, nrhos, numneu, x_eval, xini,
+                      H0_array, b1_proj, idata, profile,
+                      s_state, s_nc_factors);
+  __syncthreads();
+
+  if (tauregeneration && idata.d_dNdE_tau_all) {
+    computeTauRegenSU3(ne, nrhos, numneu, x_eval, xini,
+                       H0_array, b1_proj, idata, profile,
+                       s_state, s_nc_factors);
+    __syncthreads();
+  }
+
+  if (iglashow && idata.d_sigma_GR) {
+    computeGlashowCascadeSU3(ne, nrhos, numneu, x_eval, xini,
+                              H0_array, b1_proj, idata, profile,
+                              NT_type, s_state, s_nc_factors);
+    __syncthreads();
+  }
+}
+
+// ============================================================
 // Compute full interacting derivative for SU(3)
 // dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
 //
@@ -961,38 +1007,18 @@ evolveKernelImpl(const PhysicsParams params,
     // The adaptive step controller ensures this approximation is bounded.
     // ============================================================
     if (do_interactions) {
-      // Load current state to shared memory
+      // Load current state to shared memory and refresh cascade factors at
+      // time x. This is the source-state for sf's k1 substage (and for
+      // sh's k1 after the explicit reset between sf and sh below).
       for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
         s_state[idx] = my_state[idx];
       __syncthreads();
 
-      // Compute NC cascade factors cooperatively
-      // Target number densities are interpolated from profile splines
-      // (precomputed on CPU in natural units using squids::Const)
-      computeNCCascadeSU3(ne, nrhos, NFLV, x, xini,
-                          H0_array, b1_proj, interaction_data, path.profile,
-                          s_state, s_nc_factors);
-      __syncthreads();
-
-
-      // Tau regeneration (adds to nc_factors in-place).
-      // Uses profile-based target number densities via evaluateTargetFraction.
-      if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        computeTauRegenSU3(ne, nrhos, NFLV, x, xini,
-                           H0_array, b1_proj, interaction_data,
-                           path.profile, s_state, s_nc_factors);
-        __syncthreads();
-      }
-
-      // Glashow resonance (adds to nc_factors in-place).
-      // Uses profile-based electron number density via evaluateTargetFraction.
-      if (params.iglashow && interaction_data.d_sigma_GR) {
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, x, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.NT_type,
-                                  s_state, s_nc_factors);
-        __syncthreads();
-      }
+      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x, xini,
+                                H0_array, b1_proj, interaction_data,
+                                path.profile, params.tauregeneration,
+                                params.iglashow, params.NT_type,
+                                s_state, s_nc_factors);
     }
 
     double local_max_err = 0.0;
@@ -1037,110 +1063,388 @@ evolveKernelImpl(const PhysicsParams params,
         }
       }
     } else {
-      // ---- Interaction path: Option F — predictor half-step, refresh
-      //      cascade factors at mid-step, then redo BOTH Richardson branches
-      //      with the refreshed factors so sf and sh solve the SAME ODE.
-      //      The previous scheme (commit f041533) refreshed nc_factors
-      //      between half-steps but left sf computed with start-of-step
-      //      factors; that asymmetry biased the Richardson estimator and
-      //      drove a ~40% residual on tau regen and ~100% on Glashow.
-      //      Cost: ~2x the rk4StepSU3_interacting calls per macro-step.
+      // ---- Interaction path: substage-refresh RK4 (Hypothesis 2 / Option B).
+      //
+      //      The CPU's adaptive RKF45 stepper calls PreDerive at *every* RK
+      //      substage, so nc_factors / tau_lep_decays / tau_hadlep_decays /
+      //      gr_factors are recomputed from the substage state each time
+      //      the RHS is evaluated. Option F (commit 1f619ec) restored
+      //      Richardson consistency by refreshing once at x+h/2, but it
+      //      still froze the cascade source factors across all 4 RK4 sub-
+      //      stages of every step. For a two-stage cascade (CC produces
+      //      tau, decay produces secondaries) that frozen-source bias is
+      //      the dominant remaining error on Test 2 (tau regen, ~10% rel,
+      //      abs error ~0.40 unaffected by Option F).
+      //
+      //      Here we march sf (full step h) and sh (two half-steps h/2)
+      //      substage-by-substage, refreshing s_nc_factors cooperatively
+      //      from the substage state at each substage time. Both branches
+      //      use the same algorithm, so Richardson consistency is preserved.
+      //      Cost: ~6x the cascade refreshes per macro step relative to
+      //      Option F's 2x; correctness over perf, Perf #2/#3 will reclaim
+      //      throughput.
 
-      // Pass 1: predictor half-step using start-of-step nc_factors,
-      //         stored to s_state for the cascade refresh.
+      // Per-thread storage for the at-most MAX_INT_PAIRS (ie, rho) slots
+      // each thread owns. With EVOLVE_THREADS=128 and nrhos<=2, MAX_INT_PAIRS=4
+      // covers ne up to 256 (well above the ne<=40 used by interaction tests).
+      // y_init/acc/sf_local/st_local hold per-slot working state across the
+      // cooperative substage syncs.
+      constexpr int MAX_INT_PAIRS = 4;
+
+      // Build the slot list for this thread once. n_slots is the number of
+      // (ie, rho) pairs actually owned.
+      int slot_ie[MAX_INT_PAIRS];
+      int slot_rho[MAX_INT_PAIRS];
+      int n_slots = 0;
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
-          double* state_ptr = my_state + (rho * ne + ie) * SU;
-          const double* H0 = H0_array + (rho * ne + ie) * SU;
-          const double* proj = b1_proj + rho * NFLV * SU;
-          bool is_antinu = ((rho == 1) && params.NT_type == 3)
-                         || (params.NT_type == 2);
-
-          double y[SU];
-          #pragma unroll
-          for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
-
-          double st_pred[SU];
-          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, st_pred);
-
-          double* s_st = s_state + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++) s_st[c] = st_pred[c];
+          if (n_slots < MAX_INT_PAIRS) {
+            slot_ie[n_slots] = ie;
+            slot_rho[n_slots] = rho;
+          }
+          n_slots++;
         }
       }
-      __syncthreads();
-
-      // Refresh nc_factors at x + h/2 using the predicted mid-state.
-      double x_mid = x + h_try * 0.5;
-      computeNCCascadeSU3(ne, nrhos, NFLV, x_mid, xini,
-                          H0_array, b1_proj, interaction_data, path.profile,
-                          s_state, s_nc_factors);
-      __syncthreads();
-
-      if (params.tauregeneration && interaction_data.d_dNdE_tau_all) {
-        computeTauRegenSU3(ne, nrhos, NFLV, x_mid, xini,
-                           H0_array, b1_proj, interaction_data,
-                           path.profile, s_state, s_nc_factors);
-        __syncthreads();
+      // Compile-time/runtime safety: if a thread tried to own more slots
+      // than MAX_INT_PAIRS we'd silently drop work. Trip a printf so it
+      // shows up in test output rather than producing wrong physics.
+      if (n_slots > MAX_INT_PAIRS) {
+        if (threadIdx.x == 0 && blockIdx.x == 0 && step_count == 0) {
+          printf("ERROR: substage-refresh kernel needs MAX_INT_PAIRS>=%d "
+                 "(ne=%d, nrhos=%d, blockDim=%d). Falling back will give "
+                 "wrong results.\n", n_slots, ne, nrhos, blockDim.x);
+        }
+        n_slots = MAX_INT_PAIRS;
       }
 
-      if (params.iglashow && interaction_data.d_sigma_GR) {
-        computeGlashowCascadeSU3(ne, nrhos, NFLV, x_mid, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.NT_type,
-                                  s_state, s_nc_factors);
-        __syncthreads();
+      // Lambda-free helpers — these are __device__ functions with explicit
+      // captures, since CUDA device lambdas with complex captures have
+      // historically silently produced wrong results in this kernel.
+
+      // RK4 substage coefficients — classic 4-stage tableau:
+      //   k1 = f(x,         y),                  acc += k1/6,   tmp = y + h/2 * k1
+      //   k2 = f(x + h/2,   y + h/2 * k1),       acc += k2/3,   tmp = y + h/2 * k2
+      //   k3 = f(x + h/2,   y + h/2 * k2),       acc += k3/3,   tmp = y + h * k3
+      //   k4 = f(x + h,     y + h * k3),         acc += k4/6,   y_out = y + h * acc
+
+      // Stage substep sub-times (relative to substep start) for cascade refresh:
+      //   substage 0 (k1) is evaluated at substep start.
+      //   substages 1,2 (k2,k3) are evaluated at substep start + h_sub/2.
+      //   substage 3 (k4) is evaluated at substep start + h_sub.
+
+      // Save the start-of-step nc_factors values before sf consumes them.
+      // sh's first substage (k1) evaluates at the start of the macro step
+      // and must use the *same* initial cascade source as sf's k1, otherwise
+      // sf and sh would solve different ODEs and Richardson would be biased.
+      //
+      // Easiest implementation: when starting sh we recompute s_nc_factors
+      // from my_state at time x. That cost is amortized into the existing
+      // sh substage refreshes; we just have to be sure to do it.
+
+      // ===== sf path: one full RK4 step of size h_try =====
+      // Prime s_state with current my_state (it already holds my_state values
+      // from the start-of-step refresh above). sf substep starts at time x.
+      //
+      // For each substage we:
+      //   1. Each thread computes k for its slots using s_nc_factors (refreshed
+      //      at the substage start time by the previous iteration / the start-
+      //      of-step block).
+      //   2. Each thread updates its accumulator and computes substage tmp,
+      //      writing tmp into s_state[slot] for the next refresh.
+      //   3. __syncthreads() to publish s_state to all threads.
+      //   4. Cooperatively refresh s_nc_factors at the next substage's time.
+      //   5. __syncthreads() to publish refreshed s_nc_factors.
+      //
+      // After substage 4 (k4), each thread combines acc into y_out for sf
+      // and writes to path_sf.
+
+      double y_init_sf[MAX_INT_PAIRS][SU];
+      double acc_sf[MAX_INT_PAIRS][SU];
+
+      for (int s = 0; s < n_slots; s++) {
+        const double* state_ptr = my_state + (slot_rho[s] * ne + slot_ie[s]) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++) y_init_sf[s][c] = state_ptr[c];
+        #pragma unroll
+        for (int c = 0; c < SU; c++) acc_sf[s][c] = 0.0;
       }
 
-      // Pass 2: redo full step AND both half-steps using refreshed factors.
-      // Both Richardson branches now solve the same ODE.
-      for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
-        for (int rho = 0; rho < nrhos; rho++) {
-          double* state_ptr = my_state + (rho * ne + ie) * SU;
+      // RK4 substage marching for sf.
+      // weights[k] is the Butcher RK4 coefficient on k_k for the y_out sum.
+      // a[k]      is the Butcher RK4 coefficient on k_k for substage k+1's tmp.
+      const double rk_weight[4] = {1.0/6.0, 1.0/3.0, 1.0/3.0, 1.0/6.0};
+      const double rk_a[4]      = {0.5,     0.5,     1.0,     0.0    };  // a[3] unused
+      const double rk_t[4]      = {0.0,     0.5,     0.5,     1.0    };  // substage time as fraction of h
+
+      // y_next holds the next substage's evaluation state per slot
+      // (the "tmp = y + a*h*k" produced by the previous substage). It also
+      // gets staged to s_state[slot] before the cooperative refresh so other
+      // threads' refreshes see it. Keeping a per-thread copy avoids any
+      // shared-memory read-after-write hazard between writing to s_state
+      // and reading it back inside this same thread.
+      double y_next_sf[MAX_INT_PAIRS][SU];
+
+      // sf substages (4 stages over size h_try).
+      // s_nc_factors entering substage 0 was refreshed from my_state at x.
+      // We refresh between substages so the next substage sees the right factors.
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = x + rk_t[sub] * h_try;
+
+        // Each thread: compute k for its slots from current s_nc_factors,
+        // update acc, compute next substage's tmp into s_state and y_next.
+        for (int s = 0; s < n_slots; s++) {
+          int ie = slot_ie[s];
+          int rho = slot_rho[s];
           const double* H0 = H0_array + (rho * ne + ie) * SU;
           const double* proj = b1_proj + rho * NFLV * SU;
           bool is_antinu = ((rho == 1) && params.NT_type == 3)
                          || (params.NT_type == 2);
 
-          double y[SU];
-          #pragma unroll
-          for (int c = 0; c < SU; c++) y[c] = state_ptr[c];
-
-          // Full step using refreshed factors → path_sf workspace
-          double* sf = path_sf + (rho * ne + ie) * SU;
-          rk4StepSU3_interacting(y, x, h_try, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, sf);
-
-          // First half-step using refreshed factors
-          double st[SU];
-          rk4StepSU3_interacting(y, x, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, st);
-
-          // Second half-step using refreshed factors
-          double sh[SU];
-          rk4StepSU3_interacting(st, x + h_try * 0.5, h_try * 0.5, xini, H0, proj, path.profile,
-                    params.HI_constants, is_antinu, ie, rho, ne, NFLV,
-                    interaction_data, params.iglashow, params.NT_type,
-                    s_nc_factors, sh);
-
-          // Richardson extrapolation — sf and sh share the same ODE now.
-          double* corr = path_corrected + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++) {
-            corr[c] = sh[c] + (sh[c] - sf[c]) / 15.0;
-            double err = fabs(sf[c] - sh[c]) / 15.0;
-            double scale = solver_config.abs_error +
-                           solver_config.rel_error * fmax(fabs(y[c]), fabs(sh[c]));
-            if (scale > 0.0)
-              local_max_err = fmax(local_max_err, err / scale);
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sf[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sf[s][c];
           }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
+                               params.HI_constants, is_antinu,
+                               ie, rho, ne, NFLV,
+                               interaction_data, params.iglashow, params.NT_type,
+                               s_nc_factors, k);
+
+          #pragma unroll
+          for (int c = 0; c < SU; c++)
+            acc_sf[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_try;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sf[s][c] + a * k[c];
+              y_next_sf[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
+        }
+
+        if (sub < 3) {
+          __syncthreads();
+          // Refresh cascade factors at the next substage's time.
+          double x_next = x + rk_t[sub + 1] * h_try;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors);
+        }
+      }
+
+      // Write sf result to path_sf workspace.
+      for (int s = 0; s < n_slots; s++) {
+        int ie = slot_ie[s];
+        int rho = slot_rho[s];
+        double* sf_ptr = path_sf + (rho * ne + ie) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++)
+          sf_ptr[c] = y_init_sf[s][c] + h_try * acc_sf[s][c];
+      }
+      __syncthreads();
+
+      // ===== sh path: two RK4 sub-half-steps of size h_try/2 each =====
+      // Reset s_state to my_state and recompute s_nc_factors at time x so
+      // sh's k1 sees the same initial cascade source as sf's k1 did.
+      for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
+        s_state[idx] = my_state[idx];
+      __syncthreads();
+
+      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x, xini,
+                                H0_array, b1_proj, interaction_data,
+                                path.profile, params.tauregeneration,
+                                params.iglashow, params.NT_type,
+                                s_state, s_nc_factors);
+
+      double y_init_sh[MAX_INT_PAIRS][SU];
+      double acc_sh[MAX_INT_PAIRS][SU];
+
+      // First sub-half-step: starts from my_state at time x, advances to x + h/2.
+      double h_half = h_try * 0.5;
+
+      for (int s = 0; s < n_slots; s++) {
+        const double* state_ptr = my_state + (slot_rho[s] * ne + slot_ie[s]) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++) y_init_sh[s][c] = state_ptr[c];
+        #pragma unroll
+        for (int c = 0; c < SU; c++) acc_sh[s][c] = 0.0;
+      }
+
+      double y_next_sh[MAX_INT_PAIRS][SU];
+
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = x + rk_t[sub] * h_half;
+
+        for (int s = 0; s < n_slots; s++) {
+          int ie = slot_ie[s];
+          int rho = slot_rho[s];
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sh[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sh[s][c];
+          }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
+                               params.HI_constants, is_antinu,
+                               ie, rho, ne, NFLV,
+                               interaction_data, params.iglashow, params.NT_type,
+                               s_nc_factors, k);
+
+          #pragma unroll
+          for (int c = 0; c < SU; c++)
+            acc_sh[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_half;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sh[s][c] + a * k[c];
+              y_next_sh[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
+        }
+
+        if (sub < 3) {
+          __syncthreads();
+          double x_next = x + rk_t[sub + 1] * h_half;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors);
+        }
+      }
+
+      // st = result of first sub-half-step (kept per-thread; also published
+      // to s_state for the second sub-half-step's k1 cascade refresh).
+      double st_local[MAX_INT_PAIRS][SU];
+      for (int s = 0; s < n_slots; s++) {
+        int ie = slot_ie[s];
+        int rho = slot_rho[s];
+        #pragma unroll
+        for (int c = 0; c < SU; c++)
+          st_local[s][c] = y_init_sh[s][c] + h_half * acc_sh[s][c];
+        double* s_ptr = s_state + (rho * ne + ie) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++) s_ptr[c] = st_local[s][c];
+      }
+      __syncthreads();
+
+      // Refresh cascade factors at time x + h_half using the half-step result.
+      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x + h_half, xini,
+                                H0_array, b1_proj, interaction_data,
+                                path.profile, params.tauregeneration,
+                                params.iglashow, params.NT_type,
+                                s_state, s_nc_factors);
+
+      // Second sub-half-step: starts from st at time x + h_half, advances to x + h.
+      // Reuse y_init_sh / acc_sh as the working storage for the second half.
+      for (int s = 0; s < n_slots; s++) {
+        #pragma unroll
+        for (int c = 0; c < SU; c++) y_init_sh[s][c] = st_local[s][c];
+        #pragma unroll
+        for (int c = 0; c < SU; c++) acc_sh[s][c] = 0.0;
+      }
+
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = (x + h_half) + rk_t[sub] * h_half;
+
+        for (int s = 0; s < n_slots; s++) {
+          int ie = slot_ie[s];
+          int rho = slot_rho[s];
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sh[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sh[s][c];
+          }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
+                               params.HI_constants, is_antinu,
+                               ie, rho, ne, NFLV,
+                               interaction_data, params.iglashow, params.NT_type,
+                               s_nc_factors, k);
+
+          #pragma unroll
+          for (int c = 0; c < SU; c++)
+            acc_sh[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_half;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sh[s][c] + a * k[c];
+              y_next_sh[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
+        }
+
+        if (sub < 3) {
+          __syncthreads();
+          double x_next = (x + h_half) + rk_t[sub + 1] * h_half;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors);
+        }
+      }
+
+      // Combine into corrected output via Richardson extrapolation.
+      // sh = y_init_sh + h_half * acc_sh, and sf is in path_sf.
+      for (int s = 0; s < n_slots; s++) {
+        int ie = slot_ie[s];
+        int rho = slot_rho[s];
+        double sh[SU];
+        #pragma unroll
+        for (int c = 0; c < SU; c++)
+          sh[c] = y_init_sh[s][c] + h_half * acc_sh[s][c];
+
+        const double* sf_ptr = path_sf + (rho * ne + ie) * SU;
+        const double* y0 = my_state + (rho * ne + ie) * SU;
+        double* corr = path_corrected + (rho * ne + ie) * SU;
+
+        #pragma unroll
+        for (int c = 0; c < SU; c++) {
+          corr[c] = sh[c] + (sh[c] - sf_ptr[c]) / 15.0;
+          double err = fabs(sf_ptr[c] - sh[c]) / 15.0;
+          double scale = solver_config.abs_error +
+                         solver_config.rel_error * fmax(fabs(y0[c]), fabs(sh[c]));
+          if (scale > 0.0)
+            local_max_err = fmax(local_max_err, err / scale);
         }
       }
     }
