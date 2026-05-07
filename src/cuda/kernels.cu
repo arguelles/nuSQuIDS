@@ -272,8 +272,7 @@ void computeInvlenSU3(int ie, int rho, int ne,
                       const double* __restrict__ target_ndens, // [n_targets] precomputed number densities
                       const InteractionDataGPU& idata,
                       bool iglashow, int NT_type, double ye,
-                      const GPUDensityProfileDevice& profile,
-                      double x_eval,
+                      double num_e,                            // precomputed electron number density (eV^3)
                       double* __restrict__ invlen_out)  // [numneu] output: invlen_INT per flavor
 {
   // invlen_INT[flv] = sum over targets: ndens[t] * (sigma_CC + sigma_NC)
@@ -293,8 +292,6 @@ void computeInvlenSU3(int ie, int rho, int ne,
   if (iglashow && idata.d_sigma_GR != nullptr) {
     int gr_rho = (NT_type == 3) ? 1 : 0;
     if (rho == gr_rho && (NT_type == 2 || NT_type == 3)) {
-      double num_e = electronNumberDensitySU3(profile, x_eval,
-                                              target_ndens, idata.n_targets, ye);
       invlen_out[0] += idata.d_sigma_GR[ie] * num_e;
     }
   }
@@ -380,6 +377,82 @@ void rk4StepSU3(const double* __restrict__ y, double x, double h,
 }
 
 // ============================================================
+// Per-substage profile cache (Perf #2).
+//
+// Layout in shared memory (PROFILE_CACHE_DOUBLES contiguous doubles):
+//   [0 .. MAX_TARGETS-1]            : target_ndens[t]   (eV^3, natural units)
+//   [MAX_TARGETS .. 2*MAX_TARGETS-1]: target_frac[t]    (= ndens[t] / sum_t ndens)
+//   [2*MAX_TARGETS]                 : ye                (electron fraction)
+//   [2*MAX_TARGETS + 1]             : num_e             (electron number density, eV^3)
+//
+// The per-substage time `x_eval` is shared across all threads in the block
+// (every thread enters the same RK substage at the same x_sub). Therefore
+// each Akima spline only needs to be evaluated *once per substage*, not once
+// per thread per call site. Previously target_ndens[16] was recomputed per
+// thread inside computeNCCascadeSU3 / computeTauRegenSU3 / computeGlashowCascadeSU3
+// / computeDerivativeSU3 — at 128 threads, that's a 128x amplification of the
+// same spline work. With substage-level cascade refresh (commit 73eb097)
+// this happens 7+ times per macro step, which dominated kernel time.
+//
+// This cache is populated cooperatively (thread 0 evaluates the splines)
+// at the start of each refresh / derivative call site, with a single
+// __syncthreads() to publish to the rest of the block.
+// ============================================================
+
+static constexpr int PROFILE_CACHE_DOUBLES = 2 * MAX_TARGETS + 2;
+static constexpr int CACHE_NDENS_OFFSET = 0;
+static constexpr int CACHE_FRAC_OFFSET  = MAX_TARGETS;
+static constexpr int CACHE_YE_OFFSET    = 2 * MAX_TARGETS;
+static constexpr int CACHE_NUME_OFFSET  = 2 * MAX_TARGETS + 1;
+
+// Populate the per-substage profile cache cooperatively. Caller must follow
+// with __syncthreads() before any thread reads from the cache.
+// All threads must enter this function (same x_eval, same idata, same profile).
+__device__ __forceinline__
+void populateProfileCacheSU3(const GPUDensityProfileDevice& profile,
+                             double x_eval,
+                             const InteractionDataGPU& idata,
+                             double* __restrict__ s_cache)
+{
+  // Thread 0 fills the entire cache. The work is O(n_targets+2) Akima
+  // evaluations, dwarfed by the cooperative cascade kernels that follow,
+  // so spreading the work across threads adds branching for negligible gain.
+  if (threadIdx.x == 0) {
+    int n_t = idata.n_targets;
+    if (n_t > MAX_TARGETS) n_t = MAX_TARGETS;
+    double total = 0.0;
+    for (int t = 0; t < n_t; t++) {
+      double v = evaluateTargetFraction(profile, t, x_eval);
+      s_cache[CACHE_NDENS_OFFSET + t] = v;
+      total += v;
+    }
+    // Zero-fill unused target slots so callers iterating up to n_targets
+    // (with n_targets > some prior call's n_targets) can't read stale data.
+    for (int t = n_t; t < MAX_TARGETS; t++) {
+      s_cache[CACHE_NDENS_OFFSET + t] = 0.0;
+      s_cache[CACHE_FRAC_OFFSET + t]  = 0.0;
+    }
+    double inv = (total > 0.0) ? (1.0 / total) : 0.0;
+    for (int t = 0; t < n_t; t++)
+      s_cache[CACHE_FRAC_OFFSET + t] = s_cache[CACHE_NDENS_OFFSET + t] * inv;
+
+    double ye = evaluateYe(profile, x_eval);
+    s_cache[CACHE_YE_OFFSET] = ye;
+
+    // num_e: matches electronNumberDensitySU3() logic but evaluates once.
+    double num_e = 0.0;
+    if (profile.has_num_e) {
+      num_e = evaluateNumE(profile, x_eval);
+    } else if (n_t == 1) {
+      num_e = s_cache[CACHE_NDENS_OFFSET + 0] * ye;
+    } else if (n_t > 1) {
+      num_e = s_cache[CACHE_NDENS_OFFSET + 0]; // proton density (n_e = n_p)
+    }
+    s_cache[CACHE_NUME_OFFSET] = num_e;
+  }
+}
+
+// ============================================================
 // Cooperative NC cascade computation for SU(3)
 //
 // Computes nc_factors[rho][alpha][e1] using the state in shared memory.
@@ -391,6 +464,7 @@ void rk4StepSU3(const double* __restrict__ y, double x, double h,
 //
 // s_state: [nrhos][ne][SU] — current state in shared memory
 // s_nc_factors: [nrhos][3][ne] — output nc_factors in shared memory
+// s_profile_cache: per-substage profile cache (see populateProfileCacheSU3)
 // ============================================================
 
 __device__
@@ -401,21 +475,16 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
                          const InteractionDataGPU& idata,
                          const GPUDensityProfileDevice& profile,
                          const double* __restrict__ s_state,  // shared: [nrhos][ne][9]
-                         double* __restrict__ s_nc_factors)    // shared: [nrhos][3][ne]
+                         double* __restrict__ s_nc_factors,    // shared: [nrhos][3][ne]
+                         const double* __restrict__ s_profile_cache)
 {
   constexpr int SU = 9;
 
-  // Evaluate precomputed target number densities from profile splines
-  // These were computed on the CPU using GetTargetNumberDensities() with squids::Const
-  double target_ndens[MAX_TARGETS];
-  double target_frac[MAX_TARGETS];
-  double total_ndens = 0.0;
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++) {
-    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
-    total_ndens += target_ndens[t];
-  }
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
-    target_frac[t] = (total_ndens > 0) ? target_ndens[t] / total_ndens : 0.0;
+  // Read precomputed target densities from per-substage profile cache.
+  // These were evaluated once at x_eval by populateProfileCacheSU3 and
+  // published via __syncthreads() before this function runs.
+  const double* target_ndens = s_profile_cache + CACHE_NDENS_OFFSET;
+  const double* target_frac  = s_profile_cache + CACHE_FRAC_OFFSET;
 
   // Each thread handles a subset of output energies e1
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
@@ -501,25 +570,18 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
                         const InteractionDataGPU& idata,
                         const GPUDensityProfileDevice& profile,
                         const double* __restrict__ s_state,
-                        double* __restrict__ s_nc_factors)
+                        double* __restrict__ s_nc_factors,
+                        const double* __restrict__ s_profile_cache)
 {
   constexpr int SU = 9;
   constexpr int tau_flavor = 2;
 
-  // Evaluate precomputed target number densities from profile splines
-  // (same as computeNCCascadeSU3, matching CPU's GetTargetNumberDensities()).
+  // Read precomputed target densities from per-substage profile cache
+  // (matches CPU's GetTargetNumberDensities() in src/nuSQuIDS.cpp:1061-1064).
   // invlen_CC_tau = sum_t target_ndens[t] * sigma_CC[t,rho,tau,en] and
-  // targetFractions[t] = target_ndens[t] / total_ndens, matching the CPU
-  // code in src/nuSQuIDS.cpp:1061-1064.
-  double target_ndens[MAX_TARGETS];
-  double tfrac[MAX_TARGETS];
-  double total_ndens = 0.0;
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++) {
-    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
-    total_ndens += target_ndens[t];
-  }
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
-    tfrac[t] = (total_ndens > 0.0) ? target_ndens[t] / total_ndens : 0.0;
+  // targetFractions[t] = target_ndens[t] / total_ndens.
+  const double* target_ndens = s_profile_cache + CACHE_NDENS_OFFSET;
+  const double* tfrac        = s_profile_cache + CACHE_FRAC_OFFSET;
 
   // Pass 1: Compute tau decay fluxes — each thread handles a subset of et
   // Use thread-local accumulation, then add to nc_factors atomically
@@ -635,22 +697,17 @@ void computeGlashowCascadeSU3(int ne, int nrhos, int numneu,
                                const GPUDensityProfileDevice& profile,
                                int NT_type,
                                const double* __restrict__ s_state,
-                               double* __restrict__ s_nc_factors)
+                               double* __restrict__ s_nc_factors,
+                               const double* __restrict__ s_profile_cache)
 {
   constexpr int SU = 9;
   // Glashow resonance only affects electron antineutrinos
   int rho = (NT_type == 3) ? 1 : 0; // antineutrino rho index
 
-  // Use precomputed electron number density (CPU side mirrors UpdateInteractions
-  // and handles isoscalar, p/n, body-composition, and nuclear-XS branches in
-  // squids::Const natural units). Falls back to the legacy isoscalar / p-n
-  // derivation when num_e is not provided.
-  double target_ndens[MAX_TARGETS];
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
-    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
-  double ye = evaluateYe(profile, x_eval);
-  double num_e = electronNumberDensitySU3(profile, x_eval,
-                                          target_ndens, idata.n_targets, ye);
+  // Read precomputed electron number density from per-substage profile cache.
+  // populateProfileCacheSU3() mirrors electronNumberDensitySU3() (isoscalar,
+  // p/n, body-composition, nuclear-XS branches) so this is a drop-in lookup.
+  double num_e = s_profile_cache[CACHE_NUME_OFFSET];
 
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
     double gr_factor = 0.0;
@@ -744,24 +801,32 @@ void refreshCascadeFactorsSU3(int ne, int nrhos, int numneu,
                               bool tauregeneration,
                               bool iglashow, int NT_type,
                               const double* __restrict__ s_state,
-                              double* __restrict__ s_nc_factors)
+                              double* __restrict__ s_nc_factors,
+                              double* __restrict__ s_profile_cache)
 {
+  // Refresh the per-substage profile cache for this x_eval. All cascade
+  // contributors and any subsequent computeDerivativeSU3 call at the same
+  // substage time read from this cache instead of recomputing target
+  // densities / ye / num_e per thread.
+  populateProfileCacheSU3(profile, x_eval, idata, s_profile_cache);
+  __syncthreads();
+
   computeNCCascadeSU3(ne, nrhos, numneu, x_eval, xini,
                       H0_array, b1_proj, idata, profile,
-                      s_state, s_nc_factors);
+                      s_state, s_nc_factors, s_profile_cache);
   __syncthreads();
 
   if (tauregeneration && idata.d_dNdE_tau_all) {
     computeTauRegenSU3(ne, nrhos, numneu, x_eval, xini,
                        H0_array, b1_proj, idata, profile,
-                       s_state, s_nc_factors);
+                       s_state, s_nc_factors, s_profile_cache);
     __syncthreads();
   }
 
   if (iglashow && idata.d_sigma_GR) {
     computeGlashowCascadeSU3(ne, nrhos, numneu, x_eval, xini,
                               H0_array, b1_proj, idata, profile,
-                              NT_type, s_state, s_nc_factors);
+                              NT_type, s_state, s_nc_factors, s_profile_cache);
     __syncthreads();
   }
 }
@@ -785,6 +850,7 @@ void computeDerivativeSU3(double x_eval, double xini,
                           const InteractionDataGPU& idata,
                           bool iglashow, int NT_type,
                           const double* __restrict__ nc_factors,
+                          const double* __restrict__ s_profile_cache,
                           double* __restrict__ deriv)
 {
   // Coherent term: reuse the proven computeHI_SU3 + iCommutator path
@@ -793,15 +859,14 @@ void computeDerivativeSU3(double x_eval, double xini,
   iCommutatorSU3(state, HI, deriv);  // deriv = i[ρ, HI]
 
   // Absorption: -ACommutator(Gamma, ρ)
-  // Evaluate precomputed target number densities from profile splines
-  double target_ndens[MAX_TARGETS];
-  for (int t = 0; t < idata.n_targets && t < MAX_TARGETS; t++)
-    target_ndens[t] = evaluateTargetFraction(profile, t, x_eval);
-
-  double ye_x = evaluateYe(profile, x_eval);
+  // Read target_ndens, ye, num_e from the per-substage profile cache (Perf #2).
+  // Caller guarantees the cache was populated for this x_eval.
+  const double* target_ndens = s_profile_cache + CACHE_NDENS_OFFSET;
+  double ye_x  = s_profile_cache[CACHE_YE_OFFSET];
+  double num_e = s_profile_cache[CACHE_NUME_OFFSET];
   double invlen[3];
   computeInvlenSU3(ie, rho, ne, target_ndens, idata,
-                   iglashow, NT_type, ye_x, profile, x_eval, invlen);
+                   iglashow, NT_type, ye_x, num_e, invlen);
 
   double evol_proj[3 * 9];
   evolveProjectorsSU3(x_eval, xini, H0, b1_proj, numneu, evol_proj);
@@ -822,70 +887,6 @@ void computeDerivativeSU3(double x_eval, double xini,
   #pragma unroll
   for (int c = 0; c < 9; c++)
     deriv[c] += -acomm[c] + F_int[c];
-}
-
-// ============================================================
-// RK4 step for SU(3) with full interactions
-//
-// dρ/dt = i[ρ, HI] - {Γ, ρ} + F_interactions
-//
-// Uses precomputed nc_factors (lagged from start of step).
-// ============================================================
-
-__device__
-void rk4StepSU3_interacting(const double* __restrict__ y, double x, double h,
-                             double xini,
-                             const double* __restrict__ H0,
-                             const double* __restrict__ b1_proj,
-                             const GPUDensityProfileDevice& profile,
-                             double HI_constants, bool is_antinu,
-                             int ie, int rho, int ne, int numneu,
-                             const InteractionDataGPU& idata,
-                             bool iglashow, int NT_type,
-                             const double* __restrict__ nc_factors,
-                             double* __restrict__ y_out)
-{
-  double k[9], acc[9], tmp[9];
-
-  // k1 = f(x, y)
-  computeDerivativeSU3(x, xini, y, H0, b1_proj, profile,
-                       HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, iglashow, NT_type, nc_factors, k);
-  #pragma unroll
-  for (int c = 0; c < 9; c++) {
-    acc[c] = k[c] / 6.0;
-    tmp[c] = y[c] + 0.5 * h * k[c];
-  }
-
-  // k2 = f(x + h/2, y + h/2*k1)
-  computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
-                       HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, iglashow, NT_type, nc_factors, k);
-  #pragma unroll
-  for (int c = 0; c < 9; c++) {
-    acc[c] += k[c] / 3.0;
-    tmp[c] = y[c] + 0.5 * h * k[c];
-  }
-
-  // k3 = f(x + h/2, y + h/2*k2)
-  computeDerivativeSU3(x + 0.5*h, xini, tmp, H0, b1_proj, profile,
-                       HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, iglashow, NT_type, nc_factors, k);
-  #pragma unroll
-  for (int c = 0; c < 9; c++) {
-    acc[c] += k[c] / 3.0;
-    tmp[c] = y[c] + h * k[c];
-  }
-
-  // k4 = f(x + h, y + h*k3)
-  computeDerivativeSU3(x + h, xini, tmp, H0, b1_proj, profile,
-                       HI_constants, is_antinu, ie, rho, ne, numneu,
-                       idata, iglashow, NT_type, nc_factors, k);
-  #pragma unroll
-  for (int c = 0; c < 9; c++) {
-    acc[c] += k[c] / 6.0;
-    y_out[c] = y[c] + h * acc[c];
-  }
 }
 
 // ============================================================
@@ -987,13 +988,15 @@ evolveKernelImpl(const PhysicsParams params,
   double* path_sf        = d_workspace_sf        + (size_t)path_idx * path_state_size;
 
   // Shared memory layout for interactions (when enabled):
-  // [0 .. nrhos*ne*SU)           : state buffer for cascade computation
-  // [nrhos*ne*SU .. + nrhos*3*ne): nc_factors output
-  // Dynamic shared memory is allocated in the kernel launch.
+  // [0 .. nrhos*ne*SU)                              : s_state          (cascade source state)
+  // [nrhos*ne*SU      .. + nrhos*3*ne)              : s_nc_factors     (cascade output)
+  // [+ nrhos*3*ne     .. + PROFILE_CACHE_DOUBLES)   : s_profile_cache  (per-substage profile cache, Perf #2)
+  // Dynamic shared memory is allocated in the kernel launch (see launchEvolve).
   extern __shared__ double smem[];
   const bool do_interactions = params.iinteraction && interaction_data.n_targets > 0;
-  double* s_state = smem;                          // [nrhos][ne][SU]
-  double* s_nc_factors = smem + nrhos * ne * SU;   // [nrhos][3][ne]
+  double* s_state         = smem;                                                    // [nrhos][ne][SU]
+  double* s_nc_factors    = smem + nrhos * ne * SU;                                  // [nrhos][3][ne]
+  double* s_profile_cache = smem + nrhos * ne * SU + nrhos * 3 * ne;                 // [PROFILE_CACHE_DOUBLES]
 
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
@@ -1018,7 +1021,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors);
+                                s_state, s_nc_factors, s_profile_cache);
     }
 
     double local_max_err = 0.0;
@@ -1214,7 +1217,7 @@ evolveKernelImpl(const PhysicsParams params,
                                params.HI_constants, is_antinu,
                                ie, rho, ne, NFLV,
                                interaction_data, params.iglashow, params.NT_type,
-                               s_nc_factors, k);
+                               s_nc_factors, s_profile_cache, k);
 
           #pragma unroll
           for (int c = 0; c < SU; c++)
@@ -1240,7 +1243,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1266,7 +1269,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors);
+                                s_state, s_nc_factors, s_profile_cache);
 
       double y_init_sh[MAX_INT_PAIRS][SU];
       double acc_sh[MAX_INT_PAIRS][SU];
@@ -1309,7 +1312,7 @@ evolveKernelImpl(const PhysicsParams params,
                                params.HI_constants, is_antinu,
                                ie, rho, ne, NFLV,
                                interaction_data, params.iglashow, params.NT_type,
-                               s_nc_factors, k);
+                               s_nc_factors, s_profile_cache, k);
 
           #pragma unroll
           for (int c = 0; c < SU; c++)
@@ -1334,7 +1337,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1358,7 +1361,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors);
+                                s_state, s_nc_factors, s_profile_cache);
 
       // Second sub-half-step: starts from st at time x + h_half, advances to x + h.
       // Reuse y_init_sh / acc_sh as the working storage for the second half.
@@ -1394,7 +1397,7 @@ evolveKernelImpl(const PhysicsParams params,
                                params.HI_constants, is_antinu,
                                ie, rho, ne, NFLV,
                                interaction_data, params.iglashow, params.NT_type,
-                               s_nc_factors, k);
+                               s_nc_factors, s_profile_cache, k);
 
           #pragma unroll
           for (int c = 0; c < SU; c++)
@@ -1419,7 +1422,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1535,12 +1538,15 @@ void launchEvolve(const PhysicsParams& params,
   constexpr int threads = EVOLVE_THREADS;
 
   // Compute shared memory for interaction cascade computation
-  // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
+  // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne] + s_profile_cache[PROFILE_CACHE_DOUBLES]
+  // The s_profile_cache (Perf #2) holds target_ndens, target_frac, ye, num_e
+  // evaluated once per substage time and broadcast to all threads.
   size_t shared_bytes = 0;
   if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
     int su_size = numneu * numneu;
     shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
-                          + params.nrhos * 3 * params.ne)        // nc_factors
+                          + params.nrhos * 3 * params.ne         // nc_factors
+                          + PROFILE_CACHE_DOUBLES)               // profile cache
                    * sizeof(double);
   }
 
