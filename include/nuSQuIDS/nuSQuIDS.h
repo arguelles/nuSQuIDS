@@ -496,7 +496,7 @@ protected:
     /// \brief Number of steps upon which the progress bar will be updated.
     int progressbar_loop = 100;
     /// \brief Time offset between SQuIDS time and Track(x).
-    double time_offset;
+    double time_offset = 0;
     /// \brief Force flavor projections to be positive.
     void PositivizeFlavors();
     /// \brief Set GSL differential cross section precision.
