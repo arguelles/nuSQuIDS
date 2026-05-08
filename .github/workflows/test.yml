@@ -1,0 +1,65 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  cpp_tests:
+    name: C++ test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgsl-dev libhdf5-dev pkg-config
+
+      - name: Build and install SQuIDS
+        run: |
+          git clone --depth 1 https://github.com/jsalvado/SQuIDS.git /tmp/squids
+          cd /tmp/squids
+          ./configure --prefix=$HOME/squids-install --with-gsl=/usr
+          make -j$(nproc)
+          make install
+
+      - name: Configure nuSQuIDS
+        run: |
+          ./configure \
+            --with-gsl=/usr \
+            --with-hdf5=/usr \
+            --with-squids=$HOME/squids-install
+
+      - name: Build nuSQuIDS
+        run: make -j$(nproc)
+
+      - name: Run test suite
+        run: |
+          cd test
+          bash run_tests
+
+      - name: Check for test failures
+        run: |
+          cd test
+          # run_tests exits 0 even on failures; parse Report.txt manually.
+          # Lines containing FAIL but not "FAIL (Expected)" are real failures.
+          FAILURES=$(grep "FAIL" Report.txt | grep -v "FAIL (Expected)" || true)
+          if [ -n "$FAILURES" ]; then
+            echo "::error::Test suite has failures"
+            echo "Failing tests:"
+            echo "$FAILURES"
+            echo "---"
+            cat Report.txt
+            exit 1
+          fi
+          tail -1 Report.txt
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: test/Report.txt
