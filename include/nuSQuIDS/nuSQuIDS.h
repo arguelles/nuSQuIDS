@@ -1144,9 +1144,11 @@ class nuSQUIDSAtm {
       r_gsl = gsl_rng_alloc (T_gsl);
 
       earth_atm = std::make_shared<EarthAtm>();
+      track_array.reserve(costh_array.extent(0));
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
 
+      nusq_array.reserve(costh_array.extent(0));
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_Body(earth_atm);
