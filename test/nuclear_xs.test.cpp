@@ -314,7 +314,7 @@ bool test_evolution_comparison() {
             double flux_nuc = nus_nuc.EvalFlavor(1, E, 0);
             double ratio = flux_pn > 1e-10 ? flux_nuc / flux_pn : 0.0;
 
-            std::cout << std::fixed << std::setprecision(4)
+            std::cout << std::fixed << std::setprecision(3)
                       << std::setw(15) << E / GeV
                       << std::setw(15) << flux_pn
                       << std::setw(15) << flux_nuc
