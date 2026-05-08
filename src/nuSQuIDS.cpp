@@ -3127,7 +3127,21 @@ iglashow(other.iglashow),
 positivization(other.positivization),
 progressbar(other.progressbar),
 progressbar_count(other.progressbar_count),
-progressbar_loop(other.progressbar_loop)
+progressbar_loop(other.progressbar_loop),
+allowConstantDensityOscillationOnlyEvolution(other.allowConstantDensityOscillationOnlyEvolution),
+time_offset(other.time_offset),
+gsl_int_precision(other.gsl_int_precision),
+evol_lowpass_cutoff(other.evol_lowpass_cutoff),
+evol_lowpass_scale(other.evol_lowpass_scale),
+enable_neutrino_sources(other.enable_neutrino_sources),
+current_composition(std::move(other.current_composition)),
+body_has_composition(other.body_has_composition),
+cached_target_fractions(std::move(other.cached_target_fractions)),
+target_fractions_valid(other.target_fractions_valid),
+current_external_flux(std::move(other.current_external_flux)),
+use_full_hamiltonian_for_projector_evolution(other.use_full_hamiltonian_for_projector_evolution),
+debug(other.debug),
+interactions_initialized(other.interactions_initialized)
 {
   other.inusquids=false; //other is no longer usable, since we stole its contents
 }
@@ -3173,6 +3187,20 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   progressbar = other.progressbar;
   progressbar_count = other.progressbar_count;
   progressbar_loop = other.progressbar_loop;
+  allowConstantDensityOscillationOnlyEvolution = other.allowConstantDensityOscillationOnlyEvolution;
+  time_offset = other.time_offset;
+  gsl_int_precision = other.gsl_int_precision;
+  evol_lowpass_cutoff = other.evol_lowpass_cutoff;
+  evol_lowpass_scale = other.evol_lowpass_scale;
+  enable_neutrino_sources = other.enable_neutrino_sources;
+  current_composition = std::move(other.current_composition);
+  body_has_composition = other.body_has_composition;
+  cached_target_fractions = std::move(other.cached_target_fractions);
+  target_fractions_valid = other.target_fractions_valid;
+  current_external_flux = std::move(other.current_external_flux);
+  use_full_hamiltonian_for_projector_evolution = other.use_full_hamiltonian_for_projector_evolution;
+  debug = other.debug;
+  interactions_initialized = other.interactions_initialized;
 
   NT = other.NT;
 
