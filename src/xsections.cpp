@@ -22,6 +22,7 @@
  ******************************************************************************/
 
 #include <nuSQuIDS/xsections.h>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -921,6 +922,9 @@ std::vector<PDGCode> CrossSectionLibrary::targets() const{
     result.reserve(data.size());
     for(const auto& pair : data)
         result.push_back(pair.first);
+    // Sort so the result is deterministic across stdlib implementations
+    // (data is an unordered_map; iteration order is libc++/libstdc++-dependent).
+    std::sort(result.begin(), result.end());
     return result;
 }
 

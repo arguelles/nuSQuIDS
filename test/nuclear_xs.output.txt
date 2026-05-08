@@ -16,15 +16,15 @@ WCG24 p/n library targets: 3
 
 WCG24 nuclear library targets: 10
   - 11
-  - 1000200400 (Z=20, A=40)
-  - 1000160320 (Z=16, A=32)
-  - 1000140280 (Z=14, A=28)
-  - 1000130270 (Z=13, A=27)
-  - 1000120240 (Z=12, A=24)
-  - 1000110230 (Z=11, A=23)
-  - 1000280580 (Z=28, A=58)
-  - 1000260560 (Z=26, A=56)
   - 1000080160 (Z=8, A=16)
+  - 1000110230 (Z=11, A=23)
+  - 1000120240 (Z=12, A=24)
+  - 1000130270 (Z=13, A=27)
+  - 1000140280 (Z=14, A=28)
+  - 1000160320 (Z=16, A=32)
+  - 1000200400 (Z=20, A=40)
+  - 1000260560 (Z=26, A=56)
+  - 1000280580 (Z=28, A=58)
 
 ✓ Cross section libraries loaded successfully
 
@@ -56,7 +56,7 @@ Creating nuSQUIDS with default cross sections...
 Default XS: nullptr (not yet initialized)
 
 Creating nuSQUIDS with nuclear cross sections...
-Nuclear XS targets after init: 11 1000200400 1000160320 1000140280 1000130270 1000120240 1000110230 1000280580 1000260560 1000080160 
+Nuclear XS targets after init: 11 1000080160 1000110230 1000120240 1000130270 1000140280 1000160320 1000200400 1000260560 1000280580 
 
 ✓ Target initialization test passed
 
@@ -70,11 +70,11 @@ Evolving with WCG24 nuclear cross sections...
 Comparing fluxes at various energies:
    Energy [GeV]       P/N flux   Nuclear flux          Ratio
 ------------------------------------------------------------
-        10.0000         0.7168         0.7063         0.9854
-       100.0000         1.2434         1.2292         0.9886
-      1000.0000         1.3544         1.3412         0.9903
-     10000.0000         1.0197         1.0192         0.9994
-    100000.0000         0.2834         0.3010         1.0620
+         10.000          0.717          0.706          0.985
+        100.000          1.243          1.229          0.989
+       1000.000          1.354          1.341          0.990
+      10000.000          1.020          1.019          0.999
+     100000.000          0.283          0.301          1.062
 
 ✓ Evolution comparison test passed
 
