@@ -294,7 +294,7 @@ void nuSQUIDS::PreDerive(double x){
   if(iinteraction){
     UpdateInteractions();
   }
-  if(progressbar and progressbar_count%progressbar_loop ==0 ){
+  if(progressbar && progressbar_loop > 0 && progressbar_count % progressbar_loop == 0){
     ProgressBar();
   }
   progressbar_count++;
