@@ -558,20 +558,8 @@ void computeNCCascadeSU3(int ne, int nrhos, int numneu,
 
 // ============================================================
 // Cooperative tau regeneration computation for SU(3)
-//
 // Two-pass O(ne²): production of taus from CC, then decay back to neutrinos.
 // Adds tau_lep and tau_hadlep contributions to nc_factors in-place.
-//
-// Perf #3: tau production flux at intermediate energy `et` is independent
-// of the final neutrino energy `e1` (et only constrains et > e1). The
-// previous single-pass implementation recomputed `tau_flux(et)` /
-// `taubar_flux(et)` once per (e1, et) pair, making the kernel O(ne^3) when
-// it should be O(ne^2). This refactor splits the work:
-//   Pass 1: cooperatively populate s_tau_flux[et] / s_taubar_flux[et] —
-//           each thread owns a subset of `et` and sums over `en > et`.
-//   Pass 2: each thread owns a subset of `e1` and reads the cached
-//           production fluxes to apply the decay distribution.
-// At ne=200 this is a ~ne/3 reduction in the dominant inner loop work.
 // ============================================================
 
 __device__
@@ -583,9 +571,7 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
                         const GPUDensityProfileDevice& profile,
                         const double* __restrict__ s_state,
                         double* __restrict__ s_nc_factors,
-                        const double* __restrict__ s_profile_cache,
-                        double* __restrict__ s_tau_flux,    // [ne]   (rho_src=0 production)
-                        double* __restrict__ s_taubar_flux) // [ne]   (rho_src=1 production)
+                        const double* __restrict__ s_profile_cache)
 {
   constexpr int SU = 9;
   constexpr int tau_flavor = 2;
@@ -597,83 +583,69 @@ void computeTauRegenSU3(int ne, int nrhos, int numneu,
   const double* target_ndens = s_profile_cache + CACHE_NDENS_OFFSET;
   const double* tfrac        = s_profile_cache + CACHE_FRAC_OFFSET;
 
-  // ----------------------------------------------------------------
-  // Pass 1: tau production flux per intermediate energy `et`.
-  // tau_flux[et]    = sum_{en > et, rho_src=0} (CC tau production at en) * dNdE_CC(en->et)
-  // taubar_flux[et] = sum_{en > et, rho_src=1} (CC tau production at en) * dNdE_CC(en->et)
-  // Each thread owns a subset of `et`. After this pass, a __syncthreads()
-  // publishes the tables to all threads for pass 2.
-  // ----------------------------------------------------------------
-  for (int et = threadIdx.x; et < ne; et += blockDim.x) {
-    double tau_flux = 0.0, taubar_flux = 0.0;
+  // Pass 1: Compute tau decay fluxes — each thread handles a subset of et
+  // Use thread-local accumulation, then add to nc_factors atomically
+  // tau_decay_fluxes[et] = sum_{en>et} nu_tau_flux(en) * invlen_CC_tau(en) * dE * dNdE_CC(en->et) * dEt
+  // For simplicity, we compute this as a single-pass per thread over the (en, e1) space.
 
-    // Accumulate tau production from all en > et
-    for (int en = et + 1; en < ne; en++) {
-      for (int rho_src = 0; rho_src < nrhos; rho_src++) {
-        // Extract tau neutrino flux at en
-        const double* H0_en = H0_array + (rho_src * ne + en) * SU;
-        const double* proj_en = b1_proj + rho_src * numneu * SU;
-        const double* state_en = s_state + (rho_src * ne + en) * SU;
-
-        // Evolve tau projector
-        double evol_tau[9];
-        {
-          const double s3 = 1.7320508075688772;
-          double dt = x_eval - xini;
-          double w12 = 2.0 * H0_en[4];
-          double w13 = H0_en[4] + s3 * H0_en[8];
-          double w23 = H0_en[4] - s3 * H0_en[8];
-          double CX0, SX0, CX1, SX1, CX2, SX2;
-          sincos(w12 * dt, &SX0, &CX0);
-          sincos(w13 * dt, &SX1, &CX1);
-          sincos(w23 * dt, &SX2, &CX2);
-          const double* p = proj_en + tau_flavor * SU;
-          evol_tau[0] = p[0]; evol_tau[1] = CX0*p[1] + SX0*p[3];
-          evol_tau[2] = CX1*p[2] + SX1*p[6]; evol_tau[3] = CX0*p[3] - SX0*p[1];
-          evol_tau[4] = p[4]; evol_tau[5] = CX2*p[5] - SX2*p[7];
-          evol_tau[6] = CX1*p[6] - SX1*p[2]; evol_tau[7] = CX2*p[7] + SX2*p[5];
-          evol_tau[8] = p[8];
-        }
-
-        double flux = suTrace3(evol_tau, state_en);
-        // invlen_CC_tau = sum_t target_ndens[t] * sigma_CC[t] in natural
-        // units, matching int_state.invlen_CC on CPU.
-        double invlen_CC = 0.0;
-        for (int t = 0; t < idata.n_targets; t++) {
-          size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, idata.rounded_ne);
-          invlen_CC += target_ndens[t] * idata.d_sigma_CC[idx];
-        }
-
-        double dEn = idata.d_delE[en - 1];
-        double dEt = idata.d_delE[et - 1];
-        // dNdE_CC[target][rho][tau][en][et]
-        for (int t = 0; t < idata.n_targets; t++) {
-          size_t dNdE_idx = dNdE_index(t, rho_src, tau_flavor, en, et,
-                                        idata.nrhos, 3, ne, idata.rounded_ne);
-          double contrib = flux * invlen_CC * dEn * idata.d_dNdE_CC[dNdE_idx] * dEt;
-          if (rho_src == 0) tau_flux += tfrac[t] * contrib;
-          else              taubar_flux += tfrac[t] * contrib;
-        }
-      }
-    }
-
-    s_tau_flux[et]    = tau_flux;
-    s_taubar_flux[et] = taubar_flux;
-  }
-  __syncthreads();
-
-  // ----------------------------------------------------------------
-  // Pass 2: decay tau fluxes into final neutrino energy `e1`.
-  // Each thread owns a subset of `e1` and sums decay distribution
-  // contributions over `et > e1`, reading the cached production from pass 1.
-  // ----------------------------------------------------------------
+  // Each thread handles a subset of final neutrino energies e1
   for (int e1 = threadIdx.x; e1 < ne; e1 += blockDim.x) {
     double tau_lep_nu = 0.0, tau_lep_nubar = 0.0;
     double tau_hadlep_nu = 0.0, tau_hadlep_nubar = 0.0;
 
+    // For each intermediate tau energy et > e1
     for (int et = e1 + 1; et < ne; et++) {
-      double tau_flux    = s_tau_flux[et];
-      double taubar_flux = s_taubar_flux[et];
+      double tau_flux = 0.0, taubar_flux = 0.0;
+
+      // Accumulate tau production from all en > et
+      for (int en = et + 1; en < ne; en++) {
+        for (int rho_src = 0; rho_src < nrhos; rho_src++) {
+          // Extract tau neutrino flux at en
+          const double* H0_en = H0_array + (rho_src * ne + en) * SU;
+          const double* proj_en = b1_proj + rho_src * numneu * SU;
+          const double* state_en = s_state + (rho_src * ne + en) * SU;
+
+          // Evolve tau projector
+          double evol_tau[9];
+          {
+            const double s3 = 1.7320508075688772;
+            double dt = x_eval - xini;
+            double w12 = 2.0 * H0_en[4];
+            double w13 = H0_en[4] + s3 * H0_en[8];
+            double w23 = H0_en[4] - s3 * H0_en[8];
+            double CX0, SX0, CX1, SX1, CX2, SX2;
+            sincos(w12 * dt, &SX0, &CX0);
+            sincos(w13 * dt, &SX1, &CX1);
+            sincos(w23 * dt, &SX2, &CX2);
+            const double* p = proj_en + tau_flavor * SU;
+            evol_tau[0] = p[0]; evol_tau[1] = CX0*p[1] + SX0*p[3];
+            evol_tau[2] = CX1*p[2] + SX1*p[6]; evol_tau[3] = CX0*p[3] - SX0*p[1];
+            evol_tau[4] = p[4]; evol_tau[5] = CX2*p[5] - SX2*p[7];
+            evol_tau[6] = CX1*p[6] - SX1*p[2]; evol_tau[7] = CX2*p[7] + SX2*p[5];
+            evol_tau[8] = p[8];
+          }
+
+          double flux = suTrace3(evol_tau, state_en);
+          // invlen_CC_tau = sum_t target_ndens[t] * sigma_CC[t] in natural
+          // units, matching int_state.invlen_CC on CPU.
+          double invlen_CC = 0.0;
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t idx = sigma_index(t, rho_src, tau_flavor, en, idata.nrhos, 3, idata.rounded_ne);
+            invlen_CC += target_ndens[t] * idata.d_sigma_CC[idx];
+          }
+
+          double dEn = idata.d_delE[en - 1];
+          double dEt = idata.d_delE[et - 1];
+          // dNdE_CC[target][rho][tau][en][et]
+          for (int t = 0; t < idata.n_targets; t++) {
+            size_t dNdE_idx = dNdE_index(t, rho_src, tau_flavor, en, et,
+                                          idata.nrhos, 3, ne, idata.rounded_ne);
+            double contrib = flux * invlen_CC * dEn * idata.d_dNdE_CC[dNdE_idx] * dEt;
+            if (rho_src == 0) tau_flux += tfrac[t] * contrib;
+            else              taubar_flux += tfrac[t] * contrib;
+          }
+        }
+      }
 
       // Decay contributions: tau → neutrinos at energy e1.
       // dNdE_tau_{all,lep}[rho][et][e1] with rounded_ne stride on the fast
@@ -830,9 +802,7 @@ void refreshCascadeFactorsSU3(int ne, int nrhos, int numneu,
                               bool iglashow, int NT_type,
                               const double* __restrict__ s_state,
                               double* __restrict__ s_nc_factors,
-                              double* __restrict__ s_profile_cache,
-                              double* __restrict__ s_tau_flux,
-                              double* __restrict__ s_taubar_flux)
+                              double* __restrict__ s_profile_cache)
 {
   // Refresh the per-substage profile cache for this x_eval. All cascade
   // contributors and any subsequent computeDerivativeSU3 call at the same
@@ -849,8 +819,7 @@ void refreshCascadeFactorsSU3(int ne, int nrhos, int numneu,
   if (tauregeneration && idata.d_dNdE_tau_all) {
     computeTauRegenSU3(ne, nrhos, numneu, x_eval, xini,
                        H0_array, b1_proj, idata, profile,
-                       s_state, s_nc_factors, s_profile_cache,
-                       s_tau_flux, s_taubar_flux);
+                       s_state, s_nc_factors, s_profile_cache);
     __syncthreads();
   }
 
@@ -1019,23 +988,15 @@ evolveKernelImpl(const PhysicsParams params,
   double* path_sf        = d_workspace_sf        + (size_t)path_idx * path_state_size;
 
   // Shared memory layout for interactions (when enabled):
-  // [0 .. nrhos*ne*SU)                                       : s_state          (cascade source state)
-  // [+ nrhos*ne*SU       .. + nrhos*3*ne)                    : s_nc_factors     (cascade output)
-  // [+ nrhos*3*ne        .. + PROFILE_CACHE_DOUBLES)         : s_profile_cache  (per-substage profile cache, Perf #2)
-  // [+ PROFILE_CACHE_DOUBLES .. + ne)                        : s_tau_flux       (Perf #3 tau production cache)
-  // [+ ne                .. + ne)                            : s_taubar_flux    (Perf #3 taubar production cache)
+  // [0 .. nrhos*ne*SU)                              : s_state          (cascade source state)
+  // [nrhos*ne*SU      .. + nrhos*3*ne)              : s_nc_factors     (cascade output)
+  // [+ nrhos*3*ne     .. + PROFILE_CACHE_DOUBLES)   : s_profile_cache  (per-substage profile cache, Perf #2)
   // Dynamic shared memory is allocated in the kernel launch (see launchEvolve).
   extern __shared__ double smem[];
   const bool do_interactions = params.iinteraction && interaction_data.n_targets > 0;
   double* s_state         = smem;                                                    // [nrhos][ne][SU]
   double* s_nc_factors    = smem + nrhos * ne * SU;                                  // [nrhos][3][ne]
   double* s_profile_cache = smem + nrhos * ne * SU + nrhos * 3 * ne;                 // [PROFILE_CACHE_DOUBLES]
-  // Perf #3: tau production fluxes per intermediate energy `et`. Allocated
-  // unconditionally when interactions are enabled; computeTauRegenSU3 is the
-  // only consumer and is only called when params.tauregeneration is set, so
-  // these slots cost shared memory but no extra work when tau regen is off.
-  double* s_tau_flux      = smem + nrhos * ne * SU + nrhos * 3 * ne + PROFILE_CACHE_DOUBLES;       // [ne]
-  double* s_taubar_flux   = smem + nrhos * ne * SU + nrhos * 3 * ne + PROFILE_CACHE_DOUBLES + ne;  // [ne]
 
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
@@ -1060,8 +1021,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors, s_profile_cache,
-                                s_tau_flux, s_taubar_flux);
+                                s_state, s_nc_factors, s_profile_cache);
     }
 
     double local_max_err = 0.0;
@@ -1283,8 +1243,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors, s_profile_cache,
-                                    s_tau_flux, s_taubar_flux);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1310,8 +1269,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors, s_profile_cache,
-                                s_tau_flux, s_taubar_flux);
+                                s_state, s_nc_factors, s_profile_cache);
 
       double y_init_sh[MAX_INT_PAIRS][SU];
       double acc_sh[MAX_INT_PAIRS][SU];
@@ -1379,8 +1337,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors, s_profile_cache,
-                                    s_tau_flux, s_taubar_flux);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1404,8 +1361,7 @@ evolveKernelImpl(const PhysicsParams params,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
-                                s_state, s_nc_factors, s_profile_cache,
-                                s_tau_flux, s_taubar_flux);
+                                s_state, s_nc_factors, s_profile_cache);
 
       // Second sub-half-step: starts from st at time x + h_half, advances to x + h.
       // Reuse y_init_sh / acc_sh as the working storage for the second half.
@@ -1466,8 +1422,7 @@ evolveKernelImpl(const PhysicsParams params,
                                     H0_array, b1_proj, interaction_data,
                                     path.profile, params.tauregeneration,
                                     params.iglashow, params.NT_type,
-                                    s_state, s_nc_factors, s_profile_cache,
-                                    s_tau_flux, s_taubar_flux);
+                                    s_state, s_nc_factors, s_profile_cache);
         }
       }
 
@@ -1583,21 +1538,15 @@ void launchEvolve(const PhysicsParams& params,
   constexpr int threads = EVOLVE_THREADS;
 
   // Compute shared memory for interaction cascade computation
-  // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne]
-  //       + s_profile_cache[PROFILE_CACHE_DOUBLES]
-  //       + s_tau_flux[ne] + s_taubar_flux[ne]   (Perf #3 tau production cache)
+  // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne] + s_profile_cache[PROFILE_CACHE_DOUBLES]
   // The s_profile_cache (Perf #2) holds target_ndens, target_frac, ye, num_e
   // evaluated once per substage time and broadcast to all threads.
-  // The s_tau_flux / s_taubar_flux pair (Perf #3) caches tau production at each
-  // intermediate energy `et` so the e1-decay pass becomes O(ne^2) instead of
-  // recomputing tau production redundantly per (e1, et) pair.
   size_t shared_bytes = 0;
   if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
     int su_size = numneu * numneu;
     shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
                           + params.nrhos * 3 * params.ne         // nc_factors
-                          + PROFILE_CACHE_DOUBLES                // profile cache
-                          + 2 * params.ne)                       // tau_flux + taubar_flux
+                          + PROFILE_CACHE_DOUBLES)               // profile cache
                    * sizeof(double);
   }
 
