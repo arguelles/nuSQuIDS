@@ -67,14 +67,24 @@ REGISTRY = {
 
     # Atmospheric production profiles (~9 MB)
     "atmos_prod/PROD_MODEL_MCEQ.dat": "9bdb755495842c155844e7651b60bef716f478e463016acd98c60581ed79bc06",
+
+    # Astrophysical body models (~590 KB total)
+    "astro/EARTH_MODEL_PREM.dat": "4c9be4a3e2ea39b8cfb7ea66e84a5015131fc682d3642f71e6a56abf902e417b",
+    "astro/EARTH_MODEL_PREM_wIso.dat": "b4aa871b95c84589b8f6375ea71a9411f1af3b3e9b1c351ce685fc1d195a9cc4",
+    "astro/bs05_agsop.dat": "bc6fc1df9fd000609adcd581465d6b7809827d0229357fb6b0ab87e0cefb9eff",
+    "astro/bs05op-org.dat": "6429ba8ad575aed84687122a03472572ea61fae60b8544f9545e750311727e6a",
+    "astro/bs05op.dat": "161b0c4b1c8e3769000269ec47c824e4d58e82e79c8a9adcfecdc7a64468c74d",
+    "astro/nele_bs05op.dat": "3aac4f4c561e34ce7991efbc1a6e612281c8f322d2ee8ff6b7ee318c5c658a22",
 }
 
 # Group files by category for selective downloads
 FILE_GROUPS = {
+    "essential": [f for f in REGISTRY if "csms" in f or "astro" in f],
     "csms": [f for f in REGISTRY if "csms" in f],
     "nusigma": [f for f in REGISTRY if "nusigma" in f],
     "wcg24": [f for f in REGISTRY if "wcg24" in f],
     "atmos": [f for f in REGISTRY if "atmos_prod" in f],
+    "astro": [f for f in REGISTRY if "astro" in f],
     "all": list(REGISTRY.keys()),
 }
 
@@ -180,11 +190,13 @@ def fetch_group(group="all", progressbar=True):
     ----------
     group : str
         Name of the file group to download. Options:
-        - "csms": CSMS cross sections (~50MB)
+        - "essential": CSMS cross sections + body models (~51MB, minimum for basic use)
+        - "csms": CSMS cross sections only (~50MB)
         - "nusigma": NuSigma cross sections (~30MB)
         - "wcg24": WCG24 nuclear cross sections (~200MB)
         - "atmos": Atmospheric production profiles (~5MB)
-        - "all": All data files (~285MB)
+        - "astro": Astrophysical body models (~1MB)
+        - "all": All data files (~290MB)
     progressbar : bool
         Whether to show a progress bar during download
 
@@ -308,9 +320,9 @@ def main():
     parser.add_argument(
         "group",
         nargs="?",
-        default="csms",
+        default="essential",
         choices=list(FILE_GROUPS.keys()),
-        help="Which data files to download (default: csms)"
+        help="Which data files to download (default: essential = CSMS cross-sections + body models)"
     )
     parser.add_argument(
         "--info",

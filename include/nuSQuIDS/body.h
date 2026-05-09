@@ -889,6 +889,20 @@ protected:
     std::vector<std::vector<TriCubicInterpolator>> flux_interpolators;
 
 public:
+    /// \brief Evaluate the raw interpolator for a given flavor, rho, and coordinates.
+    /// @param flv Flavor index (0=nue, 1=numu, 2=nutau)
+    /// @param rho 0=neutrino, 1=antineutrino
+    /// @param cz cosine zenith
+    /// @param height_cm height in cm
+    /// @param energy_GeV energy in GeV
+    double EvalProductionRate(unsigned int flv, unsigned int rho,
+                              double cz, double height_cm, double energy_GeV) const {
+      return flux_interpolators[flv][rho](cz, height_cm, energy_GeV);
+    }
+
+    /// \brief Get the number of flavors in the production data
+    unsigned int GetNumProductionFlavors() const { return num_flavors; }
+
     /// \brief Default constructor using supplied MCEq production profile.
     EmittingEarthAtm();
 

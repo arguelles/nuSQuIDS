@@ -294,7 +294,7 @@ void nuSQUIDS::PreDerive(double x){
   if(iinteraction){
     UpdateInteractions();
   }
-  if(progressbar and progressbar_count%progressbar_loop ==0 ){
+  if(progressbar && progressbar_loop > 0 && progressbar_count % progressbar_loop == 0){
     ProgressBar();
   }
   progressbar_count++;
@@ -3262,6 +3262,9 @@ void nuSQUIDS::Set_Basis(Basis b){
 
 nuSQUIDS::~nuSQUIDS(){}
 
+// Member-initializer order MUST match the declaration order in nuSQuIDS.h
+// (otherwise -Wreorder fires and runtime init order is misleading at the
+// source level). Add new members in their declared position, not at the end.
 nuSQUIDS::nuSQUIDS(nuSQUIDS&& other):
 squids::SQuIDS(std::move(other)),
 basis(other.basis),
@@ -3282,23 +3285,44 @@ H0_array(std::move(other.H0_array)),
 HI_constants(other.HI_constants),
 current_density(other.current_density),
 current_ye(other.current_ye),
+current_composition(std::move(other.current_composition)),
+body_has_composition(other.body_has_composition),
+cached_target_fractions(std::move(other.cached_target_fractions)),
+target_fractions_valid(other.target_fractions_valid),
+current_external_flux(std::move(other.current_external_flux)),
 b0_proj(std::move(other.b0_proj)),
 b1_proj(std::move(other.b1_proj)),
 evol_b0_proj(std::move(other.evol_b0_proj)),
 evol_b1_proj(std::move(other.evol_b1_proj)),
+interaction_cache(std::move(other.interaction_cache)),
+interaction_cache_store(std::move(other.interaction_cache_store)),
+interaction_cache_store_size(other.interaction_cache_store_size),
+nc_factors(std::move(other.nc_factors)),
+tau_hadlep_decays(std::move(other.tau_hadlep_decays)),
+tau_lep_decays(std::move(other.tau_lep_decays)),
+gr_factors(std::move(other.gr_factors)),
+use_full_hamiltonian_for_projector_evolution(other.use_full_hamiltonian_for_projector_evolution),
+debug(other.debug),
 inusquids(other.inusquids),
 ibody(other.ibody),
 ienergy(other.ienergy),
 itrack(other.itrack),
 istate(other.istate),
 iinteraction(other.iinteraction),
+interactions_initialized(other.interactions_initialized),
 ioscillations(other.ioscillations),
 tauregeneration(other.tauregeneration),
 iglashow(other.iglashow),
 positivization(other.positivization),
+allowConstantDensityOscillationOnlyEvolution(other.allowConstantDensityOscillationOnlyEvolution),
 progressbar(other.progressbar),
 progressbar_count(other.progressbar_count),
-progressbar_loop(other.progressbar_loop)
+progressbar_loop(other.progressbar_loop),
+time_offset(other.time_offset),
+gsl_int_precision(other.gsl_int_precision),
+evol_lowpass_cutoff(other.evol_lowpass_cutoff),
+evol_lowpass_scale(other.evol_lowpass_scale),
+enable_neutrino_sources(other.enable_neutrino_sources)
 {
   other.inusquids=false; //other is no longer usable, since we stole its contents
 }
@@ -3309,13 +3333,17 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
 
   squids::SQuIDS::operator=(std::move(other));
 
+  // Order matches declaration order in nuSQuIDS.h. The order isn't required
+  // for correctness here (assignment, not init), but keeping it parallel to
+  // the move ctor makes new-member maintenance harder to get wrong.
   basis = other.basis;
   numneu = other.numneu;
   ne = other.ne;
   E_range = std::move(other.E_range);
   delE = std::move(other.delE);
-  ncs = other.ncs;
-  tdc = other.tdc;
+  ncs = std::move(other.ncs);
+  tdc = std::move(other.tdc);
+  NT = other.NT;
   int_struct = std::move(other.int_struct);
   int_state = std::move(other.int_state);
   positivization_scale = other.positivization_scale;
@@ -3326,26 +3354,44 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   HI_constants = other.HI_constants;
   current_density = other.current_density;
   current_ye = other.current_ye;
+  current_composition = std::move(other.current_composition);
+  body_has_composition = other.body_has_composition;
+  cached_target_fractions = std::move(other.cached_target_fractions);
+  target_fractions_valid = other.target_fractions_valid;
+  current_external_flux = std::move(other.current_external_flux);
   b0_proj = std::move(other.b0_proj);
   b1_proj = std::move(other.b1_proj);
   evol_b0_proj = std::move(other.evol_b0_proj);
   evol_b1_proj = std::move(other.evol_b1_proj);
-
+  interaction_cache = std::move(other.interaction_cache);
+  interaction_cache_store = std::move(other.interaction_cache_store);
+  interaction_cache_store_size = other.interaction_cache_store_size;
+  nc_factors = std::move(other.nc_factors);
+  tau_hadlep_decays = std::move(other.tau_hadlep_decays);
+  tau_lep_decays = std::move(other.tau_lep_decays);
+  gr_factors = std::move(other.gr_factors);
+  use_full_hamiltonian_for_projector_evolution = other.use_full_hamiltonian_for_projector_evolution;
+  debug = other.debug;
   inusquids = other.inusquids;
   ibody = other.ibody;
   ienergy = other.ienergy;
   itrack = other.itrack;
   istate = other.istate;
   iinteraction = other.iinteraction;
+  interactions_initialized = other.interactions_initialized;
   ioscillations = other.ioscillations;
   tauregeneration = other.tauregeneration;
   iglashow = other.iglashow;
   positivization = other.positivization;
+  allowConstantDensityOscillationOnlyEvolution = other.allowConstantDensityOscillationOnlyEvolution;
   progressbar = other.progressbar;
   progressbar_count = other.progressbar_count;
   progressbar_loop = other.progressbar_loop;
-
-  NT = other.NT;
+  time_offset = other.time_offset;
+  gsl_int_precision = other.gsl_int_precision;
+  evol_lowpass_cutoff = other.evol_lowpass_cutoff;
+  evol_lowpass_scale = other.evol_lowpass_scale;
+  enable_neutrino_sources = other.enable_neutrino_sources;
 
   // initial nusquids object render useless
   other.inusquids = false;
