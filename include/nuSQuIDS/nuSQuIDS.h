@@ -496,7 +496,7 @@ protected:
     /// \brief Number of steps upon which the progress bar will be updated.
     int progressbar_loop = 100;
     /// \brief Time offset between SQuIDS time and Track(x).
-    double time_offset;
+    double time_offset = 0;
     /// \brief Force flavor projections to be positive.
     void PositivizeFlavors();
     /// \brief Set GSL differential cross section precision.
@@ -1144,9 +1144,11 @@ class nuSQUIDSAtm {
       r_gsl = gsl_rng_alloc (T_gsl);
 
       earth_atm = std::make_shared<EarthAtm>();
+      track_array.reserve(costh_array.extent(0));
       for(double costh : costh_array)
         track_array.push_back(std::make_shared<EarthAtm::Track>(earth_atm->MakeTrackWithCosine(costh)));
 
+      nusq_array.reserve(costh_array.extent(0));
       for(unsigned int i = 0; i < costh_array.extent(0); i++){
         nusq_array.emplace_back(args...);
         nusq_array.back().Set_Body(earth_atm);
