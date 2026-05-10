@@ -40,7 +40,16 @@ void launchSetInitialStates(const double* d_flux_data,
                             double* d_states,
                             int n_paths, cudaStream_t stream);
 
-/// Main evolution kernel — full propagation per path with adaptive RK4 solver
+/// Main evolution kernel — full propagation per path with adaptive solver.
+///
+/// Oscillation-only: classic RK4 + step-doubling Richardson extrapolation.
+/// Interactions:     Dormand-Prince 5(4) (DOPRI5) embedded pair with FSAL.
+///
+/// `d_workspace_k` is an array of 7 device pointers, each sized
+/// n_paths*nrhos*ne*SU doubles, used to hold k1..k7 stage derivatives for
+/// the interaction-path DOPRI5 integrator. May be nullptr when interactions
+/// are disabled (the kernel will not access them in that case).
+///
 /// Grid: [1, n_paths] x 128 threads per block
 void launchEvolve(const PhysicsParams& params,
                   const PathDeviceData* d_paths,
@@ -49,6 +58,7 @@ void launchEvolve(const PhysicsParams& params,
                   const InteractionDataGPU* d_interaction_data,
                   double* d_workspace_corrected,
                   double* d_workspace_sf,
+                  double* const* d_workspace_k,   ///< [7] k-stage slabs (interaction path)
                   const SolverConfig& solver_config,
                   double* d_states,
                   int n_paths, int numneu,

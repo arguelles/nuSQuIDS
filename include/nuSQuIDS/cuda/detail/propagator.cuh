@@ -66,12 +66,19 @@ private:
   double* d_states_;           ///< State data on device
   PathDeviceData* d_paths_;    ///< Per-path data on device
 
-  // Persistent RK4 staging workspaces (grow-on-demand, freed in destructor).
+  // Persistent integrator staging workspaces (grow-on-demand, freed in destructor).
   // Sized n_paths * nrhos * ne * SU doubles each; replace the per-thread
   // corrected_buf/sf_buf locals that dominated stack spill.
+  //
+  // For oscillation-only (RK4 + Richardson) only `corrected` and `sf` are used.
+  // For the interaction path we use Dormand-Prince 5(4) and need 7 additional
+  // slabs to hold k1..k7. They are allocated lazily the first time an
+  // interaction batch is evolved.
   double* d_workspace_corrected_;
   double* d_workspace_sf_;
+  double* d_workspace_k_[7];     ///< k1..k7 stage derivatives (DOPRI5)
   size_t workspace_size_bytes_;
+  size_t workspace_k_size_bytes_; ///< current size of each k slab
 
   // Shared data (persists across batches)
   double* d_H0_array_;

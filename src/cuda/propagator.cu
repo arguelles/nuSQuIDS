@@ -174,6 +174,7 @@ Propagator::Propagator(int device_id, int batch_size_limit)
     d_workspace_corrected_(nullptr),
     d_workspace_sf_(nullptr),
     workspace_size_bytes_(0),
+    workspace_k_size_bytes_(0),
     d_H0_array_(nullptr),
     d_b1_proj_(nullptr),
     d_spline_buffer_(nullptr),
@@ -181,6 +182,8 @@ Propagator::Propagator(int device_id, int batch_size_limit)
     shared_data_uploaded_(false) {
 
   NUSQUIDS_CUDA_CHECK(cudaSetDevice(device_id_));
+
+  for (int i = 0; i < 7; i++) d_workspace_k_[i] = nullptr;
 
   // The interacting kernel uses deep call stacks (anticommutator, cascade, etc.)
   // Default thread stack is 1024 bytes; we need ~4KB for the full interaction chain
@@ -203,6 +206,9 @@ Propagator::~Propagator() {
   if (d_spline_buffer_) cudaFree(d_spline_buffer_);
   if (d_workspace_corrected_) cudaFree(d_workspace_corrected_);
   if (d_workspace_sf_) cudaFree(d_workspace_sf_);
+  for (int i = 0; i < 7; i++) {
+    if (d_workspace_k_[i]) { cudaFree(d_workspace_k_[i]); d_workspace_k_[i] = nullptr; }
+  }
   freeInteractionData(interaction_data_);
   cudaStreamDestroy(stream_);
   cudaEventDestroy(event_);
@@ -267,6 +273,19 @@ void Propagator::allocateBatch(int n_paths) {
     NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_workspace_corrected_, state_bytes));
     NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_workspace_sf_,        state_bytes));
     workspace_size_bytes_ = state_bytes;
+  }
+
+  // DOPRI5 stage-derivative slabs (k1..k7) for the interaction path.
+  // Same shape as the state workspace. Allocated lazily and only when the
+  // current run actually has interactions enabled with cross-section data;
+  // for oscillation-only or vacuum-only batches these stay nullptr.
+  bool need_k_slabs = params_.iinteraction && interaction_data_.n_targets > 0;
+  if (need_k_slabs && state_bytes > workspace_k_size_bytes_) {
+    for (int i = 0; i < 7; i++) {
+      if (d_workspace_k_[i]) cudaFree(d_workspace_k_[i]);
+      NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_workspace_k_[i], state_bytes));
+    }
+    workspace_k_size_bytes_ = state_bytes;
   }
 }
 
@@ -424,6 +443,7 @@ void Propagator::evolveBatch(const std::vector<GPUDensityProfile>& profiles,
   launchEvolve(params_, d_paths_, d_H0_array_, d_b1_proj_,
                int_data_ptr,
                d_workspace_corrected_, d_workspace_sf_,
+               d_workspace_k_,
                solver_config_, d_states_, n_paths, params_.numneu, stream_);
 
   // Download final states
