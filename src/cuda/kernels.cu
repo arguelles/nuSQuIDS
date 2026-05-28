@@ -914,13 +914,6 @@ evolveKernelImpl(const PhysicsParams params,
                  const InteractionDataGPU* __restrict__ interaction_data_ptr,
                  double* __restrict__ d_workspace_corrected,
                  double* __restrict__ d_workspace_sf,
-                 double* __restrict__ d_workspace_k1,
-                 double* __restrict__ d_workspace_k2,
-                 double* __restrict__ d_workspace_k3,
-                 double* __restrict__ d_workspace_k4,
-                 double* __restrict__ d_workspace_k5,
-                 double* __restrict__ d_workspace_k6,
-                 double* __restrict__ d_workspace_k7,
                  const SolverConfig solver_config,
                  double* __restrict__ states,
                  int n_paths)
@@ -985,31 +978,14 @@ evolveKernelImpl(const PhysicsParams params,
   double x = xini;
   int step_count = 0;
 
-  // Per-path slices of the persistent integrator staging workspaces.
+  // Per-path slices of the persistent RK4 staging workspace.
   // Layout: [path_idx * nrhos * ne * SU + (rho * ne + ie) * SU + c].
   // This replaces the former per-thread corrected_buf[MAX_PAIRS*SU] +
   // sf_buf[MAX_PAIRS*SU] locals, which were the dominant source of stack
   // spill and register pressure.
-  //
-  // Oscillation-only path uses path_corrected and path_sf (RK4 + Richardson).
-  // Interaction path additionally uses path_k[0..6] for DOPRI5 stage
-  // derivatives and path_sf as scratch for the candidate y_{n+1}.
   const int path_state_size = nrhos * ne * SU;
   double* path_corrected = d_workspace_corrected + (size_t)path_idx * path_state_size;
   double* path_sf        = d_workspace_sf        + (size_t)path_idx * path_state_size;
-  double* path_k[7];
-  if (d_workspace_k1) {
-    path_k[0] = d_workspace_k1 + (size_t)path_idx * path_state_size;
-    path_k[1] = d_workspace_k2 + (size_t)path_idx * path_state_size;
-    path_k[2] = d_workspace_k3 + (size_t)path_idx * path_state_size;
-    path_k[3] = d_workspace_k4 + (size_t)path_idx * path_state_size;
-    path_k[4] = d_workspace_k5 + (size_t)path_idx * path_state_size;
-    path_k[5] = d_workspace_k6 + (size_t)path_idx * path_state_size;
-    path_k[6] = d_workspace_k7 + (size_t)path_idx * path_state_size;
-  } else {
-    #pragma unroll
-    for (int i = 0; i < 7; i++) path_k[i] = nullptr;
-  }
 
   // Shared memory layout for interactions (when enabled):
   // [0 .. nrhos*ne*SU)                              : s_state          (cascade source state)
@@ -1022,15 +998,6 @@ evolveKernelImpl(const PhysicsParams params,
   double* s_nc_factors    = smem + nrhos * ne * SU;                                  // [nrhos][3][ne]
   double* s_profile_cache = smem + nrhos * ne * SU + nrhos * 3 * ne;                 // [PROFILE_CACHE_DOUBLES]
 
-  // FSAL (First-Same-As-Last) flag for the DOPRI5 interaction-path integrator.
-  // When valid, path_k[0] (== k1 of the upcoming attempted step) already holds
-  // f(t_n, y_n) — either as the previous accepted step's k7 or as k1 of the
-  // previous (rejected) attempt at the same (t_n, y_n). Invariant: path_k[0]
-  // is consistent with the *current* (t_n, y_n) iff fsal_valid == true.
-  __shared__ bool fsal_valid;
-  if (threadIdx.x == 0) fsal_valid = false;
-  __syncthreads();
-
   while (x < xend - 1.0e-15 * total_length && step_count < solver_config.max_steps) {
     double h_try = fmin(h, xend - x);
     if (h_try <= 0.0) break;
@@ -1042,20 +1009,10 @@ evolveKernelImpl(const PhysicsParams params,
     // at the start of the step and held constant during sub-steps.
     // The adaptive step controller ensures this approximation is bounded.
     // ============================================================
-    if (do_interactions && !fsal_valid) {
+    if (do_interactions) {
       // Load current state to shared memory and refresh cascade factors at
-      // time x. This is the source-state for stage 1 (k1) of the upcoming
-      // DOPRI5 step.
-      //
-      // FSAL fast path: when fsal_valid is true, both s_state and
-      // s_nc_factors are already consistent with (x, y_n):
-      //  - on accept: stage 7 left s_state = y_{n+1} = new y_n, with
-      //               cascade factors refreshed at (x_old + h, y_{n+1}) =
-      //               (x_new, y_n_new), and path_k[0] holds k1 = stage 7's k7.
-      //  - on reject: my_state never changed; we re-run with smaller h, so
-      //               stage 1's k = f(x, y_n) is unchanged and path_k[0]
-      //               is still valid. The substage chain that follows
-      //               will overwrite s_state and s_nc_factors anyway.
+      // time x. This is the source-state for sf's k1 substage (and for
+      // sh's k1 after the explicit reset between sf and sh below).
       for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
         s_state[idx] = my_state[idx];
       __syncthreads();
@@ -1109,43 +1066,36 @@ evolveKernelImpl(const PhysicsParams params,
         }
       }
     } else {
-      // ---- Interaction path: Dormand-Prince 5(4) embedded pair (DOPRI5).
+      // ---- Interaction path: substage-refresh RK4 (Hypothesis 2 / Option B).
       //
-      //      Replaces the previous step-doubling RK4 + Richardson extrapolation
-      //      scheme. DOPRI5 produces a 5th-order solution and a 4th-order
-      //      embedded estimate from the same 7 stage derivatives, so we get
-      //      both `y_{n+1}` and the truncation-error estimate from a single
-      //      pass — no sf/sh redo. The First-Same-As-Last (FSAL) property
-      //      lets us reuse stage 7's derivative as the next accepted step's
-      //      stage 1, saving one RHS evaluation per accepted step.
+      //      The CPU's adaptive RKF45 stepper calls PreDerive at *every* RK
+      //      substage, so nc_factors / tau_lep_decays / tau_hadlep_decays /
+      //      gr_factors are recomputed from the substage state each time
+      //      the RHS is evaluated. Option F (commit 1f619ec) restored
+      //      Richardson consistency by refreshing once at x+h/2, but it
+      //      still froze the cascade source factors across all 4 RK4 sub-
+      //      stages of every step. For a two-stage cascade (CC produces
+      //      tau, decay produces secondaries) that frozen-source bias is
+      //      the dominant remaining error on Test 2 (tau regen, ~10% rel,
+      //      abs error ~0.40 unaffected by Option F).
       //
-      //      The 7 stage derivatives k1..k7 live in per-path slabs of the
-      //      Propagator-owned d_workspace_k1..k7 (sized like path_sf), so
-      //      they don't bloat per-thread state. Each thread loads k_j[slot]
-      //      from global memory when needed and writes its own k_i[slot]
-      //      directly to global memory after the substage compute. This
-      //      keeps register pressure close to what we had with two RK4
-      //      passes (which already needed sf and sh staging).
-      //
-      //      Cascade refresh count drops from 12 (Richardson) to 7 per
-      //      attempted step (1 start-of-step + 5 substage times for stages
-      //      2..6 + 1 at endpoint for FSAL stage 7). The endpoint refresh
-      //      uses the 5th-order y_{n+1}, so on accept we can reuse k7 as
-      //      the next step's k1 without recomputing cascade factors at t_n.
-      //
-      //      DOPRI5 Butcher tableau:
-      //        c[i] : substage time fractions
-      //        a[i] : input weights (k1..k_{i} on stage i+1)
-      //        b    : 5th-order weights — applied to k1..k6 for y_{n+1}
-      //                (k7 weight is 0; k7 only feeds next step's FSAL)
-      //        e    : (b - b_hat) — error weights, applied to all 7 k's
+      //      Here we march sf (full step h) and sh (two half-steps h/2)
+      //      substage-by-substage, refreshing s_nc_factors cooperatively
+      //      from the substage state at each substage time. Both branches
+      //      use the same algorithm, so Richardson consistency is preserved.
+      //      Cost: ~6x the cascade refreshes per macro step relative to
+      //      Option F's 2x; correctness over perf, Perf #2/#3 will reclaim
+      //      throughput.
 
-      // Per-thread storage. With EVOLVE_THREADS=128 and nrhos<=2 this covers
-      // ne up to 256. For ne=200 that's MAX_INT_PAIRS=4 per thread; for
-      // typical interaction tests ne<=40, MAX_INT_PAIRS=1 actually suffices
-      // but we keep 4 for safety.
+      // Per-thread storage for the at-most MAX_INT_PAIRS (ie, rho) slots
+      // each thread owns. With EVOLVE_THREADS=128 and nrhos<=2, MAX_INT_PAIRS=4
+      // covers ne up to 256 (well above the ne<=40 used by interaction tests).
+      // y_init/acc/sf_local/st_local hold per-slot working state across the
+      // cooperative substage syncs.
       constexpr int MAX_INT_PAIRS = 4;
 
+      // Build the slot list for this thread once. n_slots is the number of
+      // (ie, rho) pairs actually owned.
       int slot_ie[MAX_INT_PAIRS];
       int slot_rho[MAX_INT_PAIRS];
       int n_slots = 0;
@@ -1158,82 +1108,93 @@ evolveKernelImpl(const PhysicsParams params,
           n_slots++;
         }
       }
+      // Compile-time/runtime safety: if a thread tried to own more slots
+      // than MAX_INT_PAIRS we'd silently drop work. Trip a printf so it
+      // shows up in test output rather than producing wrong physics.
       if (n_slots > MAX_INT_PAIRS) {
         if (threadIdx.x == 0 && blockIdx.x == 0 && step_count == 0) {
-          printf("ERROR: DOPRI5 kernel needs MAX_INT_PAIRS>=%d "
+          printf("ERROR: substage-refresh kernel needs MAX_INT_PAIRS>=%d "
                  "(ne=%d, nrhos=%d, blockDim=%d). Falling back will give "
                  "wrong results.\n", n_slots, ne, nrhos, blockDim.x);
         }
         n_slots = MAX_INT_PAIRS;
       }
 
-      // Per-thread y_init holds the start-of-step state y_n for each slot.
-      // Reading y_n[slot] from global my_state once at the top of the macro
-      // step is cheaper than reading it 6 times during stage assembly.
-      double y_init[MAX_INT_PAIRS][SU];
+      // Lambda-free helpers — these are __device__ functions with explicit
+      // captures, since CUDA device lambdas with complex captures have
+      // historically silently produced wrong results in this kernel.
+
+      // RK4 substage coefficients — classic 4-stage tableau:
+      //   k1 = f(x,         y),                  acc += k1/6,   tmp = y + h/2 * k1
+      //   k2 = f(x + h/2,   y + h/2 * k1),       acc += k2/3,   tmp = y + h/2 * k2
+      //   k3 = f(x + h/2,   y + h/2 * k2),       acc += k3/3,   tmp = y + h * k3
+      //   k4 = f(x + h,     y + h * k3),         acc += k4/6,   y_out = y + h * acc
+
+      // Stage substep sub-times (relative to substep start) for cascade refresh:
+      //   substage 0 (k1) is evaluated at substep start.
+      //   substages 1,2 (k2,k3) are evaluated at substep start + h_sub/2.
+      //   substage 3 (k4) is evaluated at substep start + h_sub.
+
+      // Save the start-of-step nc_factors values before sf consumes them.
+      // sh's first substage (k1) evaluates at the start of the macro step
+      // and must use the *same* initial cascade source as sf's k1, otherwise
+      // sf and sh would solve different ODEs and Richardson would be biased.
+      //
+      // Easiest implementation: when starting sh we recompute s_nc_factors
+      // from my_state at time x. That cost is amortized into the existing
+      // sh substage refreshes; we just have to be sure to do it.
+
+      // ===== sf path: one full RK4 step of size h_try =====
+      // Prime s_state with current my_state (it already holds my_state values
+      // from the start-of-step refresh above). sf substep starts at time x.
+      //
+      // For each substage we:
+      //   1. Each thread computes k for its slots using s_nc_factors (refreshed
+      //      at the substage start time by the previous iteration / the start-
+      //      of-step block).
+      //   2. Each thread updates its accumulator and computes substage tmp,
+      //      writing tmp into s_state[slot] for the next refresh.
+      //   3. __syncthreads() to publish s_state to all threads.
+      //   4. Cooperatively refresh s_nc_factors at the next substage's time.
+      //   5. __syncthreads() to publish refreshed s_nc_factors.
+      //
+      // After substage 4 (k4), each thread combines acc into y_out for sf
+      // and writes to path_sf.
+
+      double y_init_sf[MAX_INT_PAIRS][SU];
+      double acc_sf[MAX_INT_PAIRS][SU];
+
       for (int s = 0; s < n_slots; s++) {
         const double* state_ptr = my_state + (slot_rho[s] * ne + slot_ie[s]) * SU;
         #pragma unroll
-        for (int c = 0; c < SU; c++) y_init[s][c] = state_ptr[c];
+        for (int c = 0; c < SU; c++) y_init_sf[s][c] = state_ptr[c];
+        #pragma unroll
+        for (int c = 0; c < SU; c++) acc_sf[s][c] = 0.0;
       }
 
-      // Dormand-Prince 5(4) Butcher tableau (standard form).
-      // c[stage] = substage time as fraction of h_try.
-      const double dp_c1 = 1.0/5.0;
-      const double dp_c2 = 3.0/10.0;
-      const double dp_c3 = 4.0/5.0;
-      const double dp_c4 = 8.0/9.0;
-      // c5 = c6 = 1.0
+      // RK4 substage marching for sf.
+      // weights[k] is the Butcher RK4 coefficient on k_k for the y_out sum.
+      // a[k]      is the Butcher RK4 coefficient on k_k for substage k+1's tmp.
+      const double rk_weight[4] = {1.0/6.0, 1.0/3.0, 1.0/3.0, 1.0/6.0};
+      const double rk_a[4]      = {0.5,     0.5,     1.0,     0.0    };  // a[3] unused
+      const double rk_t[4]      = {0.0,     0.5,     0.5,     1.0    };  // substage time as fraction of h
 
-      // a[i][j]: weight of k_{j+1} when assembling stage i+1's input state.
-      // Only the actually-used coefficients are listed; zeros are skipped.
-      // Stage 2 (computes k2): y + h*(1/5)*k1
-      const double dp_a21 = 1.0/5.0;
-      // Stage 3 (computes k3): y + h*(3/40, 9/40) * (k1, k2)
-      const double dp_a31 = 3.0/40.0;
-      const double dp_a32 = 9.0/40.0;
-      // Stage 4 (computes k4): y + h*(44/45, -56/15, 32/9) * (k1, k2, k3)
-      const double dp_a41 = 44.0/45.0;
-      const double dp_a42 = -56.0/15.0;
-      const double dp_a43 = 32.0/9.0;
-      // Stage 5 (computes k5): y + h*(19372/6561, -25360/2187, 64448/6561, -212/729)
-      const double dp_a51 = 19372.0/6561.0;
-      const double dp_a52 = -25360.0/2187.0;
-      const double dp_a53 = 64448.0/6561.0;
-      const double dp_a54 = -212.0/729.0;
-      // Stage 6 (computes k6): y + h*(9017/3168, -355/33, 46732/5247, 49/176, -5103/18656)
-      const double dp_a61 = 9017.0/3168.0;
-      const double dp_a62 = -355.0/33.0;
-      const double dp_a63 = 46732.0/5247.0;
-      const double dp_a64 = 49.0/176.0;
-      const double dp_a65 = -5103.0/18656.0;
+      // y_next holds the next substage's evaluation state per slot
+      // (the "tmp = y + a*h*k" produced by the previous substage). It also
+      // gets staged to s_state[slot] before the cooperative refresh so other
+      // threads' refreshes see it. Keeping a per-thread copy avoids any
+      // shared-memory read-after-write hazard between writing to s_state
+      // and reading it back inside this same thread.
+      double y_next_sf[MAX_INT_PAIRS][SU];
 
-      // 5th-order solution weights (also = stage-7 input row, since DOPRI5 is
-      // FSAL — stage 7 evaluates f at y_{n+1}).
-      // y_{n+1} = y_n + h * (b1*k1 + 0*k2 + b3*k3 + b4*k4 + b5*k5 + b6*k6)
-      const double dp_b1 = 35.0/384.0;
-      const double dp_b3 = 500.0/1113.0;
-      const double dp_b4 = 125.0/192.0;
-      const double dp_b5 = -2187.0/6784.0;
-      const double dp_b6 = 11.0/84.0;
+      // sf substages (4 stages over size h_try).
+      // s_nc_factors entering substage 0 was refreshed from my_state at x.
+      // We refresh between substages so the next substage sees the right factors.
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = x + rk_t[sub] * h_try;
 
-      // Error weights e[i] = b[i] - b_hat[i]. err = h * sum e_i * k_i.
-      const double dp_e1 = 71.0/57600.0;
-      // dp_e2 = 0.0
-      const double dp_e3 = -71.0/16695.0;
-      const double dp_e4 = 71.0/1920.0;
-      const double dp_e5 = -17253.0/339200.0;
-      const double dp_e6 = 22.0/525.0;
-      const double dp_e7 = -1.0/40.0;
-
-      // ============================================================
-      // Stage 1: compute k1 = f(x, y_n).
-      // FSAL: if path_k[0] already holds f(x, y_n) from the previous step
-      // (or rejected attempt at the same (x, y_n)), reuse it.
-      // ============================================================
-      if (!fsal_valid) {
-        // s_nc_factors and s_profile_cache were just refreshed at (x, my_state)
-        // by the start-of-step block above. Use them to compute k1.
+        // Each thread: compute k for its slots from current s_nc_factors,
+        // update acc, compute next substage's tmp into s_state and y_next.
         for (int s = 0; s < n_slots; s++) {
           int ie = slot_ie[s];
           int rho = slot_rho[s];
@@ -1241,281 +1202,252 @@ evolveKernelImpl(const PhysicsParams params,
           const double* proj = b1_proj + rho * NFLV * SU;
           bool is_antinu = ((rho == 1) && params.NT_type == 3)
                          || (params.NT_type == 2);
-          double k_local[SU];
-          computeDerivativeSU3(x, xini, y_init[s], H0, proj, path.profile,
+
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sf[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sf[s][c];
+          }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
                                params.HI_constants, is_antinu,
                                ie, rho, ne, NFLV,
                                interaction_data, params.iglashow, params.NT_type,
-                               s_nc_factors, s_profile_cache, k_local);
-          double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++) k1_ptr[c] = k_local[c];
-        }
-      }
-      // After stage 1, k1 is in path_k[0]. (No global sync needed: each thread
-      // wrote only the slabs for slots it owns, and stage 2 only reads each
-      // thread's own slots back.)
+                               s_nc_factors, s_profile_cache, k);
 
-      // ============================================================
-      // Stages 2..6: compute k_i = f(x + c_i*h, y_n + h * sum_{j<i} a_{ij} * k_j).
-      // Each stage:
-      //   (a) Each thread builds y_eval for its slots from y_init + h*linear
-      //       combination of previous k's (read from path_k[j] in global mem).
-      //   (b) Each thread writes y_eval into s_state[slot] so that the cooperative
-      //       cascade refresh at x_sub sees the substage state.
-      //   (c) __syncthreads() — publish s_state.
-      //   (d) refreshCascadeFactorsSU3 at x_sub; emits its own __syncthreads().
-      //   (e) Each thread evaluates the derivative for its slots and writes
-      //       k_i[slot] to path_k[i-1] global memory.
-      // ============================================================
-
-      // Stage assembly is repeated across stages 2..6. To avoid CUDA device
-      // lambdas (which have historically produced silently wrong results in
-      // this kernel — see Phase 4 commentary), the assembly is unrolled by
-      // stage index. Each block:
-      //   1. Each thread computes y_eval = y_init + h * sum_{j<i} a_ij * k_j
-      //      and writes it to s_state[slot] (its own slots only).
-      //   2. __syncthreads() to publish s_state.
-      //   3. Cooperative refreshCascadeFactorsSU3 at x_sub.
-      //   4. Each thread evaluates the RHS for its slots and writes the
-      //      per-slot k_i to path_k[stage-1].
-      //
-      // Internal __syncthreads() inside refreshCascadeFactorsSU3 satisfies
-      // the publish-before-read requirement for s_state and s_nc_factors.
-
-#define DOPRI5_EVAL_DERIV_AND_STORE(STAGE_INDEX_1BASED)                         \
-  do {                                                                          \
-    for (int s = 0; s < n_slots; s++) {                                         \
-      int ie = slot_ie[s];                                                      \
-      int rho = slot_rho[s];                                                    \
-      const double* H0 = H0_array + (rho * ne + ie) * SU;                       \
-      const double* proj = b1_proj + rho * NFLV * SU;                           \
-      bool is_antinu = ((rho == 1) && params.NT_type == 3)                      \
-                     || (params.NT_type == 2);                                  \
-      double y_eval[SU];                                                        \
-      const double* s_ptr = s_state + (rho * ne + ie) * SU;                     \
-      _Pragma("unroll")                                                         \
-      for (int c = 0; c < SU; c++) y_eval[c] = s_ptr[c];                        \
-      double k_local[SU];                                                       \
-      computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,         \
-                           params.HI_constants, is_antinu,                      \
-                           ie, rho, ne, NFLV,                                   \
-                           interaction_data, params.iglashow, params.NT_type,   \
-                           s_nc_factors, s_profile_cache, k_local);             \
-      double* k_ptr = path_k[(STAGE_INDEX_1BASED) - 1] + (rho * ne + ie) * SU;  \
-      _Pragma("unroll")                                                         \
-      for (int c = 0; c < SU; c++) k_ptr[c] = k_local[c];                       \
-    }                                                                           \
-  } while (0)
-
-      // Stage 2: y_eval = y_init + h * a21 * k1
-      {
-        const double x_sub = x + dp_c1 * h_try;
-        for (int s = 0; s < n_slots; s++) {
-          int ie = slot_ie[s], rho = slot_rho[s];
-          const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          double* s_ptr = s_state + (rho * ne + ie) * SU;
           #pragma unroll
           for (int c = 0; c < SU; c++)
-            s_ptr[c] = y_init[s][c] + h_try * (dp_a21 * k1_ptr[c]);
+            acc_sf[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_try;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sf[s][c] + a * k[c];
+              y_next_sf[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
         }
-        __syncthreads();
-        refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_sub, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.tauregeneration,
-                                  params.iglashow, params.NT_type,
-                                  s_state, s_nc_factors, s_profile_cache);
-        DOPRI5_EVAL_DERIV_AND_STORE(2);
+
+        if (sub < 3) {
+          __syncthreads();
+          // Refresh cascade factors at the next substage's time.
+          double x_next = x + rk_t[sub + 1] * h_try;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors, s_profile_cache);
+        }
       }
 
-      // Stage 3: y_eval = y_init + h * (a31*k1 + a32*k2)
-      {
-        const double x_sub = x + dp_c2 * h_try;
-        for (int s = 0; s < n_slots; s++) {
-          int ie = slot_ie[s], rho = slot_rho[s];
-          const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          const double* k2_ptr = path_k[1] + (rho * ne + ie) * SU;
-          double* s_ptr = s_state + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++)
-            s_ptr[c] = y_init[s][c] + h_try * (dp_a31 * k1_ptr[c]
-                                              + dp_a32 * k2_ptr[c]);
-        }
-        __syncthreads();
-        refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_sub, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.tauregeneration,
-                                  params.iglashow, params.NT_type,
-                                  s_state, s_nc_factors, s_profile_cache);
-        DOPRI5_EVAL_DERIV_AND_STORE(3);
-      }
-
-      // Stage 4: y_eval = y_init + h * (a41*k1 + a42*k2 + a43*k3)
-      {
-        const double x_sub = x + dp_c3 * h_try;
-        for (int s = 0; s < n_slots; s++) {
-          int ie = slot_ie[s], rho = slot_rho[s];
-          const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          const double* k2_ptr = path_k[1] + (rho * ne + ie) * SU;
-          const double* k3_ptr = path_k[2] + (rho * ne + ie) * SU;
-          double* s_ptr = s_state + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++)
-            s_ptr[c] = y_init[s][c] + h_try * (dp_a41 * k1_ptr[c]
-                                              + dp_a42 * k2_ptr[c]
-                                              + dp_a43 * k3_ptr[c]);
-        }
-        __syncthreads();
-        refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_sub, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.tauregeneration,
-                                  params.iglashow, params.NT_type,
-                                  s_state, s_nc_factors, s_profile_cache);
-        DOPRI5_EVAL_DERIV_AND_STORE(4);
-      }
-
-      // Stage 5: y_eval = y_init + h * (a51*k1 + a52*k2 + a53*k3 + a54*k4)
-      {
-        const double x_sub = x + dp_c4 * h_try;
-        for (int s = 0; s < n_slots; s++) {
-          int ie = slot_ie[s], rho = slot_rho[s];
-          const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          const double* k2_ptr = path_k[1] + (rho * ne + ie) * SU;
-          const double* k3_ptr = path_k[2] + (rho * ne + ie) * SU;
-          const double* k4_ptr = path_k[3] + (rho * ne + ie) * SU;
-          double* s_ptr = s_state + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++)
-            s_ptr[c] = y_init[s][c] + h_try * (dp_a51 * k1_ptr[c]
-                                              + dp_a52 * k2_ptr[c]
-                                              + dp_a53 * k3_ptr[c]
-                                              + dp_a54 * k4_ptr[c]);
-        }
-        __syncthreads();
-        refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_sub, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.tauregeneration,
-                                  params.iglashow, params.NT_type,
-                                  s_state, s_nc_factors, s_profile_cache);
-        DOPRI5_EVAL_DERIV_AND_STORE(5);
-      }
-
-      // Stage 6: y_eval = y_init + h * (a61*k1 + a62*k2 + a63*k3 + a64*k4 + a65*k5)
-      {
-        const double x_sub = x + h_try;  // c5 = 1
-        for (int s = 0; s < n_slots; s++) {
-          int ie = slot_ie[s], rho = slot_rho[s];
-          const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-          const double* k2_ptr = path_k[1] + (rho * ne + ie) * SU;
-          const double* k3_ptr = path_k[2] + (rho * ne + ie) * SU;
-          const double* k4_ptr = path_k[3] + (rho * ne + ie) * SU;
-          const double* k5_ptr = path_k[4] + (rho * ne + ie) * SU;
-          double* s_ptr = s_state + (rho * ne + ie) * SU;
-          #pragma unroll
-          for (int c = 0; c < SU; c++)
-            s_ptr[c] = y_init[s][c] + h_try * (dp_a61 * k1_ptr[c]
-                                              + dp_a62 * k2_ptr[c]
-                                              + dp_a63 * k3_ptr[c]
-                                              + dp_a64 * k4_ptr[c]
-                                              + dp_a65 * k5_ptr[c]);
-        }
-        __syncthreads();
-        refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_sub, xini,
-                                  H0_array, b1_proj, interaction_data,
-                                  path.profile, params.tauregeneration,
-                                  params.iglashow, params.NT_type,
-                                  s_state, s_nc_factors, s_profile_cache);
-        DOPRI5_EVAL_DERIV_AND_STORE(6);
-      }
-
-#undef DOPRI5_EVAL_DERIV_AND_STORE
-
-      // ============================================================
-      // Stage 7 (FSAL): k7 = f(x + h, y_{n+1}).
-      // Combines acceptance candidate y_{n+1} (5th-order) with the same
-      // cooperative-refresh chain as stages 2..6. y_{n+1} differs from
-      // stage-6 input (which used a[6] = b coincidentally is *not* true
-      // in general), so we must redo the cascade refresh at x+h with the
-      // accepted y_{n+1} as the source state. We also write y_{n+1} to
-      // path_corrected here so the accept branch can simply copy it back.
-      // ============================================================
+      // Write sf result to path_sf workspace.
       for (int s = 0; s < n_slots; s++) {
         int ie = slot_ie[s];
         int rho = slot_rho[s];
-        const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-        const double* k3_ptr = path_k[2] + (rho * ne + ie) * SU;
-        const double* k4_ptr = path_k[3] + (rho * ne + ie) * SU;
-        const double* k5_ptr = path_k[4] + (rho * ne + ie) * SU;
-        const double* k6_ptr = path_k[5] + (rho * ne + ie) * SU;
-        double* corr_ptr = path_corrected + (rho * ne + ie) * SU;
-        double* s_ptr    = s_state        + (rho * ne + ie) * SU;
+        double* sf_ptr = path_sf + (rho * ne + ie) * SU;
         #pragma unroll
-        for (int c = 0; c < SU; c++) {
-          double y_next = y_init[s][c] + h_try *
-            (dp_b1 * k1_ptr[c] + dp_b3 * k3_ptr[c] + dp_b4 * k4_ptr[c]
-             + dp_b5 * k5_ptr[c] + dp_b6 * k6_ptr[c]);
-          corr_ptr[c] = y_next;
-          s_ptr[c]    = y_next;
-        }
+        for (int c = 0; c < SU; c++)
+          sf_ptr[c] = y_init_sf[s][c] + h_try * acc_sf[s][c];
       }
       __syncthreads();
 
-      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x + h_try, xini,
+      // ===== sh path: two RK4 sub-half-steps of size h_try/2 each =====
+      // Reset s_state to my_state and recompute s_nc_factors at time x so
+      // sh's k1 sees the same initial cascade source as sf's k1 did.
+      for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x)
+        s_state[idx] = my_state[idx];
+      __syncthreads();
+
+      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x, xini,
                                 H0_array, b1_proj, interaction_data,
                                 path.profile, params.tauregeneration,
                                 params.iglashow, params.NT_type,
                                 s_state, s_nc_factors, s_profile_cache);
 
+      double y_init_sh[MAX_INT_PAIRS][SU];
+      double acc_sh[MAX_INT_PAIRS][SU];
+
+      // First sub-half-step: starts from my_state at time x, advances to x + h/2.
+      double h_half = h_try * 0.5;
+
       for (int s = 0; s < n_slots; s++) {
-        int ie = slot_ie[s];
-        int rho = slot_rho[s];
-        const double* H0 = H0_array + (rho * ne + ie) * SU;
-        const double* proj = b1_proj + rho * NFLV * SU;
-        bool is_antinu = ((rho == 1) && params.NT_type == 3)
-                       || (params.NT_type == 2);
-        double y_eval[SU];
-        const double* s_ptr = s_state + (rho * ne + ie) * SU;
+        const double* state_ptr = my_state + (slot_rho[s] * ne + slot_ie[s]) * SU;
         #pragma unroll
-        for (int c = 0; c < SU; c++) y_eval[c] = s_ptr[c];
-        double k_local[SU];
-        computeDerivativeSU3(x + h_try, xini, y_eval, H0, proj, path.profile,
-                             params.HI_constants, is_antinu,
-                             ie, rho, ne, NFLV,
-                             interaction_data, params.iglashow, params.NT_type,
-                             s_nc_factors, s_profile_cache, k_local);
-        double* k7_ptr = path_k[6] + (rho * ne + ie) * SU;
+        for (int c = 0; c < SU; c++) y_init_sh[s][c] = state_ptr[c];
         #pragma unroll
-        for (int c = 0; c < SU; c++) k7_ptr[c] = k_local[c];
+        for (int c = 0; c < SU; c++) acc_sh[s][c] = 0.0;
       }
 
-      // ============================================================
-      // Embedded error estimate.
-      //   err[c] = h * (e1*k1 + e3*k3 + e4*k4 + e5*k5 + e6*k6 + e7*k7)
-      //   err_norm = max over (slot, c) of |err[c]| / scale[c]
-      //   scale[c] = abs_tol + rel_tol * max(|y_n[c]|, |y_{n+1}[c]|)
-      // ============================================================
+      double y_next_sh[MAX_INT_PAIRS][SU];
+
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = x + rk_t[sub] * h_half;
+
+        for (int s = 0; s < n_slots; s++) {
+          int ie = slot_ie[s];
+          int rho = slot_rho[s];
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sh[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sh[s][c];
+          }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
+                               params.HI_constants, is_antinu,
+                               ie, rho, ne, NFLV,
+                               interaction_data, params.iglashow, params.NT_type,
+                               s_nc_factors, s_profile_cache, k);
+
+          #pragma unroll
+          for (int c = 0; c < SU; c++)
+            acc_sh[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_half;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sh[s][c] + a * k[c];
+              y_next_sh[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
+        }
+
+        if (sub < 3) {
+          __syncthreads();
+          double x_next = x + rk_t[sub + 1] * h_half;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors, s_profile_cache);
+        }
+      }
+
+      // st = result of first sub-half-step (kept per-thread; also published
+      // to s_state for the second sub-half-step's k1 cascade refresh).
+      double st_local[MAX_INT_PAIRS][SU];
       for (int s = 0; s < n_slots; s++) {
         int ie = slot_ie[s];
         int rho = slot_rho[s];
-        const double* k1_ptr = path_k[0] + (rho * ne + ie) * SU;
-        const double* k3_ptr = path_k[2] + (rho * ne + ie) * SU;
-        const double* k4_ptr = path_k[3] + (rho * ne + ie) * SU;
-        const double* k5_ptr = path_k[4] + (rho * ne + ie) * SU;
-        const double* k6_ptr = path_k[5] + (rho * ne + ie) * SU;
-        const double* k7_ptr = path_k[6] + (rho * ne + ie) * SU;
-        const double* corr_ptr = path_corrected + (rho * ne + ie) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++)
+          st_local[s][c] = y_init_sh[s][c] + h_half * acc_sh[s][c];
+        double* s_ptr = s_state + (rho * ne + ie) * SU;
+        #pragma unroll
+        for (int c = 0; c < SU; c++) s_ptr[c] = st_local[s][c];
+      }
+      __syncthreads();
+
+      // Refresh cascade factors at time x + h_half using the half-step result.
+      refreshCascadeFactorsSU3(ne, nrhos, NFLV, x + h_half, xini,
+                                H0_array, b1_proj, interaction_data,
+                                path.profile, params.tauregeneration,
+                                params.iglashow, params.NT_type,
+                                s_state, s_nc_factors, s_profile_cache);
+
+      // Second sub-half-step: starts from st at time x + h_half, advances to x + h.
+      // Reuse y_init_sh / acc_sh as the working storage for the second half.
+      for (int s = 0; s < n_slots; s++) {
+        #pragma unroll
+        for (int c = 0; c < SU; c++) y_init_sh[s][c] = st_local[s][c];
+        #pragma unroll
+        for (int c = 0; c < SU; c++) acc_sh[s][c] = 0.0;
+      }
+
+      for (int sub = 0; sub < 4; sub++) {
+        double x_sub = (x + h_half) + rk_t[sub] * h_half;
+
+        for (int s = 0; s < n_slots; s++) {
+          int ie = slot_ie[s];
+          int rho = slot_rho[s];
+          const double* H0 = H0_array + (rho * ne + ie) * SU;
+          const double* proj = b1_proj + rho * NFLV * SU;
+          bool is_antinu = ((rho == 1) && params.NT_type == 3)
+                         || (params.NT_type == 2);
+
+          double y_eval[SU];
+          if (sub == 0) {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_init_sh[s][c];
+          } else {
+            #pragma unroll
+            for (int c = 0; c < SU; c++) y_eval[c] = y_next_sh[s][c];
+          }
+
+          double k[SU];
+          computeDerivativeSU3(x_sub, xini, y_eval, H0, proj, path.profile,
+                               params.HI_constants, is_antinu,
+                               ie, rho, ne, NFLV,
+                               interaction_data, params.iglashow, params.NT_type,
+                               s_nc_factors, s_profile_cache, k);
+
+          #pragma unroll
+          for (int c = 0; c < SU; c++)
+            acc_sh[s][c] += rk_weight[sub] * k[c];
+
+          if (sub < 3) {
+            double a = rk_a[sub] * h_half;
+            double* s_ptr = s_state + (rho * ne + ie) * SU;
+            #pragma unroll
+            for (int c = 0; c < SU; c++) {
+              double tmp = y_init_sh[s][c] + a * k[c];
+              y_next_sh[s][c] = tmp;
+              s_ptr[c] = tmp;
+            }
+          }
+        }
+
+        if (sub < 3) {
+          __syncthreads();
+          double x_next = (x + h_half) + rk_t[sub + 1] * h_half;
+          refreshCascadeFactorsSU3(ne, nrhos, NFLV, x_next, xini,
+                                    H0_array, b1_proj, interaction_data,
+                                    path.profile, params.tauregeneration,
+                                    params.iglashow, params.NT_type,
+                                    s_state, s_nc_factors, s_profile_cache);
+        }
+      }
+
+      // Combine into corrected output via Richardson extrapolation.
+      // sh = y_init_sh + h_half * acc_sh, and sf is in path_sf.
+      for (int s = 0; s < n_slots; s++) {
+        int ie = slot_ie[s];
+        int rho = slot_rho[s];
+        double sh[SU];
+        #pragma unroll
+        for (int c = 0; c < SU; c++)
+          sh[c] = y_init_sh[s][c] + h_half * acc_sh[s][c];
+
+        const double* sf_ptr = path_sf + (rho * ne + ie) * SU;
+        const double* y0 = my_state + (rho * ne + ie) * SU;
+        double* corr = path_corrected + (rho * ne + ie) * SU;
+
         #pragma unroll
         for (int c = 0; c < SU; c++) {
-          double err = h_try * (dp_e1 * k1_ptr[c] + dp_e3 * k3_ptr[c]
-                              + dp_e4 * k4_ptr[c] + dp_e5 * k5_ptr[c]
-                              + dp_e6 * k6_ptr[c] + dp_e7 * k7_ptr[c]);
-          double y_n   = y_init[s][c];
-          double y_np1 = corr_ptr[c];
+          corr[c] = sh[c] + (sh[c] - sf_ptr[c]) / 15.0;
+          double err = fabs(sf_ptr[c] - sh[c]) / 15.0;
           double scale = solver_config.abs_error +
-                         solver_config.rel_error *
-                         fmax(fabs(y_n), fabs(y_np1));
+                         solver_config.rel_error * fmax(fabs(y0[c]), fabs(sh[c]));
           if (scale > 0.0)
-            local_max_err = fmax(local_max_err, fabs(err) / scale);
+            local_max_err = fmax(local_max_err, err / scale);
         }
       }
     }
@@ -1530,7 +1462,7 @@ evolveKernelImpl(const PhysicsParams params,
     __syncthreads();
 
     if (step_accepted) {
-      // Phase 3: Write corrected states to global memory.
+      // Phase 3: Write corrected states to global memory
       for (int ie = threadIdx.x; ie < ne; ie += blockDim.x) {
         for (int rho = 0; rho < nrhos; rho++) {
           double* state_ptr = my_state + (rho * ne + ie) * SU;
@@ -1542,35 +1474,15 @@ evolveKernelImpl(const PhysicsParams params,
       }
       x += h_try;
       step_count++;
-
-      // FSAL bookkeeping (interaction path only): the accepted step's k7
-      // is f(x_new, y_new), which is exactly what the next step's k1
-      // requires. Copy k7 -> k1 cooperatively so subsequent stage 2..6
-      // computes can read k1 from path_k[0].
-      if (do_interactions) {
-        for (int idx = threadIdx.x; idx < nrhos * ne * SU; idx += blockDim.x) {
-          path_k[0][idx] = path_k[6][idx];
-        }
-        if (threadIdx.x == 0) fsal_valid = true;
-      }
-    } else if (do_interactions) {
-      // Step rejected: y_n is unchanged, so path_k[0] (which equals f(x, y_n)
-      // computed during this attempt) remains valid for the next attempt at
-      // smaller h. k1 only depends on (x, y_n), not on h.
-      if (threadIdx.x == 0) fsal_valid = true;
     }
-    __syncthreads();
 
-    // PI step-size controller. DOPRI5 5(4) error estimate is 4th-order; the
-    // accepted output is 5th-order, so the standard step-size exponent is
-    // -1/p with p=5 (the accepted order). Fac=0.9, facmin=0.2, facmax=5.0
-    // per the prompt's prescription.
+    // PI step-size controller
     double factor;
     if (max_err > 1.0e-10)
       factor = 0.9 * pow(max_err, -0.2);
     else
       factor = 5.0;
-    factor = fmax(0.2, fmin(5.0, factor));
+    factor = fmax(0.1, fmin(5.0, factor));
 
     h = h_try * factor;
     h = fmax(h, solver_config.h_min);
@@ -1617,7 +1529,6 @@ void launchEvolve(const PhysicsParams& params,
                   const InteractionDataGPU* d_interaction_data,
                   double* d_workspace_corrected,
                   double* d_workspace_sf,
-                  double* const* d_workspace_k,
                   const SolverConfig& solver_config,
                   double* d_states,
                   int n_paths, int numneu,
@@ -1630,10 +1541,8 @@ void launchEvolve(const PhysicsParams& params,
   // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne] + s_profile_cache[PROFILE_CACHE_DOUBLES]
   // The s_profile_cache (Perf #2) holds target_ndens, target_frac, ye, num_e
   // evaluated once per substage time and broadcast to all threads.
-  const bool do_interactions =
-      params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0;
   size_t shared_bytes = 0;
-  if (do_interactions) {
+  if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
     int su_size = numneu * numneu;
     shared_bytes = (size_t)(params.nrhos * params.ne * su_size   // state
                           + params.nrhos * 3 * params.ne         // nc_factors
@@ -1641,43 +1550,16 @@ void launchEvolve(const PhysicsParams& params,
                    * sizeof(double);
   }
 
-  // Opt in to the larger per-block shared-memory carveout when the dynamic
-  // shared bytes exceed the default 48 KB. On A100 the maximum is 164 KB.
-  // This is a no-op on devices that already map the static reservation; the
-  // request only matters when shared_bytes > 48*1024.
-  static constexpr int A100_MAX_SHARED_BYTES = 165536; // 164 KB - 32 B for system reservation
-  if (shared_bytes > 48 * 1024) {
-    cudaFuncSetAttribute((const void*)&evolveKernelImpl<3>,
-                         cudaFuncAttributeMaxDynamicSharedMemorySize,
-                         A100_MAX_SHARED_BYTES);
-    cudaFuncSetAttribute((const void*)&evolveKernelImpl<4>,
-                         cudaFuncAttributeMaxDynamicSharedMemorySize,
-                         A100_MAX_SHARED_BYTES);
-    // Clear any error if the device doesn't support this attribute (e.g. MIG).
-    cudaGetLastError();
-  }
-
   // Upload InteractionDataGPU struct to device if needed
   // (the struct itself contains device pointers, but it needs to be device-resident
   //  for the kernel to read it via a device pointer)
   InteractionDataGPU* d_idata_on_device = nullptr;
-  if (do_interactions) {
+  if (d_interaction_data && d_interaction_data->n_targets > 0) {
     NUSQUIDS_CUDA_CHECK(cudaMalloc(&d_idata_on_device, sizeof(InteractionDataGPU)));
     NUSQUIDS_CUDA_CHECK(cudaMemcpyAsync(d_idata_on_device, d_interaction_data,
                                          sizeof(InteractionDataGPU),
                                          cudaMemcpyHostToDevice, stream));
   }
-
-  // DOPRI5 stage-derivative slabs. When interactions are disabled, the kernel
-  // never accesses these (do_interactions==false branch is RK4+Richardson),
-  // so passing nullptr is safe.
-  double* k1 = do_interactions ? d_workspace_k[0] : nullptr;
-  double* k2 = do_interactions ? d_workspace_k[1] : nullptr;
-  double* k3 = do_interactions ? d_workspace_k[2] : nullptr;
-  double* k4 = do_interactions ? d_workspace_k[3] : nullptr;
-  double* k5 = do_interactions ? d_workspace_k[4] : nullptr;
-  double* k6 = do_interactions ? d_workspace_k[5] : nullptr;
-  double* k7 = do_interactions ? d_workspace_k[6] : nullptr;
 
   // Clear any stale CUDA errors (e.g., from cudaDeviceSetLimit on MIG)
   cudaGetLastError();
@@ -1687,14 +1569,12 @@ void launchEvolve(const PhysicsParams& params,
       evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
         d_workspace_corrected, d_workspace_sf,
-        k1, k2, k3, k4, k5, k6, k7,
         solver_config, d_states, n_paths);
       break;
     case 4:
       evolveKernelImpl<4><<<n_paths, threads, shared_bytes, stream>>>(
         params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
         d_workspace_corrected, d_workspace_sf,
-        k1, k2, k3, k4, k5, k6, k7,
         solver_config, d_states, n_paths);
       break;
   }

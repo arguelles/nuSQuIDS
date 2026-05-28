@@ -45,16 +45,6 @@ else
 fi
 
 echo ""
-echo "=== Compiling cuda_dopri5_fsal_test ==="
-$CXX $CXXFLAGS $CFLAGS -o cuda_dopri5_fsal_test cuda_dopri5_fsal_test.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
-if [ $? -eq 0 ]; then
-  echo "=== Running cuda_dopri5_fsal_test ==="
-  ./cuda_dopri5_fsal_test
-else
-  echo "=== DOPRI5 FSAL TEST COMPILATION FAILED ==="
-fi
-
-echo ""
 echo "=== Compiling benchmark_cuda ==="
 $CXX $CXXFLAGS $CFLAGS -o benchmark_cuda benchmark_cuda.cpp $LDFLAGS -L$CUDA_HOME/lib64/stubs -lcuda 2>&1
 echo "=== Running benchmark_cuda ==="
