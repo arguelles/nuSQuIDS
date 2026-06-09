@@ -210,7 +210,8 @@ PYBIND11_MODULE(nuSQuIDS, m)
     //TODO: map constructor?
     .def("crossSectionForTarget", &CrossSectionLibrary::crossSectionForTarget)
     .def("hasTarget", (bool(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type))&CrossSectionLibrary::hasTarget)
-    .def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::hasTarget)
+    //.def("addTarget", (void(CrossSectionLibrary::*)(typename std::underlying_type<PDGCode>::type, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::addTarget)
+    .def("addTarget", (void(CrossSectionLibrary::*)(PDGCode, std::shared_ptr<NeutrinoCrossSections>))&CrossSectionLibrary::addTarget)
     .def("numberOfTargets", &CrossSectionLibrary::numberOfTargets,
          "Get the number of target types in the cross section library")
     .def("targets", &CrossSectionLibrary::targets,
