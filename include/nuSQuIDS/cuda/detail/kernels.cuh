@@ -22,6 +22,13 @@ namespace nusquids { namespace cuda {
 // ============================================================
 static constexpr int EVOLVE_THREADS = 128;
 
+// Max (ie, rho) slot pairs per thread in the substage-refresh interaction
+// path. Used by both the host-side launch precondition and the device
+// kernel's per-thread storage. With EVOLVE_THREADS=128 and nrhos<=2 the
+// constraint is `nrhos * ceil(ne / EVOLVE_THREADS) <= MAX_INT_PAIRS`,
+// which covers ne up to 256.
+static constexpr int MAX_INT_PAIRS = 4;
+
 // ============================================================
 // Kernel launch wrappers
 // ============================================================

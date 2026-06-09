@@ -12,6 +12,9 @@
 #include "nuSQuIDS/cuda/detail/memory.cuh"
 #include "nuSQuIDS/cuda/detail/interactions_gpu.cuh"
 
+#include <sstream>
+#include <stdexcept>
+
 namespace nusquids { namespace cuda {
 
 // ============================================================
@@ -1088,11 +1091,10 @@ evolveKernelImpl(const PhysicsParams params,
       //      throughput.
 
       // Per-thread storage for the at-most MAX_INT_PAIRS (ie, rho) slots
-      // each thread owns. With EVOLVE_THREADS=128 and nrhos<=2, MAX_INT_PAIRS=4
-      // covers ne up to 256 (well above the ne<=40 used by interaction tests).
+      // each thread owns. MAX_INT_PAIRS is in kernels.cuh so the launcher
+      // can validate the precondition before invoking the kernel.
       // y_init/acc/sf_local/st_local hold per-slot working state across the
       // cooperative substage syncs.
-      constexpr int MAX_INT_PAIRS = 4;
 
       // Build the slot list for this thread once. n_slots is the number of
       // (ie, rho) pairs actually owned.
@@ -1108,16 +1110,18 @@ evolveKernelImpl(const PhysicsParams params,
           n_slots++;
         }
       }
-      // Compile-time/runtime safety: if a thread tried to own more slots
-      // than MAX_INT_PAIRS we'd silently drop work. Trip a printf so it
-      // shows up in test output rather than producing wrong physics.
+      // Belt-and-suspenders: the launcher (`launchEvolve`) refuses to run
+      // when this constraint would be violated, so we should never reach
+      // here in production. If we do, fail loudly rather than silently
+      // producing wrong physics.
       if (n_slots > MAX_INT_PAIRS) {
-        if (threadIdx.x == 0 && blockIdx.x == 0 && step_count == 0) {
-          printf("ERROR: substage-refresh kernel needs MAX_INT_PAIRS>=%d "
-                 "(ne=%d, nrhos=%d, blockDim=%d). Falling back will give "
-                 "wrong results.\n", n_slots, ne, nrhos, blockDim.x);
+        if (threadIdx.x == 0 && blockIdx.x == 0) {
+          printf("FATAL: substage-refresh needs MAX_INT_PAIRS>=%d "
+                 "(ne=%d, nrhos=%d, blockDim=%d). launchEvolve precondition "
+                 "should have prevented this.\n",
+                 n_slots, ne, nrhos, blockDim.x);
         }
-        n_slots = MAX_INT_PAIRS;
+        __trap();
       }
 
       // Lambda-free helpers — these are __device__ functions with explicit
@@ -1536,6 +1540,24 @@ void launchEvolve(const PhysicsParams& params,
   if (n_paths == 0) return;
 
   constexpr int threads = EVOLVE_THREADS;
+
+  // Precondition: in the substage-refresh interaction path, each thread
+  // owns at most MAX_INT_PAIRS (ie, rho) slots. If that bound would be
+  // exceeded, refuse to launch rather than silently produce wrong physics.
+  if (params.iinteraction && d_interaction_data && d_interaction_data->n_targets > 0) {
+    const int int_pairs_per_thread =
+        params.nrhos * ((params.ne + threads - 1) / threads);
+    if (int_pairs_per_thread > MAX_INT_PAIRS) {
+      std::ostringstream msg;
+      msg << "cuda::launchEvolve: substage-refresh requires "
+          << "MAX_INT_PAIRS>=" << int_pairs_per_thread
+          << " (ne=" << params.ne
+          << ", nrhos=" << params.nrhos
+          << ", blockDim=" << threads
+          << ", current MAX_INT_PAIRS=" << MAX_INT_PAIRS << ").";
+      throw std::runtime_error(msg.str());
+    }
+  }
 
   // Compute shared memory for interaction cascade computation
   // Layout: s_state[nrhos*ne*SU] + s_nc_factors[nrhos*3*ne] + s_profile_cache[PROFILE_CACHE_DOUBLES]
