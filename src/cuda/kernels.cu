@@ -1493,13 +1493,13 @@ evolveKernelImpl(const PhysicsParams params,
     h = fmin(h, solver_config.h_max);
   }
 
-  // Debug: report if max steps reached
-  if (path_idx == 0 && threadIdx.x == 0) {
-    if (step_count >= solver_config.max_steps)
-      printf("WARNING: max_steps=%d reached at x=%e (xend=%e) h=%e do_int=%d\n",
-             solver_config.max_steps, x, xend, h, (int)do_interactions);
-    else
-      printf("OK: completed in %d steps, x=%e xend=%e\n", step_count, x, xend);
+  // Report only when the integrator hits its step ceiling — this is an
+  // integration failure that the caller almost certainly wants to know
+  // about. Successful completion is silent so SLURM logs stay clean.
+  if (path_idx == 0 && threadIdx.x == 0
+      && step_count >= solver_config.max_steps) {
+    printf("WARNING: max_steps=%d reached at x=%e (xend=%e) h=%e do_int=%d\n",
+           solver_config.max_steps, x, xend, h, (int)do_interactions);
   }
 }
 
