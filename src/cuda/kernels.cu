@@ -921,8 +921,9 @@ evolveKernelImpl(const PhysicsParams params,
                  double* __restrict__ states,
                  int n_paths)
 {
-  // Only SU(3) has a full implementation; SU(4) placeholder below
-  if (NFLV != 3) return;
+  // Only SU(3) is instantiated. launchEvolve refuses to dispatch other
+  // numneu values, so any NFLV!=3 instantiation here is a build-time bug.
+  static_assert(NFLV == 3, "GPU evolveKernelImpl is only implemented for SU(3)");
 
   constexpr int SU = NFLV * NFLV;
 
@@ -1541,6 +1542,19 @@ void launchEvolve(const PhysicsParams& params,
 
   constexpr int threads = EVOLVE_THREADS;
 
+  // Precondition: the GPU backend only implements SU(3). SU(4-6) was
+  // scaffolded into the switch below early in development but never
+  // received a kernel body; silently returning was producing identity
+  // evolution (initial state unchanged) for numneu>3, with no error.
+  if (numneu != 3) {
+    std::ostringstream msg;
+    msg << "cuda::launchEvolve: SU(" << numneu
+        << ") evolution is not implemented on the GPU backend. "
+        << "Only numneu=3 is supported; please run on the CPU backend "
+        << "or set numneu=3.";
+    throw std::runtime_error(msg.str());
+  }
+
   // Precondition: in the substage-refresh interaction path, each thread
   // owns at most MAX_INT_PAIRS (ie, rho) slots. If that bound would be
   // exceeded, refuse to launch rather than silently produce wrong physics.
@@ -1586,20 +1600,11 @@ void launchEvolve(const PhysicsParams& params,
   // Clear any stale CUDA errors (e.g., from cudaDeviceSetLimit on MIG)
   cudaGetLastError();
 
-  switch (numneu) {
-    case 3:
-      evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
-        params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
-        d_workspace_corrected, d_workspace_sf,
-        solver_config, d_states, n_paths);
-      break;
-    case 4:
-      evolveKernelImpl<4><<<n_paths, threads, shared_bytes, stream>>>(
-        params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
-        d_workspace_corrected, d_workspace_sf,
-        solver_config, d_states, n_paths);
-      break;
-  }
+  // numneu is guaranteed to be 3 by the precondition check above.
+  evolveKernelImpl<3><<<n_paths, threads, shared_bytes, stream>>>(
+      params, d_paths, d_H0_array, d_b1_proj, d_idata_on_device,
+      d_workspace_corrected, d_workspace_sf,
+      solver_config, d_states, n_paths);
   NUSQUIDS_CUDA_CHECK(cudaGetLastError());
 
   // Free the temporary device struct
