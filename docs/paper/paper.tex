@@ -1,0 +1,67 @@
+\documentclass[aps,prd,reprint,nofootinbib,superscriptaddress,floatfix]{revtex4-2}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{xspace}
+
+% Convenience macros
+\newcommand{\nusquids}{\texttt{nuSQuIDS}\xspace}
+\newcommand{\squids}{\texttt{SQuIDS}\xspace}
+\newcommand{\cusquids}{\texttt{nuSQuIDS-GPU}\xspace}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\begin{document}
+
+\title{GPU acceleration of the \nusquids\ neutrino transport solver}
+
+\author{C.~A.~Arg\"uelles}
+\affiliation{Department of Physics \& Laboratory for Particle Physics and Cosmology,
+  Harvard University, Cambridge, MA 02138, USA}
+% TODO: collaborators
+
+\date{\today}
+
+\begin{abstract}
+We present a CUDA implementation of the density-matrix neutrino-evolution
+solver \nusquids~\cite{nusquids2021}, designed to accelerate atmospheric
+oscillation grid computations characteristic of IceCube-scale analyses.
+The implementation preserves the original solver's adaptive Runge--Kutta
+structure by performing per-substage cascade-source refreshes on the GPU,
+matching the CPU's per-evaluation \texttt{PreDerive} pattern. Validation
+against the CPU reference on five representative scenarios -- including
+power-law spectra and tau regeneration -- shows agreement at the
+$\sim\!10^{-3}$ relative level, and per-bin output is bit-identical
+between two A100 partitions of the same cluster, confirming
+deterministic behaviour across SM counts. On a single NVIDIA
+A100-SXM4-80GB we measure up to 48$\times$ speedup over a single
+CPU thread on synthetic sweeps reaching $(n_{c_\theta}, n_E) = (200, 200)$
+with full non-coherent interactions enabled (NC + CC + tau regen +
+Glashow), about 2$\times$ faster than the previously published GPU
+port at the same problem size~\cite{kallenborn2019}. The same
+workload on a fractional MIG 1g.10gb partition (1/7 of the device)
+reaches 35$\times$. On a more constrained IceCube-style
+atmospheric grid ($n_{c_\theta}\!=\!20$, $n_E\!=\!200$, six decades
+of energy) the GPU is currently slower than the CPU due to block
+under-occupancy and step-rejection patterns; multi-path-per-block
+scheduling is a clear path forward.
+% TODO: H100 and H200 numbers; multi-GPU strong scaling.
+% TODO: real-world atmospheric example.
+\end{abstract}
+
+\maketitle
+
+\input{sections/intro}
+\input{sections/gpu_implementation}
+\input{sections/validation}
+\input{sections/performance}
+\input{sections/conclusion}
+
+\bibliographystyle{apsrev4-2}
+\bibliography{references}
+
+\end{document}

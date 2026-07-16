@@ -1,0 +1,6 @@
+test,description,ncz,ne,e_min_gev,e_max_gev,injection,toggles,abs_tol,rel_tol,pass_rule,max_abs_err,max_rel_err,status
+1,NC + CC,5,40,1e2,1e6,flat unit all flavors+rho,interactions on; tau off; Glashow off,5e-3,1e-2,AND,2.75e-04,1.55e-03,PASS
+2,Tau regeneration,3,30,1e4,1e8,nu_tau & nutau_bar = 1.0,interactions on; tau on; Glashow off,1e-2,5e-2,OR,1.59e-01,3.01e-02,PASS
+3,Glashow resonance,3,40,1e5,1e8,nu_mu + nubar_e + nubar_mu = 1.0,interactions on; tau off; Glashow on,1e-2,5e-2,OR,3.25e-04,1.00e+00,PASS
+4,E^-2 spectrum (full int),5,40,1e2,1e6,(E/1TeV)^-2 all flavors+rho,interactions on; tau on; Glashow on,1e-2,5e-2,OR,2.31e-04,2.30e-03,PASS
+5,E^-3 spectrum (full int),5,40,1e2,1e6,(E/1TeV)^-3 all flavors+rho,interactions on; tau on; Glashow on,1e-2,5e-2,OR,1.94e-03,1.98e-03,PASS
