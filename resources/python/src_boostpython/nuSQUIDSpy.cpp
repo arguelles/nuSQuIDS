@@ -303,6 +303,11 @@ BOOST_PYTHON_MODULE(nuSQuIDS)
     .value("both",both)
   ;
 
+  enum_<Backend>("Backend")
+    .value("cpu",Backend::cpu)
+    .value("gpu",Backend::gpu)
+  ;
+
   bp::def("linspace",linspace,bp::args("min","max","samples"));
   bp::def("logspace",logspace,bp::args("min","max","samples"));
 

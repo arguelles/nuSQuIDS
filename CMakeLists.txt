@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(nuSQuIDS LANGUAGES CXX)
 
+option(ENABLE_CUDA "Build with CUDA GPU support" OFF)
+
 # -------------- Dependency discovery ----------------------------------------
 include(ExternalProject)
 find_package(PkgConfig        REQUIRED)
@@ -88,6 +90,14 @@ if(NOT PYTHON_CONFIG)
 endif()
 message(STATUS "Using python-config: ${PYTHON_CONFIG}")
 
+# Build CUDA configure flags
+set(NUSQUIDS_CUDA_CONFIGURE_FLAGS "")
+if(ENABLE_CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  set(NUSQUIDS_CUDA_CONFIGURE_FLAGS "--enable-cuda" "--with-cuda=${CUDAToolkit_TARGET_DIR}")
+  message(STATUS "CUDA support enabled (${CUDAToolkit_TARGET_DIR})")
+endif()
+
 ExternalProject_Add(nusquids_core
   SOURCE_DIR     ${CMAKE_SOURCE_DIR}
   CONFIGURE_COMMAND
@@ -100,6 +110,7 @@ ExternalProject_Add(nusquids_core
         --python-bin=${Python_EXECUTABLE}
         --python-config=${PYTHON_CONFIG}
         --python-module-dir=${NUSQUIDS_INSTALL_PREFIX}/lib
+        ${NUSQUIDS_CUDA_CONFIGURE_FLAGS}
   BUILD_COMMAND  make -j${CMAKE_BUILD_PARALLEL_LEVEL} && make python -j${CMAKE_BUILD_PARALLEL_LEVEL}
   INSTALL_COMMAND make install PREFIX=${NUSQUIDS_INSTALL_PREFIX} && make python-install PREFIX=${NUSQUIDS_INSTALL_PREFIX}
   BUILD_IN_SOURCE 1

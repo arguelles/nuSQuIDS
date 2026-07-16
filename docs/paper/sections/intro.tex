@@ -1,0 +1,49 @@
+\section{Introduction}
+\label{sec:intro}
+
+The \nusquids\ package~\cite{nusquids2021} solves the neutrino
+density-matrix evolution equation in the interaction picture for
+arbitrary trajectories through dense media, supporting coherent
+oscillations in vacuum and matter, neutral- and charged-current
+absorption, neutral-current cascading, tau regeneration, and the
+Glashow resonance for electron antineutrinos. The CPU implementation
+relies on the \squids~\cite{squids} library, which provides an
+adaptive Runge--Kutta--Fehlberg (RKF45) integrator built on
+\textsc{GSL}~\cite{gsl}. For the multi-energy, multi-zenith grids that
+underlie IceCube atmospheric oscillation analyses, the wall-time of a
+typical computation scales as $\mathcal{O}(n_{c_\theta}\, n_E\, n_\rho\,
+n_\nu)$ density-matrix evolutions, which becomes a meaningful fraction
+of the analysis turnaround as grid resolution grows.
+
+This article describes a GPU port of the \nusquids\ solver. The
+implementation maps each independent zenith trajectory to a CUDA
+thread block, parallelises the energy and flavor dimensions across
+threads within the block, and preserves the adaptive step size
+control of the CPU integrator via a Richardson extrapolation
+step-doubling scheme on the device. We pay particular attention to
+the cascade source terms (NC, tau decay, Glashow), which couple
+energy bins and therefore require cooperative reductions; we
+demonstrate that refreshing these source terms at every Runge--Kutta
+substage --- mirroring the per-evaluation \texttt{PreDerive} update
+on the CPU --- is necessary for agreement at the sub-percent level on
+tau-regeneration-dominated scenarios.
+
+A first GPU port of \nusquids\ -- \texttt{CUDA}$\nu$\texttt{SQuIDS} --
+was published by Kallenborn~\textit{et al.}~\cite{kallenborn2019},
+who reported up to $71\times$ speedup on a Titan V for low-energy
+oscillation-only computations and $21$--$24\times$ speedup for
+high-energy computations including non-coherent interactions on a
+$200\times200$ grid. The present work builds on that codebase
+(LGPLv3) and revisits the integrator structure to obtain a higher
+speedup specifically in the interactions-included regime, which is
+the dominant cost in IceCube atmospheric oscillation analyses.
+We compare to their published numbers in
+Sec.~\ref{sec:perf_priorwork}.
+
+The remainder of the paper is organised as follows.
+Section~\ref{sec:gpu_impl} describes the GPU architecture and the
+substage-refresh integrator. Section~\ref{sec:validation} validates
+the implementation against the CPU reference on five representative
+scenarios. Section~\ref{sec:performance} quantifies the speedup on a
+range of NVIDIA architectures (A100 MIG and full, % TODO: H100, H200).
+Section~\ref{sec:conclusion} concludes.

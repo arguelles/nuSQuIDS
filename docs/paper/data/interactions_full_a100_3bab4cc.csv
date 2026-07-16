@@ -1,0 +1,6 @@
+test,description,max_abs_err,max_rel_err,status,commit
+1,GPU vs CPU with interactions (NC+CC),0.0002753215,0.001552963,PASS,3bab4cc
+2,GPU vs CPU with tau regeneration,0.1571441,0.0703202,FAIL,3bab4cc
+3,GPU vs CPU with Glashow resonance,0.0003247373,57.53317,PASS,3bab4cc
+4,GPU vs CPU with E^-2.000000e+00 spectrum, full interactions,0.0002314731,0.002297651,PASS,3bab4cc
+5,GPU vs CPU with E^-3.000000e+00 spectrum, full interactions,0.001940541,0.001981458,PASS,3bab4cc

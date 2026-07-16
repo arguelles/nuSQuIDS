@@ -52,6 +52,10 @@
 #include "nuSQuIDS/ThreadPool.h"
 #include "nuSQuIDS/xsections.h"
 
+#ifdef NUSQUIDS_CUDA_ENABLED
+#include "cuda/cuda_backend.h"
+#endif
+
 //#define FixCrossSections
 
 //#define UpdateInteractions_DEBUG
@@ -69,6 +73,16 @@ enum Basis {
   flavor=0b10,
   interaction=0b11
 };
+
+/// \brief Selects the compute backend for neutrino propagation.
+enum Backend {
+  cpu = 0,  ///< CPU backend (default) — uses ThreadPool for nuSQUIDSAtm
+  gpu = 1   ///< GPU backend — uses CUDA for accelerated propagation
+};
+
+#ifdef NUSQUIDS_CUDA_ENABLED
+class CUDABackend;
+#endif
 
 
 ///\class nuSQUIDS
@@ -489,6 +503,12 @@ protected:
     bool positivization = false;
     /// \brief Boolean that allows to use fast constant density evolution technique.
     bool allowConstantDensityOscillationOnlyEvolution = false;
+    /// \brief The compute backend (cpu or gpu)
+    Backend backend_ = Backend::cpu;
+#ifdef NUSQUIDS_CUDA_ENABLED
+    /// \brief CUDA backend instance (created on demand)
+    std::unique_ptr<CUDABackend> cuda_backend_;
+#endif
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Integer to keep track of the progress bar evolution.
@@ -1070,6 +1090,19 @@ protected:
     bool Get_NeutrinoSources(){
       return enable_neutrino_sources;
     }
+
+    /// \brief Sets the compute backend (cpu or gpu).
+    /// \param b Backend::cpu or Backend::gpu
+    void Set_Backend(Backend b){
+#ifndef NUSQUIDS_CUDA_ENABLED
+      if(b == Backend::gpu)
+        throw std::runtime_error("nuSQUIDS::Error::GPU backend requested but nuSQuIDS was not compiled with CUDA support.");
+#endif
+      backend_ = b;
+    }
+
+    /// \brief Returns the current compute backend.
+    Backend Get_Backend() const { return backend_; }
 };
 
 /**
@@ -1120,6 +1153,12 @@ class nuSQUIDSAtm {
     std::shared_ptr<typename BaseSQUIDS::InteractionStructure> int_struct;
     /// \brief the number of threads to use when performing the evolution
     unsigned int evalThreads;
+    /// \brief the compute backend (cpu or gpu)
+    Backend backend_ = Backend::cpu;
+#ifdef NUSQUIDS_CUDA_ENABLED
+    /// \brief CUDA backend instance (created on demand)
+    std::unique_ptr<CUDABackend> cuda_backend_;
+#endif
   public:
     /************************************************************************************
      * CONSTRUCTORS
@@ -1192,7 +1231,11 @@ class nuSQUIDSAtm {
     track_array(std::move(other.track_array)),
     ncs(std::move(other.ncs)),
     int_struct(std::move(other.int_struct)),
-    evalThreads(other.evalThreads)
+    evalThreads(other.evalThreads),
+    backend_(other.backend_)
+#ifdef NUSQUIDS_CUDA_ENABLED
+    ,cuda_backend_(std::move(other.cuda_backend_))
+#endif
     {
       other.inusquidsatm = false;
     }
@@ -1215,6 +1258,10 @@ class nuSQUIDSAtm {
       ncs = std::move(other.ncs);
       int_struct = std::move(other.int_struct);
       evalThreads = other.evalThreads;
+      backend_ = other.backend_;
+#ifdef NUSQUIDS_CUDA_ENABLED
+      cuda_backend_ = std::move(other.cuda_backend_);
+#endif
 
       // initial nusquids object render useless
       other.inusquidsatm = false;
@@ -1303,6 +1350,253 @@ class nuSQUIDSAtm {
           nsq.InitializeInteractions(); //still need to initialize intermediate buffers
         }
       }
+
+#ifdef NUSQUIDS_CUDA_ENABLED
+      // Host-side GPU preconditions run FIRST — before we consider a CPU
+      // fallback — so that a numneu>3 or MAX_INT_PAIRS misconfiguration
+      // fails fast regardless of workload stiffness.
+      if(backend_ == Backend::gpu && !nusq_array.empty()){
+        const int ne_precond = nusq_array[0].GetNumE();
+        const int nrhos_precond = nusq_array[0].GetNumRho();
+        const int numneu_precond = nusq_array[0].GetNumNeu();
+        bool use_interactions_precond = nusq_array.front().GetUseInteractions();
+        int n_tgts_precond = (use_interactions_precond && int_struct)
+                             ? (int)int_struct->targets.size() : 0;
+        CheckGPUPreconditions(numneu_precond, ne_precond, nrhos_precond,
+                              use_interactions_precond, n_tgts_precond);
+      }
+
+      // Detect the osc-only-with-matter regime the GPU integrator cannot
+      // resolve. Since nuSQUIDSAtm always evolves through a body (Earth or
+      // similar), presence of matter is essentially assumed; the only
+      // question is whether interactions are on. Fall back to CPU for the
+      // pure-osc-with-matter combination. See GPUShouldFallBackToCPU.
+      bool gpu_osc_fallback = false;
+      if(backend_ == Backend::gpu && !nusq_array.empty()
+         && !nusq_array.front().GetUseInteractions()){
+        // Sample density at a small number of tracks to determine whether
+        // matter is present. Vacuum atmospheric setups are pathological but
+        // possible; if all tracks are vacuum, keep GPU dispatch.
+        bool matter_present = false;
+        for(size_t p = 0; p < nusq_array.size() && !matter_present; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          auto b = nsq.GetBody();
+          auto tr = nsq.GetTrack();
+          if(!b || !tr) continue;
+          double xini = tr->GetInitialX();
+          double xend = tr->GetFinalX();
+          for(int s = 0; s < 3 && !matter_present; s++){
+            double x_s = xini + s * (xend - xini) / 2.0;
+            tr->SetX(x_s);
+            if(std::abs(b->density(*tr)) > 0.0)
+              matter_present = true;
+          }
+          tr->SetX(xini);
+        }
+        gpu_osc_fallback = GPUShouldFallBackToCPU(false, matter_present);
+        if(gpu_osc_fallback){
+          std::cerr << "nuSQUIDSAtm: GPU pure-oscillation integrator cannot "
+                    << "resolve matter propagation without interactions. "
+                    << "Falling back to CPU integrator." << std::endl;
+        }
+      }
+
+      if(backend_ == Backend::gpu && !gpu_osc_fallback){
+        const int n_paths = nusq_array.size();
+        const int ne_local = nusq_array[0].GetNumE();
+        const int nrhos_local = nusq_array[0].GetNumRho();
+        const int numneu_local = nusq_array[0].GetNumNeu();
+        const int su_size = numneu_local * numneu_local;
+
+        if(!cuda_backend_)
+          cuda_backend_.reset(new CUDABackend());
+
+        // Extract H0 from first nuSQUIDS (same for all paths)
+        std::vector<double> H0_array(nrhos_local * ne_local * su_size, 0.0);
+        {
+          BaseSQUIDS& nsq0 = nusq_array[0];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              squids::SU_vector h = nsq0.H0(nsq0.E_range[ie], rho);
+              auto comps = h.GetComponents();
+              for(int c = 0; c < su_size; c++)
+                H0_array[(rho * ne_local + ie) * su_size + c] = comps[c];
+            }
+          }
+        }
+
+        // Extract b1 projectors
+        std::vector<double> b1_proj_data(nrhos_local * numneu_local * su_size, 0.0);
+        {
+          BaseSQUIDS& nsq0 = nusq_array[0];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int flv = 0; flv < numneu_local; flv++){
+              auto comps = nsq0.b1_proj[rho][flv].GetComponents();
+              for(int c = 0; c < su_size; c++)
+                b1_proj_data[(rho * numneu_local + flv) * su_size + c] = comps[c];
+            }
+          }
+        }
+
+        // Extract initial states: layout [n_paths][nrhos][ne][su_size]
+        std::vector<double> gpu_states(n_paths * nrhos_local * ne_local * su_size, 0.0);
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              const squids::SU_vector& sv = nsq.state[ie].rho[rho];
+              for(int c = 0; c < su_size; c++)
+                gpu_states[((p * nrhos_local + rho) * ne_local + ie) * su_size + c] = sv[c];
+            }
+          }
+        }
+
+        // Extract per-path body profiles and target number densities
+        bool use_interactions = nusq_array.front().GetUseInteractions();
+        int n_tgts = (use_interactions && int_struct) ? (int)int_struct->targets.size() : 0;
+
+        std::vector<GPUPathData> gpu_paths(n_paths);
+        const int n_density_samples = 500;
+
+        // Whether to provide a precomputed electron number density profile
+        // for the GPU's Glashow path. We mirror nuSQUIDS::UpdateInteractions
+        // exactly so the GPU never needs to know about composition or
+        // nuclear-XS branches.
+        bool gpu_needs_num_e_atm = false;
+        bool hasNuclearXS_atm = false;
+        if(use_interactions && int_struct){
+          BaseSQUIDS& nsq0 = nusq_array.front();
+          gpu_needs_num_e_atm = nsq0.iglashow &&
+                                (nsq0.NT == both || nsq0.NT == antineutrino);
+          if(gpu_needs_num_e_atm){
+            for(const PDGCode& tgt : int_struct->targets){
+              if(isNuclearPDGCode(tgt)){
+                hasNuclearXS_atm = true;
+                break;
+              }
+            }
+          }
+        }
+
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          auto& trk = *nsq.track;
+          gpu_paths[p].xini = trk.GetInitialX();
+          gpu_paths[p].xend = trk.GetFinalX();
+          gpu_paths[p].time_offset = 0.0;
+          gpu_paths[p].n_density_samples = n_density_samples;
+          gpu_paths[p].n_targets = n_tgts;
+          gpu_paths[p].density_x.resize(n_density_samples);
+          gpu_paths[p].density_vals.resize(n_density_samples);
+          gpu_paths[p].ye_vals.resize(n_density_samples);
+          if(n_tgts > 0)
+            gpu_paths[p].target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
+          if(gpu_needs_num_e_atm)
+            gpu_paths[p].num_e_vals.assign(n_density_samples, 0.0);
+
+          double dx = (gpu_paths[p].xend - gpu_paths[p].xini) / (n_density_samples - 1);
+          for(int s = 0; s < n_density_samples; s++){
+            double x_s = gpu_paths[p].xini + s * dx;
+            trk.SetX(x_s);
+            gpu_paths[p].density_x[s] = x_s;
+            gpu_paths[p].density_vals[s] = nsq.body->density(trk);
+            gpu_paths[p].ye_vals[s] = nsq.body->ye(trk);
+
+            // Sample target number densities using nuSQUIDS unit system
+            if(n_tgts > 0){
+              nsq.current_density = nsq.body->density(trk);
+              nsq.current_ye = nsq.body->ye(trk);
+              if(nsq.body_has_composition)
+                nsq.current_composition = nsq.body->composition(trk);
+              nsq.target_fractions_valid = false;
+              std::vector<double> ndens = nsq.GetTargetNumberDensities();
+              for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
+                gpu_paths[p].target_ndens[t][s] = ndens[t];
+
+              // Mirror nuSQUIDS::UpdateInteractions Glashow electron-density
+              // logic exactly. Use squids::Const natural units throughout —
+              // no hardcoded conversion factors on the GPU.
+              if(gpu_needs_num_e_atm){
+                double num_e = 0.0;
+                if(nsq.body_has_composition || hasNuclearXS_atm){
+                  double density_nat =
+                    (nsq.params.gr*pow(nsq.params.cm,-3))*nsq.current_density;
+                  double ye_s = nsq.current_ye;
+                  if(ye_s != 0){
+                    num_e = density_nat /
+                      (nsq.params.electron_mass + nsq.params.proton_mass +
+                       nsq.params.neutron_mass*((1-ye_s)/ye_s));
+                  }
+                } else if(n_tgts == 1){
+                  num_e = ndens[0] * nsq.current_ye;
+                } else if(!ndens.empty()){
+                  num_e = ndens[0]; // proton density; n_e = n_p in neutral matter
+                }
+                gpu_paths[p].num_e_vals[s] = num_e;
+              }
+            }
+          }
+          trk.SetX(gpu_paths[p].xini);
+        }
+
+        // Extract HI_constants and NT_type from first nuSQUIDS
+        double HI_constants_val = nusq_array[0].HI_constants;
+        int NT_type_val = static_cast<int>(nusq_array[0].NT);
+
+        // Evolve on GPU (modifies states in-place)
+        // Pass the nuSQUIDS error tolerances to the GPU solver
+        double gpu_rel_error = nusq_array[0].Get_rel_error();
+        double gpu_abs_error = nusq_array[0].Get_abs_error();
+
+        // Extract interaction data for GPU if interactions are enabled
+        InteractionDataHost* int_data_ptr = nullptr;
+        InteractionDataHost int_data;
+        if(use_interactions && int_struct){
+          int_data.n_targets = int_struct->targets.size();
+          int_data.nrhos = nrhos_local;
+          int_data.numneu = numneu_local;
+          int_data.ne = ne_local;
+          int_data.rounded_ne = BaseSQUIDS::round_up_to_aligned(ne_local);
+          int_data.sigma_CC = int_struct->sigma_CC.get_data();
+          int_data.sigma_NC = int_struct->sigma_NC.get_data();
+          int_data.dNdE_CC = int_struct->dNdE_CC.get_data();
+          int_data.dNdE_NC = int_struct->dNdE_NC.get_data();
+          bool has_gl = nusq_array.front().iglashow;
+          bool has_tr = nusq_array.front().tauregeneration;
+          int_data.sigma_GR = has_gl ? int_struct->sigma_GR.get_data() : nullptr;
+          int_data.dNdE_GR = has_gl ? int_struct->dNdE_GR.get_data() : nullptr;
+          int_data.dNdE_tau_all = has_tr ? int_struct->dNdE_tau_all.get_data() : nullptr;
+          int_data.dNdE_tau_lep = has_tr ? int_struct->dNdE_tau_lep.get_data() : nullptr;
+          int_data.energies = nusq_array[0].E_range.get_data();
+          int_data.delE = nusq_array[0].delE.get_data();
+          int_data.has_glashow = has_gl;
+          int_data.has_tau_regen = has_tr;
+          int_data_ptr = &int_data;
+        }
+
+        cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
+                              H0_array.data(), b1_proj_data.data(),
+                              n_paths, ne_local, nrhos_local, numneu_local,
+                              HI_constants_val, NT_type_val,
+                              gpu_rel_error, gpu_abs_error,
+                              int_data_ptr);
+
+        // Write evolved states back into nuSQUIDS objects
+        for(int p = 0; p < n_paths; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          for(int rho = 0; rho < nrhos_local; rho++){
+            for(int ie = 0; ie < ne_local; ie++){
+              squids::SU_vector& sv = nsq.state[ie].rho[rho];
+              for(int c = 0; c < su_size; c++)
+                sv[c] = gpu_states[((p * nrhos_local + rho) * ne_local + ie) * su_size + c];
+            }
+          }
+          nsq.Set_t(nsq.track->GetFinalX());
+        }
+
+        return;
+      }
+#endif
 
       if(evalThreads==1){
         unsigned int i = 0;
@@ -1896,6 +2190,19 @@ class nuSQUIDSAtm {
     unsigned int Get_EvalThreads() const{
       return(evalThreads);
     }
+
+    /// \brief Sets the compute backend (cpu or gpu).
+    /// \param b Backend::cpu or Backend::gpu
+    void Set_Backend(Backend b){
+#ifndef NUSQUIDS_CUDA_ENABLED
+      if(b == Backend::gpu)
+        throw std::runtime_error("nuSQUIDSAtm::Error::GPU backend requested but nuSQuIDS was not compiled with CUDA support. Rebuild with ENABLE_CUDA=ON or CUDA=1.");
+#endif
+      backend_ = b;
+    }
+
+    /// \brief Returns the current compute backend.
+    Backend Get_Backend() const { return backend_; }
 
     /// \brief Sets Earth object to be used.
     /// @param earth Shared pointer to Earth object.

@@ -1,0 +1,81 @@
+\section{GPU implementation}
+\label{sec:gpu_impl}
+
+\subsection{Parallelisation strategy}
+
+The interaction-picture evolution
+\begin{equation}
+  \frac{d\rho}{dt} \;=\; i[\rho,\, H_\mathrm{I}(t)]
+                       \;-\; \{\Gamma(t),\, \rho\}
+                       \;+\; \mathcal{F}_\mathrm{int}(t)
+  \label{eq:vN}
+\end{equation}
+is independent across zenith trajectories. Each trajectory is mapped
+to a single CUDA thread block, with the energy and flavor dimensions
+striped across threads within the block. State -- the SU($N_\nu$)
+density-matrix coefficients $\rho^c$ for each $(E_i, \rho)$ -- lives
+in shared memory. Profile information (matter density, electron
+fraction $Y_e$, target species number densities) is uploaded as
+Akima-spline coefficients in a per-block constant-memory buffer.
+
+% TODO: schematic figure of the block layout.
+
+\subsection{Adaptive step control with substage cascade refresh}
+
+The CPU \nusquids\ uses RKF45 from \textsc{GSL}, which evaluates the
+right-hand side of Eq.~\eqref{eq:vN} multiple times per accepted step
+and -- crucially -- recomputes the cascade-source factors at every
+substage by invoking \texttt{PreDerive(t)}. On the GPU we adopt a
+Richardson step-doubling scheme: a full step of size $h$ is computed
+in parallel with two half-steps of size $h/2$, and the difference
+between the two estimates serves as the truncation-error proxy
+that drives accept/reject and step-size adaptation.
+
+To match the CPU's per-substage refresh behaviour, the GPU integrator
+performs the following sequence per macro step:
+\begin{enumerate}
+  \item Take a predictor half-step using start-of-step cascade
+    factors. Store the predicted state at $t+h/2$ in shared memory.
+  \item Cooperatively refresh the cascade source terms (NC, tau
+    decay, Glashow) at $t+h/2$ using the predicted mid-state. The
+    refresh kernels evaluate the energy-coupled reductions across
+    threads.
+  \item Recompute both Richardson branches -- the full step $s_f$ and
+    the two half-steps culminating in $s_h$ -- using the refreshed
+    cascade factors. This guarantees that $s_f$ and $s_h$ solve the
+    same forced ODE, which is the prerequisite for the Richardson
+    extrapolation to be unbiased.
+  \item Form the corrected state $s_h + (s_h - s_f)/15$ and the local
+    error estimate; reduce across the block to decide accept/reject.
+\end{enumerate}
+Substep-by-substep refreshes (4 per RK4 step) further tighten the
+agreement; we adopt this as the default. Without per-substage
+refresh, tau regeneration agreement degrades from sub-percent to
+several tens of percent because of the two-stage nature of the source
+(charged-current production followed by decay-spectrum redistribution).
+
+\subsection{Cascade-source kernels}
+
+The three cascade contributions are computed by separate cooperative
+kernels: \texttt{computeNCCascadeSU3} (one-stage, $\mathcal{O}(n_E^2)$
+per refresh), \texttt{computeTauRegenSU3} (two-stage, $\mathcal{O}(n_E^3)$
+production-then-decay), and \texttt{computeGlashowCascadeSU3} (sharp
+resonance at $\sim 6.3\,\mathrm{PeV}$, $\mathcal{O}(n_E^2)$). Profile
+quantities -- target number densities, $Y_e$, and the Glashow electron
+number density $n_e$ -- are pre-evaluated once per substage by a
+single thread and broadcast through shared memory, eliminating per-thread
+Akima spline evaluations.
+
+% TODO: short subsection on the Glashow num_e body-composition path
+% (include the full CPU-mirroring formula num_e = density / (m_e + m_p + m_n*(1-y_e)/y_e))
+
+\subsection{CPU correctness as ground truth}
+
+Throughout the GPU port we treat the CPU \nusquids\ implementation as
+the oracle. All physics constants are sourced from the SQuIDS
+\texttt{Const} natural-units system; no conversion factors are
+hardcoded on the device. Where the GPU requires a precomputed quantity
+that the CPU computes inline (e.g.\ the Glashow $n_e$ for bodies with
+non-trivial composition), the value is computed CPU-side using the
+same formula and uploaded as profile data, never recomputed
+independently on the device.

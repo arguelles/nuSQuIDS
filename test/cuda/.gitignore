@@ -1,0 +1,12 @@
+Report.txt
+*.compile.log
+*.stdout.log
+*.stderr.log
+# Test binaries produced by run_cuda_tests
+cuda_test
+cuda_single_baseline_test
+cuda_interactions_test
+cuda_error_test
+cuda_rhs_diagnostic
+cuda_paper_diagnostics
+benchmark_cuda

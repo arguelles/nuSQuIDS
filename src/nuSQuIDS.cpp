@@ -1439,6 +1439,218 @@ void nuSQUIDS::EvolveState(){
   if( !ioscillations && iinteraction)
     SetUpInteractionCache();
 
+#ifdef NUSQUIDS_CUDA_ENABLED
+  // Host-side GPU preconditions run FIRST — before we consider a CPU
+  // fallback — so that users who explicitly requested Backend::gpu with
+  // an unsupported configuration (numneu>3, MAX_INT_PAIRS overflow) get
+  // the same error whether or not the workload happens to be stiff.
+  if(backend_ == Backend::gpu && ne > 1){
+    const int n_tgts = (iinteraction && int_struct)
+                       ? static_cast<int>(int_struct->targets.size()) : 0;
+    CheckGPUPreconditions(static_cast<int>(numneu), static_cast<int>(ne),
+                          static_cast<int>(nrhos), iinteraction, n_tgts);
+  }
+
+  // Detect the osc-only-with-matter regime that the GPU RK4+Richardson
+  // integrator cannot resolve — the stepper collapses to h_min and runs
+  // out of max_steps before finishing. The interacting substage-refresh
+  // path handles matter fine, so we only fall back for iinteraction=false.
+  // See GPUShouldFallBackToCPU in include/nuSQuIDS/cuda/cuda_backend.h.
+  bool gpu_osc_fallback = false;
+  if(backend_ == Backend::gpu && ne > 1 && !iinteraction && body && track){
+    // Sample body density along the track at a few points. Vacuum bodies
+    // always report zero here, so this preserves GPU dispatch for vacuum.
+    double xini = track->GetInitialX();
+    double xend = track->GetFinalX();
+    double max_density = 0.0;
+    for(int s = 0; s < 5; s++){
+      double x_s = xini + s * (xend - xini) / 4.0;
+      track->SetX(x_s);
+      max_density = std::max(max_density, std::abs(body->density(*track)));
+    }
+    track->SetX(xini);
+    bool matter_present = max_density > 0.0;
+    gpu_osc_fallback = GPUShouldFallBackToCPU(iinteraction, matter_present);
+    if(gpu_osc_fallback){
+      std::cerr << "nuSQUIDS: GPU pure-oscillation integrator cannot resolve "
+                << "matter propagation without interactions "
+                << "(max density=" << max_density
+                << " g/cm³). Falling back to CPU integrator."
+                << std::endl;
+    }
+  }
+
+  if(backend_ == Backend::gpu && ne > 1 && !gpu_osc_fallback){
+
+    if(!cuda_backend_)
+      cuda_backend_.reset(new CUDABackend());
+
+    const int ne_local = ne;
+    const int nrhos_local = nrhos;
+    const int numneu_local = numneu;
+    const int su_size = numneu_local * numneu_local;
+
+    // Extract H0 (same layout as nuSQUIDSAtm GPU path)
+    std::vector<double> H0_data(nrhos_local * ne_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        squids::SU_vector h = H0(E_range[ie], rho);
+        auto comps = h.GetComponents();
+        for(int c = 0; c < su_size; c++)
+          H0_data[(rho * ne_local + ie) * su_size + c] = comps[c];
+      }
+    }
+
+    // Extract b1 projectors
+    std::vector<double> b1_proj_data(nrhos_local * numneu_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int flv = 0; flv < numneu_local; flv++){
+        auto comps = b1_proj[rho][flv].GetComponents();
+        for(int c = 0; c < su_size; c++)
+          b1_proj_data[(rho * numneu_local + flv) * su_size + c] = comps[c];
+      }
+    }
+
+    // Extract initial states: layout [1][nrhos][ne][su_size]
+    std::vector<double> gpu_states(nrhos_local * ne_local * su_size, 0.0);
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        const squids::SU_vector& sv = state[ie].rho[rho];
+        for(int c = 0; c < su_size; c++)
+          gpu_states[(rho * ne_local + ie) * su_size + c] = sv[c];
+      }
+    }
+
+    // Sample density profile along track
+    const int n_density_samples = 500;
+    GPUPathData gpu_path;
+    gpu_path.xini = track->GetInitialX();
+    gpu_path.xend = track->GetFinalX();
+    gpu_path.time_offset = 0.0;
+    gpu_path.n_density_samples = n_density_samples;
+    gpu_path.density_x.resize(n_density_samples);
+    gpu_path.density_vals.resize(n_density_samples);
+    gpu_path.ye_vals.resize(n_density_samples);
+
+    // Determine number of interaction targets
+    int n_tgts = (iinteraction && int_struct) ? (int)int_struct->targets.size() : 0;
+    gpu_path.n_targets = n_tgts;
+    if(n_tgts > 0)
+      gpu_path.target_ndens.resize(n_tgts, std::vector<double>(n_density_samples, 0.0));
+
+    // Whether to provide a precomputed electron number density profile for
+    // the GPU's Glashow path. We mirror UpdateInteractions exactly so the
+    // GPU never needs to know about composition / nuclear-XS branches.
+    bool gpu_needs_num_e =
+      iinteraction && int_struct && iglashow &&
+      (NT == both || NT == antineutrino);
+    bool hasNuclearXS = false;
+    if(gpu_needs_num_e){
+      for(const PDGCode& tgt : int_struct->targets){
+        if(isNuclearPDGCode(tgt)){
+          hasNuclearXS = true;
+          break;
+        }
+      }
+      gpu_path.num_e_vals.assign(n_density_samples, 0.0);
+    }
+
+    double dx = (gpu_path.xend - gpu_path.xini) / (n_density_samples - 1);
+    for(int s = 0; s < n_density_samples; s++){
+      double x_s = gpu_path.xini + s * dx;
+      track->SetX(x_s);
+      gpu_path.density_x[s] = x_s;
+      gpu_path.density_vals[s] = body->density(*track);
+      gpu_path.ye_vals[s] = body->ye(*track);
+
+      // Sample target number densities using the full nuSQUIDS machinery
+      if(n_tgts > 0){
+        current_density = body->density(*track);
+        current_ye = body->ye(*track);
+        if(body_has_composition)
+          current_composition = body->composition(*track);
+        target_fractions_valid = false;  // force recomputation
+        std::vector<double> ndens = GetTargetNumberDensities();
+        for(int t = 0; t < n_tgts && t < (int)ndens.size(); t++)
+          gpu_path.target_ndens[t][s] = ndens[t];
+
+        // Mirror nuSQUIDS::UpdateInteractions Glashow electron-density logic
+        // exactly. Use squids::Const natural units throughout — no hardcoded
+        // conversion factors on the GPU.
+        if(gpu_needs_num_e){
+          double num_e = 0.0;
+          if(body_has_composition || hasNuclearXS){
+            double density_nat = (params.gr*pow(params.cm,-3))*current_density;
+            double ye_s = current_ye;
+            if(ye_s != 0){
+              num_e = density_nat /
+                (params.electron_mass + params.proton_mass +
+                 params.neutron_mass*((1-ye_s)/ye_s));
+            }
+          } else if(n_tgts == 1){
+            num_e = ndens[0] * current_ye;
+          } else if(!ndens.empty()){
+            num_e = ndens[0]; // proton density; in neutral matter n_e = n_p
+          }
+          gpu_path.num_e_vals[s] = num_e;
+        }
+      }
+    }
+    track->SetX(gpu_path.xini);
+
+    std::vector<GPUPathData> gpu_paths = {gpu_path};
+
+    int NT_type_val = static_cast<int>(NT);
+    double gpu_rel_error = Get_rel_error();
+    double gpu_abs_error = Get_abs_error();
+
+    // Extract interaction data for GPU if interactions are enabled
+    InteractionDataHost* int_data_ptr = nullptr;
+    InteractionDataHost int_data;
+    if(iinteraction && int_struct){
+      int_data.n_targets = int_struct->targets.size();
+      int_data.nrhos = nrhos_local;
+      int_data.numneu = numneu_local;
+      int_data.ne = ne_local;
+      int_data.rounded_ne = round_up_to_aligned(ne_local);
+      int_data.sigma_CC = int_struct->sigma_CC.get_data();
+      int_data.sigma_NC = int_struct->sigma_NC.get_data();
+      int_data.dNdE_CC = int_struct->dNdE_CC.get_data();
+      int_data.dNdE_NC = int_struct->dNdE_NC.get_data();
+      int_data.sigma_GR = iglashow ? int_struct->sigma_GR.get_data() : nullptr;
+      int_data.dNdE_GR = iglashow ? int_struct->dNdE_GR.get_data() : nullptr;
+      int_data.dNdE_tau_all = tauregeneration ? int_struct->dNdE_tau_all.get_data() : nullptr;
+      int_data.dNdE_tau_lep = tauregeneration ? int_struct->dNdE_tau_lep.get_data() : nullptr;
+      int_data.energies = E_range.get_data();
+      int_data.delE = delE.get_data();
+      int_data.has_glashow = iglashow;
+      int_data.has_tau_regen = tauregeneration;
+      int_data_ptr = &int_data;
+    }
+
+    cuda_backend_->Evolve(gpu_states.data(), gpu_paths,
+                          H0_data.data(), b1_proj_data.data(),
+                          1, ne_local, nrhos_local, numneu_local,
+                          HI_constants, NT_type_val,
+                          gpu_rel_error, gpu_abs_error,
+                          int_data_ptr);
+
+    // Write evolved states back
+    for(int rho = 0; rho < nrhos_local; rho++){
+      for(unsigned int ie = 0; ie < ne_local; ie++){
+        squids::SU_vector& sv = state[ie].rho[rho];
+        for(int c = 0; c < su_size; c++)
+          sv[c] = gpu_states[(rho * ne_local + ie) * su_size + c];
+      }
+    }
+    Set_t(track->GetFinalX());
+
+    if(progressbar)
+      ProgressBar();
+    return;
+  }
+#endif
+
   // is track time reversed
   if(track->GetFinalX() < track->GetInitialX()){
     // flip the arrow of time

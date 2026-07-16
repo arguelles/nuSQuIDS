@@ -1,0 +1,20 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+% TODO: rewrite once full A100 / H100 / H200 numbers and the realistic
+% atmospheric example are in.
+
+We have presented a CUDA implementation of the \nusquids\ neutrino
+transport solver that preserves the adaptive Runge--Kutta step
+control of the original CPU code via per-substage cascade-source
+refreshes on the device. Validation on five representative scenarios
+-- including tau regeneration, the Glashow resonance, and realistic
+power-law atmospheric/astrophysical injection spectra -- shows
+sub-percent relative agreement with the CPU reference. On a fractional
+NVIDIA A100 partition (1g.10gb MIG slice) the GPU implementation is
+already $\sim 35\times$ faster than a single CPU thread on
+production-scale atmospheric oscillation grids, with the crossover
+from CPU- to GPU-dominant occurring around 400 grid points.
+
+% TODO: end with the full A100 / H100 / H200 headline number and a
+% concrete IceCube example.

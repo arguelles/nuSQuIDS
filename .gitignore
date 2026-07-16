@@ -34,3 +34,4 @@
 *.pc
 
 Makefile
+test/env_vars.sh
