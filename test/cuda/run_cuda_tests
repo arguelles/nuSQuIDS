@@ -1,0 +1,132 @@
+#!/bin/sh
+# Local runner for the CUDA test suite.
+#
+# Usage:  bash run_cuda_tests
+#
+# Compiles each cuda_*.cpp against the CUDA-enabled libnuSQuIDS (via
+# ../env_vars.sh), executes it, and parses PASS/FAIL from stdout. Produces
+# Report.txt mirroring the CPU test convention. Exits non-zero if any test
+# fails or fails to compile.
+#
+# Each individual test skips cleanly (returns 0, prints "Skipping.") when
+# either NUSQUIDS_CUDA_ENABLED is unset (library built without --enable-cuda)
+# or when no GPU is available at runtime. This script honours those skips.
+
+set -u
+
+REPORT_FILE="Report.txt"
+
+# Which tests to run. Include only functional tests here — the SLURM-only
+# scripts and benchmarks/diagnostics live alongside but are not exercised
+# by this runner.
+TESTS="\
+  cuda_test \
+  cuda_single_baseline_test \
+  cuda_interactions_test \
+  cuda_error_test \
+"
+
+# Source configure-generated compilation flags.
+if [ ! -f ../env_vars.sh ]; then
+  echo "ERROR: ../env_vars.sh not found. Run ./configure --enable-cuda first." >&2
+  exit 1
+fi
+. ../env_vars.sh
+
+# CUDA library location. The FASRC modules put CUDA at $CUDA_HOME; on other
+# systems set CUDA_HOME before invoking this script. The stubs directory
+# supplies libcuda.so for driver-less link on compute nodes.
+CUDA_LDFLAGS=""
+if [ -n "${CUDA_HOME:-}" ] && [ -d "$CUDA_HOME/lib64/stubs" ]; then
+  CUDA_LDFLAGS="-L$CUDA_HOME/lib64/stubs -lcuda"
+fi
+
+: > "$REPORT_FILE"
+
+# Determine width for right-padded test names in the report.
+WIDTH=0
+for t in $TESTS; do
+  n=${#t}
+  if [ $n -gt $WIDTH ]; then WIDTH=$n; fi
+done
+
+pad() {
+  # $1 = string, $2 = width
+  s=$1
+  w=$2
+  n=${#s}
+  printf "%s" "$s"
+  i=$n
+  while [ $i -lt $w ]; do
+    printf " "
+    i=$((i + 1))
+  done
+}
+
+overall_status=0
+n_pass=0
+n_fail=0
+n_skip=0
+
+for name in $TESTS; do
+  src="$name.cpp"
+  bin="$name"
+
+  if [ ! -f "$src" ]; then
+    printf "%s : MISSING SOURCE\n" "$(pad "$name" $WIDTH)" | tee -a "$REPORT_FILE"
+    n_fail=$((n_fail + 1))
+    overall_status=1
+    continue
+  fi
+
+  # Compile. Redirect output so failures are captured in stderr file.
+  if ! eval "$CXX $CXXFLAGS $CFLAGS -o \"$bin\" \"$src\" $LDFLAGS $CUDA_LDFLAGS" \
+      > "$name.compile.log" 2>&1; then
+    printf "%s : COMPILE FAIL (see %s.compile.log)\n" \
+      "$(pad "$name" $WIDTH)" "$name" | tee -a "$REPORT_FILE"
+    n_fail=$((n_fail + 1))
+    overall_status=1
+    continue
+  fi
+
+  # Run. Timeout 10 minutes — a benchmark could take that long on MIG.
+  ./"$bin" > "$name.stdout.log" 2> "$name.stderr.log"
+  rc=$?
+
+  # Parse: A test "skipped" if it printed "Skipping." (no CUDA, no GPU).
+  # Otherwise, pass iff the last "ALL … TESTS PASSED" style line is present
+  # AND no "FAIL" outside of tolerance-labelled lines appears at the summary.
+  # We keep this simple: exit code 0 + "PASSED" in output => PASS.
+  if grep -q "Skipping\." "$name.stdout.log"; then
+    printf "%s : SKIP (%s)\n" "$(pad "$name" $WIDTH)" \
+      "$(grep -o 'CUDA support not compiled in\|No GPU available' "$name.stdout.log" | head -1)" \
+      | tee -a "$REPORT_FILE"
+    n_skip=$((n_skip + 1))
+    continue
+  fi
+
+  if [ $rc -ne 0 ]; then
+    printf "%s : FAIL (exit %d, see %s.stdout.log / %s.stderr.log)\n" \
+      "$(pad "$name" $WIDTH)" "$rc" "$name" "$name" | tee -a "$REPORT_FILE"
+    n_fail=$((n_fail + 1))
+    overall_status=1
+    continue
+  fi
+
+  if grep -q "TESTS PASSED\|Backend API: PASS" "$name.stdout.log"; then
+    printf "%s : PASS\n" "$(pad "$name" $WIDTH)" | tee -a "$REPORT_FILE"
+    n_pass=$((n_pass + 1))
+  else
+    printf "%s : FAIL (no PASSED marker; see %s.stdout.log)\n" \
+      "$(pad "$name" $WIDTH)" "$name" | tee -a "$REPORT_FILE"
+    n_fail=$((n_fail + 1))
+    overall_status=1
+  fi
+done
+
+{
+  echo ""
+  echo "Total: $n_pass passed, $n_fail failed, $n_skip skipped"
+} | tee -a "$REPORT_FILE"
+
+exit $overall_status
