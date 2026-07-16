@@ -11,9 +11,20 @@
 #include "nuSQuIDS/cuda/detail/physics.cuh"
 #include "nuSQuIDS/cuda/detail/memory.cuh"
 #include "nuSQuIDS/cuda/detail/interactions_gpu.cuh"
+#include "nuSQuIDS/cuda/cuda_backend.h"  // for GPU_EVOLVE_THREADS/GPU_MAX_INT_PAIRS mirror
 
 #include <sstream>
 #include <stdexcept>
+
+// Ensure the pure-host mirror constants in cuda_backend.h stay in sync
+// with the device-visible ones in kernels.cuh. If either changes, the
+// other must be updated in the same commit.
+static_assert(::nusquids::GPU_EVOLVE_THREADS ==
+              ::nusquids::cuda::EVOLVE_THREADS,
+              "GPU_EVOLVE_THREADS mirror in cuda_backend.h is out of sync");
+static_assert(::nusquids::GPU_MAX_INT_PAIRS ==
+              ::nusquids::cuda::MAX_INT_PAIRS,
+              "GPU_MAX_INT_PAIRS mirror in cuda_backend.h is out of sync");
 
 namespace nusquids { namespace cuda {
 

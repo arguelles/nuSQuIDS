@@ -17,8 +17,10 @@
 #define NUSQUIDS_CUDA_BACKEND_H
 
 #include <memory>
-#include <vector>
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 // Forward declarations — no CUDA includes in this header
 namespace nusquids {
@@ -27,6 +29,74 @@ class nuSQUIDS;
 template<typename,typename> class nuSQUIDSAtm;
 class EarthAtm;
 class Body;
+
+/// \brief GPU kernel launch-configuration constants — mirrored in
+/// `include/nuSQuIDS/cuda/detail/kernels.cuh`. Duplicated here (pure-host
+/// header, no CUDA includes) so `nuSQUIDS::EvolveState` can enforce the
+/// same host-side preconditions without pulling in nvcc-only headers. The
+/// kernels.cuh copies are the source of truth for the device kernel;
+/// values must match — a static_assert in kernels.cu ties them together.
+static constexpr int GPU_EVOLVE_THREADS = 128;
+static constexpr int GPU_MAX_INT_PAIRS = 4;
+
+/// \brief Return true iff the GPU pure-oscillation integrator will lock up
+/// on the given configuration and the CPU integrator should be used instead.
+///
+/// The GPU pure-osc code path uses RK4 + Richardson step doubling, which
+/// cannot resolve fast oscillations superposed on a matter potential — the
+/// stepper collapses h to h_min and burns through max_steps before finishing.
+/// This is empirically what happened at Emin=10 MeV through Earth matter, and
+/// at Emin=100 MeV through ~500 km of rock. Vacuum works because there is no
+/// matter Hamiltonian to interfere with the RK4 truncation error. The
+/// interacting substage-refresh path has independent step control and handles
+/// low energies fine. So the rule is:
+///
+///   fallback ⇔ (iinteraction == false) AND (matter density > 0 somewhere)
+///
+/// Higher energies (Emin ≳ 10 GeV) with matter + osc-only actually work fine
+/// too, but a conservative rule avoids surprising failures for users. This
+/// keeps atmospheric-oscillation grids (the paper's 200×200 workload) on
+/// GPU because they always enable interactions.
+inline bool GPUShouldFallBackToCPU(bool iinteraction, bool matter_present) {
+  return !iinteraction && matter_present;
+}
+
+/// \brief Throw std::runtime_error with a clear message if the given
+/// (numneu, ne, nrhos, iinteraction, n_targets) configuration is outside
+/// what the GPU backend supports.
+///
+/// Called by both `nuSQUIDS::EvolveState` and `nuSQUIDSAtm::EvolveState`
+/// before dispatching to `CUDABackend::Evolve`. Identical checks live in
+/// `launchEvolve` (kernels.cu) as defence in depth, but experience with
+/// nvcc-12.4.1 + `--use_fast_math` + `-O3` showed those throws could be
+/// optimised away silently in the kernel-launcher TU. Enforcing here
+/// (a pure-host TU compiled by g++/clang++) guarantees the check runs.
+inline void CheckGPUPreconditions(int numneu, int ne, int nrhos,
+                                  bool iinteraction, int n_targets) {
+  if (numneu != 3) {
+    std::ostringstream msg;
+    msg << "nuSQUIDS::EvolveState: SU(" << numneu
+        << ") evolution is not implemented on the GPU backend. "
+        << "Only numneu=3 is supported; please run on the CPU backend "
+        << "(Set_Backend(Backend::cpu)) or set numneu=3.";
+    throw std::runtime_error(msg.str());
+  }
+
+  if (iinteraction && n_targets > 0) {
+    const int int_pairs_per_thread =
+        nrhos * ((ne + GPU_EVOLVE_THREADS - 1) / GPU_EVOLVE_THREADS);
+    if (int_pairs_per_thread > GPU_MAX_INT_PAIRS) {
+      std::ostringstream msg;
+      msg << "nuSQUIDS::EvolveState: GPU substage-refresh requires "
+          << "MAX_INT_PAIRS>=" << int_pairs_per_thread
+          << " (ne=" << ne
+          << ", nrhos=" << nrhos
+          << ", blockDim=" << GPU_EVOLVE_THREADS
+          << ", current MAX_INT_PAIRS=" << GPU_MAX_INT_PAIRS << ").";
+      throw std::runtime_error(msg.str());
+    }
+  }
+}
 
 /// \brief Host-side interaction data for GPU upload.
 ///

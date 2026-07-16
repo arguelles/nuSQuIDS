@@ -1440,7 +1440,48 @@ void nuSQUIDS::EvolveState(){
     SetUpInteractionCache();
 
 #ifdef NUSQUIDS_CUDA_ENABLED
+  // Host-side GPU preconditions run FIRST — before we consider a CPU
+  // fallback — so that users who explicitly requested Backend::gpu with
+  // an unsupported configuration (numneu>3, MAX_INT_PAIRS overflow) get
+  // the same error whether or not the workload happens to be stiff.
   if(backend_ == Backend::gpu && ne > 1){
+    const int n_tgts = (iinteraction && int_struct)
+                       ? static_cast<int>(int_struct->targets.size()) : 0;
+    CheckGPUPreconditions(static_cast<int>(numneu), static_cast<int>(ne),
+                          static_cast<int>(nrhos), iinteraction, n_tgts);
+  }
+
+  // Detect the osc-only-with-matter regime that the GPU RK4+Richardson
+  // integrator cannot resolve — the stepper collapses to h_min and runs
+  // out of max_steps before finishing. The interacting substage-refresh
+  // path handles matter fine, so we only fall back for iinteraction=false.
+  // See GPUShouldFallBackToCPU in include/nuSQuIDS/cuda/cuda_backend.h.
+  bool gpu_osc_fallback = false;
+  if(backend_ == Backend::gpu && ne > 1 && !iinteraction && body && track){
+    // Sample body density along the track at a few points. Vacuum bodies
+    // always report zero here, so this preserves GPU dispatch for vacuum.
+    double xini = track->GetInitialX();
+    double xend = track->GetFinalX();
+    double max_density = 0.0;
+    for(int s = 0; s < 5; s++){
+      double x_s = xini + s * (xend - xini) / 4.0;
+      track->SetX(x_s);
+      max_density = std::max(max_density, std::abs(body->density(*track)));
+    }
+    track->SetX(xini);
+    bool matter_present = max_density > 0.0;
+    gpu_osc_fallback = GPUShouldFallBackToCPU(iinteraction, matter_present);
+    if(gpu_osc_fallback){
+      std::cerr << "nuSQUIDS: GPU pure-oscillation integrator cannot resolve "
+                << "matter propagation without interactions "
+                << "(max density=" << max_density
+                << " g/cm³). Falling back to CPU integrator."
+                << std::endl;
+    }
+  }
+
+  if(backend_ == Backend::gpu && ne > 1 && !gpu_osc_fallback){
+
     if(!cuda_backend_)
       cuda_backend_.reset(new CUDABackend());
 

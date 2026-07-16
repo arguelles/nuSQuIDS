@@ -1352,15 +1352,64 @@ class nuSQUIDSAtm {
       }
 
 #ifdef NUSQUIDS_CUDA_ENABLED
-      if(backend_ == Backend::gpu){
-        if(!cuda_backend_)
-          cuda_backend_.reset(new CUDABackend());
+      // Host-side GPU preconditions run FIRST — before we consider a CPU
+      // fallback — so that a numneu>3 or MAX_INT_PAIRS misconfiguration
+      // fails fast regardless of workload stiffness.
+      if(backend_ == Backend::gpu && !nusq_array.empty()){
+        const int ne_precond = nusq_array[0].GetNumE();
+        const int nrhos_precond = nusq_array[0].GetNumRho();
+        const int numneu_precond = nusq_array[0].GetNumNeu();
+        bool use_interactions_precond = nusq_array.front().GetUseInteractions();
+        int n_tgts_precond = (use_interactions_precond && int_struct)
+                             ? (int)int_struct->targets.size() : 0;
+        CheckGPUPreconditions(numneu_precond, ne_precond, nrhos_precond,
+                              use_interactions_precond, n_tgts_precond);
+      }
 
+      // Detect the osc-only-with-matter regime the GPU integrator cannot
+      // resolve. Since nuSQUIDSAtm always evolves through a body (Earth or
+      // similar), presence of matter is essentially assumed; the only
+      // question is whether interactions are on. Fall back to CPU for the
+      // pure-osc-with-matter combination. See GPUShouldFallBackToCPU.
+      bool gpu_osc_fallback = false;
+      if(backend_ == Backend::gpu && !nusq_array.empty()
+         && !nusq_array.front().GetUseInteractions()){
+        // Sample density at a small number of tracks to determine whether
+        // matter is present. Vacuum atmospheric setups are pathological but
+        // possible; if all tracks are vacuum, keep GPU dispatch.
+        bool matter_present = false;
+        for(size_t p = 0; p < nusq_array.size() && !matter_present; p++){
+          BaseSQUIDS& nsq = nusq_array[p];
+          auto b = nsq.GetBody();
+          auto tr = nsq.GetTrack();
+          if(!b || !tr) continue;
+          double xini = tr->GetInitialX();
+          double xend = tr->GetFinalX();
+          for(int s = 0; s < 3 && !matter_present; s++){
+            double x_s = xini + s * (xend - xini) / 2.0;
+            tr->SetX(x_s);
+            if(std::abs(b->density(*tr)) > 0.0)
+              matter_present = true;
+          }
+          tr->SetX(xini);
+        }
+        gpu_osc_fallback = GPUShouldFallBackToCPU(false, matter_present);
+        if(gpu_osc_fallback){
+          std::cerr << "nuSQUIDSAtm: GPU pure-oscillation integrator cannot "
+                    << "resolve matter propagation without interactions. "
+                    << "Falling back to CPU integrator." << std::endl;
+        }
+      }
+
+      if(backend_ == Backend::gpu && !gpu_osc_fallback){
         const int n_paths = nusq_array.size();
         const int ne_local = nusq_array[0].GetNumE();
         const int nrhos_local = nusq_array[0].GetNumRho();
         const int numneu_local = nusq_array[0].GetNumNeu();
         const int su_size = numneu_local * numneu_local;
+
+        if(!cuda_backend_)
+          cuda_backend_.reset(new CUDABackend());
 
         // Extract H0 from first nuSQUIDS (same for all paths)
         std::vector<double> H0_array(nrhos_local * ne_local * su_size, 0.0);
