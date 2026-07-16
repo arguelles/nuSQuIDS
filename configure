@@ -994,16 +994,19 @@ SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 ' >> ./Makefile
 
-# CUDA variable definitions must come right after OBJECTS so they are
-# included before the library target rules.
+# CUDA source/object list must come right after OBJECTS so it is included
+# before the library target rules. The CFLAGS/LDFLAGS additions have to be
+# emitted AFTER the hard `CFLAGS= ...` / `LDFLAGS= ...` reassignment further
+# below — otherwise those assignments wipe out `-DNUSQUIDS_CUDA_ENABLED` and
+# the entire `#ifdef NUSQUIDS_CUDA_ENABLED` GPU dispatch block in
+# src/nuSQuIDS.cpp is silently preprocessed out. See the append block after
+# the FLAGS section below.
 if [ "$ENABLE_CUDA" ]; then
 	echo '
-# CUDA GPU backend (variables)
+# CUDA GPU backend (sources / objects)
 CUDA_SOURCES = $(wildcard src/cuda/*.cu)
 CUDA_OBJECTS = $(patsubst src/cuda/%.cu,build/%.cu.o,$(CUDA_SOURCES))
 OBJECTS += $(CUDA_OBJECTS)
-CFLAGS += -DNUSQUIDS_CUDA_ENABLED $(CUDA_CFLAGS)
-LDFLAGS += $(CUDA_LDFLAGS)
 ' >> ./Makefile
 fi
 
@@ -1073,6 +1076,22 @@ LIBnuSQUIDS=$(PATH_nuSQUIDS)/lib
 CFLAGS= -O3 -fPIC -Ibuild -I$(INCnuSQUIDS) $(SQUIDS_CFLAGS) $(GSL_CFLAGS) $(HDF5_CFLAGS)
 LDFLAGS= -Wl,-rpath -Wl,$(LIBnuSQUIDS) -L$(LIBnuSQUIDS)
 LDFLAGS+= $(SQUIDS_LDFLAGS) $(GSL_LDFLAGS) $(HDF5_LDFLAGS) -lpthread
+'  >> ./Makefile
+
+# Append CUDA flags AFTER the hard CFLAGS= / LDFLAGS= assignments above.
+# Emitting `CFLAGS +=` before those `=` lines silently drops the flags.
+if [ "$ENABLE_CUDA" ]; then
+	echo '
+# CUDA GPU backend (flag additions — must come after the CFLAGS= / LDFLAGS=
+# hard assignments above, otherwise they get silently overwritten and
+# NUSQUIDS_CUDA_ENABLED is lost, causing all #ifdef'"'"'d GPU code to be
+# preprocessed out at compile time).
+CFLAGS += -DNUSQUIDS_CUDA_ENABLED $(CUDA_CFLAGS)
+LDFLAGS += $(CUDA_LDFLAGS)
+' >> ./Makefile
+fi
+
+echo '
 EXAMPLES_FLAGS=-I$(INCnuSQUIDS) $(CXXFLAGS) $(CFLAGS)
 
 # Project files
