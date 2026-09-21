@@ -4,7 +4,7 @@
 // using IceCube geometry and Earth (PREM) matter potential.
 // Single fixed energy node (no energy loop, no spline interpolation).
 //
-// SME parameter: aT[mu][tau][X] = 2e-23 eV (only non-zero LV coefficient)
+// SME parameter: aT[mu][tau][X] = 2e-23 GeV (only non-zero LV coefficient)
 // Energy: 1 TeV
 // Detector: IceCube [89deg 59' 24'' S]
 //
@@ -25,15 +25,15 @@ int main() {
   squids::Const units;
 
   // ---- IceCube geometry ----
-  // IceCube is at the South Pole: 89deg 59' 24'' S
-  // colatitude = 90 + (deg + min/60 + sec/3600) for Southern latitudes
-  const double ic_deg     = 89.0, ic_min = 59.0, ic_sec = 24.0;
-  const double chi_ic_deg = 90.0 + (ic_deg + ic_min/60.0 + ic_sec/3600.0);
-  const double lat_ic     = (90.0 - chi_ic_deg) * M_PI / 180.0; // latitude in rad (~-pi/2)
+  // IceCube is at the South Pole: 89deg 59' 24'' S.
+  // Negative degrees denote southern latitudes.
+  const double ic_deg = -89.0, ic_min = 59.0, ic_sec = 24.0;
+  const double lat_ic_deg = -(std::fabs(ic_deg) + ic_min/60.0 + ic_sec/3600.0);
+  const double lat_ic     = lat_ic_deg * M_PI / 180.0; // latitude in rad (~-pi/2)
 
   // ---- Physics parameters ----
   const double E       = 1.0 * units.TeV;    // fixed energy, single node
-  const double aT_val  = 2.0e-23 * units.GeV; // aT[mu][tau][X], only non-zero LV term (GeV scale, as in OscProb convention)
+  const double aT_val  = 2.0e-23 * units.GeV; // aT[mu][tau][X]; SME bounds are quoted in GeV
   const double dm21    = 7.5e-5  * units.eV * units.eV;
   const double dm31    = 2.457e-3 * units.eV * units.eV;
   const double R_Earth = 6371.0 * units.km;
@@ -71,8 +71,8 @@ int main() {
   nus_lv.Set_CPPhase(0, 2, -1.601);
   nus_lv.Set_SquareMassDifference(1, dm21);
   nus_lv.Set_SquareMassDifference(2, dm31);
-  nus_lv.SetA(1, 2, 0, aT_val);      // aT[mu][tau][X] = 2e-23 eV (only non-zero term)
-  nus_lv.SetColatitude(chi_ic_deg);  // IceCube South Pole colatitude
+  nus_lv.SetA(1, 2, 0, aT_val);      // aT[mu][tau][X] = 2e-23 GeV (only non-zero term)
+  nus_lv.SetLatitudeDMS(ic_deg, ic_min, ic_sec); // IceCube, South Pole
   nus_lv.SetTimeHours(0.0);
   nus_lv.Set_Body(earth);
   nus_lv.Set_rel_error(1.0e-6);

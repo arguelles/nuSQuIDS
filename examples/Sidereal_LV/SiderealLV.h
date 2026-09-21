@@ -32,8 +32,11 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
   double fN[3];
 
   // Sidereal time and detector geometry
-  double fTime;  // local sidereal time, in hours
-  double fChi;   // detector colatitude (90 - latitude), in degrees
+  double fTime;     // local sidereal time, in hours
+  double fChi;      // detector colatitude (90 - latitude), in degrees
+  double fZenith;   // neutrino zenith angle at the detector, in degrees
+  double fAzimuth;  // neutrino azimuth angle at the detector, in degrees
+  bool fDirectionSet;
 
   // Per-energy LV vectors in mass basis (interaction picture)
   // aT: CPT-odd (sign flips for antineutrinos)
@@ -47,6 +50,20 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
 
   static constexpr double kSiderealDayHours = 23.9344696;
   static constexpr double kOmegaSidereal    = 2.0 * M_PI / kSiderealDayHours;
+
+  // Recompute the direction factors (NX, NY, NZ) from the stored zenith and
+  // azimuth and the detector colatitude. Called whenever any of them changes,
+  // so the three may be set in any order.
+  void UpdateDirection() {
+    if (!fDirectionSet) return;
+    double chi = fChi     * M_PI / 180.0;
+    double zen = fZenith  * M_PI / 180.0;
+    double azi = fAzimuth * M_PI / 180.0;
+    fN[0] =  std::cos(chi)*std::sin(zen)*std::cos(azi) + std::sin(chi)*std::cos(zen);
+    fN[1] =  std::sin(zen)*std::sin(azi);
+    fN[2] = -std::sin(chi)*std::sin(zen)*std::cos(azi) + std::cos(chi)*std::cos(zen);
+    dirty = true;
+  }
 
   // Build LV base vectors (mass basis, not yet evolved) for all energy bins.
   // Called once whenever SME parameters, fTime, or fN change.
@@ -153,7 +170,8 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
   nuSQUIDSSiderealLV(marray<double,1> E_range_, unsigned int numneu_,
                      NeutrinoType NT_, bool interaction_)
       : nuSQUIDS(E_range_, numneu_, NT_, interaction_),
-        fa{}, fc{}, fN{0.0, 0.0, 0.0}, fTime(0.0), fChi(0.0), dirty(true)
+        fa{}, fc{}, fN{0.0, 0.0, 0.0}, fTime(0.0), fChi(0.0),
+        fZenith(0.0), fAzimuth(0.0), fDirectionSet(false), dirty(true)
   {
     if (numneu_ != 3)
       throw std::runtime_error("nuSQUIDSSiderealLV: only 3 flavours supported");
@@ -176,7 +194,10 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
     if (!ValidateAndOrder(flvi, flvj, "cT")) return;
     if (!ValidateCoord(coord1, "coord1", "cT")) return;
     if (!ValidateCoord(coord2, "coord2", "cT")) return;
+    // cT is symmetric in its spatial indices; ComputeLVBase only reads the
+    // upper triangle, so store both orderings.
     fc[flvi][flvj][coord1][coord2] = val;
+    fc[flvi][flvj][coord2][coord1] = val;
     dirty = true;
   }
 
@@ -196,15 +217,11 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
   // ---- Geometry and time setters ----
 
   // Set the neutrino direction from zenith and azimuth (degrees).
-  // Requires SetColatitude() to be called first.
   void SetNeutrinoDirection(double zenith_deg, double azimuth_deg) {
-    double chi = fChi        * M_PI / 180.0;
-    double zen = zenith_deg  * M_PI / 180.0;
-    double azi = azimuth_deg * M_PI / 180.0;
-    fN[0] =  std::cos(chi)*std::sin(zen)*std::cos(azi) + std::sin(chi)*std::cos(zen);
-    fN[1] =  std::sin(zen)*std::sin(azi);
-    fN[2] = -std::sin(chi)*std::sin(zen)*std::cos(azi) + std::cos(chi)*std::cos(zen);
-    dirty = true;
+    fZenith  = zenith_deg;
+    fAzimuth = azimuth_deg;
+    fDirectionSet = true;
+    UpdateDirection();
   }
 
   // Set local sidereal time in hours.
@@ -216,15 +233,24 @@ class nuSQUIDSSiderealLV : public nuSQUIDS {
   // Set detector colatitude (chi = 90 - latitude) in degrees.
   void SetColatitude(double chi_deg) {
     fChi = chi_deg;
+    UpdateDirection();
   }
 
-  // Set detector colatitude from geographic coordinates (positive = North).
-  void SetColatitude(double deg, double min, double sec = 0.0) {
-    double latitude = deg + min / 60.0 + sec / 3600.0;
-    fChi = 90.0 - latitude;
+  // Set detector latitude in degrees, positive North and negative South.
+  void SetLatitude(double lat_deg) {
+    SetColatitude(90.0 - lat_deg);
+  }
+
+  // Set detector latitude from degrees, arcminutes and arcseconds. The sign of
+  // deg applies to the whole value, so IceCube (89deg 59' 24'' S) is
+  // SetLatitudeDMS(-89.0, 59.0, 24.0).
+  void SetLatitudeDMS(double deg, double min, double sec = 0.0) {
+    double magnitude = std::fabs(deg) + min / 60.0 + sec / 3600.0;
+    SetLatitude(std::signbit(deg) ? -magnitude : magnitude);
   }
 
   double GetColatitude() const { return fChi; }
+  double GetLatitude() const { return 90.0 - fChi; }
 
   // Override mixing-angle/phase setters to invalidate LV rotation cache.
   void Set_MixingAngle(unsigned int i, unsigned int j, double angle) {
