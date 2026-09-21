@@ -36,6 +36,9 @@ jobs:
       - name: Build nuSQuIDS
         run: make -j$(nproc)
 
+      - name: Build examples
+        run: make examples -j$(nproc)
+
       - name: Run test suite
         run: |
           cd test
