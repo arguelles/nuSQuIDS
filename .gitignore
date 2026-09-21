@@ -34,3 +34,7 @@
 *.pc
 
 Makefile
+
+# Built example binaries (compiled executables carry no file extension)
+examples/*/*
+!examples/*/*.*
