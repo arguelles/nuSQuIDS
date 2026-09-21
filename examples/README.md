@@ -34,6 +34,7 @@ python examples/Single_energy/main.py
 | [Astrophysical_neutrino_flavor_ratio](Astrophysical_neutrino_flavor_ratio/) | Flavor ratio calculation for astrophysical sources | Yes | Yes |
 | [NSI](NSI/) | Non-standard neutrino interactions | Yes | No |
 | [LV](LV/) | Lorentz violation effects | Yes | No |
+| [Sidereal_LV](Sidereal_LV/) | Sidereal Lorentz violation, SME minimal sector | Yes | No |
 | [Xsections](Xsections/) | Custom cross-section implementation | Yes | No |
 | [Decoherence](Decoherence/) | Quantum decoherence effects | Yes | No |
 | [Composition](Composition/) | Body composition for nuclear cross sections | Yes | Yes |
@@ -116,6 +117,13 @@ Shows Lorentz violation effects in neutrino propagation:
 - CPT-even and CPT-odd operators
 - Energy-dependent modifications
 - SME (Standard Model Extension) parameters
+
+### Sidereal_LV (C++ only)
+
+Sidereal Lorentz violation from the SME minimal sector:
+- aT (mass dimension 3, CPT-odd) and cT (mass dimension 4, CPT-even) coefficients
+- Sidereal-time and direction dependence in the Sun-centred frame
+- P(numu->numu) versus right ascension for IceCube through the Earth (PREM)
 
 ### Xsections (C++ only)
 

@@ -925,6 +925,7 @@ EXAMPLES := examples/Single_energy/single_energy \
             examples/Xsections/xsections \
             examples/NSI/nsi \
             examples/LV/lv \
+            examples/Sidereal_LV/sidereal_lv \
             examples/Atm_BSM/atm_bsm\
             examples/HDF5_Write_Read/write \
             examples/HDF5_Write_Read/read \
@@ -1065,6 +1066,10 @@ examples/NSI/nsi : $(LIBDIR)/$(DYN_PRODUCT) examples/NSI/main.cpp
 examples/LV/lv : $(LIBDIR)/$(DYN_PRODUCT) examples/LV/main.cpp
 	@echo Compiling Lorentz Violation example
 	@$(CXX) $(EXAMPLES_FLAGS) examples/LV/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
+
+examples/Sidereal_LV/sidereal_lv : $(LIBDIR)/$(DYN_PRODUCT) examples/Sidereal_LV/main.cpp examples/Sidereal_LV/SiderealLV.h
+	@echo Compiling Sidereal Lorentz Violation example
+	@$(CXX) $(EXAMPLES_FLAGS) examples/Sidereal_LV/main.cpp -lnuSQuIDS $(LDFLAGS) -o $@
 
 examples/Composition/composition : $(LIBDIR)/$(DYN_PRODUCT) examples/Composition/main.cpp
 	@echo Compiling body composition example
