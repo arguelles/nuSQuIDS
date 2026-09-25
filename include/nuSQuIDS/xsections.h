@@ -670,11 +670,13 @@ public:
 	bool hasTarget(PDGCode target) const;
     template <typename CrossSection>
     void addTarget(PDGCode target, CrossSection&& xs){
+    //void addTarget(std::underlying_type<PDGCode>::type target, CrossSection&& xs){
         if(hasTarget(target))
 			throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, std::make_shared<CrossSection>(std::move(xs)));
     }
     void addTarget(PDGCode target, std::shared_ptr<NeutrinoCrossSections> xs){
+    //void addTarget(std::underlying_type<PDGCode>::type target, std::shared_ptr<NeutrinoCrossSections> xs){
         if(hasTarget(target))
             throw std::runtime_error("Attempt to redefine existing target "+std::to_string(target));
         data.emplace(target, xs);
