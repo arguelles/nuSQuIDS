@@ -303,32 +303,23 @@ void nuSQUIDS::PreDerive(double x){
 }
 
 void nuSQUIDS::EvolveProjectors(double x){
-  std::unique_ptr<double[]> evol_buf(new double[H0_array[0].GetEvolveBufferSize()]);
-  for(unsigned int ei = 0; ei < ne; ei++){
-    H0_array[ei].PrepareEvolve(evol_buf.get(),x-Get_t_initial());
-    if (evol_lowpass_cutoff > 0){
-      // std::cout << "evol_buf: ";
-      // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
-      //   std::cout << evol_buf.get()[i] << "  ";
-      // }
-      // std::cout << std::endl;
-      H0_array[ei].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff, evol_lowpass_scale);
-      // std::cout << "evol_buf after filter: ";
-      // for (unsigned int i = 0; i < H0_array[ei].GetEvolveBufferSize(); i++){
-      //   std::cout << evol_buf.get()[i] << "  ";
-      // }
-      // std::cout << std::endl;
-    }
-    for(unsigned int rho = 0; rho < nrhos; rho++){
-      for(unsigned int flv = 0; flv < numneu; flv++){
-        // will only evolve the flavor projectors
-        evol_b1_proj[rho][flv][ei] = squids::detail::guarantee
-          <squids::detail::NoAlias | squids::detail::EqualSizes>
-          (b1_proj[rho][flv].Evolve(evol_buf.get()));
+  // independent per energy node; split across the threads of Set_NumThreads
+  ParallelFor(ne, [this,x](unsigned int begin, unsigned int end, unsigned int){
+    std::unique_ptr<double[]> evol_buf(new double[H0_array[0].GetEvolveBufferSize()]);
+    for(unsigned int ei = begin; ei < end; ei++){
+      H0_array[ei].PrepareEvolve(evol_buf.get(),x-Get_t_initial());
+      if (evol_lowpass_cutoff > 0)
+        H0_array[ei].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff, evol_lowpass_scale);
+      for(unsigned int rho = 0; rho < nrhos; rho++){
+        for(unsigned int flv = 0; flv < numneu; flv++){
+          // will only evolve the flavor projectors
+          evol_b1_proj[rho][flv][ei] = squids::detail::guarantee
+            <squids::detail::NoAlias | squids::detail::EqualSizes>
+            (b1_proj[rho][flv].Evolve(evol_buf.get()));
+        }
       }
     }
-  }
-  return;
+  });
 }
 
 namespace{

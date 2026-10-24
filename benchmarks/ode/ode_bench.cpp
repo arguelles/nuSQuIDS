@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -135,6 +136,8 @@ static void set_mixing(nuSQUIDS& n, unsigned numneu, const squids::Const& u) {
 }
 
 static void configure_solver(nuSQUIDS& n, const Method& m, double tol) {
+  // ODE_BENCH_THREADS=n evaluates the right-hand side on n threads
+  if (const char* th = std::getenv("ODE_BENCH_THREADS")) n.Set_NumThreads(std::atoi(th));
   n.Set_rel_error(tol);
   n.Set_abs_error(tol);
   if (m.step) n.Set_GSL_step(m.step);
@@ -214,6 +217,8 @@ static std::map<std::string, std::function<std::vector<double>(const Method&, do
   return {
       // atmospheric-oscillation energies, core-crossing chord
       {"earth_osc", [](const Method& m, double t) { return run_single(m, t, 3, 0.5, 500., 150, false); }},
+      // a finer energy grid (600 nodes), for thread scaling
+      {"earth_osc_600", [](const Method& m, double t) { return run_single(m, t, 3, 0.5, 500., 600, false); }},
       // same energies through a constant density: separates spline knots from oscillation
       {"const_osc", [](const Method& m, double t) { return run_single(m, t, 3, 0.5, 500., 150, false, true); }},
       // sub-GeV atmospheric (Hyper-K, ORCA, JUNO): oscillation length below the density scale
