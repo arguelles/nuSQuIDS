@@ -26,6 +26,7 @@
 #define H5Eset_auto_vers 2
 
 #include <nuSQuIDS/nuSQuIDS.h>
+#include <SQuIDS/detail/hermitian_evolver.h>
 #include <cstring>
 #include <map>
 #include <sstream>
@@ -328,6 +329,186 @@ void nuSQUIDS::EvolveProjectors(double x){
     }
   }
   return;
+}
+
+void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
+  // Each node is evolved in the Schrodinger picture with H(x) = H0 + V(x), so the
+  // vacuum oscillation is handled exactly by the exponentials and only the change
+  // of V along the track limits the step size.
+  //  Magnus4/CFMagnus4: 4th order, error from step doubling (h against two h/2).
+  //  Magnus6: Blanes, Casas & Ros (BIT 40, 2000) 6th order from three Gauss points,
+  //  with the 4th order method on the same points as embedded error estimate.
+  // Hermitian variables are used throughout (Omega = -i K); a commutator of two
+  // such terms is [-iX,-iY] = -i B(X,Y) with B(X,Y) = -i[X,Y] = iCommutator(Y,X).
+  const double s3 = std::sqrt(3.0), s15 = std::sqrt(15.0);
+  const bool sixth = (node_evolution == NodeEvolution::Magnus6);
+  const bool commutator_free = (node_evolution == NodeEvolution::CFMagnus4);
+  const double atol = Get_abs_error(), rtol = Get_rel_error();
+  const double hmax = std::min(std::abs(Get_h_max()), std::abs(x1-x0));
+  const unsigned int nsize = nsun*nsun;
+  std::unique_ptr<double[]> buf(new double[H0_array[0].GetEvolveBufferSize()]);
+  if(node_h.size() != ne*nrhos)
+    node_h.assign(ne*nrhos, 0.0);
+  squids::detail::HermitianEvolver evolver(nsun);
+
+  squids::SU_vector H1(nsun), H2(nsun), H3(nsun), Ka(nsun), Kb(nsun), cm(nsun);
+  squids::SU_vector a1(nsun), a2(nsun), a3(nsun), c1v(nsun), c2v(nsun), t1(nsun), t2(nsun);
+  squids::SU_vector rho(nsun), y1(nsun), y2(nsun), mid(nsun);
+  squids::IntegrationStats work;
+  for(unsigned int irho = 0; irho < nrhos; irho++){
+    for(unsigned int ie = 0; ie < ne; ie++){
+      // HI built from the unevolved projectors is the matter potential in the mass basis
+      for(unsigned int flv = 0; flv < numneu; flv++)
+        evol_b1_proj[irho][flv][ie] = b1_proj[irho][flv];
+      auto hamiltonian = [&](double x, squids::SU_vector& out){
+        track->SetX(x-time_offset);
+        current_ye = body->ye(*track);
+        current_density = body->density(*track);
+        out = HI(ie, irho);
+        out += H0_array[ie];
+        work.rhs_evaluations++;
+      };
+      // 4th order step (two Gauss points)
+      auto step4 = [&](const squids::SU_vector& in, double x, double h, squids::SU_vector& out){
+        hamiltonian(x+(0.5-s3/6.0)*h, H1);
+        hamiltonian(x+(0.5+s3/6.0)*h, H2);
+        if(commutator_free){
+          const double w1 = 0.25-s3/6.0, w2 = 0.25+s3/6.0;
+          Ka = H1*(w2*h); Ka += H2*(w1*h);  // acts first
+          Kb = H1*(w1*h); Kb += H2*(w2*h);
+          evolver.Evolve(Ka, in, mid);
+          evolver.Evolve(Kb, mid, out);
+        } else {
+          cm = squids::iCommutator(H1, H2);
+          Ka = H1*(0.5*h); Ka += H2*(0.5*h); Ka += cm*(s3/12.0*h*h);
+          evolver.Evolve(Ka, in, out);
+        }
+      };
+
+      squids::SU_vector& st = state[ie].rho[irho];
+      H0_array[ie].PrepareEvolve(buf.get(), -(x0-Get_t_initial()));
+      rho = st.Evolve(buf.get()); // interaction picture -> Schrodinger picture at x0
+
+      double x = x0;
+      double& hnode = node_h[irho*ne+ie];
+      double h = (hnode > 0) ? std::min(hnode, hmax) : 1e-2*hmax;
+      for(;;){
+        bool last = false;
+        double h_unclipped = h;
+        if(x+h >= x1){ h = x1-x; last = true; }
+        double err = 0;
+        if(sixth){
+          hamiltonian(x+(0.5-s15/10.0)*h, H1);
+          hamiltonian(x+0.5*h, H2);
+          hamiltonian(x+(0.5+s15/10.0)*h, H3);
+          a1 = H2*h;
+          a2 = H3*(s15*h/3.0); a2 -= H1*(s15*h/3.0);
+          a3 = H3*(10.0*h/3.0); a3 -= H2*(20.0*h/3.0); a3 += H1*(10.0*h/3.0);
+          c1v = squids::iCommutator(a2, a1);                    // B(a1, a2)
+          t1 = a3*2.0; t1 += c1v;
+          c2v = squids::iCommutator(t1, a1); c2v = c2v*(-1.0/60.0); // -B(a1, 2a3+c1)/60
+          t1 = a1*(-20.0); t1 -= a3; t1 += c1v;
+          t2 = a2; t2 += c2v;
+          Ka = a1; Ka += a3*(1.0/12.0);
+          Kb = Ka; Kb -= c1v*(1.0/12.0);                      // 4th order
+          cm = squids::iCommutator(t2, t1);                    // B(t1, t2)
+          Ka += cm*(1.0/240.0);                                // 6th order
+          evolver.Evolve(Ka, rho, y2);
+          evolver.Evolve(Kb, rho, y1);
+          for(unsigned int i = 0; i < nsize; i++){
+            const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
+            err = std::max(err, std::abs(y2[i]-y1[i])/sc);
+          }
+        } else {
+          step4(rho, x, h, y1);
+          step4(rho, x, 0.5*h, mid);
+          step4(mid, x+0.5*h, 0.5*h, y2);
+          for(unsigned int i = 0; i < nsize; i++){
+            const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
+            err = std::max(err, std::abs(y2[i]-y1[i])/(15.0*sc));
+          }
+        }
+        if(err <= 1.0){
+          work.accepted_steps++;
+          rho = y2;
+          const double fac = std::min(5.0, std::max(0.2, 0.9*std::pow(std::max(err, 1e-10), -0.2)));
+          if(last){
+            hnode = std::max(h_unclipped, h*fac);
+            break;
+          }
+          x += h;
+          h = std::min(h*fac, hmax);
+        } else {
+          work.rejected_steps++;
+          h *= std::max(0.2, 0.9*std::pow(err, -0.2));
+          if(x+h == x)
+            throw std::runtime_error("nuSQUIDS::EvolveState: Magnus step size underflow");
+        }
+      }
+
+      H0_array[ie].PrepareEvolve(buf.get(), x1-Get_t_initial());
+      st = rho.Evolve(buf.get()); // back to the interaction picture at x1
+    }
+  }
+  Add_IntegrationStats(work);
+  Set_t(x1);
+  PreDerive(x1);
+}
+
+void nuSQUIDS::EvolveNodesIndependently(double dt){
+  if(iinteraction || enable_neutrino_sources || !OnlyCoherentRhoTerms())
+    throw std::runtime_error("nuSQUIDS::EvolveState: NodeEvolution other than Coupled needs "
+                             "independent nodes: no interactions, neutrino sources or other "
+                             "non-coherent terms.");
+  if(basis != interaction || !ioscillations)
+    throw std::runtime_error("nuSQUIDS::EvolveState: NodeEvolution other than Coupled requires "
+                             "the interaction basis with oscillations on.");
+  if(node_evolution == NodeEvolution::Magnus4 || node_evolution == NodeEvolution::CFMagnus4
+     || node_evolution == NodeEvolution::Magnus6){
+    EvolveNodesMagnus(Get_t(), Get_t()+dt);
+    return;
+  }
+  if(Get_ODEMethod() == squids::ODEMethod::GSL)
+    throw std::runtime_error("nuSQUIDS::EvolveState: NodeEvolution::RungeKutta needs a native "
+                             "ODEMethod (Set_ODEMethod), not ODEMethod::GSL.");
+
+  const double x0 = Get_t();
+  const double x1 = x0 + dt;
+  const unsigned int nsize = nsun*nsun;
+  const squids::detail::ExplicitRK tab = squids::detail::GetTableau(Get_ODEMethod());
+  std::unique_ptr<double[]> evol_buf(new double[H0_array[0].GetEvolveBufferSize()]);
+  if(node_rk.size() != ne*nrhos)
+    node_rk.assign(ne*nrhos, squids::detail::NativeRK());
+
+  squids::IntegrationStats work;
+  for(unsigned int irho = 0; irho < nrhos; irho++){
+    for(unsigned int ie = 0; ie < ne; ie++){
+      // Right-hand side of this node alone: the same quantities PreDerive and
+      // SQuIDS::Derive would compute, restricted to (ie, irho), and the same HI.
+      auto rhs = [this,ie,irho,&evol_buf](double x, const double* in, double* out){
+        track->SetX(x-time_offset);
+        current_ye = body->ye(*track);
+        current_density = body->density(*track);
+        H0_array[ie].PrepareEvolve(evol_buf.get(),x-Get_t_initial());
+        if(evol_lowpass_cutoff > 0)
+          H0_array[ie].LowPassFilter(evol_buf.get(), evol_lowpass_cutoff, evol_lowpass_scale);
+        for(unsigned int flv = 0; flv < numneu; flv++)
+          evol_b1_proj[irho][flv][ie] = squids::detail::guarantee
+            <squids::detail::NoAlias | squids::detail::EqualSizes>
+            (b1_proj[irho][flv].Evolve(evol_buf.get()));
+        squids::SU_vector rho(nsun, const_cast<double*>(in));
+        squids::SU_vector drho(nsun, out);
+        drho = squids::iCommutator(rho, HI(ie, irho));
+      };
+      node_rk[irho*ne+ie].Integrate(tab, rhs, x0, x1, &(state[ie].rho[irho][0]), nsize,
+                                    Get_abs_error(), Get_rel_error(), Get_h_min(), Get_h_max(),
+                                    Get_StepController(), 0, work);
+    }
+  }
+  Add_IntegrationStats(work);
+  Set_t(x1);
+  // leave the time-dependent members (density, all evolved projectors) at x1
+  PreDerive(x1);
 }
 
 squids::SU_vector nuSQUIDS::H0(double Enu, unsigned int irho) const{
@@ -1411,6 +1592,20 @@ void nuSQUIDS::PositivizeFlavors(){
   }
 }
 
+void nuSQUIDS::Set_UseBreakpoints(bool opt){
+  use_breakpoints = opt;
+}
+
+void nuSQUIDS::Set_NodeEvolution(NodeEvolution opt){
+  node_evolution = opt;
+  node_rk.clear();
+  node_h.clear();
+}
+
+NodeEvolution nuSQUIDS::Get_NodeEvolution() const{
+  return node_evolution;
+}
+
 void nuSQUIDS::Set_PositivityConstrain(bool opt){
   positivization = opt;
 }
@@ -1478,16 +1673,56 @@ void nuSQUIDS::EvolveState(){
     return;
   }
 
+  // integrate one interval with the selected strategy
+  auto evolve = [this](double dt){
+    if(node_evolution == NodeEvolution::Coupled)
+      Evolve(dt);
+    else
+      EvolveNodesIndependently(dt);
+  };
+
+  // The native integrators carry their step size across Evolve calls, so they
+  // can stop where the body's density changes abruptly instead of stepping
+  // across it. (The GSL driver restarts from its initial step size on every
+  // call, so it integrates the track in one piece as before.)
+  const bool native = (Get_ODEMethod() != squids::ODEMethod::GSL
+                       || node_evolution != NodeEvolution::Coupled);
+  const double t_start = Get_t();
+  const double direction = (track->GetFinalX() >= track->GetInitialX()) ? 1.0 : -1.0;
+  std::vector<double> stops; // distances from the start of the track
+  if(native && use_breakpoints){
+    for(double xb : body->GetBreakpoints(*track))
+      stops.push_back(direction*(xb - track->GetInitialX()));
+    std::sort(stops.begin(), stops.end());
+  }
+  // evolve by dt, stopping at any breakpoint on the way
+  auto evolve_by = [&](double dt){
+    if(stops.empty()){ // exactly the historical sequence of Evolve calls
+      evolve(dt);
+      return;
+    }
+    double done = direction*(Get_t() - t_start);
+    const double end = done + direction*dt;
+    for(double s : stops){
+      if(s > done && s < end){
+        evolve(direction*(s - done));
+        done = s;
+      }
+    }
+    if(end > done)
+      evolve(direction*(end - done));
+  };
+
   if(positivization){
     int positivization_steps = static_cast<int>((track->GetFinalX() - track->GetInitialX())/positivization_scale);
     for (int i = 0; i < positivization_steps; i++){
-      Evolve(positivization_scale);
+      evolve_by(positivization_scale);
       PositivizeFlavors();
     }
-    Evolve(track->GetFinalX()-positivization_scale*positivization_steps);
+    evolve_by(track->GetFinalX()-positivization_scale*positivization_steps);
     PositivizeFlavors();
   } else {
-    Evolve(track->GetFinalX()-track->GetInitialX());
+    evolve_by(track->GetFinalX()-track->GetInitialX());
   }
   if(progressbar)
     ProgressBar();
@@ -3144,6 +3379,10 @@ tauregeneration(other.tauregeneration),
 iglashow(other.iglashow),
 positivization(other.positivization),
 allowConstantDensityOscillationOnlyEvolution(other.allowConstantDensityOscillationOnlyEvolution),
+node_evolution(other.node_evolution),
+node_rk(std::move(other.node_rk)),
+use_breakpoints(other.use_breakpoints),
+node_h(std::move(other.node_h)),
 progressbar(other.progressbar),
 progressbar_count(other.progressbar_count),
 progressbar_loop(other.progressbar_loop),
@@ -3213,6 +3452,10 @@ nuSQUIDS& nuSQUIDS::operator=(nuSQUIDS&& other){
   iglashow = other.iglashow;
   positivization = other.positivization;
   allowConstantDensityOscillationOnlyEvolution = other.allowConstantDensityOscillationOnlyEvolution;
+  node_evolution = other.node_evolution;
+  node_rk = std::move(other.node_rk);
+  use_breakpoints = other.use_breakpoints;
+  node_h = std::move(other.node_h);
   progressbar = other.progressbar;
   progressbar_count = other.progressbar_count;
   progressbar_loop = other.progressbar_loop;
