@@ -470,7 +470,7 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
           mm_step(mid, x+0.5*h, 0.5*h, y2);
           for(unsigned int i = 0; i < nsize; i++){
             const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
-            err = std::max(err, std::abs(y2[i]-y1[i])/(3.0*sc)); // conservative: kinks in V and the neglected second term make the error less regular than O(h^4)
+            { const double r = std::abs(y2[i]-y1[i])/(3.0*sc); if(!(r <= err)) err = r; } // conservative factor: kinks in V and the neglected second term make the error less regular than O(h^4); the comparison keeps a NaN
           }
         } else if(sixth){
           hamiltonian(x+(0.5-s15/10.0)*h, H1);
@@ -492,7 +492,7 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
           evolver.Evolve(Kb, rho, y1);
           for(unsigned int i = 0; i < nsize; i++){
             const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
-            err = std::max(err, std::abs(y2[i]-y1[i])/sc);
+            { const double r = std::abs(y2[i]-y1[i])/sc; if(!(r <= err)) err = r; } // keeps a NaN
           }
         } else {
           step4(rho, x, h, y1);
@@ -500,9 +500,10 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
           step4(mid, x+0.5*h, 0.5*h, y2);
           for(unsigned int i = 0; i < nsize; i++){
             const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
-            err = std::max(err, std::abs(y2[i]-y1[i])/(15.0*sc));
+            { const double r = std::abs(y2[i]-y1[i])/(15.0*sc); if(!(r <= err)) err = r; } // keeps a NaN
           }
         }
+        if(!std::isfinite(err)) err = 1e10; // reject, shrink by the maximum factor
         if(err <= 1.0){
           work.accepted_steps++;
           rho = y2;
