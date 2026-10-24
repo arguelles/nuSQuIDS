@@ -1907,6 +1907,42 @@ class nuSQUIDSAtm {
       }
     }
 
+    /// \brief Selects the integration method for every zenith (see SQuIDS::Set_ODEMethod).
+    void Set_ODEMethod(squids::ODEMethod opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_ODEMethod(opt);
+    }
+
+    /// \brief Selects the native step size controller for every zenith.
+    void Set_StepController(squids::StepController opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_StepController(opt);
+    }
+
+    /// \brief Selects the node integration strategy for every zenith (see nuSQUIDS::Set_NodeEvolution).
+    void Set_NodeEvolution(NodeEvolution opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_NodeEvolution(opt);
+    }
+
+    /// \brief Toggles stopping at density breakpoints for every zenith (native methods only).
+    void Set_UseBreakpoints(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_UseBreakpoints(opt);
+    }
+
+    /// \brief Integration work summed over all zeniths.
+    squids::IntegrationStats Get_IntegrationStats() const{
+      squids::IntegrationStats total;
+      for(const BaseSQUIDS& nsq : nusq_array){
+        squids::IntegrationStats s = nsq.Get_IntegrationStats();
+        total.rhs_evaluations += s.rhs_evaluations;
+        total.accepted_steps += s.accepted_steps;
+        total.rejected_steps += s.rejected_steps;
+      }
+      return total;
+    }
+
 
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.

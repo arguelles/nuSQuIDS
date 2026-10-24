@@ -777,6 +777,37 @@ opt : bool
     Set False for pure absorption/interaction studies.
 )doc");
 
+      class_object->def("Set_ODEMethod",&BaseType::Set_ODEMethod, py::arg("method"),
+R"doc(Select the integration method.
+
+Parameters
+----------
+method : ODEMethod
+    ODEMethod.GSL (default) keeps the GSL driver and the stepper chosen with
+    Set_GSL_step. The other values use the native embedded Runge-Kutta
+    integrator; ODEMethod.Vern7 was the fastest at equal accuracy on Earth
+    propagation benchmarks. Tolerances keep their meaning.
+)doc");
+      class_object->def("Get_ODEMethod",&BaseType::Get_ODEMethod);
+      class_object->def("Set_StepController",&BaseType::Set_StepController, py::arg("controller"),
+R"doc(Select the step size controller of the native integrator (StepController.I by default).)doc");
+      class_object->def("Set_NodeEvolution",&BaseType::Set_NodeEvolution, py::arg("strategy"),
+R"doc(Select how problems with independent energy nodes are integrated.
+
+Parameters
+----------
+strategy : NodeEvolution
+    NodeEvolution.Coupled (default) integrates all nodes as one system. The
+    others integrate each node separately (no interactions allowed);
+    NodeEvolution.ModifiedMagnus is much faster at MeV energies.
+)doc");
+      class_object->def("Get_NodeEvolution",&BaseType::Get_NodeEvolution);
+      class_object->def("Set_UseBreakpoints",&BaseType::Set_UseBreakpoints, py::arg("opt"),
+R"doc(With a native ODEMethod, stop steps at abrupt density changes of the body (on by default).)doc");
+      class_object->def("Get_IntegrationStats",&BaseType::Get_IntegrationStats,
+R"doc(Right-hand-side evaluations and accepted/rejected steps done by EvolveState.)doc");
+      class_object->def("Reset_IntegrationStats",&BaseType::Reset_IntegrationStats);
+
       class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&BaseType::Set_AllowConstantDensityOscillationOnlyEvolution, py::arg("opt"),
 R"doc(Toggle fast constant density evolution.
 
@@ -1526,6 +1557,11 @@ array
       class_object->def("Set_GlashowResonance",&nuSQUIDSAtm<BaseType>::Set_GlashowResonance, py::arg("opt"));
       class_object->def("Set_TauRegeneration",&nuSQUIDSAtm<BaseType>::Set_TauRegeneration);
       class_object->def("Set_AllowConstantDensityOscillationOnlyEvolution",&nuSQUIDSAtm<BaseType>::Set_AllowConstantDensityOscillationOnlyEvolution, py::arg("opt"));
+      class_object->def("Set_ODEMethod",&nuSQUIDSAtm<BaseType>::Set_ODEMethod, py::arg("method"));
+      class_object->def("Set_StepController",&nuSQUIDSAtm<BaseType>::Set_StepController, py::arg("controller"));
+      class_object->def("Set_NodeEvolution",&nuSQUIDSAtm<BaseType>::Set_NodeEvolution, py::arg("strategy"));
+      class_object->def("Set_UseBreakpoints",&nuSQUIDSAtm<BaseType>::Set_UseBreakpoints, py::arg("opt"));
+      class_object->def("Get_IntegrationStats",&nuSQUIDSAtm<BaseType>::Get_IntegrationStats);
       class_object->def("Set_PositivyConstrain",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrain, py::arg("opt"));
       class_object->def("Set_PositivyConstrainStep",&nuSQUIDSAtm<BaseType>::Set_PositivityConstrainStep, py::arg("step"));
       class_object->def("Get_EvalThreads",&nuSQUIDSAtm<BaseType>::Get_EvalThreads);
