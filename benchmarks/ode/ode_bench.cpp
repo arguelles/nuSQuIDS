@@ -94,6 +94,8 @@ static std::map<std::string, Method> methods() {
                              [](nuSQUIDS& n) { n.Set_NodeEvolution(NodeEvolution::CFMagnus4); }};
   m["ni_magnus6"] = Method{"ni_magnus6", nullptr,
                            [](nuSQUIDS& n) { n.Set_NodeEvolution(NodeEvolution::Magnus6); }};
+  m["ni_modmagnus"] = Method{"ni_modmagnus", nullptr,
+                             [](nuSQUIDS& n) { n.Set_NodeEvolution(NodeEvolution::ModifiedMagnus); }};
   // per-node integration ("ni_" prefix): each energy node and neutrino type separately
   for (const auto& nm : natives)
     for (const auto& c : ctls) {

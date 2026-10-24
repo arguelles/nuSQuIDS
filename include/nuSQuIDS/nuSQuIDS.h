@@ -85,8 +85,11 @@ enum class NodeEvolution {
   RungeKutta, ///< each node with the native Runge-Kutta method chosen by Set_ODEMethod
   Magnus4,    ///< each node with 4th order Magnus (2-point Gauss), step doubling for the error
   CFMagnus4,  ///< each node with the commutator-free 4th order Magnus method of Blanes and Moan
-  Magnus6     ///< each node with the 6th order Magnus method of Blanes, Casas and Ros, with an
+  Magnus6,    ///< each node with the 6th order Magnus method of Blanes, Casas and Ros, with an
               ///< embedded 4th order estimate from the same three Gauss points
+  ModifiedMagnus ///< each node with Iserles' modified Magnus method: the frame follows the
+                 ///< midpoint Hamiltonian, so the error does not grow with the oscillation
+                 ///< frequency (best for low energies and large mass splittings)
 };
 
 class nuSQUIDS: public squids::SQuIDS {

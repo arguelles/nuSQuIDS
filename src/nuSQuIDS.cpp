@@ -331,6 +331,27 @@ void nuSQUIDS::EvolveProjectors(double x){
   return;
 }
 
+namespace{
+// int_{-a}^{a} u e^{i w u} du (purely imaginary; the imaginary part is returned)
+double OscillatoryMoment1(double w, double a){
+  const double z = w*a;
+  if(std::abs(z) < 0.05){
+    const double z2 = z*z;
+    return 2*a*a*z*(1.0/3 - z2*(1.0/30 - z2*(1.0/840 - z2/45360)));
+  }
+  return 2*(std::sin(z) - z*std::cos(z))/(w*w);
+}
+// int_{-a}^{a} u^2 e^{i w u} du (real)
+double OscillatoryMoment2(double w, double a){
+  const double z = w*a;
+  if(std::abs(z) < 0.05){
+    const double z2 = z*z;
+    return 2*a*a*a*(1.0/3 - z2*(1.0/10 - z2*(1.0/168 - z2/6480)));
+  }
+  return 2*((z*z - 2)*std::sin(z) + 2*z*std::cos(z))/(w*w*w);
+}
+} // namespace
+
 void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
   // Each node is evolved in the Schrodinger picture with H(x) = H0 + V(x), so the
   // vacuum oscillation is handled exactly by the exponentials and only the change
@@ -342,6 +363,11 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
   // such terms is [-iX,-iY] = -i B(X,Y) with B(X,Y) = -i[X,Y] = iCommutator(Y,X).
   const double s3 = std::sqrt(3.0), s15 = std::sqrt(15.0);
   const bool sixth = (node_evolution == NodeEvolution::Magnus6);
+  const bool modified = (node_evolution == NodeEvolution::ModifiedMagnus);
+  typedef std::complex<double> cplx;
+  const unsigned int nm = nsun*nsun;
+  std::vector<cplx> Mm(nm), Ma(nm), Mb(nm), Wm(nm), Da(nm), Db(nm), Kt(nm), Vk(nm), Rr(nm), Rt(nm);
+  std::vector<double> lam(nsun), mu(nsun);
   const bool commutator_free = (node_evolution == NodeEvolution::CFMagnus4);
   const double atol = Get_abs_error(), rtol = Get_rel_error();
   const double hmax = std::min(std::abs(Get_h_max()), std::abs(x1-x0));
@@ -385,6 +411,47 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
         }
       };
 
+      // Modified Magnus (Iserles, BIT 42, 2002): in the frame of the midpoint
+      // Hamiltonian Hm = W diag(lam) W^dagger the remainder dV = H - Hm is small
+      // (H0 cancels), so
+      //   rho(x+h) = E U E rho(x),  E = conjugation by exp(-i (h/2) Hm),
+      //   U = conjugation by exp(-i Kt),  Kt_jk = int_{-a}^{a} dV_jk(u) e^{i w_jk u} du,
+      // with a = h/2, w_jk = lam_j - lam_k and dV(u) = A u + B u^2 fitted to the
+      // two Gauss points (dV = 0 at the midpoint). The oscillatory integrals are
+      // exact, so the error depends on how V changes, not on |H0|. Local error
+      // O(h^4) from the neglected second Magnus term and the fit.
+      auto mm_step = [&](const squids::SU_vector& in, double x, double h, squids::SU_vector& out){
+        const double a = 0.5*h, d = s3/6.0*h;
+        hamiltonian(x+a, H2);
+        hamiltonian(x+a-d, H1);
+        hamiltonian(x+a+d, H3);
+        evolver.ToMatrix(H2, &Mm[0]);
+        evolver.ToMatrix(H1, &Ma[0]);
+        evolver.ToMatrix(H3, &Mb[0]);
+        evolver.Eigen(&Mm[0], &lam[0], &Wm[0]);
+        for(unsigned int k = 0; k < nm; k++){ Ma[k] -= Mm[k]; Mb[k] -= Mm[k]; }
+        evolver.Adjoint(&Wm[0], &Ma[0], &Da[0]);
+        evolver.Adjoint(&Wm[0], &Mb[0], &Db[0]);
+        for(unsigned int i = 0; i < nsun; i++)
+          for(unsigned int j = 0; j < nsun; j++){
+            const unsigned int k = i*nsun+j;
+            const cplx A = (Db[k]-Da[k])/(2*d);
+            const cplx B = (Da[k]+Db[k])/(2*d*d);
+            const double w = lam[i]-lam[j];
+            Kt[k] = A*cplx(0, OscillatoryMoment1(w, a)) + B*OscillatoryMoment2(w, a);
+          }
+        evolver.ToMatrix(in, &Rr[0]);
+        evolver.Adjoint(&Wm[0], &Rr[0], &Rt[0]);   // to the eigenbasis of Hm
+        evolver.PhaseRotate(&lam[0], a, &Rt[0]);   // half step under Hm
+        evolver.Eigen(&Kt[0], &mu[0], &Vk[0]);     // exp(-i Kt)
+        evolver.Adjoint(&Vk[0], &Rt[0], &Rr[0]);
+        evolver.PhaseRotate(&mu[0], 1.0, &Rr[0]);
+        evolver.Conjugate(&Vk[0], &Rr[0], &Rt[0]);
+        evolver.PhaseRotate(&lam[0], a, &Rt[0]);   // half step under Hm
+        evolver.Conjugate(&Wm[0], &Rt[0], &Rr[0]); // back to the mass basis
+        evolver.FromMatrix(&Rr[0], out);
+      };
+
       squids::SU_vector& st = state[ie].rho[irho];
       H0_array[ie].PrepareEvolve(buf.get(), -(x0-Get_t_initial()));
       rho = st.Evolve(buf.get()); // interaction picture -> Schrodinger picture at x0
@@ -397,7 +464,15 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
         double h_unclipped = h;
         if(x+h >= x1){ h = x1-x; last = true; }
         double err = 0;
-        if(sixth){
+        if(modified){
+          mm_step(rho, x, h, y1);
+          mm_step(rho, x, 0.5*h, mid);
+          mm_step(mid, x+0.5*h, 0.5*h, y2);
+          for(unsigned int i = 0; i < nsize; i++){
+            const double sc = atol+rtol*std::max(std::abs(rho[i]), std::abs(y2[i]));
+            err = std::max(err, std::abs(y2[i]-y1[i])/(3.0*sc)); // conservative: kinks in V and the neglected second term make the error less regular than O(h^4)
+          }
+        } else if(sixth){
           hamiltonian(x+(0.5-s15/10.0)*h, H1);
           hamiltonian(x+0.5*h, H2);
           hamiltonian(x+(0.5+s15/10.0)*h, H3);
@@ -431,7 +506,8 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
         if(err <= 1.0){
           work.accepted_steps++;
           rho = y2;
-          const double fac = std::min(5.0, std::max(0.2, 0.9*std::pow(std::max(err, 1e-10), -0.2)));
+          const double expo = modified ? -0.25 : -0.2;
+          const double fac = std::min(5.0, std::max(0.2, 0.9*std::pow(std::max(err, 1e-10), expo)));
           if(last){
             hnode = std::max(h_unclipped, h*fac);
             break;
@@ -440,7 +516,7 @@ void nuSQUIDS::EvolveNodesMagnus(double x0, double x1){
           h = std::min(h*fac, hmax);
         } else {
           work.rejected_steps++;
-          h *= std::max(0.2, 0.9*std::pow(err, -0.2));
+          h *= std::max(0.2, 0.9*std::pow(err, modified ? -0.25 : -0.2));
           if(x+h == x)
             throw std::runtime_error("nuSQUIDS::EvolveState: Magnus step size underflow");
         }
@@ -464,7 +540,7 @@ void nuSQUIDS::EvolveNodesIndependently(double dt){
     throw std::runtime_error("nuSQUIDS::EvolveState: NodeEvolution other than Coupled requires "
                              "the interaction basis with oscillations on.");
   if(node_evolution == NodeEvolution::Magnus4 || node_evolution == NodeEvolution::CFMagnus4
-     || node_evolution == NodeEvolution::Magnus6){
+     || node_evolution == NodeEvolution::Magnus6 || node_evolution == NodeEvolution::ModifiedMagnus){
     EvolveNodesMagnus(Get_t(), Get_t()+dt);
     return;
   }
