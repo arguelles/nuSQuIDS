@@ -50,6 +50,55 @@
 
 namespace nusquids{
 
+namespace{
+
+// Table radii bounding the intervals where density or electron fraction
+// change abruptly. A tabulated discontinuity (PREM layer boundary) becomes a
+// steep one-interval ramp of the Akima spline, with kinks at both ends.
+std::vector<double> FindTableFeatures(const std::vector<double>& r,
+                                      const std::vector<double>& rho,
+                                      const std::vector<double>& ye){
+  std::vector<double> out;
+  const size_t n = r.size();
+  if(n < 3 || rho.size() != n || ye.size() != n)
+    return out;
+  std::vector<double> d(n-1);
+  for(size_t i = 0; i+1 < n; i++)
+    d[i] = std::abs(rho[i+1]-rho[i]);
+  std::vector<double> sorted(d);
+  std::nth_element(sorted.begin(), sorted.begin()+sorted.size()/2, sorted.end());
+  const double threshold = std::max(10.0*sorted[sorted.size()/2], 1e-12);
+  for(size_t i = 0; i+1 < n; i++){
+    if(d[i] > threshold || std::abs(ye[i+1]-ye[i]) > 1e-3){
+      out.push_back(r[i]);
+      out.push_back(r[i+1]);
+    }
+  }
+  std::sort(out.begin(), out.end());
+  out.erase(std::unique(out.begin(), out.end()), out.end());
+  return out;
+}
+
+// Positions x in (x_lo, x_hi) where a straight track with radius
+// r(x)^2 = A + x^2 - B*x crosses each of the given radii. Lengths in km.
+std::vector<double> RadiusCrossings(double A, double B, double x_lo, double x_hi,
+                                    const std::vector<double>& radii){
+  std::vector<double> xs;
+  for(double rk : radii){
+    const double disc = B*B - 4.0*(A - rk*rk);
+    if(disc <= 0)
+      continue;
+    const double sq = std::sqrt(disc);
+    for(double x : {0.5*(B-sq), 0.5*(B+sq)})
+      if(x > x_lo && x < x_hi)
+        xs.push_back(x);
+  }
+  std::sort(xs.begin(), xs.end());
+  return xs;
+}
+
+} // namespace
+
 namespace {
   
 squids::Const param;
@@ -614,6 +663,20 @@ std::shared_ptr<Earth> Earth::Deserialize(hid_t group){
     return std::make_shared<Earth>(x_vec, rho_vec, ye_vec);
   else
     return std::make_shared<Earth>(x_vec, rho_vec, ye_vec, composition);
+}
+
+std::vector<double> Earth::GetBreakpoints(const GenericTrack& track_input) const{
+  const Earth::Track& track_earth = static_cast<const Earth::Track&>(track_input);
+  std::vector<double> radii = FindTableFeatures(earth_radius, earth_density, earth_ye);
+  for(double& rk : radii)
+    rk *= radius; // the table is in units of the Earth radius
+  const double xa = track_earth.GetInitialX()/param.km, xb = track_earth.GetFinalX()/param.km;
+  // same geometry as Earth::density
+  std::vector<double> xs = RadiusCrossings(SQR(radius), track_earth.GetBaseline()/param.km,
+                                           std::min(xa, xb), std::max(xa, xb), radii);
+  for(double& x : xs)
+    x *= param.km;
+  return xs;
 }
 
 double Earth::density(const GenericTrack& track_input) const
@@ -1265,6 +1328,24 @@ EarthAtm::Track EarthAtm::MakeTrackWithCosine(double cosphi){
   return Track::MakeWithCosine(cosphi, GetRadius()*param.km, GetAtmosphereHeight()*param.km);
 }
     
+std::vector<double> EarthAtm::GetBreakpoints(const GenericTrack& track_input) const{
+  const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);
+  // EarthAtm::density evaluates the table at r/earth_with_atm_radius
+  std::vector<double> radii = FindTableFeatures(earth_radius, earth_density, earth_ye);
+  for(double& rk : radii)
+    rk *= earth_with_atm_radius;
+  radii.push_back(radius); // rock below, exponential atmosphere above
+  // same geometry as EarthAtm::density
+  double sinsqphi = 1-track_earthatm.cosphi*track_earthatm.cosphi;
+  double dL = sqrt(SQR(earth_with_atm_radius)-radius*radius*sinsqphi)+radius*track_earthatm.cosphi;
+  const double xa = track_earthatm.GetInitialX()/param.km, xb = track_earthatm.GetFinalX()/param.km;
+  std::vector<double> xs = RadiusCrossings(SQR(earth_with_atm_radius), track_earthatm.L/param.km+dL,
+                                           std::min(xa, xb), std::max(xa, xb), radii);
+  for(double& x : xs)
+    x *= param.km;
+  return xs;
+}
+
 double EarthAtm::density(const GenericTrack& track_input) const
 {
   const EarthAtm::Track& track_earthatm = static_cast<const EarthAtm::Track&>(track_input);

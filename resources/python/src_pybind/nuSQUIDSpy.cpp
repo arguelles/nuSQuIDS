@@ -43,6 +43,49 @@ PYBIND11_MODULE(nuSQuIDS, m)
     .export_values()
   ;
 
+  py::enum_<squids::ODEMethod>(m,"ODEMethod",
+    "Integration method (Set_ODEMethod). GSL uses the GSL driver with Set_GSL_step; the "
+    "others are native embedded Runge-Kutta pairs.")
+    .value("GSL",squids::ODEMethod::GSL)
+    .value("RKF45",squids::ODEMethod::RKF45)
+    .value("BS3",squids::ODEMethod::BS3)
+    .value("DP5",squids::ODEMethod::DP5)
+    .value("Tsit5",squids::ODEMethod::Tsit5)
+    .value("Vern6",squids::ODEMethod::Vern6)
+    .value("Vern7",squids::ODEMethod::Vern7)
+    .value("Vern8",squids::ODEMethod::Vern8)
+    .value("Vern9",squids::ODEMethod::Vern9)
+    .value("RKV76",squids::ODEMethod::RKV76)
+    .value("DOP853",squids::ODEMethod::DOP853)
+  ;
+
+  py::enum_<squids::StepController>(m,"StepController")
+    .value("I",squids::StepController::I)
+    .value("PI",squids::StepController::PI)
+    .value("H211b",squids::StepController::H211b)
+  ;
+
+  py::enum_<NodeEvolution>(m,"NodeEvolution",
+    "How problems with independent energy nodes are integrated (Set_NodeEvolution).")
+    .value("Coupled",NodeEvolution::Coupled)
+    .value("RungeKutta",NodeEvolution::RungeKutta)
+    .value("Magnus4",NodeEvolution::Magnus4)
+    .value("CFMagnus4",NodeEvolution::CFMagnus4)
+    .value("Magnus6",NodeEvolution::Magnus6)
+    .value("ModifiedMagnus",NodeEvolution::ModifiedMagnus)
+  ;
+
+  py::class_<squids::IntegrationStats>(m,"IntegrationStats")
+    .def_readonly("rhs_evaluations",&squids::IntegrationStats::rhs_evaluations)
+    .def_readonly("accepted_steps",&squids::IntegrationStats::accepted_steps)
+    .def_readonly("rejected_steps",&squids::IntegrationStats::rejected_steps)
+    .def("__repr__",[](const squids::IntegrationStats& s){
+      return "IntegrationStats(rhs_evaluations=" + std::to_string(s.rhs_evaluations)
+        + ", accepted_steps=" + std::to_string(s.accepted_steps)
+        + ", rejected_steps=" + std::to_string(s.rejected_steps) + ")";
+    })
+  ;
+
   py::enum_<Basis>(m,"Basis")
     .value("mass",mass)
     .value("flavor",flavor)
