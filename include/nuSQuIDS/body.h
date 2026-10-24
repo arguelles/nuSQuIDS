@@ -131,6 +131,12 @@ class Body{
     static std::string GetName() {return "Body";}
     /// \brief Return true if the body is a constant density.
     virtual bool IsConstantDensity() const {return is_constant_density;}
+    /// \brief Track positions, inside the track, where the density or electron
+    /// fraction change abruptly.
+    /// \details An adaptive integrator that steps across such a point has to
+    /// shrink its step drastically; stopping exactly there avoids that. The
+    /// default is no breakpoints.
+    virtual std::vector<double> GetBreakpoints(const Track&) const { return {}; }
     /// \brief Return true if the body is a constant density.
     virtual void SetIsConstantDensity(bool icd) {is_constant_density = icd;}
     /// \brief Sets the injected neutrino flux from the Body at a given Track location.
@@ -354,6 +360,8 @@ class VariableDensity: public Body{
 /// \class Earth
 /// \brief Earth model based on PREM.
 class Earth: public Body{
+  public:
+    std::vector<double> GetBreakpoints(const GenericTrack& track) const override;
   private:
     /// \brief Radius of the Earth.
     double radius;
@@ -718,6 +726,8 @@ class SunASnu: public Body{
 /// \class EarthAtm
 /// \brief A model of the Earth with atmospheric neutrinos geometry.
 class EarthAtm: public Body{
+  public:
+    std::vector<double> GetBreakpoints(const GenericTrack& track) const override;
   protected:
     /// \brief Radius of the Earth.
     double radius;

@@ -73,6 +73,25 @@ enum Basis {
 
 ///\class nuSQUIDS
 ///\brief nu-SQuIDS main class
+/// \brief How EvolveState integrates problems whose energy nodes are independent.
+///
+/// Without interactions, neutrino sources or other non-coherent terms, the
+/// density matrix of every energy node and neutrino type evolves on its own.
+/// Coupled integrates them all as one ODE system, so every node takes the step
+/// size its hardest member needs. The other choices integrate each node
+/// separately with its own adaptive step size.
+enum class NodeEvolution {
+  Coupled,    ///< one ODE system for all nodes (historical behavior)
+  RungeKutta, ///< each node with the native Runge-Kutta method chosen by Set_ODEMethod
+  Magnus4,    ///< each node with 4th order Magnus (2-point Gauss), step doubling for the error
+  CFMagnus4,  ///< each node with the commutator-free 4th order Magnus method of Blanes and Moan
+  Magnus6,    ///< each node with the 6th order Magnus method of Blanes, Casas and Ros, with an
+              ///< embedded 4th order estimate from the same three Gauss points
+  ModifiedMagnus ///< each node with Iserles' modified Magnus method: the frame follows the
+                 ///< midpoint Hamiltonian, so the error does not grow with the oscillation
+                 ///< frequency (best for low energies and large mass splittings)
+};
+
 class nuSQUIDS: public squids::SQuIDS {
   // nuSQUIDSAtm is a friend class so it can use H0 to evolve operators
   // and thus evaluate expectation values.
@@ -457,6 +476,12 @@ protected:
     /// \warning Since the RHS of the differential equation only involves flavor projectors
     /// we do not current evolve mass projectors.
     void EvolveProjectors(double t);
+    /// \brief Evolves every node separately over dt (see NodeEvolution).
+    void EvolveNodesIndependently(double dt);
+    /// \brief Magnus-type node evolution from x0 to x1 (called by EvolveNodesIndependently).
+    void EvolveNodesMagnus(double x0, double x1);
+    /// \brief Per-node step size carried between Evolve calls by the Magnus integrators.
+    std::vector<double> node_h;
 
     // bool requirements
   private:
@@ -489,6 +514,12 @@ protected:
     bool positivization = false;
     /// \brief Boolean that allows to use fast constant density evolution technique.
     bool allowConstantDensityOscillationOnlyEvolution = false;
+    /// \brief Integration strategy for problems with independent nodes.
+    NodeEvolution node_evolution = NodeEvolution::Coupled;
+    /// \brief Per-node integrator state (step size carried between Evolve calls).
+    std::vector<squids::detail::NativeRK> node_rk;
+    /// \brief Stop at the body's breakpoints when a native integrator is used.
+    bool use_breakpoints = true;
     /// \brief Boolean that signals that a progress bar will be printed.
     bool progressbar = false;
     /// \brief Integer to keep track of the progress bar evolution.
@@ -845,6 +876,21 @@ protected:
     /// \brief Toggles if non-hard processes constant density fast evolution will be used.
     /// \param opt If \c true fast evolution will be attempted on constatnt density.
     void Set_AllowConstantDensityOscillationOnlyEvolution(bool opt);
+
+    /// \brief Selects how problems with independent energy nodes are integrated.
+    /// \details Anything other than NodeEvolution::Coupled requires no interactions,
+    /// no neutrino sources, the interaction basis and oscillations turned on;
+    /// EvolveState throws otherwise. Subclasses whose physics lives in
+    /// AddToPreDerive (rather than in HI and the members it reads) must not use it,
+    /// because node-by-node evaluation does not call PreDerive.
+    void Set_NodeEvolution(NodeEvolution opt);
+    /// \brief Returns the strategy selected by Set_NodeEvolution.
+    NodeEvolution Get_NodeEvolution() const;
+
+    /// \brief With a native ODEMethod, stop integration steps at the points where
+    /// the body reports abrupt density changes (Body::GetBreakpoints). On by default;
+    /// it changes where steps fall, not the model. Ignored by the GSL driver.
+    void Set_UseBreakpoints(bool opt);
 
     /// \brief Toggles positivization of the flux.
     /// @param opt If \c true the flux will be forced to be positive every \c positivization_step.
@@ -1859,6 +1905,42 @@ class nuSQUIDSAtm {
       for(BaseSQUIDS& nsq : nusq_array){
         nsq.Set_AllowConstantDensityOscillationOnlyEvolution(opt);
       }
+    }
+
+    /// \brief Selects the integration method for every zenith (see SQuIDS::Set_ODEMethod).
+    void Set_ODEMethod(squids::ODEMethod opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_ODEMethod(opt);
+    }
+
+    /// \brief Selects the native step size controller for every zenith.
+    void Set_StepController(squids::StepController opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_StepController(opt);
+    }
+
+    /// \brief Selects the node integration strategy for every zenith (see nuSQUIDS::Set_NodeEvolution).
+    void Set_NodeEvolution(NodeEvolution opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_NodeEvolution(opt);
+    }
+
+    /// \brief Toggles stopping at density breakpoints for every zenith (native methods only).
+    void Set_UseBreakpoints(bool opt){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_UseBreakpoints(opt);
+    }
+
+    /// \brief Integration work summed over all zeniths.
+    squids::IntegrationStats Get_IntegrationStats() const{
+      squids::IntegrationStats total;
+      for(const BaseSQUIDS& nsq : nusq_array){
+        squids::IntegrationStats s = nsq.Get_IntegrationStats();
+        total.rhs_evaluations += s.rhs_evaluations;
+        total.accepted_steps += s.accepted_steps;
+        total.rejected_steps += s.rejected_steps;
+      }
+      return total;
     }
 
 
