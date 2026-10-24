@@ -122,3 +122,37 @@ nus.Set_ODEMethod(squids::ODEMethod::Vern7);              // GeV and above
 nus.Set_NodeEvolution(nusquids::NodeEvolution::ModifiedMagnus); // MeV, no interactions
 ```
 
+
+## Further speedups considered
+
+From the numerical-analysis and neutrino literature, not implemented here:
+
+- **Factor θ23 and δ out of the evolution.** Both commute with the matter
+  potential, so one evolution of the propagator in the rotated basis gives the
+  result for every (θ23, δ) by a basis rotation (the trick behind NuFast-Earth's
+  fast-parameter loops, Denton & Parke, arXiv:2511.04735). For oscillation-only
+  fits scanning θ23 and δ this would replace one evolution per point by one per
+  scan. It needs propagators rather than density matrices and a new API.
+- **Symmetric chords.** In a rephased mass basis the 3-flavor Hamiltonian is real
+  symmetric (the electron projector has rank one), and a chord through a
+  spherical body is symmetric about its midpoint, so U_out = U_in^T: propagator
+  methods (the Magnus node integrators) need only half the chord. Density-matrix
+  Runge-Kutta gains nothing from it.
+- **Second Magnus term for the modified Magnus method** (Iserles 2002; Filon-type
+  quadrature, Iserles & Norsett 2004), giving an embedded error estimate in place
+  of step doubling. The remainder in the midpoint frame is O(h V'), so the second
+  term is O(h^4), the same order as the quadratic fit of V; the fit (and the
+  Akima knots inside the ~300 km steps) would need improving at the same time.
+  Defect-based estimators (Auzinger et al., M2AN 2019) are the other route to
+  cheaper error control.
+- **Adiabatic integrators** (Jahnke & Lubich 2003; Lorenz, Jahnke & Lubich 2005)
+  target the same near-adiabatic MeV regime as the modified Magnus method.
+- **Multirate methods** (MRI-GARK, Sandu 2019) for coupled problems whose
+  low-energy nodes oscillate fast while high-energy nodes evolve slowly; for
+  independent nodes, per-node integration already does this.
+- **Parallel cascade update.** With interactions, the O(ne^2) neutral-current
+  and tau-regeneration sums in UpdateInteractions are serial and limit thread
+  scaling; they need per-thread buffers and a reduction.
+
+Tried and dropped: blocking the stage combinations of the native driver into
+L1-sized chunks (no measurable change).
