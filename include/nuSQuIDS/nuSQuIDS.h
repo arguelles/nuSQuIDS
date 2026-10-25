@@ -1925,6 +1925,14 @@ class nuSQUIDSAtm {
         nsq.Set_NodeEvolution(opt);
     }
 
+    /// \brief Threads used by each zenith's right-hand side (see SQuIDS::Set_NumThreads).
+    /// \details All zeniths share one pool. Prefer Set_EvalThreads, which runs whole
+    /// zeniths in parallel and scales better; combining both serializes the pool.
+    void Set_NumThreads(unsigned int n){
+      for(BaseSQUIDS& nsq : nusq_array)
+        nsq.Set_NumThreads(n);
+    }
+
     /// \brief Toggles stopping at density breakpoints for every zenith (native methods only).
     void Set_UseBreakpoints(bool opt){
       for(BaseSQUIDS& nsq : nusq_array)

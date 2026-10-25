@@ -83,6 +83,15 @@ int main(){
       std::cout << c.name << ": max deviation from the GSL reference " << err << std::endl;
   }
 
+  // a multithreaded right-hand side gives identical results
+  {
+    std::vector<double> serial, threaded;
+    run(E, earth, chord, 1e-9, [](nuSQUIDS& n){ n.Set_ODEMethod(squids::ODEMethod::Vern7); }, &serial, nullptr);
+    run(E, earth, chord, 1e-9, [](nuSQUIDS& n){ n.Set_ODEMethod(squids::ODEMethod::Vern7); n.Set_NumThreads(3); }, &threaded, nullptr);
+    if(serial != threaded)
+      std::cout << "3 threads: results differ from the serial evaluation" << std::endl;
+  }
+
   // constant density: the node integrators are exact
   auto cd = std::make_shared<ConstantDensity>(5.0, 0.5);
   auto cdt = std::make_shared<ConstantDensity::Track>(12742.*u.km);
