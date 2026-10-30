@@ -29,6 +29,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <SQuIDS/const.h>
 #include "nuSQuIDS/version.h"
 #include "nuSQuIDS/tools.h"
@@ -683,8 +684,8 @@ public:
     /// \brief Returns the number of targets in the library
     size_t numberOfTargets() const;
 
-    /// \brief Returns a vector of all target PDGCodes in the library
-    std::vector<PDGCode> targets() const;
+    /// \brief Returns a collection of all target PDG codes in the library
+    std::unordered_set<PDGCode> targets() const;
 
 private:
     MapType data;

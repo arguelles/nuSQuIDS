@@ -1274,7 +1274,7 @@ double EarthAtm::density(const GenericTrack& track_input) const
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
   
-  double rel_r = r/earth_with_atm_radius;
+  double rel_r = r/radius;
   if ( rel_r < x_radius_min ){
     return x_rho_min;
   }
@@ -1300,7 +1300,7 @@ double EarthAtm::ye(const GenericTrack& track_input) const
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
 
-  double rel_r = r/earth_with_atm_radius;
+  double rel_r = r/radius;
   if ( rel_r < x_radius_min ){
     return x_ye_min;
   }
@@ -1326,7 +1326,7 @@ std::map<PDGCode, double> EarthAtm::composition(const GenericTrack& track_input)
   double r2 = SQR(earth_with_atm_radius) + SQR(xkm) - (track_earthatm.L/param.km+dL)*xkm;
   double r = (r2>0 ? sqrt(r2) : 0);
 
-  double rel_r = r/earth_with_atm_radius;
+  double rel_r = r/radius;
 
   std::map<PDGCode, double> result;
   for(const auto& pair : inter_composition){

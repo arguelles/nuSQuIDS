@@ -82,7 +82,7 @@ void print_fluxes(const std::string& label, nuSQUIDS& nus, const squids::Const& 
 
 // Run propagation test with given cross sections and physics options
 void run_test(const std::string& label,
-              CrossSectionLibrary xs,
+              const CrossSectionLibrary& xs,
               std::shared_ptr<Body> body,
               std::shared_ptr<Body::Track> track,
               bool enable_glashow) {
@@ -167,14 +167,8 @@ int main() {
         // Without Glashow
         run_test("ISOSCALAR_NOGR", xs_isoscalar, earth_std, track_std, false);
 
-        // Create again for second test (since we move it)
-        CrossSectionLibrary xs_isoscalar2;
-        xs_isoscalar2.addTarget(isoscalar_nucleon,
-            NeutrinoDISCrossSectionsFromTables(xsdir + "csms_square.h5"));
-        xs_isoscalar2.addTarget(electron, GlashowResonanceCrossSection());
-
         // With Glashow
-        run_test("ISOSCALAR_GR", xs_isoscalar2, earth_std, track_std, true);
+        run_test("ISOSCALAR_GR", xs_isoscalar, earth_std, track_std, true);
     }
     std::cout << std::endl;
 
@@ -183,11 +177,12 @@ int main() {
     // =========================================================================
     std::cout << "--- Proton/Neutron Cross Sections ---" << std::endl;
     {
+        auto xs=loadDefaultCrossSections();
         // Without Glashow
-        run_test("PN_NOGR", loadDefaultCrossSections(), earth_std, track_std, false);
+        run_test("PN_NOGR", xs, earth_std, track_std, false);
 
         // With Glashow
-        run_test("PN_GR", loadDefaultCrossSections(), earth_std, track_std, true);
+        run_test("PN_GR", xs, earth_std, track_std, true);
     }
     std::cout << std::endl;
 
@@ -196,12 +191,12 @@ int main() {
     // =========================================================================
     std::cout << "--- Nuclear Cross Sections ---" << std::endl;
     {
-        // Without Glashow (baseline from nuclearxs-dev)
-        run_test("NUCLEAR_NOGR", loadWCG24NuclearCrossSections(), earth_comp, track_comp, false);
+        auto xs=loadWCG24NuclearCrossSections();
+        // Without Glashow
+        run_test("NUCLEAR_NOGR", xs, earth_comp, track_comp, false);
 
-        // With Glashow (new feature, no baseline from nuclearxs-dev)
-        // We include this for future regression tracking
-        run_test("NUCLEAR_GR", loadWCG24NuclearCrossSections(), earth_comp, track_comp, true);
+        // With Glashow
+        run_test("NUCLEAR_GR", xs, earth_comp, track_comp, true);
     }
     std::cout << std::endl;
 

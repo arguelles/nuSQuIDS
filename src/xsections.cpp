@@ -917,14 +917,10 @@ size_t CrossSectionLibrary::numberOfTargets() const{
     return data.size();
 }
 
-std::vector<PDGCode> CrossSectionLibrary::targets() const{
-    std::vector<PDGCode> result;
-    result.reserve(data.size());
+std::unordered_set<PDGCode> CrossSectionLibrary::targets() const{
+    std::unordered_set<PDGCode> result;
     for(const auto& pair : data)
-        result.push_back(pair.first);
-    // Sort so the result is deterministic across stdlib implementations
-    // (data is an unordered_map; iteration order is libc++/libstdc++-dependent).
-    std::sort(result.begin(), result.end());
+        result.insert(pair.first);
     return result;
 }
 

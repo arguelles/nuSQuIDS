@@ -1156,7 +1156,7 @@ void nuSQUIDS::InitializeInteractions(){
     unsigned int nTargets=0;
 
     // Get all targets from the cross section library
-    std::vector<PDGCode> allTargets = ncs->targets();
+    auto allTargets = ncs->targets();
 
     // Check if we have nuclear targets (PDG codes >= 1000000000)
     bool hasNuclearTargets = false;
